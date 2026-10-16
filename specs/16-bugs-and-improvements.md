@@ -859,6 +859,12 @@ renderer.
     items (`- [ ]`, `- [x]`, for prompts' acceptance criteria), quotes, rules, and inline bold,
     italic, strikethrough, code and links through `wonky_rich_text`'s inline reader and writer
     (the suite's syntax).
+  - **Focus and caret, like a text input.** The caret is painted, and blinks, only while the
+    field has focus; the selection outlives the focus (the toolbar acts on it). A press outside
+    the field and its toolbar leaves the field, as it does a `ShadInput`; menus and dialogs the
+    field opens give it the focus back when they close. (T-2: a field that lost the focus kept
+    blinking. super_editor's `ContentLayers` never unmounts layers dropped from the end of
+    its overlay list, so an unfocused field keeps an empty layer in the caret's slot.)
   - **No code blocks** (*decided*: editing and removing them broke the field). Inline code
     stays. There is no *Code block* button, no ```` ``` ```` autoformat (typed, a fence is text:
     written escaped, read back as the same paragraph) and no code-block shortcut. Fenced code that

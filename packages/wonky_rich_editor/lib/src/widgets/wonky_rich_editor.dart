@@ -532,55 +532,65 @@ class WonkyRichEditorState extends State<WonkyRichEditor> {
       ),
     );
     final spelling = widget.spellChecker != null;
+    // A press outside the field and its toolbar leaves it, as it does a
+    // text input (menus and dialogs it opens focus it again when done).
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Only the toolbar and the counter follow every keystroke.
+        if (widget.toolbar) ...[
+          ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) => _toolbar(context),
+          ),
+          const SizedBox(height: 4),
+        ],
+        if (spelling)
+          MouseRegion(
+            // The browser's context menu would cover ours (web).
+            onEnter: (_) => _browserMenu(off: widget.enabled),
+            onExit: (_) => _browserMenu(off: false),
+            child: WonkyPopupMenuHost(key: _menu, child: field),
+          )
+        else
+          field,
+        if (max != null)
+          ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) {
+              final length = controller.length;
+              if (length < max * 0.8) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  widget.labels.length(length, max),
+                  key: ValueKey<String>('${widget.fieldKey}.count'),
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.muted.copyWith(
+                    fontSize: 11,
+                    color: length >= max ? theme.colorScheme.destructive : null,
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
     return ShadDisabled(
       disabled: !widget.enabled,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Only the toolbar and the counter follow every keystroke.
-          if (widget.toolbar) ...[
-            ListenableBuilder(
-              listenable: controller,
-              builder: (context, _) => _toolbar(context),
-            ),
-            const SizedBox(height: 4),
-          ],
-          if (spelling)
-            MouseRegion(
-              // The browser's context menu would cover ours (web).
-              onEnter: (_) => _browserMenu(off: widget.enabled),
-              onExit: (_) => _browserMenu(off: false),
-              child: WonkyPopupMenuHost(key: _menu, child: field),
-            )
-          else
-            field,
-          if (max != null)
-            ListenableBuilder(
-              listenable: controller,
-              builder: (context, _) {
-                final length = controller.length;
-                if (length < max * 0.8) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    widget.labels.length(length, max),
-                    key: ValueKey<String>('${widget.fieldKey}.count'),
-                    textAlign: TextAlign.end,
-                    style: theme.textTheme.muted.copyWith(
-                      fontSize: 11,
-                      color: length >= max
-                          ? theme.colorScheme.destructive
-                          : null,
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
+      child: TapRegion(
+        groupId: _tapGroup,
+        onTapOutside: (_) {
+          if (focusNode.hasFocus) focusNode.unfocus();
+        },
+        child: column,
       ),
     );
   }
+
+  /// The field and its toolbar as one region for [TapRegion.onTapOutside].
+  String get _tapGroup => '${widget.fieldKey}#${identityHashCode(this)}';
 
   ShadThemeData? _styledTheme;
   String? _styledHint;
@@ -610,7 +620,8 @@ class WonkyRichEditorState extends State<WonkyRichEditor> {
             documentLayoutKey: _layoutKey,
             inputSource: TextInputSource.ime,
             // Several fields can be on screen (a dialog over a page).
-            inputRole: '${widget.fieldKey}#${identityHashCode(this)}',
+            inputRole: _tapGroup,
+            tapRegionGroupId: _tapGroup,
             gestureMode: DocumentGestureMode.mouse,
             selectionPolicies: const SuperEditorSelectionPolicies(
               clearSelectionWhenEditorLosesFocus: false,
@@ -625,15 +636,21 @@ class WonkyRichEditorState extends State<WonkyRichEditor> {
             selectionStyle: SelectionStyles(
               selectionColor: theme.colorScheme.selection,
             ),
+            // The selection outlives the focus (the toolbar acts on it), so
+            // the caret layer is only there while the field is focused and
+            // editable: no caret, and no blink timer, in an unfocused field.
+            // An empty layer takes its slot: super_editor's ContentLayers
+            // never unmounts layers dropped from the end of the list.
             documentOverlayBuilders: [
-              DefaultCaretOverlayBuilder(
-                caretStyle: CaretStyle(
-                  width: 2,
-                  color: widget.enabled && !widget.readOnly
-                      ? theme.colorScheme.primary
-                      : const Color(0x00000000),
-                ),
-              ),
+              if (focusNode.hasFocus && _editable)
+                DefaultCaretOverlayBuilder(
+                  caretStyle: CaretStyle(
+                    width: 2,
+                    color: theme.colorScheme.primary,
+                  ),
+                )
+              else
+                const FunctionalSuperEditorLayerBuilder(_noCaret),
             ],
             keyboardActions: [_keys, ..._imeActions],
             // Links don't open while editing.
@@ -957,3 +974,7 @@ class _LinkDialogState extends State<_LinkDialog> {
     );
   }
 }
+
+/// The caret's layer in a field without focus (see [WonkyRichEditorState]).
+ContentLayerWidget _noCaret(BuildContext context, SuperEditorContext _) =>
+    const EmptyContentLayer();

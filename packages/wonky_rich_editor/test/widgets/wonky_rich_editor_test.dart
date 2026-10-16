@@ -379,6 +379,73 @@ void main() {
     expect(_key('markdown.composer.bullets'), findsOneWidget);
   });
 
+  group('Given a focused field with a caret', () {
+    final caret = find.byType(CaretDocumentOverlay);
+
+    for (final b in Brightness.values) {
+      testWidgets('in ${b.name} when the focus moves on then the caret is '
+          'gone, and it is back when the field is focused again', (
+        tester,
+      ) async {
+        final r = await _pump(tester, markdown: 'text', brightness: b);
+        await _focus(tester);
+        expect(caret, findsOneWidget);
+        final shown = tester.state<CaretDocumentOverlayState>(caret);
+        expect(shown.isCaretVisible, isTrue);
+
+        r.focus.requestFocus();
+        await tester.pump();
+        expect(caret, findsNothing);
+        // Unmounted, not just unlisted: a dropped layer that stays mounted
+        // keeps painting and blinking.
+        expect(shown.mounted, isFalse);
+        // The selection is kept for the toolbar; only the caret goes.
+        expect(r.controller.selection, isNotNull);
+
+        await _focus(tester);
+        expect(caret, findsOneWidget);
+      });
+    }
+
+    testWidgets('when Tab moves the focus out then the caret is gone', (
+      tester,
+    ) async {
+      final r = await _pump(tester, markdown: 'text');
+      await _focus(tester);
+      final shown = tester.state<CaretDocumentOverlayState>(caret);
+      await tester.pressTab();
+      await tester.pump();
+      expect(r.focus.hasFocus, isTrue);
+      expect(caret, findsNothing);
+      expect(shown.mounted, isFalse);
+    });
+
+    testWidgets('when the user clicks outside then the field is left and the '
+        'caret is gone; a click on its toolbar keeps it', (tester) async {
+      final r = await _pump(tester, markdown: 'text');
+      await _focus(tester);
+      await tester.tap(_key('markdown.composer.bold'));
+      await tester.pump();
+      expect(caret, findsOneWidget);
+
+      final shown = tester.state<CaretDocumentOverlayState>(caret);
+      await tester.tapAt(const Offset(700, 500));
+      await tester.pump();
+      expect(caret, findsNothing);
+      expect(shown.mounted, isFalse);
+      expect(r.controller.selection, isNotNull);
+      await settleTooltips(tester);
+    });
+
+    testWidgets('when the field is read-only then it has no caret', (
+      tester,
+    ) async {
+      await _pump(tester, markdown: 'text', readOnly: true);
+      await _focus(tester);
+      expect(caret, findsNothing);
+    });
+  });
+
   testWidgets('Given enterMarkdown then the field holds the text', (
     tester,
   ) async {
