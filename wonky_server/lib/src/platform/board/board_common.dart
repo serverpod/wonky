@@ -8,6 +8,7 @@ import '../common/errors.dart';
 import '../common/models.dart';
 import '../common/rate_limiter.dart';
 import '../common/time.dart';
+import 'board_access.dart' show BoardCaller;
 import 'board_config.dart';
 
 /// Live channels of the board (specs/16 §7.6).
@@ -66,10 +67,12 @@ abstract final class BoardRateLimits {
     window: l.window,
   );
 
-  /// Records a call of [userId]; throws `limitExceeded` when over [limit].
-  static Future<void> check(BoardLimit limit, int userId) async {
+  /// Records a call of the signed-in [caller]; throws `limitExceeded` when
+  /// over [limit]. Admins have no limits (they moderate and post in bulk).
+  static Future<void> check(BoardLimit limit, BoardCaller caller) async {
+    if (caller.isAdmin) return;
     final max = limit.limitIn(BoardConfig.current.limits);
-    final retry = await _limiter(limit).check(userId, limit: max);
+    final retry = await _limiter(limit).check(caller.id, limit: max);
     if (retry == null) return;
     final minutes = (retry.inSeconds / 60).ceil().clamp(1, 24 * 60);
     throw Errors.limit(

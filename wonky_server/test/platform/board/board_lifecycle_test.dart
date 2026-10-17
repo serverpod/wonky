@@ -275,6 +275,57 @@ void main() {
           _code(WonkyErrorCode.limitExceeded),
         );
       });
+
+      test('then an admin has no limits', () async {
+        BoardConfig.current = BoardConfig(
+          limits: const BoardLimits(
+            postsPerHour: 1,
+            postsPerDay: 1,
+            commentsPerHour: 1,
+            votesPerHour: 1,
+            flagsPerDay: 1,
+            similarPerMinute: 1,
+          ),
+          flagsToHold: 100,
+        );
+        final s = admin.endpointSession;
+        final a = await BoardHarness.post(endpoints, admin);
+        final b = await BoardHarness.post(
+          endpoints,
+          admin,
+          kind: BoardPostKind.idea,
+        );
+        await BoardHarness.post(endpoints, admin);
+        final other = await BoardHarness.post(endpoints, anna);
+        for (var i = 0; i < 2; i++) {
+          await endpoints.board.addComment(
+            s,
+            const Uuid().v4obj(),
+            a.number,
+            null,
+            'Note $i',
+          );
+          await endpoints.board.similar(s, 'a b c', '', null);
+        }
+        await endpoints.board.vote(s, b.number, 1);
+        await endpoints.board.vote(s, b.number, -1);
+        await endpoints.board.vote(s, b.number, 0);
+        for (final post in [a, other]) {
+          await endpoints.board.flag(
+            s,
+            post.number,
+            null,
+            BoardFlagReason.spam,
+            null,
+          );
+        }
+
+        // Everyone else still has them.
+        await expectLater(
+          BoardHarness.post(endpoints, anna),
+          _code(WonkyErrorCode.limitExceeded),
+        );
+      });
     });
 
     group('when the retention sweep runs', () {

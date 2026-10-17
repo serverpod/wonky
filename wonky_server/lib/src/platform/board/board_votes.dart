@@ -61,7 +61,7 @@ abstract final class BoardVotes {
     if (!votable.contains(post.status)) {
       throw Errors.conflict('Voting is closed for this post.');
     }
-    await BoardRateLimits.check(BoardLimit.votesPerHour, c.id);
+    await BoardRateLimits.check(BoardLimit.votesPerHour, c);
     final changed = await setVote(session, post.id!, c.id, value);
     final updated = (await BoardPost.db.findById(session, post.id!))!;
     if (changed) await BoardLive.post(session, post.id!);

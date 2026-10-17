@@ -1268,7 +1268,8 @@ claim code still reaches no one but the claimant.
 | Enumeration of private data | Board endpoints return display names and avatars only, never emails or user ids beyond what `CommentView` already exposes |
 | XSS through Markdown | The renderer builds widgets (no HTML); links are restricted to `http(s)`/`mailto` |
 
-**Rate limits** (`board.*` config, per user, across instances):
+**Rate limits** (`board.*` config, per user, across instances; admins (§9.1) have none, since they
+moderate and post in bulk):
 
 - posts: 5 per hour, 20 per day;
 - comments: 30 per hour;

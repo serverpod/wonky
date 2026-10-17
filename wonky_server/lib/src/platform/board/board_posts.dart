@@ -102,7 +102,7 @@ abstract final class BoardPosts {
   }) async {
     final c = await BoardAccess.caller(session);
     if (c.signedIn) {
-      await BoardRateLimits.check(BoardLimit.similarPerMinute, c.id);
+      await BoardRateLimits.check(BoardLimit.similarPerMinute, c);
     }
     final text = '$title ${BoardText.plain(body, max: 2000)}'.trim();
     if (text.isEmpty) return const [];
@@ -269,8 +269,8 @@ abstract final class BoardPosts {
     }
     final contextJson = _context(draft.contextJson);
     final screenshot = await _screenshot(session, c, draft.screenshotFileUuid);
-    await BoardRateLimits.check(BoardLimit.postsPerHour, c.id);
-    await BoardRateLimits.check(BoardLimit.postsPerDay, c.id);
+    await BoardRateLimits.check(BoardLimit.postsPerHour, c);
+    await BoardRateLimits.check(BoardLimit.postsPerDay, c);
     final jev = await BoardAi.instance.jevAvailable(session);
     final now = nowUtc();
     final post = await session.db.transaction((tx) async {

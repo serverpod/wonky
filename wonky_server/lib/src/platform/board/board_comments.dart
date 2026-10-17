@@ -159,7 +159,7 @@ abstract final class BoardComments {
     if (post.deletedAt != null || post.moderation == BoardModeration.removed) {
       throw Errors.conflict('This post can no longer be commented on.');
     }
-    await BoardRateLimits.check(BoardLimit.commentsPerHour, c.id);
+    await BoardRateLimits.check(BoardLimit.commentsPerHour, c);
     final verdict = await check(session, clean);
     final earlier = await BoardComment.db.find(
       session,
@@ -350,7 +350,7 @@ abstract final class BoardComments {
       );
       return;
     }
-    await BoardRateLimits.check(BoardLimit.flagsPerDay, c.id);
+    await BoardRateLimits.check(BoardLimit.flagsPerDay, c);
     await BoardFlag.db.insertRow(
       session,
       BoardFlag(
