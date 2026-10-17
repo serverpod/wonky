@@ -67,6 +67,7 @@ class WonkyEditor extends StatefulWidget {
     this.inlineTableEditing = true,
     this.externalDrops,
     this.endInset = 0,
+    this.compactPadding,
   });
 
   final WriteEditorController controller;
@@ -133,6 +134,12 @@ class WonkyEditor extends StatefulWidget {
   /// (the comment margin). The page centers in the rest — moving left, down
   /// to an 8 px gutter — so it stays clear of it when there is room.
   final double endInset;
+
+  /// Left and right padding around the text instead of the page margins
+  /// (Pages; the page then fills the width) or the pageless padding: the
+  /// mobile layout's (suite 02 §6.1, T-12). Null: the document's own. Only
+  /// the rendering changes, not the page setup.
+  final double? compactPadding;
 
   /// Source of OS drops (defaults to the platform's; tests inject one).
   final ExternalDropSource? externalDrops;
@@ -648,12 +655,21 @@ class WonkyEditorState extends State<WonkyEditor> {
       selfUserUuid: controller.userUuid,
       focused: controller.focusNode.hasFocus,
     );
+    final compact = widget.compactPadding;
     var stylesheet = pages
-        ? _pagesStylesheet(
+        ? _paddedStylesheet(
             style.stylesheet,
-            view.pageSetup.margins * (zoom * textScale),
+            _compact(view.pageSetup.margins * (zoom * textScale), compact),
           )
-        : style.stylesheet;
+        : compact == null
+        ? style.stylesheet
+        : _paddedStylesheet(
+            style.stylesheet,
+            _compact(
+              style.stylesheet.documentPadding ?? EdgeInsets.zero,
+              compact,
+            ),
+          );
     _tables
       ..onUndo = widget.shortcutCallbacks?.onUndo
       ..onRedo = widget.shortcutCallbacks?.onRedo;
@@ -670,12 +686,14 @@ class WonkyEditorState extends State<WonkyEditor> {
     );
 
     if (pages) {
-      final pageWidth = view.pageSetup.size.width * zoom * textScale;
+      final fullWidth = view.pageSetup.size.width * zoom * textScale;
       final page = surface;
       surface = ColoredBox(
         color: theme.canvasColor,
         child: LayoutBuilder(
           builder: (context, c) {
+            // Compact: the page fills the width (its margins are reduced).
+            final pageWidth = compact == null ? fullWidth : c.maxWidth;
             const gutter = 8.0;
             final free = c.maxWidth - widget.endInset;
             final left = free >= pageWidth + 2 * gutter
@@ -729,10 +747,17 @@ class WonkyEditorState extends State<WonkyEditor> {
     );
   }
 
-  /// The Pages stylesheet (page margins as document padding), memoized: a
-  /// new stylesheet makes `super_editor` recreate its layout presenter and
-  /// restyle every block, which must not happen on every keystroke.
-  Stylesheet _pagesStylesheet(Stylesheet base, EdgeInsets margins) {
+  /// [padding] with [compact] left and right (`compactPadding`).
+  static EdgeInsets _compact(EdgeInsets padding, double? compact) =>
+      compact == null
+      ? padding
+      : padding.copyWith(left: compact, right: compact);
+
+  /// [base] with [margins] as document padding (Pages: the page margins;
+  /// `compactPadding`), memoized: a new stylesheet makes `super_editor`
+  /// recreate its layout presenter and restyle every block, which must not
+  /// happen on every keystroke.
+  Stylesheet _paddedStylesheet(Stylesheet base, EdgeInsets margins) {
     final cached = _pagesSheet;
     if (cached != null &&
         identical(cached.base, base) &&

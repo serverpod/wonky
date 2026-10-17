@@ -63,6 +63,10 @@ class WriteDocumentScreen extends StatefulWidget {
   final String? heading;
   final WriteSessionFactory? sessionFactory;
 
+  /// Left and right padding around the text in the mobile layout, instead
+  /// of the page margins (suite 02 §6.1, T-12).
+  static const double mobileTextPadding = 16;
+
   @override
   State<WriteDocumentScreen> createState() => _WriteDocumentScreenState();
 }
@@ -279,6 +283,11 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
         final theme = doc.documentTheme.editorTheme(brightness);
         final editor = WonkyEditor(
           endInset: _marginShown(context) ? _marginColumn : 0,
+          // Phones: 16 px beside the text instead of the page margins
+          // (suite 02 §6.1, T-12).
+          compactPadding: WonkyLayout.isMobile(context)
+              ? WriteDocumentScreen.mobileTextPadding
+              : null,
           key: _editorKey,
           controller: doc.editor,
           commands: doc.commands,

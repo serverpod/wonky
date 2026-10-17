@@ -264,6 +264,9 @@ decorative use). Product icons stand for the **apps** only; files keep plain gly
   scrim (§4.5), toolbars overflow aggressively. Nothing
   may overflow at 360 px width.
 - **Mobile layout** (T-9, §6.1): below 640 px, documents are read-only.
+- Motion: 150–200 ms ease-out for popovers/panels; disabled when *Reduce motion* is on or
+  `MediaQuery.disableAnimations`.
+- Focus: visible focus ring (`ring` token) on all interactive elements; never remove outlines.
 
 ### 6.1 Mobile layout (T-9)
 
@@ -273,9 +276,15 @@ phone turned to landscape stays mobile. `WonkyLayout.override` forces it on or o
 tests). There is no mobile editing; v2 apps are the same Flutter web builds.
 
 - **Homes** (Drive and the app homes) work as on the desktop with the narrow rules above: the
-  left menu is a drawer, the list shows the name and ⋮ only, the template strip is skipped on
-  short windows, and the selection action bar scrolls horizontally. One tap on an item opens it
-  (desktop: the first click selects, the second opens).
+  left menu is a drawer, the list shows the name and ⋮ only, and the selection action bar
+  scrolls horizontally. One tap on an item opens it (desktop: the first click selects, the
+  second opens). (T-12) Phones only read, so the homes show no *Start a new …* template strip,
+  and always the list: the grid/list toggle is hidden and a grid chosen on the desktop
+  (`drive.layout` / `drive.view.layout`) is kept, not shown. The left menu (suite 03 §3.3)
+  keeps *Report a bug* and the storage meter at the bottom (*Settings*, *Contribute & build*
+  and *Suggest an improvement* are hidden; the account menu has the settings), and its rows are
+  48 px tall (`SidebarNavButton.mobileHeight`, 20 px icons, 15 px text; the folder-tree toggle
+  44 px).
 - **Editors** (`EditorScaffold`, suite 03 §3.1) show the **read-only view**: a 52 px title row
   (home logo, read-only title, compact sync status, *View only* badge, the app's
   `mobileTitleActions`, account menu) over the document — no menubar, toolbar, mode line, side
@@ -283,16 +292,17 @@ tests). There is no mobile editing; v2 apps are the same Flutter web builds.
   the frame the layout starts in, and `false` when it ends; the apps fold it into their view
   mode, so no edit command is enabled whatever the role and View › Mode › Editing is off. It is
   layout, not a change of the document: nothing is undoable or remembered, and widening the
-  window restores the mode the user had. Write: Viewing, no comment margin; Sheets: the grid and
-  sheet tabs (no formula bar or filter-view bar); Slides: Slides 04 §16.1 and the presenter mode
-  of Slides 10 §1.6.
+  window restores the mode the user had. Write: Viewing, no comment margin, and (T-12) 16 px
+  beside the text (`WriteDocumentScreen.mobileTextPadding` as `WonkyEditor.compactPadding`)
+  instead of the page margins — the page fills the width — or the pageless padding; the page
+  setup itself is unchanged. Sheets: the grid and sheet tabs (no formula bar or filter-view
+  bar), with (T-12) a 1 px line in the theme's `border` color between the title row and the
+  grid (`sheets.mobile.separator`). Slides: Slides 04 §16.1 and the presenter mode of
+  Slides 10 §1.6.
 - **Presenter bar** (`WonkyPresenterBar`, `wonky_ui`): the 52 px top bar of the mobile presenter
   mode — close (*Exit presenter mode*), title with "3 of 12", *Previous slide* / *Next slide*
   (44 px targets; a null callback disables the button), in the app theme's `background`/`border`
   colors, light and dark.
-- Motion: 150–200 ms ease-out for popovers/panels; disabled when *Reduce motion* is on or
-  `MediaQuery.disableAnimations`.
-- Focus: visible focus ring (`ring` token) on all interactive elements; never remove outlines.
 
 ## 7. Accessibility
 

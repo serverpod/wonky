@@ -201,7 +201,8 @@ Single-window page at `/` of each app — layout:
   and open empty). (Decided in the v2 review, Q7; 03 §3.3.) Moving between folders, creating folders and
   uploads happen in Drive (header-row button **Open in Wonky Drive** → the same folder in
   Drive); the per-item *Move to…* dialog stays in app homes and editors.
-- **Template strip**: collapsible ("Hide templates"), 20 px horizontal padding (matching the list
+- **Template strip** (not in the mobile layout, suite 02 §6.1, T-12): collapsible ("Hide
+  templates"), 20 px horizontal padding (matching the list
   header), horizontal list of `TemplateCard`s; *More*
   opens the template gallery page (`/templates`) with categories (Personal, Work, Education,
   Project management, Finance for Sheets…). A card draws a **miniature page** in the template's
@@ -220,7 +221,9 @@ Single-window page at `/` of each app — layout:
 - **Filter bar**: view selector (Recent/Last opened by me/Last modified by me/Last modified),
   owner filter, grid/list toggle, sort menu (Name, Last modified, Last opened by me, Size;
   asc/desc), folders-on-top toggle. (v2) The type filter (Documents, Spreadsheets, Folders,
-  All) exists only in Drive, with presentations and file subtypes (Drive 04 §3.3).
+  All) exists only in Drive, with presentations and file subtypes (Drive 04 §3.3). In the
+  mobile layout (T-12) there is no grid/list toggle: phones always show the list, and a grid
+  chosen on the desktop stays saved for wider windows.
 - **Item list** (`DriveItemList`, list mode): columns Name (kind icon, name, shared badge, star,
   offline badge), Owner (avatar+name / "me"), Last modified (relative), File size, row ⋮ menu.
   Grid mode: `DriveItemCard` with thumbnail preview, name, kind icon, ⋮ menu. Kind icons are

@@ -59,12 +59,17 @@ class _DriveItemsViewState extends State<DriveItemsView> {
     super.dispose();
   }
 
+  /// Grid when chosen, except in the mobile layout: phones list only (suite
+  /// 02 §6.1, T-12); the choice is kept for wider windows.
+  bool _showsGrid(BuildContext context) =>
+      c.layout == DriveLayout.grid && !WonkyLayout.isMobile(context);
+
   KeyEventResult _onKey(FocusNode node, KeyEvent e) {
     if (e is! KeyDownEvent && e is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
     final shift = HardwareKeyboard.instance.isShiftPressed;
-    final grid = c.layout == DriveLayout.grid;
+    final grid = _showsGrid(context);
     final cols = grid ? _gridColumns : 1;
     switch (e.logicalKey) {
       case LogicalKeyboardKey.arrowDown:
@@ -120,7 +125,7 @@ class _DriveItemsViewState extends State<DriveItemsView> {
       listenable: Listenable.merge([c, s.connectivity, OfflineStorage.of(s)]),
       builder: (context, _) {
         final items = c.items;
-        final body = c.layout == DriveLayout.grid
+        final body = _showsGrid(context)
             ? _grid(context, items)
             : _list(context, l, items);
         return Focus(
