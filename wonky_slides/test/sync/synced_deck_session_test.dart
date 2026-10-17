@@ -211,7 +211,10 @@ void main() {
 
       await grantLocally(host.replica, space, role: 'readOnly');
       host.mergesController.add(space);
-      await eventually(() => s.role.value == Role.viewer);
+      // Open and a viewer: the refusal is about the role, not the opening.
+      await eventually(
+        () => s.role.value == Role.viewer && s.loadState.value is DeckReady,
+      );
 
       expect(
         () => s.execute(const AddSlides()),

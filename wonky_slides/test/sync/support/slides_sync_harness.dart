@@ -65,20 +65,28 @@ Future<void> grantLocally(
   String role = 'readWrite',
 }) async {
   final db = replica.db;
-  await db.unsafeExecute(
-    'INSERT OR IGNORE INTO "offline_sync_spaces" ("uuidSpaceId") '
-    "VALUES (x'${hexOf(space)}')",
-  );
-  await db.unsafeExecute(
-    'DELETE FROM "offline_sync_space_members" WHERE "userUuid" = '
-    "x'${hexOf(replica.userUuid)}' AND \"spaceId\" = (SELECT \"id\" FROM "
-    "\"offline_sync_spaces\" WHERE \"uuidSpaceId\" = x'${hexOf(space)}')",
-  );
-  await db.unsafeExecute(
-    'INSERT INTO "offline_sync_space_members" ("spaceId", "userUuid", "role") '
-    "SELECT \"id\", x'${hexOf(replica.userUuid)}', '$role' FROM "
-    "\"offline_sync_spaces\" WHERE \"uuidSpaceId\" = x'${hexOf(space)}'",
-  );
+  // One transaction: an open session reading the membership between the
+  // delete and the insert would see it removed and close the deck (a
+  // flaky "still opening" instead of the role change under test).
+  await db.transaction((tx) async {
+    await db.unsafeExecute(
+      'INSERT OR IGNORE INTO "offline_sync_spaces" ("uuidSpaceId") '
+      "VALUES (x'${hexOf(space)}')",
+      transaction: tx,
+    );
+    await db.unsafeExecute(
+      'DELETE FROM "offline_sync_space_members" WHERE "userUuid" = '
+      "x'${hexOf(replica.userUuid)}' AND \"spaceId\" = (SELECT \"id\" FROM "
+      "\"offline_sync_spaces\" WHERE \"uuidSpaceId\" = x'${hexOf(space)}')",
+      transaction: tx,
+    );
+    await db.unsafeExecute(
+      'INSERT INTO "offline_sync_space_members" ("spaceId", "userUuid", '
+      "\"role\") SELECT \"id\", x'${hexOf(replica.userUuid)}', '$role' FROM "
+      "\"offline_sync_spaces\" WHERE \"uuidSpaceId\" = x'${hexOf(space)}'",
+      transaction: tx,
+    );
+  });
 }
 
 /// Removes [space] from the membership cache (unshared).
