@@ -139,13 +139,14 @@ void main() {
         final finished = events
             .where((e) => e.type == AssistantEventType.toolFinished)
             .toList();
-        expect(finished.map((e) => e.toolName), [
-          'sheets.set_values',
-          'sheets.create_chart',
-        ]);
+        // The calls of one reply run in parallel and finish in any order.
+        AssistantEvent call(String id) =>
+            finished.singleWhere((e) => e.toolUseId == id);
+        expect(call('t1').toolName, 'sheets.set_values');
+        expect(call('t2').toolName, 'sheets.create_chart');
         expect(finished.map((e) => e.toolError), [false, false]);
-        expect(finished.first.range, 'Data!F1:F2');
-        expect(finished.last.objectId, isNotNull);
+        expect(call('t1').range, 'Data!F1:F2');
+        expect(call('t2').objectId, isNotNull);
         final done = events.last;
         expect(done.type, AssistantEventType.done);
         expect(done.changeId, isNotNull);

@@ -127,9 +127,8 @@ void main() {
     test(
       'when memory grows past the RSS limit then the watchdog kills the guest',
       () async {
-        final runner = IsolateScriptRunner(
-          maxRssBytes: ProcessInfo.currentRss + 300 * 1024 * 1024,
-        );
+        final limit = ProcessInfo.currentRss + 300 * 1024 * 1024;
+        final runner = IsolateScriptRunner(maxRssBytes: limit);
         final bench = ScriptTestBench(conformanceWorkbook(), runner: runner);
         final r = await bench.run(
           program,
@@ -138,7 +137,17 @@ void main() {
         );
         expect(r.status, ExecutionStatus.quotaExceeded);
         expect(runner.kills, 1);
-        expect((await bench.run(program, 'hello')).result, 'hello');
+        // The watchdog reads the process RSS, and the killed guest's memory
+        // goes back to the OS some time after the kill: until then, any run
+        // would be stopped too. Wait for it, then the runner recovers.
+        final deadline = DateTime.now().add(const Duration(seconds: 30));
+        while (ProcessInfo.currentRss > limit &&
+            DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+        final hello = await bench.run(program, 'hello');
+        expect(hello.status, ExecutionStatus.completed);
+        expect(hello.result, 'hello');
         await runner.close();
       },
     );
