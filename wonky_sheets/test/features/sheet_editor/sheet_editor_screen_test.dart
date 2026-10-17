@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_sheets/features/sheet_editor/sheet_editor_screen.dart';
 import 'package:wonky_sheets/features/sheet_editor/sheets_document_controller.dart';
-import 'package:wonky_ui/wonky_ui.dart' show WonkyMenubar, WonkyToolbar;
+import 'package:shad/shad.dart' show ShadTheme;
+import 'package:wonky_ui/wonky_ui.dart'
+    show DocumentTitleField, WonkyMenubar, WonkyToolbar;
 
 import '../../support/grid_pump.dart';
 import '../../support/sheets_harness.dart';
@@ -140,6 +142,45 @@ void main() {
       expect(key('sheets.toolbar.format.bold'), findsOneWidget);
       expect(doc().editor!.readOnlyView, isFalse);
       expect(doc().editor!.canEdit, isTrue);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    for (final dark in [false, true]) {
+      testWidgets('when it shows in ${dark ? 'dark' : 'light'} then a 1 px '
+          'line in the theme border color separates the title row from the '
+          'grid (T-12)', (tester) async {
+        await pumpScreen(tester, size: const Size(390, 844), dark: dark);
+
+        final line = key('sheets.mobile.separator');
+        expect(line, findsOneWidget);
+        final theme = ShadTheme.of(tester.element(line));
+        expect(theme.brightness, dark ? Brightness.dark : Brightness.light);
+        final box = tester.widget<ColoredBox>(
+          find.descendant(of: line, matching: find.byType(ColoredBox)),
+        );
+        expect(box.color, theme.colorScheme.border);
+        final rect = tester.getRect(line);
+        expect(rect.height, 1);
+        expect(rect.width, 390);
+        // Below the title row, right above the grid.
+        expect(
+          rect.top,
+          greaterThanOrEqualTo(
+            tester.getRect(find.byType(DocumentTitleField)).bottom,
+          ),
+        );
+        expect(tester.getRect(key('sheets.grid')).top, rect.bottom);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 2));
+      });
+    }
+
+    testWidgets('when the window is wide then there is no separator: the '
+        'formula bar is there (the desktop is unchanged)', (tester) async {
+      await pumpScreen(tester);
+      expect(key('sheets.mobile.separator'), findsNothing);
+      expect(key('sheets.formulaBar'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(seconds: 2));
     });

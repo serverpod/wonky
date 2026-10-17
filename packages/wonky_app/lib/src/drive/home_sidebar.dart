@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
@@ -167,8 +168,8 @@ class _HomeSidebarState extends State<HomeSidebar> {
           Expanded(child: row),
           ShadIconButton.ghost(
             key: const ValueKey<String>('drive.nav.tree'),
-            width: 28,
-            height: 28,
+            width: WonkyLayout.isMobile(context) ? 44 : 28,
+            height: WonkyLayout.isMobile(context) ? 44 : 28,
             iconSize: 14,
             semanticLabel: _treeOpen ? l.collapseFolders : l.expandFolders,
             icon: Icon(
@@ -523,6 +524,9 @@ class HomeSidebarFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = WonkyAppLocalizations.of(context);
     final s = services;
+    // Phones keep only *Report a bug* and the meter (suite 03 §3.3, T-12);
+    // Settings and the board stay in the account menu and on the desktop.
+    final mobile = WonkyLayout.isMobile(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -531,30 +535,33 @@ class HomeSidebarFooter extends StatelessWidget {
           padding: EdgeInsets.only(bottom: 8),
           child: ShadSeparator.horizontal(margin: EdgeInsets.zero),
         ),
-        SidebarNavButton(
-          key: const ValueKey<String>('home.footer.appSettings'),
-          icon: LucideIcons.settings,
-          label: l.cmdSettings,
-          onPressed: () => onInvoke('shell.settings.openApp'),
-        ),
-        SidebarNavButton(
-          key: const ValueKey<String>('home.footer.contribute'),
-          icon: LucideIcons.wrench,
-          label: l.boardContributeNav,
-          onPressed: () => onInvoke('shell.board.open'),
-        ),
+        if (!mobile) ...[
+          SidebarNavButton(
+            key: const ValueKey<String>('home.footer.appSettings'),
+            icon: LucideIcons.settings,
+            label: l.cmdSettings,
+            onPressed: () => onInvoke('shell.settings.openApp'),
+          ),
+          SidebarNavButton(
+            key: const ValueKey<String>('home.footer.contribute'),
+            icon: LucideIcons.wrench,
+            label: l.boardContributeNav,
+            onPressed: () => onInvoke('shell.board.open'),
+          ),
+        ],
         SidebarNavButton(
           key: const ValueKey<String>('home.footer.reportBug'),
           icon: LucideIcons.bug,
           label: l.boardReportBug,
           onPressed: () => onInvoke('shell.board.report', {'kind': 'bug'}),
         ),
-        SidebarNavButton(
-          key: const ValueKey<String>('home.footer.suggest'),
-          icon: LucideIcons.leaf,
-          label: l.boardSuggestImprovement,
-          onPressed: () => onInvoke('shell.board.report', {'kind': 'idea'}),
-        ),
+        if (!mobile)
+          SidebarNavButton(
+            key: const ValueKey<String>('home.footer.suggest'),
+            icon: LucideIcons.leaf,
+            label: l.boardSuggestImprovement,
+            onPressed: () => onInvoke('shell.board.report', {'kind': 'idea'}),
+          ),
         const SizedBox(height: 8),
         StorageMeterSlot(
           services: s,
@@ -599,18 +606,27 @@ class SidebarNavButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool active;
+
+  /// Row height in the mobile layout: a comfortable touch target (suite 02
+  /// §6.1, T-12).
+  static const double mobileHeight = 48;
+
   final double height;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    final lead = leading ?? (icon == null ? null : Icon(icon, size: 18));
+    final mobile = WonkyLayout.isMobile(context);
+    final height = mobile ? math.max(this.height, mobileHeight) : this.height;
+    final lead =
+        leading ?? (icon == null ? null : Icon(icon, size: mobile ? 20 : 18));
     final text = Text(
       label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.small.copyWith(
         fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+        fontSize: mobile ? 15 : null,
         color: theme.colorScheme.foreground,
       ),
     );

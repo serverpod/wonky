@@ -217,6 +217,11 @@ The **left menu** (`HomeSidebar`, Drive 04 §2) is the same widget in every home
    storage meter
    ("12.3 MB of 50 MB used", [Drive 03 §6.1](wonky_drive/03-storage-quota.md)).
 
+In the mobile layout ([02 §6.1](02-design-system.md), T-12) the left menu (a drawer) keeps only
+*Report a bug* and the storage meter in its bottom section — *Settings*, *Contribute & build*
+and *Suggest an improvement* are hidden (their commands, routes and the account menu's settings
+stay) — and its rows are 48 px tall touch targets. The desktop menu is unchanged.
+
 The account menu (avatar) in homes and editors lists: name and email, *<App> settings*, *Wonky
 Work settings*, *Open ▸* Wonky Drive / Write / Sheets / Slides (product icons; replaces the
 former single "Open Wonky Sheets/Write" item), *Sign out*.

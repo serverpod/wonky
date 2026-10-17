@@ -271,7 +271,9 @@ class _DriveHomeScreenState extends State<DriveHomeScreen> {
     final main = ListenableBuilder(
       listenable: c,
       builder: (context, _) {
+        // Not in the mobile layout (suite 02 §6.1, T-12): phones only read.
         final showTemplates =
+            !WonkyLayout.isMobile(context) &&
             (scope?.showsTemplateStrip ?? true) &&
             (widget.location.kind == DriveLocationKind.home ||
                 widget.location.kind == DriveLocationKind.myDrive);
@@ -594,28 +596,30 @@ class _Header extends StatelessWidget {
               onPressed: () => run('shell.drive.emptyTrash'),
               child: Text(l.cmdEmptyTrash),
             ),
-          ShadTooltip(
-            builder: (_) => Text(
-              c.layout == DriveLayout.list ? l.layoutGrid : l.layoutList,
-            ),
-            child: ShadIconButton.ghost(
-              key: const ValueKey<String>('drive.layout'),
-              semanticLabel: c.layout == DriveLayout.list
-                  ? l.layoutGrid
-                  : l.layoutList,
-              icon: Icon(
-                c.layout == DriveLayout.list
-                    ? LucideIcons.layoutGrid
-                    : LucideIcons.list,
-                size: 18,
+          // Phones show the list only (suite 02 §6.1, T-12).
+          if (!WonkyLayout.isMobile(context))
+            ShadTooltip(
+              builder: (_) => Text(
+                c.layout == DriveLayout.list ? l.layoutGrid : l.layoutList,
               ),
-              onPressed: () => c.setLayout(
-                c.layout == DriveLayout.list
-                    ? DriveLayout.grid
-                    : DriveLayout.list,
+              child: ShadIconButton.ghost(
+                key: const ValueKey<String>('drive.layout'),
+                semanticLabel: c.layout == DriveLayout.list
+                    ? l.layoutGrid
+                    : l.layoutList,
+                icon: Icon(
+                  c.layout == DriveLayout.list
+                      ? LucideIcons.layoutGrid
+                      : LucideIcons.list,
+                  size: 18,
+                ),
+                onPressed: () => c.setLayout(
+                  c.layout == DriveLayout.list
+                      ? DriveLayout.grid
+                      : DriveLayout.list,
+                ),
               ),
             ),
-          ),
           ShadTooltip(
             builder: (_) => Text(l.cmdDetails),
             child: ShadIconButton.ghost(

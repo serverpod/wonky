@@ -14,7 +14,7 @@ import 'package:wonky_write/features/editor/applier/delta_applier.dart'
     show DeltaSelection;
 import 'package:wonky_write/features/editor/ui/wonky_editor.dart';
 import 'package:wonky_write/features/editor/controller/editor_types.dart'
-    show EditorMode;
+    show EditorMode, LayoutMode;
 import 'package:wonky_write/features/screen/write_document_screen.dart';
 import 'package:wonky_write/features/sync/connection_keeper.dart';
 import 'package:wonky_write/features/themes/document_theme.dart';
@@ -296,6 +296,7 @@ void main() {
     // Too narrow for both: the page moves to the left gutter, so the margin
     // covers at most the page's right margin, not its text.
     await tester.binding.setSurfaceSize(const Size(1100, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     tester.view.physicalSize = const Size(1100, 900);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -477,6 +478,56 @@ void main() {
       expect(find.byKey(const ValueKey('write.toolbar.style')), findsOneWidget);
       expect(session.readOnlyView, isFalse);
       expect(session.editor.mode, EditorMode.editing);
+      await close(tester);
+    });
+
+    /// The left inset of the text in the editor canvas.
+    double textInset(WidgetTester tester) =>
+        tester.getTopLeft(find.text('Hello world', findRichText: true)).dx -
+        tester.getTopLeft(find.byType(WonkyEditor)).dx;
+
+    for (final layout in LayoutMode.values) {
+      testWidgets('when a ${layout.name} document shows then the text has '
+          '16 px beside it instead of the margins (T-12)', (tester) async {
+        await pumpScreen(tester, size: const Size(390, 844));
+        session.editor.view.layout = layout;
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(session.editor.view.layout, layout);
+
+        final editor = tester.widget<WonkyEditor>(find.byType(WonkyEditor));
+        expect(editor.compactPadding, WriteDocumentScreen.mobileTextPadding);
+        expect(textInset(tester), closeTo(16, 1));
+        if (layout == LayoutMode.pages) {
+          // The page fills the width; its setup keeps the 1-inch margins.
+          final page = tester.getRect(find.byKey(const ValueKey('write.page')));
+          expect(page.width, tester.getSize(find.byType(WonkyEditor)).width);
+          expect(session.editor.view.pageSetup.margins.left, 96);
+        }
+        await close(tester);
+      });
+    }
+
+    testWidgets('when the window is wide then the page keeps its margins and '
+        'width (the desktop is unchanged)', (tester) async {
+      await pumpScreen(tester);
+      session.editor.view.layout = LayoutMode.pages;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final editor = tester.widget<WonkyEditor>(find.byType(WonkyEditor));
+      expect(editor.compactPadding, isNull);
+      final page = tester.getRect(find.byKey(const ValueKey('write.page')));
+      final setup = session.editor.view.pageSetup;
+      expect(
+        page.width,
+        closeTo(setup.size.width * session.editor.view.zoom, 1),
+      );
+      expect(
+        tester.getTopLeft(find.text('Hello world', findRichText: true)).dx -
+            page.left,
+        closeTo(setup.margins.left * session.editor.view.zoom, 1),
+      );
       await close(tester);
     });
 

@@ -354,7 +354,16 @@ class _SheetEditorScreenState extends State<SheetEditorScreen> {
                   if (!WonkyLayout.isMobile(context)) ...[
                     FormulaBar(controller: editor),
                     FilterViewBar(editor: editor),
-                  ],
+                  ] else
+                    // A 1 px `border` line between the title row and the
+                    // grid, which otherwise blend (T-12).
+                    SizedBox(
+                      key: const ValueKey<String>('sheets.mobile.separator'),
+                      height: 1,
+                      child: ColoredBox(
+                        color: ShadTheme.of(context).colorScheme.border,
+                      ),
+                    ),
                   Expanded(
                     child: WonkyPopupMenuHost(
                       child: Builder(
