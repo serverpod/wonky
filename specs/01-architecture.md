@@ -423,7 +423,7 @@ development) from one origin; there is no separate host app.
   git-ignored. WASM and cross-origin-isolation headers: see
   [13 §3](13-security-and-operations.md).
 - **Link previews**: each app's `web/index.html` carries a description and Open Graph / X card
-  tags (`og:title` is the app, `og:site_name` Wonky Work, `twitter:card`
+  tags (`og:title` is the app — Drive, where `/` lands, says Wonky Work —, `og:site_name` Wonky Work, `twitter:card`
   `summary_large_image`). The SPA fallback serves that file for every URL of the app, shared
   documents and invites included, so the tags stay **generic: never an item's title, owner or
   content**, and there is no `og:url` (it would name another page as the canonical one). The
