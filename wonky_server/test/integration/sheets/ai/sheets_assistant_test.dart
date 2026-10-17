@@ -244,10 +244,17 @@ void main() {
           ready.previewId!,
         );
         expect(preview.calls, hasLength(3));
-        final first = preview.calls.first;
-        expect(first.cells.single.cell, 'Data!F1');
+        // Calls from one model reply run in parallel, so they are listed
+        // in the order they finished: find them by the cell they write.
+        SheetsAiPreviewCall writing(String cell) => preview.calls.singleWhere(
+          (c) => c.cells.any((x) => x.cell == cell),
+        );
+        final first = writing('Data!F1');
         expect(first.cells.single.after, 'Total');
-        expect(preview.calls[2].cells.single.after, '=SUM(Data!C2:C7) → 590');
+        expect(
+          writing('Report!A1').cells.single.after,
+          '=SUM(Data!C2:C7) → 590',
+        );
 
         final applied = await endpoints.sheetsAi.applyPreview(
           anna.endpointSession,
