@@ -451,7 +451,12 @@ abstract final class GithubGate {
     );
 
     if (decision.passed && row.taskId != null && !pr.draft) {
-      await GithubReview.schedule(session, row, pr.headSha);
+      await GithubReview.schedule(
+        session,
+        row,
+        pr.headSha,
+        prBody: pr.body,
+      );
     }
   }
 

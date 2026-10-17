@@ -1182,7 +1182,16 @@ changed. The input:
   checkout.
 
 The output is the **prompt body**: goal, acceptance criteria (a checklist), the specs and sections
-to read, likely packages and folders, what is out of scope, and the tests to add. The server then
+to read, likely packages and folders, what is out of scope, and the tests to add.
+
+(T-16) The tool also returns `changesUi` (required): whether the task changes what users see.
+For UI tasks the server — not the model — appends the fixed criterion
+`- [ ] The pull request description includes a screenshot of the changed UI (light and dark where
+both change).` (`TaskPromptTemplate.screenshotCriterion`) as the last item of *Acceptance
+criteria* (adding the section after *Goal* when it is missing). When the model leaves the flag
+out, every area but `server` counts as UI. Admins may also write their own item: any checklist
+item that names a screenshot and the PR (or pull request) description asks for one
+(`TaskPromptTemplate.requiresScreenshot`, read by the review, §13.5). The server then
 wraps it in a fixed template (`platform/board/prompts/task_prompt_template.md`) that the model
 cannot change:
 
@@ -1742,8 +1751,20 @@ a check re-run:
     criteria table, scope notes, tests and specs, risks, and the reviewed SHA;
   - the check run *Wonky task review* with the summary;
   - the result is also stored on the PR row and shown on the task page.
-- **Advisory (G5)**: the conclusion is always `neutral` while `board.github.reviewBlocking` is
-  false. A later switch to blocking would fail only on a `notMet` criterion or major unrelated
+- **Screenshot (T-16)**: when the task's prompt asks for a screenshot (§10.1), the review checks
+  the PR description in code, never with AI: an image is a Markdown `![alt](url)` or
+  `![alt][ref]`, or an HTML `<img src=…>` (what GitHub writes for a pasted or dropped image);
+  code blocks, inline code and HTML comments don't count, and images are never downloaded or
+  analyzed (`PrScreenshot`). Without one the check **fails** (`failure`, title *Screenshot
+  missing · …*), whatever the AI found and also when the AI review is postponed, failed or not
+  configured, and the review comment starts with "**Screenshot missing.** This task changes the
+  UI: add a screenshot of the updated UI to the pull request description…". With one the comment
+  notes it and the conclusion is as below. The state (`notRequired`, `present`, `missing`) is
+  stored in the review JSON (`screenshot`); editing the description so that it changes reviews
+  the same commit again (the gate's `edited` run passes the body to `GithubReview.schedule`), so
+  adding the screenshot clears the failure without a new commit.
+- **Advisory (G5)**: apart from a missing screenshot, the conclusion is always `neutral` while
+  `board.github.reviewBlocking` is false. A later switch to blocking would fail only on a `notMet` criterion or major unrelated
   changes, after a trial period in which admins compare the verdicts with their own reviews.
   - The normal CI (analyze, format, tests) stays the hard gate.
   - The server **never checks out, builds or runs PR code**; it only reads the diff through the

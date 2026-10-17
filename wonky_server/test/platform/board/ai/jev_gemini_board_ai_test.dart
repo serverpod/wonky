@@ -10,6 +10,7 @@ import 'package:wonky_server/src/platform/board/ai/board_gemini_prompts.dart';
 import 'package:wonky_server/src/platform/board/ai/fake_jev_client.dart';
 import 'package:wonky_server/src/platform/board/ai/jev_client.dart';
 import 'package:wonky_server/src/platform/board/ai/jev_gemini_board_ai.dart';
+import 'package:wonky_server/src/platform/board/ai/task_prompt_template.dart';
 import 'package:wonky_server/src/platform/board/board_config.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 
@@ -512,6 +513,7 @@ void main() {
             'body':
                 '# Task\n## Goal\nKeep bold.\n## Acceptance criteria\n- [ ] '
                 'Bold stays\n## Reports this task comes from\n- #1\n',
+            'changesUi': false,
           }),
         );
         final post = BoardAiBuilders.post(
@@ -560,6 +562,73 @@ void main() {
         expect(
           body,
           '## Goal\nKeep bold.\n## Acceptance criteria\n- [ ] Bold stays',
+        );
+      });
+
+      Future<String> write(
+        Map<String, Object?> answer, {
+        BoardArea area = BoardArea.sheets,
+      }) {
+        gemini.enqueue(_tool('write_task_prompt', answer));
+        return at(
+          () => ai.writeTaskPrompt(
+            session,
+            task: BoardAiBuilders.task(area: area),
+            posts: [BoardAiBuilders.post()],
+            comments: const {},
+            webOrigin: Uri.parse('https://wonky.work'),
+          ),
+        );
+      }
+
+      const body =
+          '## Goal\nKeep bold.\n\n## Acceptance criteria\n- [ ] Bold stays\n\n'
+          '## Tests to add\n- A widget test';
+
+      test(
+        'then the tool asks whether the task changes the UI (T-16)',
+        () async {
+          await write({'body': body, 'changesUi': false});
+
+          final schema = gemini.requests.single.tools.single.inputSchema;
+          expect((schema['properties']! as Map).keys, contains('changesUi'));
+          expect(schema['required'], contains('changesUi'));
+          expect(gemini.requests.single.system, contains('screenshot'));
+        },
+      );
+
+      test('when the task changes the UI then the screenshot criterion ends '
+          'the acceptance criteria (T-16)', () async {
+        final out = await write({'body': body, 'changesUi': true});
+
+        expect(
+          out,
+          '## Goal\nKeep bold.\n\n## Acceptance criteria\n- [ ] Bold stays\n'
+          '- [ ] ${TaskPromptTemplate.screenshotCriterion}\n\n'
+          '## Tests to add\n- A widget test',
+        );
+        expect(TaskPromptTemplate.requiresScreenshot(out), isTrue);
+      });
+
+      test('when the task changes no UI then there is no screenshot '
+          'criterion (T-16)', () async {
+        final out = await write({'body': body, 'changesUi': false});
+
+        expect(out, body);
+        expect(TaskPromptTemplate.requiresScreenshot(out), isFalse);
+      });
+
+      test('when the model leaves changesUi out then every area but server '
+          'gets the criterion (T-16)', () async {
+        expect(
+          TaskPromptTemplate.requiresScreenshot(await write({'body': body})),
+          isTrue,
+        );
+        expect(
+          TaskPromptTemplate.requiresScreenshot(
+            await write({'body': body}, area: BoardArea.server),
+          ),
+          isFalse,
         );
       });
 

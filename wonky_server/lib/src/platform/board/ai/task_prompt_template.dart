@@ -62,6 +62,66 @@ abstract final class TaskPromptTemplate {
     return b.toString();
   }
 
+  /// The acceptance criterion of tasks that change the UI (T-16, specs/16
+  /// §10.1). The review bot reads it back ([requiresScreenshot]) and checks
+  /// the PR description for an image (§13.5).
+  static const screenshotCriterion =
+      'The pull request description includes a screenshot of the changed UI '
+      '(light and dark where both change).';
+
+  /// [body] with [screenshotCriterion] as the last item of its *Acceptance
+  /// criteria* (a new section after *Goal*, or at the end, when it has
+  /// none). Unchanged when it is there already.
+  static String withScreenshotCriterion(String body) {
+    if (requiresScreenshot(body)) return body;
+    const item = '- [ ] $screenshotCriterion';
+    final lines = body.replaceAll('\r\n', '\n').split('\n');
+    final start = lines.indexWhere(
+      (l) => _heading(l) == 'acceptance criteria',
+    );
+    if (start < 0) {
+      final goal = lines.indexWhere((l) => _heading(l) == 'goal');
+      var at = lines.length;
+      if (goal >= 0) {
+        final next = lines.indexWhere((l) => _heading(l) != null, goal + 1);
+        at = next < 0 ? lines.length : next;
+      }
+      lines.insertAll(at, ['', '## Acceptance criteria', item, '']);
+      return lines.join('\n').replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    }
+    var end = lines.indexWhere((l) => _heading(l) != null, start + 1);
+    if (end < 0) end = lines.length;
+    // After the last non-empty line of the section.
+    var at = end;
+    while (at > start + 1 && lines[at - 1].trim().isEmpty) {
+      at--;
+    }
+    lines.insert(at, item);
+    return lines.join('\n');
+  }
+
+  /// Whether the acceptance criteria of [body] ask for a screenshot in the
+  /// PR description: a checklist item naming a screenshot and the pull
+  /// request description ([screenshotCriterion], or an admin's wording).
+  static bool requiresScreenshot(String body) {
+    for (final line in body.split('\n')) {
+      final t = line.trim().toLowerCase();
+      if (!RegExp(r'^[-*] \[[ x]\] ').hasMatch(t)) continue;
+      if (t.contains('screenshot') &&
+          (t.contains('pull request description') ||
+              t.contains('pr description'))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// The lower-case title of a level-2 heading, else null.
+  static String? _heading(String line) {
+    final t = line.trim();
+    return t.startsWith('## ') ? t.substring(3).trim().toLowerCase() : null;
+  }
+
   /// The body admins fill in when no AI is available.
   static const blankBody = '''
 ## Goal

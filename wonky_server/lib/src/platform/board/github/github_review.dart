@@ -14,11 +14,15 @@ import 'github_client.dart';
 import 'github_gate.dart';
 import 'github_review_ai.dart';
 import 'github_review_facts.dart';
+import 'github_screenshot.dart';
 
 /// The advisory check "Wonky task review" (specs/16 §13.5): after the gate
 /// passes and on every new head commit, debounced; one Gemini call against
 /// the task's acceptance criteria; a comment updated in place, a neutral
 /// check and the stored result on the PR row (shown on the task page).
+/// (T-16) When the task asks for a screenshot and the PR description has
+/// no image, the check fails and the comment asks for one: that part is
+/// code ([PrScreenshot]), not AI.
 /// The server only reads the diff through the API; it never checks out,
 /// builds or runs PR code.
 abstract final class GithubReview {
@@ -39,16 +43,21 @@ abstract final class GithubReview {
 
   /// Schedules a review of [sha] in [debounce] (the latest SHA wins; the
   /// superseded run is cancelled and, if it still fires, dropped). A SHA
-  /// already reviewed is skipped unless [force] (a re-run request).
+  /// already reviewed is skipped unless [force] (a re-run request) or the
+  /// edited PR description [prBody] changes its screenshot state (T-16).
   static Future<void> schedule(
     Session session,
     BoardPullRequest row,
     String sha, {
     bool force = false,
     Duration delay = debounce,
+    String? prBody,
   }) async {
     if (sha.isEmpty) return;
-    if (!force && (row.lastReviewSha == sha || row.reviewPendingSha == sha)) {
+    if (!force && row.reviewPendingSha == sha) return;
+    if (!force &&
+        row.lastReviewSha == sha &&
+        !await screenshotChanged(session, row, prBody)) {
       return;
     }
     final at = nowUtc().add(delay);
@@ -66,6 +75,30 @@ abstract final class GithubReview {
         level: LogLevel.warning,
       );
     }
+  }
+
+  /// Whether the reviewed screenshot state of [row] differs from the one
+  /// of the PR description [prBody] (an image added or removed after the
+  /// review), so the same commit is reviewed again.
+  static Future<bool> screenshotChanged(
+    Session session,
+    BoardPullRequest row,
+    String? prBody,
+  ) async {
+    final json = row.lastReviewJson;
+    final taskId = row.taskId;
+    if (prBody == null || json == null || taskId == null) return false;
+    final Object? stored;
+    try {
+      stored = (jsonDecode(json) as Map)['screenshot'];
+    } on FormatException {
+      return false;
+    }
+    final was = PrScreenshot.parse(stored);
+    if (was == null) return false;
+    final task = await BoardTask.db.findById(session, taskId);
+    if (task == null) return false;
+    return PrScreenshot.of(task.promptBody, prBody) != was;
   }
 
   /// A maintainer pressed *Re-run* on the review check.
@@ -168,6 +201,7 @@ abstract final class GithubReview {
     final pr = await api.getPullRequest(prNumber);
     // A newer commit arrived: its own review is scheduled by the gate.
     if (pr.state != 'open' || pr.headSha != sha || pr.draft) return;
+    final screenshot = PrScreenshot.of(task.promptBody, pr.body);
 
     final config = BoardConfig.current.github;
     final now = nowUtc();
@@ -177,7 +211,9 @@ abstract final class GithubReview {
       await _postpone(
         session,
         row,
+        task,
         sha,
+        screenshot,
         'Review postponed: the daily limit of '
         '${config.reviewsPerPrPerDay} reviews for this pull request is '
         'reached',
@@ -190,10 +226,14 @@ abstract final class GithubReview {
         name: checkName,
         headSha: sha,
         status: 'completed',
-        conclusion: 'neutral',
-        title: 'Review unavailable',
-        summary: 'The board AI is not configured on the server.',
+        conclusion: _conclusion(screenshot, 'neutral'),
+        title: _title(screenshot, 'Review unavailable'),
+        summary: _summary(
+          screenshot,
+          'The board AI is not configured on the server.',
+        ),
       );
+      await _askForScreenshot(session, row, task, screenshot, sha);
       return;
     }
 
@@ -240,12 +280,18 @@ abstract final class GithubReview {
       await api.updateCheckRun(
         checkId,
         status: 'completed',
-        conclusion: 'neutral',
-        title: "Review postponed: today's AI budget is used up",
-        summary:
-            "Review postponed: today's AI budget is used up. It runs again "
-            'tomorrow (UTC).',
+        conclusion: _conclusion(screenshot, 'neutral'),
+        title: _title(
+          screenshot,
+          "Review postponed: today's AI budget is used up",
+        ),
+        summary: _summary(
+          screenshot,
+          "Review postponed: today's AI budget is used up. It runs again "
+          'tomorrow (UTC).',
+        ),
       );
+      await _askForScreenshot(session, row, task, screenshot, sha);
       await _setPending(session, prNumber, sha, _nextDay(now));
       return;
     } on BoardAiException catch (e) {
@@ -253,13 +299,17 @@ abstract final class GithubReview {
       await api.updateCheckRun(
         checkId,
         status: 'completed',
-        conclusion: 'neutral',
-        title: 'Review failed',
-        summary: e.retryable
-            ? 'The AI review failed; it is retried in '
-                  '${retryDelay.inMinutes} minutes.'
-            : 'The AI review failed.',
+        conclusion: _conclusion(screenshot, 'neutral'),
+        title: _title(screenshot, 'Review failed'),
+        summary: _summary(
+          screenshot,
+          e.retryable
+              ? 'The AI review failed; it is retried in '
+                    '${retryDelay.inMinutes} minutes.'
+              : 'The AI review failed.',
+        ),
       );
+      await _askForScreenshot(session, row, task, screenshot, sha);
       if (e.retryable) {
         await _setPending(session, prNumber, sha, now.add(retryDelay));
       }
@@ -274,6 +324,7 @@ abstract final class GithubReview {
       sha: sha,
       at: now,
       taskNumber: task.id!,
+      screenshot: screenshot,
     );
     final commentId = await GithubGate.upsertComment(
       session,
@@ -286,17 +337,20 @@ abstract final class GithubReview {
         diff: diff,
         sha: sha,
         task: task,
+        screenshot: screenshot,
       ),
     );
     final blocking = config.reviewBlocking && isBlocking(result, facts);
     await api.updateCheckRun(
       checkId,
       status: 'completed',
-      conclusion: blocking ? 'failure' : 'neutral',
-      title: checkTitle(result),
-      summary:
-          '${_safe(result.summary)}\n\nThe full review is in the '
-          'pull request comment. Advisory: CI stays the hard gate.',
+      conclusion: _conclusion(screenshot, blocking ? 'failure' : 'neutral'),
+      title: _title(screenshot, checkTitle(result)),
+      summary: _summary(
+        screenshot,
+        '${_safe(result.summary)}\n\nThe full review is in the '
+        'pull request comment. Advisory: CI stays the hard gate.',
+      ),
     );
     final latest = await BoardPullRequest.db.findFirstRow(
       session,
@@ -356,19 +410,89 @@ abstract final class GithubReview {
   static Future<void> _postpone(
     Session session,
     BoardPullRequest row,
+    BoardTask task,
     String sha,
+    PrScreenshot screenshot,
     String title,
   ) async {
     await BoardGithub.api.createCheckRun(
       name: checkName,
       headSha: sha,
       status: 'completed',
-      conclusion: 'neutral',
-      title: title,
-      summary: '$title. It runs again tomorrow (UTC).',
+      conclusion: _conclusion(screenshot, 'neutral'),
+      title: _title(screenshot, title),
+      summary: _summary(screenshot, '$title. It runs again tomorrow (UTC).'),
     );
+    await _askForScreenshot(session, row, task, screenshot, sha);
     await _setPending(session, row.prNumber, sha, _nextDay(nowUtc()));
   }
+
+  // --------------------------------------------------------- screenshot
+
+  /// What the contributor is asked to do when the screenshot is missing.
+  static const screenshotRequest =
+      'This task changes the UI: add a screenshot of the updated UI to the '
+      'pull request description (paste or drop the image into it; light and '
+      'dark where both change). The check passes once the description has '
+      'an image.';
+
+  /// The check fails while a required screenshot is missing, whatever the
+  /// review says (T-16).
+  static String _conclusion(PrScreenshot s, String otherwise) =>
+      s == PrScreenshot.missing ? 'failure' : otherwise;
+
+  static String _title(PrScreenshot s, String title) =>
+      s == PrScreenshot.missing ? 'Screenshot missing · $title' : title;
+
+  static String _summary(PrScreenshot s, String summary) =>
+      s == PrScreenshot.missing
+      ? '**Screenshot missing.** $screenshotRequest\n\n$summary'
+      : summary;
+
+  /// Without a full review (no AI, postponed, failed): the review comment
+  /// still asks for a missing screenshot.
+  static Future<void> _askForScreenshot(
+    Session session,
+    BoardPullRequest row,
+    BoardTask task,
+    PrScreenshot screenshot,
+    String sha,
+  ) async {
+    if (screenshot != PrScreenshot.missing) return;
+    final b = StringBuffer()
+      ..writeln(marker)
+      ..writeln(
+        '### Wonky task review: '
+        '[T-${task.id}: ${GithubGate.linkText(task.title)}]'
+        '(${GithubGate.taskUrl(task.id!)})',
+      )
+      ..writeln()
+      ..writeln(screenshotSection(screenshot))
+      ..writeln(
+        'Checked commit `${sha.length > 12 ? sha.substring(0, 12) : sha}`. '
+        'The AI review of the criteria follows when it can run.',
+      );
+    final id = await GithubGate.upsertComment(
+      session,
+      row.prNumber,
+      row.reviewCommentId,
+      marker,
+      b.toString(),
+    );
+    await BoardPullRequest.db.updateWhere(
+      session,
+      columnValues: (t) => [t.reviewCommentId(id)],
+      where: (t) => t.prNumber.equals(row.prNumber),
+    );
+  }
+
+  /// The screenshot part of the review comment (empty when not required).
+  static String screenshotSection(PrScreenshot s) => switch (s) {
+    PrScreenshot.notRequired => '',
+    PrScreenshot.present =>
+      '**Screenshot:** the description has an image of the changed UI.\n',
+    PrScreenshot.missing => '**Screenshot missing.** $screenshotRequest\n',
+  };
 
   // ------------------------------------------------------------ results
 
@@ -398,11 +522,13 @@ abstract final class GithubReview {
     required String sha,
     required DateTime at,
     required int taskNumber,
+    PrScreenshot screenshot = PrScreenshot.notRequired,
   }) => {
     'version': 1,
     'taskNumber': taskNumber,
     'sha': sha,
     'reviewedAt': at.toUtc().toIso8601String(),
+    'screenshot': screenshot.name,
     ...result.toJson(),
     'facts': facts.toJson(),
     'truncatedFiles': diff.truncated,
@@ -451,6 +577,7 @@ abstract final class GithubReview {
     required PrDiff diff,
     required String sha,
     required BoardTask task,
+    PrScreenshot screenshot = PrScreenshot.notRequired,
   }) {
     final b = StringBuffer()
       ..writeln(marker)
@@ -459,7 +586,11 @@ abstract final class GithubReview {
         '[T-${task.id}: ${GithubGate.linkText(task.title)}]'
         '(${GithubGate.taskUrl(task.id!)})',
       )
-      ..writeln()
+      ..writeln();
+    if (screenshot != PrScreenshot.notRequired) {
+      b.writeln(screenshotSection(screenshot));
+    }
+    b
       ..writeln(_safe(result.summary))
       ..writeln();
     if (result.criteria.isNotEmpty) {

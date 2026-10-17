@@ -8,6 +8,7 @@ import 'board_ai.dart';
 import 'board_ai_ledger.dart';
 import 'board_gemini_prompts.dart';
 import 'spec_index.g.dart';
+import 'task_prompt_template.dart';
 
 /// The writing side of the board AI (specs/16 §6.1): Gemini through a
 /// `DartanticAiClient` built directly with `internalGeminiApiKey` (never
@@ -158,8 +159,16 @@ class BoardGemini {
     if (body.isEmpty) {
       throw BoardAiException('Gemini returned an empty task prompt.');
     }
-    return body;
+    return changesUi(out['changesUi'], task.area)
+        ? TaskPromptTemplate.withScreenshotCriterion(body)
+        : body;
   }
+
+  /// Whether a task prompt gets the screenshot criterion (T-16): the
+  /// model's `changesUi`, or, when it is missing, every area but `server`
+  /// (the only one without visible UI).
+  static bool changesUi(Object? flag, BoardArea area) =>
+      flag is bool ? flag : area != BoardArea.server;
 
   /// The user message of [writeTaskPrompt].
   static String taskPromptMessage({

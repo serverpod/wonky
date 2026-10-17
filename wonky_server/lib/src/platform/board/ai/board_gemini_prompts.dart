@@ -119,8 +119,15 @@ Leave out posts that fit no group. Propose no bundle rather than a weak one: pos
               'Markdown with the sections Goal, Acceptance criteria, Specs to '
               'read, Likely code, Out of scope, Tests to add.',
         },
+        'changesUi': {
+          'type': 'boolean',
+          'description':
+              'True when the task changes what users see (screens, layout, '
+              'styling, dialogs, menus, text in the UI); false for changes '
+              'with no visible UI (server, data, sync, performance, tooling).',
+        },
       },
-      'required': ['body'],
+      'required': ['body', 'changesUi'],
     },
   );
 
@@ -154,6 +161,8 @@ Call the tool write_task_prompt exactly once with the Markdown body. It has exac
 ## Likely code: packages and folders where the change probably goes, from the layout. Say "to be located" for anything you are not sure of; never invent file names.
 ## Out of scope: what the agent must not change.
 ## Tests to add: the tests that prove the acceptance criteria (server, widget, command or unit tests).
+
+Also set changesUi: true when the task changes what users see, false otherwise. For UI tasks the server adds the acceptance criterion that the pull request description includes a screenshot; do not write it yourself.
 
 Rules:
 - No level-1 heading and no other sections (no pull request or report sections).
