@@ -58,7 +58,8 @@ export 'src/board/pages/board_trail.dart'
     show BoardTab, BoardTrail, isBoardLocation, boardBackTarget, closeBoard;
 export 'src/board/pages/contribute_page.dart' show BoardContributePage;
 export 'src/board/pages/post_page.dart';
-export 'src/board/pages/prompt_editor.dart'
+// The prompt lint lives in wonky_core (shared with the server, T-11).
+export 'package:wonky_core/board.dart'
     show lintTaskPrompt, PromptLint, PromptLintKind;
 export 'src/board/pages/task_page.dart';
 export 'src/data/api.dart';

@@ -1,7 +1,9 @@
 import 'dart:math';
 
 import 'package:serverpod/serverpod.dart';
+import 'package:wonky_core/board.dart';
 
+import '../common/actor.dart';
 import '../common/errors.dart';
 import '../common/models.dart';
 import '../common/time.dart';
@@ -328,7 +330,18 @@ abstract final class BoardTasks {
     }
     final current = await BoardTask.db.findById(session, taskId);
     if (current == null || current.promptRequestedAt != requested) return;
-    await BoardTask.db.updateRow(
+    // A written prompt publishes its draft (T-11): the admin's *Select for
+    // building* is the approval. Unless the lint flags it (§10.2): then the
+    // task waits for an admin to read and save the prompt.
+    // A regenerated prompt of a task that is already out is not applied
+    // when flagged: contributors would get it unread.
+    final lint = body == null ? const <PromptLint>[] : lintTaskPrompt(body);
+    final draft = current.status == BoardTaskStatus.draft;
+    if (lint.isNotEmpty) {
+      note = draft ? heldNote(lint) : notAppliedNote(lint);
+      if (!draft) body = null;
+    }
+    var updated = await BoardTask.db.updateRow(
       session,
       current.copyWith(
         promptBody: body ?? current.promptBody,
@@ -337,7 +350,41 @@ abstract final class BoardTasks {
         promptNote: note,
       ),
     );
+    if (body != null &&
+        lint.isEmpty &&
+        updated.status == BoardTaskStatus.draft &&
+        (await _postsOf(session, taskId)).isNotEmpty) {
+      updated = await _applyStatus(
+        session,
+        updated,
+        BoardTaskStatus.published,
+        adminId: updated.createdById,
+        reason: autoPublishReason,
+      );
+    }
     await BoardLive.task(session, taskId);
+  }
+
+  /// The moderation-log reason of a task published by [writePrompt].
+  static const autoPublishReason = 'Published when the AI prompt was written.';
+
+  /// [BoardTask.promptNote] of a written prompt the lint flagged: the task
+  /// stays a draft until an admin saves the prompt (specs/16 §10.2).
+  static String heldNote(List<PromptLint> lint) =>
+      'Held for review: ${_lintSummary(lint)}. Read the prompt, then save it '
+      'to publish the task.';
+
+  /// [BoardTask.promptNote] of a regenerated prompt the lint flagged on a
+  /// task that is no longer a draft: the current prompt stays.
+  static String notAppliedNote(List<PromptLint> lint) =>
+      'The regenerated prompt was not applied: ${_lintSummary(lint)}. The '
+      'current prompt stays.';
+
+  static String _lintSummary(List<PromptLint> lint) {
+    final first = lint.first;
+    final more = lint.length > 1 ? ' (and ${lint.length - 1} more)' : '';
+    return 'line ${first.line} has "${first.match}"$more, which is unusual '
+        'for a task';
   }
 
   static Map<String, Object?> _snap(BoardTask t) => {
@@ -606,7 +653,23 @@ abstract final class BoardTasks {
     BoardCaller c,
     BoardTask task,
     BoardTaskStatus status,
-  ) async {
+  ) async => _done(
+    session,
+    c,
+    await _applyStatus(session, task, status, adminId: c.id, actor: c.actor),
+  );
+
+  /// Moves [task] to [status] with its side effects (posts, activity row,
+  /// moderation log, notifications), on behalf of the admin [adminId]
+  /// ([actor] null: the background job of [writePrompt], T-11).
+  static Future<BoardTask> _applyStatus(
+    Session session,
+    BoardTask task,
+    BoardTaskStatus status, {
+    required int adminId,
+    Actor? actor,
+    String? reason,
+  }) async {
     final now = nowUtc();
     final previous = BoardViews.effectiveStatus(task, now);
     final keepClaim =
@@ -650,17 +713,18 @@ abstract final class BoardTasks {
         session,
         taskId: task.id,
         event: event,
-        actorId: c.id,
+        actorId: adminId,
       );
     }
     await BoardLog.write(
       session,
-      adminId: c.id,
+      adminId: adminId,
       action: 'setTaskStatus',
       targetKind: BoardTargetKind.task,
       targetId: task.id!,
       before: _snap(task),
       after: _snap(updated),
+      reason: reason,
     );
     final line = switch (status) {
       BoardTaskStatus.published when previous == BoardTaskStatus.draft =>
@@ -681,11 +745,11 @@ abstract final class BoardTasks {
           session,
           p,
           '$label: ${BoardText.quoted(p.title)} $line.',
-          actor: c.actor,
+          actor: actor,
         );
       }
     }
-    return _done(session, c, updated);
+    return updated;
   }
 
   /// The admin fallback for linking a PR (specs/16 §8.3); null unlinks.

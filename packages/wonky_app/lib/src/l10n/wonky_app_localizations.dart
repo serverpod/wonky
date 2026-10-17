@@ -6664,12 +6664,6 @@ abstract class WonkyAppLocalizations {
   /// **'Link'**
   String get boardActionLink;
 
-  /// No description provided for @boardActionSavePublish.
-  ///
-  /// In en, this message translates to:
-  /// **'Save and publish'**
-  String get boardActionSavePublish;
-
   /// No description provided for @boardSelectForBuilding.
   ///
   /// In en, this message translates to:
@@ -7039,7 +7033,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardDraftNotice.
   ///
   /// In en, this message translates to:
-  /// **'Draft: only admins see this task. Review the prompt, then publish it.'**
+  /// **'Draft: only admins see this task. It is published once the AI has written its prompt, or when you save the prompt.'**
   String get boardDraftNotice;
 
   /// No description provided for @boardPromptWriting.
@@ -7471,8 +7465,14 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardPromptEditorHint.
   ///
   /// In en, this message translates to:
-  /// **'Contributors run this prompt in coding agents. Read it all before publishing.'**
+  /// **'Contributors run this prompt in coding agents. Read it all before saving.'**
   String get boardPromptEditorHint;
+
+  /// No description provided for @boardPromptSavePublishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving publishes the task.'**
+  String get boardPromptSavePublishes;
 
   /// No description provided for @boardPromptDiffTitle.
   ///
@@ -7483,7 +7483,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardLintTitle.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 unusual instruction} other{{count} unusual instructions}}: check before publishing'**
+  /// **'{count, plural, =1{1 unusual instruction} other{{count} unusual instructions}}: check before saving'**
   String boardLintTitle(int count);
 
   /// No description provided for @boardLintCommand.

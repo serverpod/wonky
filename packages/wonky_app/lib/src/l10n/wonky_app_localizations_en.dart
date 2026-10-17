@@ -3796,9 +3796,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardActionLink => 'Link';
 
   @override
-  String get boardActionSavePublish => 'Save and publish';
-
-  @override
   String get boardSelectForBuilding => 'Select for building';
 
   @override
@@ -4045,7 +4042,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardDraftNotice =>
-      'Draft: only admins see this task. Review the prompt, then publish it.';
+      'Draft: only admins see this task. It is published once the AI has written its prompt, or when you save the prompt.';
 
   @override
   String get boardPromptWriting =>
@@ -4293,7 +4290,10 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardPromptEditorHint =>
-      'Contributors run this prompt in coding agents. Read it all before publishing.';
+      'Contributors run this prompt in coding agents. Read it all before saving.';
+
+  @override
+  String get boardPromptSavePublishes => 'Saving publishes the task.';
 
   @override
   String get boardPromptDiffTitle => 'Changes from Regenerate';
@@ -4306,7 +4306,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
       other: '$count unusual instructions',
       one: '1 unusual instruction',
     );
-    return '$_temp0: check before publishing';
+    return '$_temp0: check before saving';
   }
 
   @override
@@ -8374,9 +8374,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get boardActionLink => '[Ļîñķ on]';
 
   @override
-  String get boardActionSavePublish => '[Šåṽé åñð þûƀļîšĥ one t]';
-
-  @override
   String get boardSelectForBuilding => '[Šéļéçţ ƒöŕ ƀûîļðîñĝ one tw]';
 
   @override
@@ -8624,7 +8621,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardDraftNotice =>
-      '[Ðŕåƒţ: öñļý åðɱîñš šéé ţĥîš ţåšķ. Ŕéṽîéŵ ţĥé þŕöɱþţ, ţĥéñ þûƀļîšĥ îţ. one two three four fi]';
+      '[Ðŕåƒţ: öñļý åðɱîñš šéé ţĥîš ţåšķ. Îţ îš þûƀļîšĥéð öñçé ţĥé ÅÎ ĥåš ŵŕîţţéñ îţš þŕöɱþţ, öŕ ŵĥéñ ýöû šåṽé ţĥé þŕöɱþţ. one two three four five six seven]';
 
   @override
   String get boardPromptWriting =>
@@ -8883,7 +8880,11 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardPromptEditorHint =>
-      '[Çöñţŕîƀûţöŕš ŕûñ ţĥîš þŕöɱþţ îñ çöðîñĝ åĝéñţš. Ŕéåð îţ åļļ ƀéƒöŕé þûƀļîšĥîñĝ. one two three four five]';
+      '[Çöñţŕîƀûţöŕš ŕûñ ţĥîš þŕöɱþţ îñ çöðîñĝ åĝéñţš. Ŕéåð îţ åļļ ƀéƒöŕé šåṽîñĝ. one two three four fiv]';
+
+  @override
+  String get boardPromptSavePublishes =>
+      '[Šåṽîñĝ þûƀļîšĥéš ţĥé ţåšķ. one two t]';
 
   @override
   String get boardPromptDiffTitle => '[Çĥåñĝéš ƒŕöɱ Ŕéĝéñéŕåţé one two]';
@@ -8896,7 +8897,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
       other: '$count ûñûšûåļ îñšţŕûçţîöñš',
       one: '1 ûñûšûåļ îñšţŕûçţîöñ',
     );
-    return '[$_temp0: çĥéçķ ƀéƒöŕé þûƀļîšĥîñĝ one two three four fi]';
+    return '[$_temp0: çĥéçķ ƀéƒöŕé šåṽîñĝ one two three four f]';
   }
 
   @override

@@ -2492,7 +2492,6 @@
   "boardActionCreateTask": "Create task",
   "boardActionAdd": "Add",
   "boardActionLink": "Link",
-  "boardActionSavePublish": "Save and publish",
   "boardSelectForBuilding": "Select for building",
   "boardDeclineEllipsis": "Decline…",
   "boardMergeEllipsis": "Merge into…",
@@ -2710,7 +2709,7 @@
   },
   "boardClaimCodeHint": "Put it in the pull request description. Only you can see it.",
   "boardClaimCodePlaceholder": "<your claim code>",
-  "boardDraftNotice": "Draft: only admins see this task. Review the prompt, then publish it.",
+  "boardDraftNotice": "Draft: only admins see this task. It is published once the AI has written its prompt, or when you save the prompt.",
   "boardPromptWriting": "Writing the prompt with AI… this takes about a minute",
   "boardPromptNote": "The AI did not write the prompt: {note}",
   "@boardPromptNote": {
@@ -2840,9 +2839,10 @@
       }
     }
   },
-  "boardPromptEditorHint": "Contributors run this prompt in coding agents. Read it all before publishing.",
+  "boardPromptEditorHint": "Contributors run this prompt in coding agents. Read it all before saving.",
+  "boardPromptSavePublishes": "Saving publishes the task.",
   "boardPromptDiffTitle": "Changes from Regenerate",
-  "boardLintTitle": "{count, plural, =1{1 unusual instruction} other{{count} unusual instructions}}: check before publishing",
+  "boardLintTitle": "{count, plural, =1{1 unusual instruction} other{{count} unusual instructions}}: check before saving",
   "@boardLintTitle": {
     "placeholders": {
       "count": {

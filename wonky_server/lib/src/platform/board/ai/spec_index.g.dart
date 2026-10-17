@@ -294,7 +294,7 @@ const specIndexSuite =
     '      ### 9.3 Selecting and bundling\n'
     '    ## 10. Contributor prompt and the contribution kit\n'
     '      ### 10.1 Prompt generation\n'
-    '      ### 10.2 Admin review (mandatory)\n'
+    '      ### 10.2 Admin review (when the lint flags the prompt)\n'
     '      ### 10.3 Contribution kit\n'
     '    ## 11. Security, privacy and abuse\n'
     '    ## 12. Data model\n'

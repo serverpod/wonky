@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:clock/clock.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_core/board.dart';
 
 import '../board/board_repository.dart';
 
@@ -217,12 +218,25 @@ class FakeBoardRepository implements BoardRepository {
 
   /// Finishes the pending prompt of task [number] with [body] (or leaves
   /// the body with [note]) and emits the task event, like the server's
-  /// `BoardFutureCall.writePrompt`.
+  /// `BoardFutureCall.writePrompt`: a written prompt publishes its draft
+  /// unless the lint flags it (T-11), then the draft is held with a note.
   void finishPrompt(int number, {String? body, String? note}) {
     final t = tasks[number]!
       ..promptPending = false
       ..promptNote = note;
-    if (body != null) t.promptBody = body;
+    if (body != null) {
+      t.promptBody = body;
+      if (t.status == BoardTaskStatus.draft) {
+        if (lintTaskPrompt(body).isEmpty) {
+          t
+            ..status = BoardTaskStatus.published
+            ..publishedAt = clock.now();
+          _syncPosts(t);
+        } else {
+          t.promptNote = 'Held for review.';
+        }
+      }
+    }
     emitTask(number);
   }
 

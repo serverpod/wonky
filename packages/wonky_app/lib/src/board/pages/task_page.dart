@@ -329,20 +329,14 @@ class _BoardTaskPageState extends State<BoardTaskPage> {
                 onPressed: () => _invoke('shell.board.release'),
                 child: Text(l.cmdBoardRelease),
               ),
+            // A draft publishes itself once the AI wrote its prompt (T-11);
+            // a held or failed one when the admin saves the prompt.
             if (admin && t.status == BoardTaskStatus.draft) ...[
               ShadButton(
                 key: const ValueKey<String>('board.task.editPrompt'),
                 leading: const Icon(LucideIcons.squarePen, size: 16),
                 onPressed: _editPrompt,
                 child: Text(l.cmdBoardEditPrompt),
-              ),
-              ShadButton.outline(
-                key: const ValueKey<String>('board.task.publish'),
-                leading: const Icon(LucideIcons.send, size: 16),
-                // The prompt needs a review after the AI wrote it.
-                enabled: !t.promptPending,
-                onPressed: () => _invoke('shell.board.admin.publishTask'),
-                child: Text(l.cmdBoardPublishTask),
               ),
             ] else if (admin) ...[
               ShadButton.outline(

@@ -49,7 +49,7 @@ PR gets an AI review against its task (§13). The integration is built and enabl
 | B5 | Claiming | Only published tasks (selected by admins) can be claimed, for **48 hours** |
 | B6 | Comments | Yes, with simple Markdown formatting |
 | B7 | Board location | A shared page in `wonky_app`, local to the current app (like Settings) |
-| B8 | Task prompts | Written by AI and editable by admins; an admin publishes them |
+| B8 | Task prompts | Written by AI and editable by admins; a written prompt publishes its task unless the lint holds it (T-11, §10.2) |
 | B9 | Old *Report a problem* feedback | Folded into the new system (§12) |
 | B10 | Grouping bugs | AI suggests bundles and admins confirm them. Admins can also group manually |
 | B11 | Ideas accepted | Duplicate check while typing, vetting at submit, separate vote types for bugs and ideas, one status flow, notifications when things ship, contributor guide in the repo |
@@ -123,7 +123,10 @@ draft ──► published ──► claimed ──► inReview ──► done �
 ```
 
 - `draft`: created by an admin from one or more posts. The AI prompt is generated (§10), and the task
-  is visible to admins only.
+  is visible to admins only. (T-11) There is no manual approval: the prompt job publishes the
+  task as soon as it has written a prompt the lint (§10.2) does not flag. A task stays a draft
+  only while the prompt is written, when the lint held it, or when the AI could not write it
+  (`promptNote` says which); an admin then publishes it by saving the prompt.
 - `published`: open for claims and listed under *Up for grabs*. Its posts become `planned`.
 - `claimed`: reserved by one user until `claimExpiresAt`, listed under *Claimed* (with
   `inReview`). On expiry it goes back to `published` (§8.2).
@@ -488,7 +491,10 @@ task.
   activity yet* when there is none. These are the system rows of the task (`board_comment` with
   a `taskId`); `listTaskComments` returns them to admins only (empty for everyone else).
 - **Admins**: *Edit prompt* (§10.2), *Regenerate prompt*, *Add/remove posts*, *Release claim*,
-  *Mark done*, *Mark shipped*, *Cancel task*.
+  *Mark done*, *Mark shipped*, *Cancel task*. (T-11) There is no *Publish* button: a draft shows
+  the draft notice ("It is published once the AI has written its prompt, or when you save the
+  prompt") and, when held or failed, the `promptNote`; saving the prompt of a draft publishes
+  it.
 
 ### 4.7 Visual and accessibility notes
 
@@ -1117,7 +1123,9 @@ endpoint call:
 ### 9.3 Selecting and bundling
 
 - **Select one post**: *Select for building* on a post creates a draft task (title from the
-  post, area and size from the labels) and generates the prompt (§10).
+  post, area and size from the labels) and generates the prompt (§10). The selection is the
+  approval (T-11): the task is published in the background once its prompt is written, also
+  when the admin has left the page.
 - **Manual bundle**: on the board, admins get checkboxes on rows. With several posts selected,
   the action bar offers *Create task from 4 posts…* (title, area, size), and the draft task
   links all of them. *Add to task…* adds selected posts to an existing draft or published
@@ -1151,6 +1159,14 @@ task pages and the prompt editor refresh live. `BoardTaskView.promptPending` is 
 is scheduled (at most 10 minutes, so a lost call never blocks publishing); the task page and the
 editor show *Writing the prompt with AI… this takes about a minute* with a spinner, and *Publish*
 (and the editor's *Save*, *Regenerate*) stay disabled; `publishTask` answers `conflict` meanwhile.
+(T-11) A written body of a draft is linted (§10.2): when the lint finds nothing the job publishes
+the task right away with `publishTask`'s side effects (posts `planned`, the *Planned* notification,
+the `published` activity row; the moderation log names the admin who created the task, with the
+reason "Published when the AI prompt was written."). When it flags something the body is stored,
+the task stays a draft and `promptNote` reads "Held for review: line 5 has "curl …" (and 1 more),
+which is unusual for a task. Read the prompt, then save it to publish the task." A regenerated body
+of a task that is already published is not applied when flagged (the note says so and the
+current prompt stays), since contributors would get it unread.
 When the daily budget is used up (`BoardAiBudgetException`) or Gemini fails, the body stays and
 `promptNote` (admins only) says why; the task page shows it. *Set prompt* (the admin's own text,
 or undoing *Regenerate*) cancels a pending pass: its result is dropped when `promptRequestedAt`
@@ -1203,18 +1219,24 @@ a ```` ``` ```` block). For the claimant the server builds it with their actual 
 `Wonky-Claim: <your claim code from the task page>`. Nobody else gets the prompt (§8.1), so the
 claim code still reaches no one but the claimant.
 
-### 10.2 Admin review (mandatory)
+### 10.2 Admin review (when the lint flags the prompt)
 
-- A task cannot be published until an admin has opened the prompt editor and pressed *Publish*.
-  **This review is the defense against prompt injection** (§11): post content flows through AI
-  into a prompt that contributors run in coding agents with repository access.
+- **Decided (T-11):** there is no mandatory review. The admin's *Select for building* (or
+  *Create task*) approves the task, and a written prompt publishes it (§10.1). The defense
+  against prompt injection (§11) — post content flows through AI into a prompt that contributors
+  run in coding agents with repository access — is now the lint below, run by the server
+  (`lintTaskPrompt`, `package:wonky_core/board.dart`, shared with the editor): a flagged prompt
+  holds its task as a draft until an admin has read it and saved it (*Save* in the editor of a
+  draft also publishes; there is no separate *Publish* button). Prompts are still fenced as
+  untrusted data (§10.1), and admins can edit, regenerate or cancel a published task.
 - The prompt editor is a `MarkdownComposer` with a large preview. It also shows a diff against
   the last generated version after *Regenerate*.
 - `promptEditedById` and `promptEditedAt` are stored. Edits are undoable, and the editor has its
   own text undo.
 - The prompt editor highlights instructions that are unusual for a task: shell commands
   outside `flutter`/`dart`/`serverpod`/`git`, URLs outside the repo and wonky.work, and "ignore",
-  "secret", "token" or "credential" wording. It is a lint, not a block.
+  "secret", "token" or "credential" wording. In the editor it is a warning list, not a block;
+  on the server it decides whether a written prompt publishes its task (T-11).
 
 ### 10.3 Contribution kit
 
