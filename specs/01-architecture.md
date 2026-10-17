@@ -410,7 +410,7 @@ development) from one origin; there is no separate host app.
 | `/<app>/assets/assets/config.json` (each app) | `AppConfigRoute` | Replaces the bundled `assets/config.json` at runtime: `{apiUrl, webUrl, apps: {drive, write, sheets, slides}, cookieAuth, google?: {clientId, redirectUri}}` (the API URL — `wonky.publicApiUrl` / `WONKY_PUBLIC_API_URL`, default `https://api.wonky.work` in production (§2.5), else the API server's public host —, the public web origin for the legal pages, the base URL of each app for cross-app links, and Google sign-in, 04 §1.6). The public web origin is `wonky.publicWebUrl` / `WONKY_PUBLIC_WEB_URL`, default `https://wonky.work` in production (Serverpod Cloud generates the server config, so its own `*.serverpod.space` host is never used in links), else the web server's public host; e-mail and MCP links use it too |
 | `/auth/callback` | `FlutterWebAuth2CallbackRoute` | OAuth popup callback for Sign in with Google (04 §1.6) |
 | `/privacy`, `/terms` | `StaticRoute.file` | Privacy policy and terms of service (`web/pages/privacy.html`, `terms.html`; suite 13 §5) |
-| `/` | redirect | (v2) Always to **`/write/`** — Wonky Write's home (Recent documents with the template strip; `RootRedirectRoute`). The `wonky_last_app` cookie is no longer read (the apps may stop setting it). Wonky Drive stays at `/drive/` and is one click away in every home's left menu |
+| `/` | redirect | (v2) Always to **`/drive/`** — Wonky Drive's home, the default landing app (v2 review B4; `RootRedirectRoute`, `rootRedirectTarget`). The `wonky_last_app` cookie is no longer read (the apps may stop setting it) |
 | `/mcp`, `/files/…`, `/invite/:token` | server routes | See 09, 05, 06; (v2) `/files/d/:fileUuid/:name` downloads and `PUT /files/upload/:fileUuid` token uploads (MCP P0, chunked P1), Drive 02 §3.3, §4.3, §8 |
 | anything else unbuilt | `web/pages/build_flutter_app.html` | Template fallback shown when an app's build folder is missing |
 
@@ -422,6 +422,15 @@ development) from one origin; there is no separate host app.
   builds swap on a 16 GB machine) and fails if any build fails. Build folders are
   git-ignored. WASM and cross-origin-isolation headers: see
   [13 §3](13-security-and-operations.md).
+- **Link previews**: each app's `web/index.html` carries a description and Open Graph / X card
+  tags (`og:title` is the app, `og:site_name` Wonky Work, `twitter:card`
+  `summary_large_image`). The SPA fallback serves that file for every URL of the app, shared
+  documents and invites included, so the tags stay **generic: never an item's title, owner or
+  content**, and there is no `og:url` (it would name another page as the canonical one). The
+  image is `https://wonky.work/web/images/og-1.jpg` (1200×630 JPEG, under WhatsApp's 300 KB;
+  source `icons/og.webp`): absolute, as crawlers need, and versioned in its name because
+  `/web/` is served as immutable — a new image gets a new name. The legal pages carry the
+  same tags with their own `og:url` and canonical link.
 - **Development**: the apps are declared in `serverpod: flutter_apps:` in the server pubspec
   (aliases `drive`, `write`, `sheets`, `slides`; `path: ../wonky_<app>`,
   `target: lib/driver.dart`, fixed `web-port`s so the origins are stable for
