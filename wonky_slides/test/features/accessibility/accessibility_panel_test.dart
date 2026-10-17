@@ -133,13 +133,16 @@ void main() {
     await r.close(tester);
   });
 
-  testWidgets('Given a 360 px window when the panel opens then nothing '
-      'overflows', (tester) async {
-    final r = await open(tester, size: const Size(360, 780));
+  testWidgets(
+    'Given a 640 px (the narrowest editor) window when the panel opens then nothing '
+    'overflows',
+    (tester) async {
+      final r = await open(tester, size: const Size(640, 780));
 
-    expect(find.byKey(AccessibilityPanelKeys.panel), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await settleTooltips(tester);
-    await r.close(tester);
-  });
+      expect(find.byKey(AccessibilityPanelKeys.panel), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await settleTooltips(tester);
+      await r.close(tester);
+    },
+  );
 }

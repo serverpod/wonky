@@ -75,7 +75,7 @@ String generate(Directory root) {
   final readme = _readmeTables(File('$specs/README.md').readAsStringSync());
   final suite = _headingsOf([
     for (final f in _mdFiles(Directory(specs)))
-      if (!f.path.endsWith('/README.md')) f,
+      if (!_posix(f.path).endsWith('/README.md')) f,
   ], root);
   final apps = {
     for (final app in _apps)
@@ -139,7 +139,7 @@ String _readmeTables(String text) {
 String _headingsOf(List<File> files, Directory root) {
   final out = <String>[];
   for (final f in files) {
-    final rel = f.path.substring(root.path.length + 1);
+    final rel = _posix(f.path.substring(root.path.length + 1));
     out.add(rel);
     for (final line in _outsideFences(f.readAsStringSync())) {
       final m = RegExp(r'^(#{1,3}) +(.+?)\s*$').firstMatch(line);
@@ -186,3 +186,6 @@ String _literal(String s, {String indent = '    '}) {
   }
   return b.toString();
 }
+
+/// [path] with `/` separators (Windows lists `specs\x.md`).
+String _posix(String path) => path.replaceAll(r'\', '/');

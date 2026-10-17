@@ -119,16 +119,16 @@ void main() {
     await r.close(tester);
   });
 
-  testWidgets('Given a 360 × 720 window when the Themes panel opens then it '
+  testWidgets('Given a 640 × 720 window when the Themes panel opens then it '
       'fits without overflow', (tester) async {
-    final r = await pumpDeckScreen(tester, size: const Size(360, 720));
+    final r = await pumpDeckScreen(tester, size: const Size(640, 720));
     await openPanel(tester, r);
     // The narrow panel slides in over the editor.
     await tester.pump(const Duration(seconds: 1));
     expect(find.byKey(ThemesPanelKeys.panel), findsOneWidget);
     expect(tester.takeException(), isNull);
     final rect = tester.getRect(find.byKey(ThemesPanelKeys.panel));
-    expect(rect.right, lessThanOrEqualTo(360));
+    expect(rect.right, lessThanOrEqualTo(640));
     await settleTooltips(tester);
     await r.close(tester);
   });
@@ -206,10 +206,10 @@ void main() {
     await r.close(tester);
   });
 
-  testWidgets('Given Page setup at 360 px when it opens then it fits', (
+  testWidgets('Given Page setup at 640 px when it opens then it fits', (
     tester,
   ) async {
-    final r = await pumpDeckScreen(tester, size: const Size(360, 720));
+    final r = await pumpDeckScreen(tester, size: const Size(640, 720));
     final done = r.services.dispatcher.invoke(
       'slides.file.pageSetup',
       source: InvocationSource.menu,

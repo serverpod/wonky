@@ -224,7 +224,7 @@ void main() {
     await r.close(tester);
   });
 
-  for (final (width, label) in [(1100.0, 'medium'), (360.0, '360 px')]) {
+  for (final (width, label) in [(1100.0, 'medium'), (640.0, '640 px')]) {
     for (final brightness in Brightness.values) {
       testWidgets('Given a $label ${brightness.name} window when masters '
           'mode and its inspector show then nothing overflows', (tester) async {

@@ -137,3 +137,38 @@ class PresentButton extends StatelessWidget {
     },
   );
 }
+
+/// *Present* in the title row of the mobile layout (04 §16.1): a play icon
+/// that opens present mode at the current slide (`slides.present.fromSlide`,
+/// never the presenter view), with the mobile presenter bar (10 §1.6).
+class MobilePresentButton extends StatelessWidget {
+  const MobilePresentButton({super.key, required this.services});
+
+  final ShellServices services;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([services.registry, services.activeDocument]),
+    builder: (context, _) {
+      final l = slidesL10n(context);
+      final state = services.dispatcher.stateOf('slides.present.fromSlide');
+      return ShadTooltip(
+        builder: (_) => Text(l.cmdPresentFromCurrent),
+        child: ShadIconButton.secondary(
+          key: const ValueKey<String>('slides.mobile.present'),
+          width: 36,
+          height: 36,
+          iconSize: 16,
+          semanticLabel: l.presentButton,
+          enabled: state.enabled,
+          icon: const Icon(LucideIcons.play),
+          onPressed: () => services.dispatcher.invoke(
+            'slides.present.fromSlide',
+            source: InvocationSource.ui,
+            context: context,
+          ),
+        ),
+      );
+    },
+  );
+}

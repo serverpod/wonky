@@ -61,6 +61,7 @@ class EditorScaffold extends StatefulWidget {
     this.belowToolbar,
     this.commentsButton = true,
     this.historyPanel = true,
+    this.mobileTitleActions,
   });
 
   final ShellServices services;
@@ -114,6 +115,10 @@ class EditorScaffold extends StatefulWidget {
   /// (v2) Whether the version history side panel is offered (Slides has no
   /// version history before M11).
   final bool historyPanel;
+
+  /// App buttons in the title row of the mobile layout (suite 02 §6.1),
+  /// before the account menu (Slides: *Present*).
+  final List<Widget> Function(BuildContext context)? mobileTitleActions;
 
   @override
   State<EditorScaffold> createState() => _EditorScaffoldState();
@@ -294,10 +299,33 @@ class _EditorScaffoldState extends State<EditorScaffold> {
       e is WonkyException &&
       (e.code == WonkyErrorCode.forbidden || e.code == WonkyErrorCode.notFound);
 
+  DocumentController? _readOnlyController;
+  bool _readOnlyView = false;
+
+  /// Tells the controller when the mobile layout starts or ends (suite 02
+  /// §6.1). After the frame: apps notify their listeners.
+  void _syncReadOnlyView(bool mobile) {
+    final c = widget.controller;
+    if (c == null || (c == _readOnlyController && mobile == _readOnlyView)) {
+      return;
+    }
+    final changed = c != _readOnlyController ? mobile : true;
+    _readOnlyController = c;
+    _readOnlyView = mobile;
+    if (!changed) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.controller == c && _readOnlyView == mobile) {
+        c.setReadOnlyView(mobile);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = WonkyAppLocalizations.of(context);
     final theme = ShadTheme.of(context);
+    final mobile = WonkyLayout.isMobile(context);
+    _syncReadOnlyView(mobile);
     final err = _error;
     if (err != null) {
       if (_isNoAccess(err)) {
@@ -340,6 +368,7 @@ class _EditorScaffoldState extends State<EditorScaffold> {
         child: ListenableBuilder(
           listenable: s.registry,
           builder: (context, _) {
+            if (mobile) return _mobileLayout(context, item);
             final statusLeft = widget.statusLeft?.call(context) ?? const [];
             final statusRight = widget.statusRight?.call(context) ?? const [];
             final panels = [
@@ -453,6 +482,100 @@ class _EditorScaffoldState extends State<EditorScaffold> {
     );
   }
 
+  /// The mobile layout (suite 02 §6.1): a compact title row and the
+  /// document, read-only — no menubar, toolbar, side panels or status bar.
+  Widget _mobileLayout(BuildContext context, DriveItemView? item) {
+    final l = WonkyAppLocalizations.of(context);
+    final theme = ShadTheme.of(context);
+    final controller = widget.controller;
+    return ColoredBox(
+      key: const ValueKey<String>('editor.mobile'),
+      color: theme.colorScheme.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 52,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
+              child: Row(
+                children: [
+                  _homeButton(l, size: 32),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: DocumentTitleField(
+                      key: const ValueKey<String>('editor.title'),
+                      title: item?.name ?? '',
+                      placeholder: s.config.untitledName(context),
+                      controller: _titleField,
+                      readOnly: true,
+                      onRename: _rename,
+                    ),
+                  ),
+                  if (controller != null)
+                    ValueListenableBuilder<SyncStatus>(
+                      valueListenable:
+                          widget.syncStatus ?? controller.syncStatus,
+                      builder: (context, st, _) => SyncStatusIndicator(
+                        status: st,
+                        compact: true,
+                        onRetry: controller.retrySync,
+                      ),
+                    ),
+                  if (item != null) ...[
+                    const SizedBox(width: 4),
+                    ShadBadge.secondary(
+                      key: const ValueKey<String>('editor.mobile.readOnly'),
+                      child: Text(l.badgeViewOnly),
+                    ),
+                  ],
+                  const SizedBox(width: 4),
+                  ...?widget.mobileTitleActions?.call(context),
+                  AccountMenuButton(services: s),
+                ],
+              ),
+            ),
+          ),
+          StorageBanner(
+            services: s,
+            place: StorageBannerPlace.editor,
+            item: item,
+          ),
+          Expanded(
+            child: Focus(
+              focusNode: _docFocus,
+              child: item == null || controller == null
+                  ? LoadingShimmer.documentPage()
+                  : _trashedBanner(context, item, widget.body(context, item)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _homeButton(WonkyAppLocalizations l, {double size = 36}) =>
+      ShadTooltip(
+        builder: (_) => Text(l.cmdHome),
+        // A labelled button for screen readers (the logo has no text).
+        child: Semantics(
+          button: true,
+          label: l.cmdHome,
+          excludeSemantics: true,
+          child: GestureDetector(
+            key: const ValueKey<String>('editor.home'),
+            onTap: () => _invoke('shell.nav.home'),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: s.config.logo(size: size),
+              ),
+            ),
+          ),
+        ),
+      );
+
   MenuCustomItems _customItems() {
     final doc = widget.controller;
     return MenuCustomItems(
@@ -530,26 +653,7 @@ class _EditorScaffoldState extends State<EditorScaffold> {
         padding: const EdgeInsets.fromLTRB(8, 6, 12, 0),
         child: Row(
           children: [
-            ShadTooltip(
-              builder: (_) => Text(l.cmdHome),
-              // A labelled button for screen readers (the logo has no text).
-              child: Semantics(
-                button: true,
-                label: l.cmdHome,
-                excludeSemantics: true,
-                child: GestureDetector(
-                  key: const ValueKey<String>('editor.home'),
-                  onTap: () => _invoke('shell.nav.home'),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: s.config.logo(size: 36),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            _homeButton(l),
             const SizedBox(width: 6),
             Expanded(
               child: Column(

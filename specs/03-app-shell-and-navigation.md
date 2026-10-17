@@ -142,7 +142,9 @@ opens the details panel (not in the rail).
 Row 2: `WonkyMenubar` (File, Edit, View, Insert, Format, …app menus…, Tools, Extensions (Sheets:
 Scripts), Help). Row 3: `WonkyToolbar` in a rounded container (margin 8 px left/right, 6 px above,
 8 px below). Everything is always shown: there is no compact mode, full screen or View › Show
-submenu. The status bar below the content is optional (`EditorScaffold.showStatusBar`) and
+submenu — except in the read-only **mobile layout** below 640 px (T-9,
+[02 §6.1](02-design-system.md)): a compact title row over the read-only document, without
+rows 2 and 3, the side panels and the status bar. The status bar below the content is optional (`EditorScaffold.showStatusBar`) and
 contains only what the app passes; the sync status is in the title row and the app theme in
 View › App theme.
 

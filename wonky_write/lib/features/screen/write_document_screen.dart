@@ -439,7 +439,8 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
         comments.visible &&
         hasCards &&
         doc.viewPrefs.showCommentMargin &&
-        MediaQuery.sizeOf(context).width >= 600;
+        // Not in the read-only mobile layout (suite 02 §6.1).
+        !WonkyLayout.isMobile(context);
   }
 
   /// The canvas with the comment margin (Write 05 §3, 08 §3.2): comments

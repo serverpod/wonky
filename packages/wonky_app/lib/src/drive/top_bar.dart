@@ -60,23 +60,30 @@ class WonkyTopBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        GestureDetector(
-          onTap: () => services.router.go('/'),
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Row(
-              children: [
-                services.config.logo(size: 32),
-                if (!narrow) ...[
-                  const SizedBox(width: 10),
-                  Text(
-                    services.config.shortAppName,
-                    style: theme.textTheme.large.copyWith(
-                      fontWeight: FontWeight.w500,
+        // A labelled button: below 640 px the logo shows without the name.
+        Semantics(
+          button: true,
+          label: services.config.shortAppName,
+          excludeSemantics: true,
+          child: GestureDetector(
+            key: const ValueKey<String>('shell.topBar.home'),
+            onTap: () => services.router.go('/'),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Row(
+                children: [
+                  services.config.logo(size: 32),
+                  if (!narrow) ...[
+                    const SizedBox(width: 10),
+                    Text(
+                      services.config.shortAppName,
+                      style: theme.textTheme.large.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

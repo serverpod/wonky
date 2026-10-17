@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_sheets/features/sheet_editor/sheet_editor_screen.dart';
 import 'package:wonky_sheets/features/sheet_editor/sheets_document_controller.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyMenubar, WonkyToolbar;
 
 import '../../support/grid_pump.dart';
 import '../../support/sheets_harness.dart';
@@ -13,13 +14,17 @@ void main() {
 
   setUp(() => s = SheetsHarness.open());
 
-  Future<void> pumpScreen(WidgetTester tester, {bool dark = false}) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    bool dark = false,
+    Size size = const Size(1440, 900),
+  }) async {
     s.services.deactivate(s.doc);
     await pumpSheets(
       tester,
       s,
       dark: dark,
-      size: const Size(1440, 900),
+      size: size,
       child: ActiveDocumentHostScope(
         host: s.services,
         child: SheetEditorScreen(
@@ -81,5 +86,73 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 2));
+  });
+
+  group('Given a narrow (mobile) window', () {
+    Finder key(String k) => find.byKey(ValueKey<String>(k));
+
+    testWidgets('when an owner opens a spreadsheet then it is read-only: the '
+        'grid and the sheet tabs show, without menubar, toolbar, formula bar '
+        'or status bar (suite 02 §6.1)', (tester) async {
+      await pumpScreen(tester, size: const Size(390, 844));
+      final ed = doc().editor!;
+
+      expect(key('editor.mobile'), findsOneWidget);
+      expect(key('editor.mobile.readOnly'), findsOneWidget);
+      expect(find.byType(WonkyMenubar), findsNothing);
+      expect(find.byType(WonkyToolbar), findsNothing);
+      expect(key('sheets.toolbar.format.bold'), findsNothing);
+      expect(key('sheets.formulaBar'), findsNothing);
+      expect(key('sheets.status.mode'), findsNothing);
+      expect(key('sheets.grid'), findsOneWidget);
+      expect(key('sheets.tabBar'), findsOneWidget);
+      expect(ed.readOnlyView, isTrue);
+      expect(ed.canEdit, isFalse);
+      expect(doc().mode, 'viewing');
+      expect(
+        s.services.dispatcher.stateOf('sheets.mode.editing').enabled,
+        isFalse,
+      );
+
+      // Typing does not change a cell.
+      ed.gridFocus.requestFocus();
+      await tester.pump();
+      await typeChars(tester, ed.editor, '4');
+      expect(ed.cells.displayAt(ed.activeSheetId, 0, 0)?.text ?? '', '');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    testWidgets('when the window becomes wide then the formula bar, the '
+        'toolbar and editing return (the desktop is unchanged)', (
+      tester,
+    ) async {
+      await pumpScreen(tester, size: const Size(390, 844));
+      expect(doc().editor!.canEdit, isFalse);
+
+      tester.view.physicalSize = const Size(1440, 900);
+      await tester.pump();
+      await tester.pump();
+
+      expect(key('editor.mobile'), findsNothing);
+      expect(key('sheets.formulaBar'), findsOneWidget);
+      expect(key('sheets.toolbar.format.bold'), findsOneWidget);
+      expect(doc().editor!.readOnlyView, isFalse);
+      expect(doc().editor!.canEdit, isTrue);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    for (final dark in [false, true]) {
+      testWidgets('when it shows at 360 px in ${dark ? 'dark' : 'light'} '
+          'then nothing overflows', (tester) async {
+        await pumpScreen(tester, size: const Size(360, 640), dark: dark);
+        expect(key('sheets.grid'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 2));
+      });
+    }
   });
 }

@@ -298,8 +298,23 @@ class SheetEditorController extends ChangeNotifier {
     overlaySignal.fire();
   }
 
-  /// Whether the role allows editing (editor or owner).
-  bool get roleCanEdit => session.canEdit && _itemRole >= Role.editor;
+  bool _readOnlyView = false;
+
+  /// The mobile read-only view (suite 02 §6.1): no editing whatever the
+  /// role, and View › Mode › Editing is off.
+  bool get readOnlyView => _readOnlyView;
+  set readOnlyView(bool v) {
+    if (v == _readOnlyView) return;
+    _readOnlyView = v;
+    if (v) editor.cancel();
+    notifyListeners();
+    overlaySignal.fire();
+  }
+
+  /// Whether the role allows editing (editor or owner; never in the mobile
+  /// read-only view).
+  bool get roleCanEdit =>
+      !_readOnlyView && session.canEdit && _itemRole >= Role.editor;
 
   /// Whether the user may edit (role ≥ editor and not in Viewing mode).
   bool get canEdit => roleCanEdit && !_viewMode;

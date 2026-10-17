@@ -50,7 +50,7 @@ void main() {
   for (final (size, brightness) in [
     (const Size(1440, 900), Brightness.light),
     (const Size(1440, 900), Brightness.dark),
-    (const Size(360, 800), Brightness.dark),
+    (const Size(640, 800), Brightness.dark),
   ]) {
     testWidgets('Given a selected linked chart at ${size.width.toInt()} px '
         '(${brightness.name}) when the inspector shows the Chart section then '

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 import '../../l10n/slides_l10n.dart';
 import '../inspector/deck_inspector.dart';
@@ -8,6 +9,7 @@ import 'canvas_region.dart';
 import 'deck_editor_controller.dart';
 import '../grid_view/slide_grid_view.dart';
 import '../masters/masters_view.dart';
+import '../navigator/mobile_slide_strip.dart';
 import '../navigator/slide_navigator.dart';
 import '../notes/notes_pane.dart';
 import '../outline_view/outline_view.dart';
@@ -37,9 +39,27 @@ class DeckBody extends StatelessWidget {
     builder: (context, _) => LayoutBuilder(
       builder: (context, c) {
         editor.reportLayoutWidth(c.maxWidth);
+        if (WonkyLayout.isMobile(context)) return _mobile(context);
         return _layout(context, c);
       },
     ),
+  );
+
+  /// The read-only mobile layout (04 §16.1): the slide over the compact
+  /// slide selector; no notes, inspector or other views.
+  Widget _mobile(BuildContext context) => Column(
+    key: const ValueKey<String>('slides.mobile.body'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Expanded(
+        child: CanvasRegion(
+          services: services,
+          editor: editor,
+          onContextMenu: onContextMenu,
+        ),
+      ),
+      MobileSlideStrip(services: services, editor: editor),
+    ],
   );
 
   Widget _layout(BuildContext context, BoxConstraints c) {

@@ -589,6 +589,10 @@ class WriteDocumentController extends DocumentController {
   @override
   void focusEditor() => editor.focusNode.requestFocus();
 
+  /// The mobile layout shows the document in Viewing (suite 02 §6.1).
+  @override
+  void setReadOnlyView(bool readOnly) => session.setReadOnlyView(readOnly);
+
   /// Scrolls [offset] into view.
   void reveal(int offset) => revealOffset?.call(offset);
 

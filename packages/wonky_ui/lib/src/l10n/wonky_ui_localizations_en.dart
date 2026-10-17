@@ -297,4 +297,21 @@ class WonkyUiLocalizationsEn extends WonkyUiLocalizations {
 
   @override
   String get menuSearchHint => 'Type to jump to an item';
+
+  @override
+  String get presenterExit => 'Exit presenter mode';
+
+  @override
+  String get presenterPrevious => 'Previous slide';
+
+  @override
+  String get presenterNext => 'Next slide';
+
+  @override
+  String presenterPosition(int current, int total) {
+    return '$current of $total';
+  }
+
+  @override
+  String get presenterBarLabel => 'Presenter controls';
 }

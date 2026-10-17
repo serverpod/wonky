@@ -612,6 +612,36 @@ abstract class WonkyUiLocalizations {
   /// In en, this message translates to:
   /// **'Type to jump to an item'**
   String get menuSearchHint;
+
+  /// Close button of the mobile presenter mode's top bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit presenter mode'**
+  String get presenterExit;
+
+  /// No description provided for @presenterPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous slide'**
+  String get presenterPrevious;
+
+  /// No description provided for @presenterNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next slide'**
+  String get presenterNext;
+
+  /// No description provided for @presenterPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String presenterPosition(int current, int total);
+
+  /// No description provided for @presenterBarLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Presenter controls'**
+  String get presenterBarLabel;
 }
 
 class _WonkyUiLocalizationsDelegate

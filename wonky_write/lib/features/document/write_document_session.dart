@@ -551,11 +551,31 @@ class WriteDocumentSession extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Mode.
 
+  bool _readOnlyView = false;
+
+  /// Whether the mobile read-only view is on (suite 02 §6.1): only Viewing.
+  bool get readOnlyView => _readOnlyView;
+
+  /// Turns the mobile read-only view on (Viewing, whatever the role) or off
+  /// (back to the remembered or the role's mode). Not remembered.
+  void setReadOnlyView(bool readOnly) {
+    if (_readOnlyView == readOnly) return;
+    _readOnlyView = readOnly;
+    if (isLoaded) {
+      if (readOnly) {
+        _applyRoleToMode();
+      } else if (editor.mode == EditorMode.viewing) {
+        _setModeInternally(defaultMode());
+      }
+    }
+    notifyListeners();
+  }
+
   /// Whether the role allows [m] (Editing needs Editor+, Suggesting
-  /// Commenter+).
+  /// Commenter+); only Viewing in the mobile read-only view.
   bool canUseMode(EditorMode m) => switch (m) {
-    EditorMode.editing => currentRole.canEdit,
-    EditorMode.suggesting => currentRole.canComment,
+    EditorMode.editing => !_readOnlyView && currentRole.canEdit,
+    EditorMode.suggesting => !_readOnlyView && currentRole.canComment,
     EditorMode.viewing => true,
   };
 
@@ -571,8 +591,8 @@ class WriteDocumentSession extends ChangeNotifier {
   EditorMode defaultMode() {
     final pref = _preferredMode;
     if (pref != null && canUseMode(pref)) return pref;
-    if (currentRole.canEdit) return EditorMode.editing;
-    if (currentRole.canComment) return EditorMode.suggesting;
+    if (canUseMode(EditorMode.editing)) return EditorMode.editing;
+    if (canUseMode(EditorMode.suggesting)) return EditorMode.suggesting;
     return EditorMode.viewing;
   }
 

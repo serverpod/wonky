@@ -241,9 +241,9 @@ void main() {
     await r.close(tester);
   });
 
-  testWidgets('Given a 360 px window when the Layers panel opens then '
+  testWidgets('Given a 640 px window when the Layers panel opens then '
       'nothing overflows', (tester) async {
-    final r = await open(tester, size: const Size(360, 780));
+    final r = await open(tester, size: const Size(640, 780));
 
     expect(find.byKey(LayersPanelKeys.panel), findsOneWidget);
     expect(tester.takeException(), isNull);

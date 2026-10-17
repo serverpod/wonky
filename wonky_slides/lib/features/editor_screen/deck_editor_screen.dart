@@ -308,6 +308,10 @@ class _DeckEditorScreenState extends State<DeckEditorScreen> {
       syncStatus: _session?.syncStatus,
       customMenuItems: _menuItems(editor),
       titleActions: (context) => [PresentButton(services: s)],
+      mobileTitleActions: (context) => [
+        MobilePresentButton(services: s),
+        const SizedBox(width: 6),
+      ],
       // Comments (SL-38), version history (SL-39).
       commentsButton: SlidesFeatures.isOn(SlidesFeature.comments),
       commentsInPanel: SlidesFeatures.isOn(SlidesFeature.comments),

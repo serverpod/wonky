@@ -70,6 +70,7 @@ class SheetsDocumentController extends DocumentController {
     _editor?.removeListener(notifyListeners);
     _editor = editor;
     editor.itemRole = _role;
+    editor.readOnlyView = _readOnlyView;
     editor.addListener(notifyListeners);
     editor.session.role.addListener(notifyListeners);
     notifyListeners();
@@ -222,6 +223,17 @@ class SheetsDocumentController extends DocumentController {
 
   @override
   void focusEditor() => _editor?.gridFocus.requestFocus();
+
+  bool _readOnlyView = false;
+
+  /// The mobile layout shows the spreadsheet read-only (suite 02 §6.1).
+  @override
+  void setReadOnlyView(bool readOnly) {
+    if (readOnly == _readOnlyView) return;
+    _readOnlyView = readOnly;
+    _editor?.readOnlyView = readOnly;
+    notifyListeners();
+  }
 
   // ---- Sync ----
 

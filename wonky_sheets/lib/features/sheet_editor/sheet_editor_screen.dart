@@ -349,8 +349,12 @@ class _SheetEditorScreenState extends State<SheetEditorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FormulaBar(controller: editor),
-                  FilterViewBar(editor: editor),
+                  // The read-only mobile layout shows the grid and the
+                  // sheet tabs only (suite 02 §6.1).
+                  if (!WonkyLayout.isMobile(context)) ...[
+                    FormulaBar(controller: editor),
+                    FilterViewBar(editor: editor),
+                  ],
                   Expanded(
                     child: WonkyPopupMenuHost(
                       child: Builder(

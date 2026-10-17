@@ -84,6 +84,7 @@ class DeckDocumentController extends DocumentController {
     _editor?.removeListener(notifyListeners);
     _editor = editor;
     editor.itemRole = _role;
+    editor.readOnlyView = _readOnlyView;
     editor.addListener(notifyListeners);
     notifyListeners();
   }
@@ -234,6 +235,17 @@ class DeckDocumentController extends DocumentController {
 
   @override
   void focusEditor() => _editor?.canvasFocus.requestFocus();
+
+  bool _readOnlyView = false;
+
+  /// The mobile layout shows the deck read-only (suite 02 §6.1, 04 §16).
+  @override
+  void setReadOnlyView(bool readOnly) {
+    if (readOnly == _readOnlyView) return;
+    _readOnlyView = readOnly;
+    _editor?.readOnlyView = readOnly;
+    notifyListeners();
+  }
 
   // ---- Sync ----
 

@@ -229,7 +229,9 @@ Single-window page at `/` of each app — layout:
   group headers in Recent view.
 - **Selection**: click selects, Mod/Shift-click multi-select, rubber-band selection in grid view,
   Mod+A selects all; a **selection action bar** replaces the filter bar (Share, Move, Copy,
-  Download/Export, Star, Rename (single), Trash, Clear). Its ⋮ menu holds the remaining item
+  Download/Export, Star, Rename (single), Trash, Clear; its actions scroll horizontally when
+  they don't fit, e.g. at 360 px). In the mobile layout (T-9, suite 02 §6.1) one tap opens an
+  item; ⋮ has the other actions. Its ⋮ menu holds the remaining item
   actions only — it does not repeat the bar's icon actions (`itemMenuEntries(exclude:)`).
 - **Context menu** (right-click / ⋮): Open, Share,
   Copy link, Rename, Move to…, Add shortcut, Star/Unstar, Make available offline, Make a copy,

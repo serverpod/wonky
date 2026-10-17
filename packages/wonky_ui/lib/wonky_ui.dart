@@ -21,6 +21,8 @@ export 'src/widgets/menu/menu_items.dart';
 export 'src/widgets/menu/open_menu.dart';
 export 'src/widgets/menu/popup_menu_host.dart';
 export 'src/widgets/menubar/menubar.dart';
+export 'src/widgets/mobile/mobile_layout.dart';
+export 'src/widgets/mobile/presenter_bar.dart';
 export 'src/widgets/number_stepper/number_stepper.dart';
 export 'src/widgets/presence/avatar.dart';
 export 'src/widgets/presence/presence_avatar_stack.dart';

@@ -297,7 +297,7 @@ void main() {
   for (final (width, label) in [
     (1100.0, 'medium (inspector overlays)'),
     (700.0, 'narrow (navigator drawer)'),
-    (360.0, '360 px'),
+    (640.0, '640 px (the narrowest editor)'),
   ]) {
     for (final brightness in Brightness.values) {
       testWidgets('Given a $label ${brightness.name} window when the editor '

@@ -96,6 +96,13 @@ abstract class DocumentController extends ChangeNotifier {
   /// Focuses the document surface (Esc from toolbar/panels).
   void focusEditor() {}
 
+  /// Called by `EditorScaffold` when its mobile layout (suite 02 §6.1)
+  /// starts or ends: while [readOnly] the document must not be editable,
+  /// whatever the role and the View › Mode (apps fold it into their view
+  /// mode); ending it restores the mode the user had. Layout, not a change
+  /// of the document: nothing to undo.
+  void setReadOnlyView(bool readOnly) {}
+
   // ---- Sync ----
 
   /// The document's sync status (title row and status bar).

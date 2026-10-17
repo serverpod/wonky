@@ -371,6 +371,12 @@ class _ItemShellState extends State<_ItemShell> {
   /// timeout and loses the double click when the first click changes the
   /// layout under the pointer.)
   void _onTap() {
+    // Phones open with one tap (suite 02 §6.1); ⋮ has the other actions.
+    if (WonkyLayout.isMobile(context)) {
+      widget.onTap();
+      widget.onOpen();
+      return;
+    }
     final now = DateTime.now();
     final last = _lastTap;
     if (last != null && now.difference(last) <= _doubleClickTimeout) {

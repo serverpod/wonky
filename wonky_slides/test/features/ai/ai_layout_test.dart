@@ -15,7 +15,7 @@ import 'package:wonky_ui/testing.dart';
 import '../../support/deck_screen.dart';
 import '../../support/fake_slides_ai_api.dart';
 
-/// The AI surfaces of Slides in light and dark, at desktop and 360 px
+/// The AI surfaces of Slides in light and dark, at desktop and 640 px (the narrowest editor)
 /// widths (Slides 11 §6; suite 02 narrow widths): nothing overflows.
 void main() {
   late FakeSlidesAiApi api;
@@ -67,7 +67,7 @@ void main() {
       tester.element(find.byKey(const ValueKey('slides.canvas')).first);
 
   for (final brightness in Brightness.values) {
-    for (final size in const [Size(1440, 900), Size(360, 760)]) {
+    for (final size in const [Size(1440, 900), Size(640, 760)]) {
       final tag = '${brightness.name}, ${size.width.toInt()} px';
 
       testWidgets('Given the assistant panel ($tag) when a reply with chips '

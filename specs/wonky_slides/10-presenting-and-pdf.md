@@ -92,6 +92,17 @@ After the last step of the last slide the next advance shows an **end screen** (
 presentation — click to exit", muted text) per `presentJson.endBehavior: endScreen | exit |
 loop` (default `endScreen`); the next advance exits. Kiosk/loop modes override (§9).
 
+### 1.6 Mobile presenter mode (T-9)
+
+In the mobile layout (suite 02 §6.1) present mode (`view` absent, not kiosk) takes the whole
+window as a column: the **presenter bar** (`WonkyPresenterBar`, 52 px, suite 02 §6.1) on top —
+close runs `slides.present.end` (back to the read-only deck at the shown slide), back and forward
+run `slides.present.previous` / `slides.present.next` (back is disabled at the first step) — and
+the stage below it, letterboxed in the app theme's background (light or dark) instead of
+`letterboxColor`. Taps and swipes on the stage navigate as in present mode; the bottom-left
+present toolbar, the full-screen hint and the cursor hiding are not used. The presenter view,
+audience and follower views keep their own layouts.
+
 ---
 
 ## 2. Navigation

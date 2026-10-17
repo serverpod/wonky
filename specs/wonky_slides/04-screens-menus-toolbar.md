@@ -1136,7 +1136,19 @@ Built as the Slides app's settings sections (`WonkyAppConfig.settingsSections`),
 | 1,024–1,200 | Inspector overlays the canvas from the right (scrim-less, pinned until closed); toolbar overflow |
 | 768–1,024 | Navigator shrinks to 140 px (thumbnails only, numbers inside); notes pane collapsed by default |
 | < 768 | Navigator becomes a drawer (hamburger in the title row), inspector and panels overlay over a scrim, toolbar shows only fixed items + overflow; editing remains possible |
-| 360 | No overflow (Present and Share stay visible; title truncates) |
+| < 640 | The read-only mobile layout (§16.1); the editor's narrow layout is checked at 640 px |
+| 360 | No overflow (mobile layout: Present stays visible; title truncates) |
+
+### 16.1 Mobile layout (T-9)
+
+Below 640 px (suite 02 §6.1) the deck opens **read-only** (`DeckEditorController.readOnlyView`,
+folded into `roleCanEdit`: no edit command, Viewing, Masters left) in the shell's mobile title
+row with a *Present* icon button (`slides.mobile.present`, `slides.present.fromSlide` at the
+current slide — never the presenter view). The body (`DeckBody`) is the canvas region over the
+**compact slide selector** (`MobileSlideStrip`): one row of 72 px thumbnails with their numbers
+below them (current slide ringed, skipped slides faded), scrolled to keep the current slide in
+the middle; a tap runs `slides.nav.goToSlide`. No navigator, notes pane, inspector or other view
+mode; widening the window returns to the editor as it was.
 
 ---
 
@@ -1179,7 +1191,8 @@ Built as the Slides app's settings sections (`WonkyAppConfig.settingsSections`),
 - AC-10: Viewer mode hides/disables every mutating control, keeps Present, collapse and copy (if
   allowed); "View only" badge shown.
 - AC-11: Light/dark: chrome follows the app theme; slides keep the deck appearance (goldens).
-- AC-12: At 360 px width nothing overflows; at < 768 px the navigator is a drawer.
+- AC-12: At 360 px width nothing overflows (the mobile layout, §16.1); at 640–768 px the
+  navigator is a drawer.
 
 ---
 

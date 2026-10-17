@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_core/wonky_core.dart' show InvocationSource;
 import 'package:wonky_client/wonky_client.dart'
     show PresentationRole, UuidValue;
 import 'package:wonky_charts_flutter/wonky_charts_flutter.dart'
@@ -559,6 +560,67 @@ class _PresentScreenState extends State<PresentScreen>
     );
   }
 
+  /// The mobile presenter mode (10 §1.6): the whole window, in the app
+  /// theme's colors, with the presenter bar on top — close (`end`), back
+  /// (`previous`) and forward (`next`) — over the slide (taps and swipes
+  /// navigate as in present mode).
+  Widget _mobilePresenter(
+    BuildContext context,
+    PresentController c,
+    SlideRenderer r,
+    bool reduceMotion,
+    List<Widget> overlays,
+  ) {
+    final theme = ShadTheme.of(context);
+    final (current, total) = c.counter;
+    final p = c.position;
+    final canGoBack =
+        c.endScreen || (p != null && c.sequence.previous(p) != null);
+    void run(String id) => unawaited(
+      s.dispatcher.invoke(id, source: InvocationSource.ui, context: context),
+    );
+    return ColoredBox(
+      key: const ValueKey<String>('slides.present.mobile'),
+      color: theme.colorScheme.background,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            WonkyPresenterBar(
+              title: c.model.deck?.title ?? '',
+              current: current,
+              total: total,
+              onClose: () => run('slides.present.end'),
+              onPrevious: canGoBack
+                  ? () => run('slides.present.previous')
+                  : null,
+              onNext: p != null || c.endScreen
+                  ? () => run('slides.present.next')
+                  : null,
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: PresentStage(
+                      key: const ValueKey<String>('slides.present.stage'),
+                      controller: c,
+                      renderer: r,
+                      letterbox: theme.colorScheme.background,
+                      onSecondaryTap: _openContextMenu,
+                      reduceMotion: reduceMotion || c.settings.reduceMotion,
+                    ),
+                  ),
+                  ...overlays,
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _body(BuildContext context, bool reduceMotion) {
     final l = slidesL10n(context);
     final c = _controller;
@@ -631,6 +693,11 @@ class _PresentScreenState extends State<PresentScreen>
               ...overlays,
             ],
           );
+        }
+        if (WonkyLayout.isMobile(context) &&
+            widget.view == PresentView.present &&
+            !c.kiosk) {
+          return _mobilePresenter(context, c, r, reduceMotion, overlays);
         }
         final link = _link;
         final waiting =

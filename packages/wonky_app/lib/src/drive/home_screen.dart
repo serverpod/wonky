@@ -654,54 +654,85 @@ class _Header extends StatelessWidget {
             ),
             Text(l.selectedCount(sel.length), style: theme.textTheme.small),
             const SizedBox(width: 12),
-            if (trash) ...[
-              cmdIcon(
-                'shell.drive.restore',
-                LucideIcons.archiveRestore,
-                l.cmdRestore,
-              ),
-              cmdIcon(
-                'shell.drive.deleteForever',
-                LucideIcons.trash,
-                l.cmdDeleteForever,
-              ),
-            ] else ...[
-              cmdIcon('shell.sharing.open', LucideIcons.userPlus, l.cmdShare),
-              cmdIcon('shell.drive.move', LucideIcons.folderInput, l.cmdMove),
-              cmdIcon('shell.drive.copy', LucideIcons.copy, l.cmdMakeCopy),
-              cmdIcon('shell.drive.setStarred', LucideIcons.star, l.cmdStar),
-              if (sel.length == 1)
-                cmdIcon('shell.drive.rename', LucideIcons.pencil, l.cmdRename),
-              cmdIcon(
-                'shell.drive.trash',
-                LucideIcons.trash2,
-                l.cmdMoveToTrash,
-              ),
-              // Only what the icons above don't already offer.
-              WonkyDropdownMenu(
-                entries: () => itemMenuEntries(
-                  context,
-                  services,
-                  trash: false,
-                  exclude: {
-                    'shell.sharing.open',
-                    'shell.drive.move',
-                    'shell.drive.copy',
-                    'shell.drive.setStarred',
-                    if (sel.length == 1) 'shell.drive.rename',
-                    'shell.drive.trash',
-                  },
+            // Scrolls on phones (360 px) instead of overflowing.
+            Expanded(
+              child: SingleChildScrollView(
+                key: const ValueKey<String>('drive.selectionBar.actions'),
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    if (trash) ...[
+                      cmdIcon(
+                        'shell.drive.restore',
+                        LucideIcons.archiveRestore,
+                        l.cmdRestore,
+                      ),
+                      cmdIcon(
+                        'shell.drive.deleteForever',
+                        LucideIcons.trash,
+                        l.cmdDeleteForever,
+                      ),
+                    ] else ...[
+                      cmdIcon(
+                        'shell.sharing.open',
+                        LucideIcons.userPlus,
+                        l.cmdShare,
+                      ),
+                      cmdIcon(
+                        'shell.drive.move',
+                        LucideIcons.folderInput,
+                        l.cmdMove,
+                      ),
+                      cmdIcon(
+                        'shell.drive.copy',
+                        LucideIcons.copy,
+                        l.cmdMakeCopy,
+                      ),
+                      cmdIcon(
+                        'shell.drive.setStarred',
+                        LucideIcons.star,
+                        l.cmdStar,
+                      ),
+                      if (sel.length == 1)
+                        cmdIcon(
+                          'shell.drive.rename',
+                          LucideIcons.pencil,
+                          l.cmdRename,
+                        ),
+                      cmdIcon(
+                        'shell.drive.trash',
+                        LucideIcons.trash2,
+                        l.cmdMoveToTrash,
+                      ),
+                      // Only what the icons above don't already offer.
+                      WonkyDropdownMenu(
+                        entries: () => itemMenuEntries(
+                          context,
+                          services,
+                          trash: false,
+                          exclude: {
+                            'shell.sharing.open',
+                            'shell.drive.move',
+                            'shell.drive.copy',
+                            'shell.drive.setStarred',
+                            if (sel.length == 1) 'shell.drive.rename',
+                            'shell.drive.trash',
+                          },
+                        ),
+                        builder: (context, ctl) => ShadIconButton.ghost(
+                          width: 32,
+                          height: 32,
+                          iconSize: 16,
+                          semanticLabel: l.moreActions,
+                          icon: const Icon(LucideIcons.ellipsisVertical),
+                          onPressed: ctl.toggle,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                builder: (context, ctl) => ShadIconButton.ghost(
-                  width: 32,
-                  height: 32,
-                  iconSize: 16,
-                  semanticLabel: l.moreActions,
-                  icon: const Icon(LucideIcons.ellipsisVertical),
-                  onPressed: ctl.toggle,
-                ),
               ),
-            ],
+            ),
           ],
         ),
       );

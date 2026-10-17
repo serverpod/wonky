@@ -13,6 +13,8 @@ import 'package:wonky_write/features/document/write_document_session.dart';
 import 'package:wonky_write/features/editor/applier/delta_applier.dart'
     show DeltaSelection;
 import 'package:wonky_write/features/editor/ui/wonky_editor.dart';
+import 'package:wonky_write/features/editor/controller/editor_types.dart'
+    show EditorMode;
 import 'package:wonky_write/features/screen/write_document_screen.dart';
 import 'package:wonky_write/features/sync/connection_keeper.dart';
 import 'package:wonky_write/features/themes/document_theme.dart';
@@ -413,4 +415,79 @@ void main() {
       },
     );
   }
+
+  group('Given a narrow (mobile) window', () {
+    Future<void> close(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+      expect(tester.takeException(), isNull);
+    }
+
+    testWidgets('when an editor opens a document then it shows read-only '
+        'and scrollable: no menubar, toolbar, mode line, panels or status '
+        'bar (suite 02 §6.1)', (tester) async {
+      await pumpScreen(tester, size: const Size(390, 844));
+      await tester.pump();
+
+      expect(session.phase.value, WriteSessionPhase.ready);
+      expect(find.byKey(const ValueKey('editor.mobile')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('editor.mobile.readOnly')),
+        findsOneWidget,
+      );
+      expect(find.byType(WonkyMenubar), findsNothing);
+      expect(find.byType(WonkyToolbar), findsNothing);
+      expect(find.byKey(const ValueKey('write.toolbar.style')), findsNothing);
+      expect(find.byKey(const ValueKey('write.canvas.modeLine')), findsNothing);
+      expect(find.byType(StatusBar), findsNothing);
+      expect(find.byType(WonkySplitView), findsNothing);
+      expect(find.byKey(const ValueKey('editor.share')), findsNothing);
+      // The document, in Viewing, in a scroll view.
+      expect(find.byType(WonkyEditor), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(WonkyEditor),
+          matching: find.byType(Scrollable),
+        ),
+        findsWidgets,
+      );
+      expect(session.readOnlyView, isTrue);
+      expect(session.editor.mode, EditorMode.viewing);
+      final r = await tester.runAsync(
+        () => h.invoke('write.mode.set', const {
+          'mode': 'editing',
+        }, InvocationSource.ui),
+      );
+      expect(r!.isOk, isFalse);
+      expect(session.editor.mode, EditorMode.viewing);
+      await close(tester);
+    });
+
+    testWidgets('when the window becomes wide then the editor, its toolbar '
+        'and Editing return (the desktop is unchanged)', (tester) async {
+      await pumpScreen(tester, size: const Size(390, 844));
+      await tester.pump();
+      expect(session.editor.mode, EditorMode.viewing);
+
+      tester.view.physicalSize = const Size(1440, 900);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('editor.mobile')), findsNothing);
+      expect(find.byKey(const ValueKey('write.toolbar.style')), findsOneWidget);
+      expect(session.readOnlyView, isFalse);
+      expect(session.editor.mode, EditorMode.editing);
+      await close(tester);
+    });
+
+    for (final dark in [false, true]) {
+      testWidgets('when the screen renders at 360 px in '
+          '${dark ? 'dark' : 'light'} then nothing overflows', (tester) async {
+        await pumpScreen(tester, size: const Size(360, 640), dark: dark);
+        await tester.pump();
+        expect(find.byKey(const ValueKey('editor.mobile')), findsOneWidget);
+        await close(tester);
+      });
+    }
+  });
 }

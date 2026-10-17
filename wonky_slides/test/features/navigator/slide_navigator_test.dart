@@ -231,10 +231,10 @@ void main() {
     });
   }
 
-  testWidgets('Given a 360 × 720 window when the drawer navigator, the '
+  testWidgets('Given a 640 × 720 window when the drawer navigator, the '
       'inspector, the notes and the grid view open then nothing overflows '
       '(04 AC-12)', (tester) async {
-    final r = await pumpDeckScreen(tester, size: const Size(360, 720));
+    final r = await pumpDeckScreen(tester, size: const Size(640, 720));
     expect(tester.takeException(), isNull);
     await tester.tap(key('slides.navigator.open'));
     await tester.pump();

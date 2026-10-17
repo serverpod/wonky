@@ -263,6 +263,33 @@ decorative use). Product icons stand for the **apps** only; files keep plain gly
   (`ShadSheet`), below 768 px the open side panel overlays the content from the right over a
   scrim (§4.5), toolbars overflow aggressively. Nothing
   may overflow at 360 px width.
+- **Mobile layout** (T-9, §6.1): below 640 px, documents are read-only.
+
+### 6.1 Mobile layout (T-9)
+
+`WonkyLayout.isMobile(context)` (`wonky_ui`) decides it: windows narrower than shad's `sm`
+(640 px), and phone browsers (Android/iOS on the web) whose shortest side is below 600 px, so a
+phone turned to landscape stays mobile. `WonkyLayout.override` forces it on or off (previews,
+tests). There is no mobile editing; v2 apps are the same Flutter web builds.
+
+- **Homes** (Drive and the app homes) work as on the desktop with the narrow rules above: the
+  left menu is a drawer, the list shows the name and ⋮ only, the template strip is skipped on
+  short windows, and the selection action bar scrolls horizontally. One tap on an item opens it
+  (desktop: the first click selects, the second opens).
+- **Editors** (`EditorScaffold`, suite 03 §3.1) show the **read-only view**: a 52 px title row
+  (home logo, read-only title, compact sync status, *View only* badge, the app's
+  `mobileTitleActions`, account menu) over the document — no menubar, toolbar, mode line, side
+  panels, rail or status bar. The scaffold calls `DocumentController.setReadOnlyView(true)` after
+  the frame the layout starts in, and `false` when it ends; the apps fold it into their view
+  mode, so no edit command is enabled whatever the role and View › Mode › Editing is off. It is
+  layout, not a change of the document: nothing is undoable or remembered, and widening the
+  window restores the mode the user had. Write: Viewing, no comment margin; Sheets: the grid and
+  sheet tabs (no formula bar or filter-view bar); Slides: Slides 04 §16.1 and the presenter mode
+  of Slides 10 §1.6.
+- **Presenter bar** (`WonkyPresenterBar`, `wonky_ui`): the 52 px top bar of the mobile presenter
+  mode — close (*Exit presenter mode*), title with "3 of 12", *Previous slide* / *Next slide*
+  (44 px targets; a null callback disables the button), in the app theme's `background`/`border`
+  colors, light and dark.
 - Motion: 150–200 ms ease-out for popovers/panels; disabled when *Reduce motion* is on or
   `MediaQuery.disableAnimations`.
 - Focus: visible focus ring (`ring` token) on all interactive elements; never remove outlines.

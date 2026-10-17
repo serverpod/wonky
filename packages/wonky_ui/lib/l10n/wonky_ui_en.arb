@@ -99,5 +99,12 @@
   "shortcutCancelHint": "Press Esc to cancel",
   "loading": "Loading…",
   "scrollToTop": "Scroll to top",
-  "menuSearchHint": "Type to jump to an item"
+  "menuSearchHint": "Type to jump to an item",
+  "presenterExit": "Exit presenter mode",
+  "@presenterExit": {"description": "Close button of the mobile presenter mode's top bar."},
+  "presenterPrevious": "Previous slide",
+  "presenterNext": "Next slide",
+  "presenterPosition": "{current} of {total}",
+  "@presenterPosition": {"placeholders": {"current": {"type": "int"}, "total": {"type": "int"}}},
+  "presenterBarLabel": "Presenter controls"
 }

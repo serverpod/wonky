@@ -175,9 +175,9 @@ void main() {
     await r.close(tester);
   });
 
-  testWidgets('Given a 360 px window when the outline shows then nothing '
+  testWidgets('Given a 640 px window when the outline shows then nothing '
       'overflows', (tester) async {
-    final r = await outline(tester, size: const Size(360, 780));
+    final r = await outline(tester, size: const Size(640, 780));
 
     expect(find.byKey(OutlineKeys.view), findsOneWidget);
     expect(tester.takeException(), isNull);

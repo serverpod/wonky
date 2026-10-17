@@ -127,8 +127,26 @@ class DeckEditorController extends ChangeNotifier {
     return r < _itemRole ? r : _itemRole;
   }
 
-  /// Whether the role allows editing (independent of Viewing mode).
-  bool get roleCanEdit => role >= Role.editor;
+  bool _readOnlyView = false;
+
+  /// The mobile read-only view (suite 02 §6.1, 04 §16): no editing
+  /// whatever the role, and View › Mode › Editing is off.
+  bool get readOnlyView => _readOnlyView;
+  set readOnlyView(bool value) {
+    if (value == _readOnlyView) return;
+    _readOnlyView = value;
+    if (value) {
+      _viewMode = false;
+      textEditing = false;
+      _selectedElementIds.clear();
+    }
+    _leaveMastersIfReadOnly();
+    notifyListeners();
+  }
+
+  /// Whether the role allows editing (independent of Viewing mode; never in
+  /// the mobile read-only view).
+  bool get roleCanEdit => !_readOnlyView && role >= Role.editor;
 
   bool get isReady => session.loadState.value is DeckReady;
 
