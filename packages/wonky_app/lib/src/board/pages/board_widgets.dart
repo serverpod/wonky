@@ -804,7 +804,7 @@ List<Widget> boardLabelChips(
   if (kind != null)
     BoardChip(
       label: l.boardKindName(kind),
-      icon: kind == BoardPostKind.bug ? LucideIcons.bug : LucideIcons.lightbulb,
+      icon: kind == BoardPostKind.bug ? LucideIcons.bug : LucideIcons.leaf,
     ),
   if (area != null) BoardChip(label: l.boardAreaName(area), ai: ai),
   if (size != null) BoardChip(label: l.boardSizeName(size), ai: ai),

@@ -448,7 +448,7 @@ class BoardTopActions extends StatelessWidget {
       ),
       (
         'board.suggest',
-        LucideIcons.lightbulb,
+        LucideIcons.leaf,
         l.boardSuggestImprovement,
         () => boardInvoke(s, 'shell.board.report', {
           'kind': 'idea',

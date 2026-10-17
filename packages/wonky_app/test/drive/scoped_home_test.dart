@@ -2,6 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shad/shad.dart' show LucideIcons;
+import 'package:wonky_app/src/board/report/board_report_dialog.dart';
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
@@ -155,7 +157,9 @@ void main() {
       expect(find.text('Wonky Work settings'), findsNothing);
       expect(key('home.footer.workSettings'), findsNothing);
       expect(key('home.footer.contribute'), findsOneWidget);
-      expect(key('home.footer.board'), findsOneWidget);
+      expect(key('home.footer.board'), findsNothing);
+      expect(key('home.footer.reportBug'), findsOneWidget);
+      expect(key('home.footer.suggest'), findsOneWidget);
       // The current app is highlighted and not a button.
       expect(
         tester.getSemantics(key('home.app.write')),
@@ -385,7 +389,7 @@ void main() {
       expect(key('drive.openInDrive'), findsNothing);
       // The new left menu: apps and bottom section.
       expect(key('home.app.drive'), findsOneWidget);
-      expect(key('home.footer.board'), findsOneWidget);
+      expect(key('home.footer.reportBug'), findsOneWidget);
       await settleTooltips(tester);
     });
   });
@@ -406,19 +410,48 @@ void main() {
       await settleTooltips(tester);
     });
 
-    testWidgets('when opening Bugs & improvements then the report dialog '
-        'shows', (tester) async {
-      h = harness(scope: writeHome);
-      await pumpScreen(tester, h, home());
+    for (final (id, icon, label, kind) in [
+      (
+        'home.footer.reportBug',
+        LucideIcons.bug,
+        'Report a bug',
+        BoardPostKind.bug,
+      ),
+      (
+        'home.footer.suggest',
+        LucideIcons.leaf,
+        'Suggest an improvement',
+        BoardPostKind.idea,
+      ),
+    ]) {
+      testWidgets('when pressing "$label" then the report dialog shows on '
+          '${kind.name}', (tester) async {
+        h = harness(scope: writeHome);
+        await pumpScreen(tester, h, home());
 
-      await tester.tap(key('home.footer.board'));
-      await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: key(id), matching: find.byIcon(icon)),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: key(id), matching: find.text(label)),
+          findsOneWidget,
+        );
+        await tester.tap(key(id));
+        await tester.pumpAndSettle();
 
-      expect(key('dialog.board.report'), findsOneWidget);
-      expect(find.text('Bugs & improvements'), findsWidgets);
-      expect(h.crossApp.external, isEmpty);
-      await settleTooltips(tester);
-    });
+        expect(key('dialog.board.report'), findsOneWidget);
+        expect(
+          tester
+              .state<BoardReportDialogState>(find.byType(BoardReportDialog))
+              .draft
+              .kind,
+          kind,
+        );
+        expect(h.crossApp.external, isEmpty);
+        await settleTooltips(tester);
+      });
+    }
 
     testWidgets('when opening Settings then the app settings show', (
       tester,
@@ -432,12 +465,26 @@ void main() {
       await settleTooltips(tester);
     });
 
-    testWidgets('when pressing Contribute then the board opens', (
-      tester,
-    ) async {
+    testWidgets('when pressing "Contribute & build" (wrench) then the board '
+        'opens', (tester) async {
       h = harness(scope: writeHome);
       await pumpScreen(tester, h, home());
 
+      final contribute = key('home.footer.contribute');
+      expect(
+        find.descendant(
+          of: contribute,
+          matching: find.text('Contribute & build'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: contribute,
+          matching: find.byIcon(LucideIcons.wrench),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(key('home.footer.contribute'));
       await tester.pumpAndSettle();
       expect(routerPath(), '/improvements');
@@ -545,14 +592,14 @@ void main() {
       await settleTooltips(tester);
     });
 
-    testWidgets('when opening Bugs & improvements from the drawer then the '
+    testWidgets('when "Report a bug" is pressed in the drawer then the '
         'drawer closes and the report dialog shows', (tester) async {
       h = harness(scope: writeHome);
       await pumpScreen(tester, h, home(), size: const Size(600, 800));
       await tester.tap(key('shell.topBar.menu'));
       await tester.pumpAndSettle();
 
-      await tester.tap(key('home.footer.board'));
+      await tester.tap(key('home.footer.reportBug'));
       await tester.pumpAndSettle();
 
       expect(key('home.drawer'), findsNothing);

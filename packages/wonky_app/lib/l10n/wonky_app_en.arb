@@ -2002,9 +2002,9 @@
     "description": "Help menu and palette: opens the Bugs & improvements board page."
   },
   "boardReportName": "Bugs & improvements",
-  "boardContributeNav": "Contribute",
+  "boardContributeNav": "Contribute & build",
   "@boardContributeNav": {
-    "description": "Home left menu: opens the Bugs & improvements board, where people vote on posts and pick up tasks."
+    "description": "Home left menu (wrench icon): opens the Bugs & improvements board, where people vote on posts and pick up tasks to build."
   },
   "@boardReportName": {
     "description": "The product name of the public bug and idea board; title of the report dialog and the entry points."

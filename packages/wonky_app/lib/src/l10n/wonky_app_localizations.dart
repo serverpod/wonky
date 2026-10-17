@@ -5410,10 +5410,10 @@ abstract class WonkyAppLocalizations {
   /// **'Bugs & improvements'**
   String get boardReportName;
 
-  /// Home left menu: opens the Bugs & improvements board, where people vote on posts and pick up tasks.
+  /// Home left menu (wrench icon): opens the Bugs & improvements board, where people vote on posts and pick up tasks to build.
   ///
   /// In en, this message translates to:
-  /// **'Contribute'**
+  /// **'Contribute & build'**
   String get boardContributeNav;
 
   /// No description provided for @boardReportKindLabel.

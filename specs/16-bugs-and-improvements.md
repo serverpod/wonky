@@ -145,8 +145,8 @@ through `shell.board.report`:
 | Where | Today | New |
 |-------|-------|-----|
 | Help menu ([03 §3.2](03-app-shell-and-navigation.md)) | *Report a bug* | *Bugs & improvements…* (`shell.board.report`) and *Browse Bugs & improvements* (`shell.board.open`) |
-| Home left menu footer (`HomeSidebar`, key `home.footer.reportBug` → `home.footer.board`) | *Report a bug* | *Bugs & improvements* (Lucide `bug`), plus *Contribute* (`home.footer.contribute`, `shell.board.open`) |
-| Editor title row (`EditorScaffold`, key `editor.reportBug` → `editor.board`, width ≥ 640) | bug icon | Ghost button with the `bug` icon and the label *Bugs & improvements* (icon only with a tooltip between 640 and 900 px) |
+| Home left menu footer (`HomeSidebar`) | *Report a bug* | (T-5) *Contribute & build* (Lucide `wrench`, `shell.board.open`, key `home.footer.contribute`), *Report a bug* (`bug`, key `home.footer.reportBug`) and *Suggest an improvement* (`leaf`, key `home.footer.suggest`); the last two are `shell.board.report` with kind `bug` / `idea`, so the dialog opens on that kind |
+| Editor title row (`EditorScaffold`, width ≥ 640) | bug icon | (T-5) *Report a bug* (`bug`, key `editor.reportBug`) and *Suggest an improvement* (`leaf`, key `editor.suggest`): `ShadButton.outline` size `sm`, as on the board page; icon buttons with tooltips between 640 and 1200 px. Each is `shell.board.report` with its kind |
 | Sign-in screens (`auth_layout.dart`, key `auth.reportBug` → `auth.board`) | link | link that opens the **board page** (§4.4), not the dialog. Signed-out users read; *Report* asks them to sign in |
 | Settings › About (`settings.about.reportBug` → `settings.about.board`) | link | button |
 | Error card (`ErrorCard`, [03](03-app-shell-and-navigation.md)) | *Copy error details*, *Reload* | adds *Report this bug*: opens the dialog with kind Bug and the error attached (§4.2.4) |
@@ -336,7 +336,7 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   tabs bar, filter bar and list to the same column with `shellPageInset`, so the list's
   scrollbar stays at the window edge.
 - **Top bar actions (`BoardTopActions`):** *Report a bug* (Lucide `bug`), *Suggest an
-  improvement* (`lightbulb`; both `shell.board.report` with their kind) and *How to contribute*
+  improvement* (`leaf`, the improvement icon everywhere; both `shell.board.report` with their kind) and *How to contribute*
   (`git-pull-request`; not on the contribute page itself), all `ShadButton.outline` size `sm`
   with their icons, after the breadcrumb (keys `board.reportBug`, `board.suggest`,
   `board.howToContribute`). The breadcrumb has priority: the buttons keep their labels only while

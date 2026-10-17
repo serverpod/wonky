@@ -749,7 +749,7 @@ class BoardReportDialogState extends State<BoardReportDialog>
           kindButton(
             BoardReportKeys.kindIdea,
             BoardPostKind.idea,
-            LucideIcons.lightbulb,
+            LucideIcons.leaf,
             l.boardReportKindIdea,
           ),
         ],

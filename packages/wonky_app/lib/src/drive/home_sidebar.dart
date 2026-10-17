@@ -507,7 +507,8 @@ List<WonkyMenuEntry> homeNewMenuEntries(BuildContext context, ShellServices s) {
 }
 
 /// The bottom section of the left menu (Drive 04 §2): the app settings,
-/// *Wonky Work settings*, *Bugs & improvements* and the storage meter.
+/// *Contribute & build*, *Report a bug*, *Suggest an improvement* (specs/16
+/// §4.1) and the storage meter.
 class HomeSidebarFooter extends StatelessWidget {
   const HomeSidebarFooter({
     super.key,
@@ -538,15 +539,21 @@ class HomeSidebarFooter extends StatelessWidget {
         ),
         SidebarNavButton(
           key: const ValueKey<String>('home.footer.contribute'),
-          icon: LucideIcons.heartHandshake,
+          icon: LucideIcons.wrench,
           label: l.boardContributeNav,
           onPressed: () => onInvoke('shell.board.open'),
         ),
         SidebarNavButton(
-          key: const ValueKey<String>('home.footer.board'),
+          key: const ValueKey<String>('home.footer.reportBug'),
           icon: LucideIcons.bug,
-          label: l.boardReportName,
-          onPressed: () => onInvoke('shell.board.report'),
+          label: l.boardReportBug,
+          onPressed: () => onInvoke('shell.board.report', {'kind': 'bug'}),
+        ),
+        SidebarNavButton(
+          key: const ValueKey<String>('home.footer.suggest'),
+          icon: LucideIcons.leaf,
+          label: l.boardSuggestImprovement,
+          onPressed: () => onInvoke('shell.board.report', {'kind': 'idea'}),
         ),
         const SizedBox(height: 8),
         StorageMeterSlot(

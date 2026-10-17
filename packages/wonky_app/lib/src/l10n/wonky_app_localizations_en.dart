@@ -3065,7 +3065,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardReportName => 'Bugs & improvements';
 
   @override
-  String get boardContributeNav => 'Contribute';
+  String get boardContributeNav => 'Contribute & build';
 
   @override
   String get boardReportKindLabel => 'Kind';
@@ -7633,7 +7633,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get boardReportName => '[Ɓûĝš & îɱþŕöṽéɱéñţš one tw]';
 
   @override
-  String get boardContributeNav => '[Çöñţŕîƀûţé one]';
+  String get boardContributeNav => '[Çöñţŕîƀûţé & ƀûîļð one tw]';
 
   @override
   String get boardReportKindLabel => '[Ķîñð on]';

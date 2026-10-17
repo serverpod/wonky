@@ -532,14 +532,20 @@ class _EditorScaffoldState extends State<EditorScaffold> {
           children: [
             ShadTooltip(
               builder: (_) => Text(l.cmdHome),
-              child: GestureDetector(
-                key: const ValueKey<String>('editor.home'),
-                onTap: () => _invoke('shell.nav.home'),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: s.config.logo(size: 36),
+              // A labelled button for screen readers (the logo has no text).
+              child: Semantics(
+                button: true,
+                label: l.cmdHome,
+                excludeSemantics: true,
+                child: GestureDetector(
+                  key: const ValueKey<String>('editor.home'),
+                  onTap: () => _invoke('shell.nav.home'),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: s.config.logo(size: 36),
+                    ),
                   ),
                 ),
               ),
@@ -631,33 +637,44 @@ class _EditorScaffoldState extends State<EditorScaffold> {
               ),
             ),
             const SizedBox(width: 8),
-            // *Bugs & improvements* (specs/16 §4.1): hidden below `sm`
+            // *Report a bug* and *Suggest an improvement* (specs/16 §4.1):
+            // outline buttons, icons only below 1200 px, hidden below `sm`
             // (still in Help).
-            if (MediaQuery.sizeOf(context).width >= 900)
-              ShadButton.ghost(
-                key: const ValueKey<String>('editor.board'),
-                height: 32,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                leading: const Icon(LucideIcons.bug, size: 18),
-                onPressed: () => _invoke('shell.board.report'),
-                child: Text(l.boardReportName),
-              )
-            else if (MediaQuery.sizeOf(context).width >= 640)
-              ShadTooltip(
-                builder: (_) => Text(l.boardReportName),
-                child: ShadIconButton.ghost(
-                  key: const ValueKey<String>('editor.board'),
-                  width: 32,
-                  height: 32,
-                  iconSize: 18,
-                  semanticLabel: l.boardReportName,
-                  icon: Icon(
-                    LucideIcons.bug,
-                    color: theme.colorScheme.mutedForeground,
-                  ),
-                  onPressed: () => _invoke('shell.board.report'),
+            if (MediaQuery.sizeOf(context).width >= 640)
+              for (final (key, icon, label, kind) in [
+                ('editor.reportBug', LucideIcons.bug, l.boardReportBug, 'bug'),
+                (
+                  'editor.suggest',
+                  LucideIcons.leaf,
+                  l.boardSuggestImprovement,
+                  'idea',
                 ),
-              ),
+              ]) ...[
+                if (MediaQuery.sizeOf(context).width >= 1200)
+                  ShadButton.outline(
+                    key: ValueKey<String>(key),
+                    size: ShadButtonSize.sm,
+                    leading: Icon(icon, size: 16),
+                    onPressed: () =>
+                        _invoke('shell.board.report', {'kind': kind}),
+                    child: Text(label),
+                  )
+                else
+                  ShadTooltip(
+                    builder: (_) => Text(label),
+                    child: ShadIconButton.outline(
+                      key: ValueKey<String>(key),
+                      width: 32,
+                      height: 32,
+                      iconSize: 16,
+                      semanticLabel: label,
+                      icon: Icon(icon),
+                      onPressed: () =>
+                          _invoke('shell.board.report', {'kind': kind}),
+                    ),
+                  ),
+                const SizedBox(width: 6),
+              ],
             if (widget.commentsButton)
               ListenableBuilder(
                 listenable: _comments,

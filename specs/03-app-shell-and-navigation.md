@@ -122,9 +122,10 @@ Row 1 (title row, 48 px):
 - Star toggle, *Move* (folder icon → Move dialog), `SyncStatusIndicator`.
 - Spacer.
 - `PresenceAvatarStack`.
-- (M12) **Bugs & improvements** — ghost button with the Lucide `bug` icon and the label
-  "Bugs & improvements" (`shell.board.report`, §3.4; key `editor.board`); between 640 and 900 px
-  only the icon (tooltip), hidden below 640 px (still in Help).
+- (M12, T-5) **Report a bug** and **Suggest an improvement** — outline `sm` buttons with the
+  Lucide `bug` and `leaf` icons (`shell.board.report` with kind `bug` / `idea`, so the dialog
+  opens on that kind, §3.4; keys `editor.reportBug`, `editor.suggest`); between 640 and 1200 px
+  only the icons (tooltips), hidden below 640 px (still in Help).
 - Comments button (shows/hides the comments, `shell.comments.togglePanel`; badge with open
   count). Comments show through the app's `CommentsHost` when it sets one
   (`ShellServices.commentsHost`; Write: the margin next to the page), otherwise in the comments
@@ -206,9 +207,11 @@ The **left menu** (`HomeSidebar`, Drive 04 §2) is the same widget in every home
    *Trash*; Drive — Home, My Drive (+ folder tree), Shared with me, Recent, Starred, Trash,
    Storage.
 3. **Bottom section** — *Settings* (the app's settings, `shell.settings.openApp`; Wonky Work
-   settings are reached from there), (M12) *Contribute* (`shell.board.open`, the board where
-   people vote and pick up tasks; key `home.footer.contribute`), *Bugs & improvements* (Lucide
-   `bug`, `shell.board.report`; key `home.footer.board`; replaces *Report a bug*), and the
+   settings are reached from there), (M12, T-5) *Contribute & build* (Lucide `wrench`,
+   `shell.board.open`, the board where people vote and pick up tasks; key
+   `home.footer.contribute`), *Report a bug* (`bug`; key `home.footer.reportBug`) and *Suggest an
+   improvement* (`leaf`; key `home.footer.suggest`), both `shell.board.report` with their kind
+   (they replace *Report a bug*), and the
    storage meter
    ("12.3 MB of 50 MB used", [Drive 03 §6.1](wonky_drive/03-storage-quota.md)).
 

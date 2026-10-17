@@ -130,7 +130,7 @@ class BoardSimilarPostsPanel extends StatelessWidget {
                       Icon(
                         p.kind == BoardPostKind.bug
                             ? LucideIcons.bug
-                            : LucideIcons.lightbulb,
+                            : LucideIcons.leaf,
                         size: 14,
                         color: cs.mutedForeground,
                       ),
