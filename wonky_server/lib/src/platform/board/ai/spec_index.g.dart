@@ -85,6 +85,7 @@ const specIndexSuite =
     '      ### 4.17 `EmptyStateIllustration`\n'
     '      ### 4.18 `LoadingShimmer` patterns\n'
     '      ### 4.19 `WonkyStackedBar` (v2)\n'
+    '      ### 4.20 `WonkyDialogCloseButton`\n'
     '    ## 5. Product icons\n'
     '    ## 6. Layout, responsiveness, motion\n'
     '      ### 6.1 Mobile layout (T-9)\n'

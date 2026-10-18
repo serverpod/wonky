@@ -150,6 +150,9 @@ void main() {
         expect(hello.result, 'hello');
         await runner.close();
       },
+      // The wait for the OS to take the guest's memory back can take up to
+      // 30 s (Windows keeps the working set longer than Linux).
+      timeout: const Timeout(Duration(seconds: 90)),
     );
 
     test('when cancelled then the execution stops', () async {
