@@ -68,6 +68,7 @@ class _DriveHomeScreenState extends State<DriveHomeScreen> {
   @override
   void initState() {
     super.initState();
+    s.creatingFile.value = false;
     unawaited(c.reload());
     s.focusRegions
       ..clear()
@@ -505,11 +506,32 @@ class _DriveHomeScreenState extends State<DriveHomeScreen> {
         if (c.canCreateHere &&
             newEntry != null &&
             widget.location.kind != DriveLocationKind.trash)
-          ShadButton(
-            key: const ValueKey<String>('drive.empty.new'),
-            leading: const Icon(LucideIcons.plus, size: 16),
-            onPressed: newEntry.onSelected,
-            child: Text(newEntry.label),
+          ListenableBuilder(
+            listenable: s.creatingFile,
+            builder: (context, _) {
+              final creating = s.creatingFile.value;
+              return ShadButton(
+                key: const ValueKey<String>('drive.empty.new'),
+                leading: creating
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: ShadSpinner(size: 16),
+                      )
+                    : const Icon(LucideIcons.plus, size: 16),
+                onPressed: creating
+                    ? null
+                    : () async {
+                        try {
+                          await s.dispatcher.invoke(
+                            'shell.file.new',
+                            source: InvocationSource.menu,
+                            context: context,
+                          );
+                        } catch (_) {}
+                      },
+                child: Text(newEntry.label),
+              );
+            },
           ),
         if (uploadEntry != null)
           ShadButton.outline(

@@ -353,54 +353,75 @@ class HomeNewButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = WonkyAppLocalizations.of(context);
     final theme = ShadTheme.of(context);
-    if (compact) {
-      final iconOnly = MediaQuery.sizeOf(context).width < 640;
-      return WonkyDropdownMenu(
-        entries: () => homeNewMenuEntries(context, services),
-        builder: (context, c) => iconOnly
-            ? ShadIconButton.outline(
-                key: const ValueKey<String>('drive.new.topBar'),
-                semanticLabel: l.newButton,
-                icon: const Icon(LucideIcons.plus, size: 18),
-                onPressed: c.toggle,
-              )
-            : ShadButton.outline(
-                key: const ValueKey<String>('drive.new.topBar'),
-                leading: const Icon(LucideIcons.plus, size: 18),
-                onPressed: c.toggle,
-                child: Text(l.newButton),
-              ),
-      );
-    }
-    return WonkyDropdownMenu(
-      entries: () =>
-          _closingFirst(homeNewMenuEntries(context, services), onNavigate),
-      builder: (context, c) => Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 12),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: ShadButton.outline(
-            key: const ValueKey<String>('drive.new'),
-            height: 48,
-            padding: const EdgeInsets.fromLTRB(12, 0, 20, 0),
-            leading: const Icon(LucideIcons.plus, size: 20),
-            onPressed: c.toggle,
-            decoration: const ShadDecoration(
-              shadows: [
-                BoxShadow(
-                  color: Color(0x22000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
+    return ListenableBuilder(
+      listenable: services.creatingFile,
+      builder: (context, _) {
+        final creating = services.creatingFile.value;
+        if (compact) {
+          final iconOnly = MediaQuery.sizeOf(context).width < 640;
+          return WonkyDropdownMenu(
+            entries: () => homeNewMenuEntries(context, services),
+            builder: (context, c) => iconOnly
+                ? ShadIconButton.outline(
+                    key: const ValueKey<String>('drive.new.topBar'),
+                    semanticLabel: l.newButton,
+                    icon: creating
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: ShadSpinner(size: 18),
+                          )
+                        : const Icon(LucideIcons.plus, size: 18),
+                    onPressed: creating ? null : c.toggle,
+                  )
+                : ShadButton.outline(
+                    key: const ValueKey<String>('drive.new.topBar'),
+                    leading: creating
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: ShadSpinner(size: 18),
+                          )
+                        : const Icon(LucideIcons.plus, size: 18),
+                    onPressed: creating ? null : c.toggle,
+                    child: Text(l.newButton),
+                  ),
+          );
+        }
+        return WonkyDropdownMenu(
+          entries: () =>
+              _closingFirst(homeNewMenuEntries(context, services), onNavigate),
+          builder: (context, c) => Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ShadButton.outline(
+                key: const ValueKey<String>('drive.new'),
+                height: 48,
+                padding: const EdgeInsets.fromLTRB(12, 0, 20, 0),
+                leading: creating
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: ShadSpinner(size: 20),
+                      )
+                    : const Icon(LucideIcons.plus, size: 20),
+                onPressed: creating ? null : c.toggle,
+                decoration: const ShadDecoration(
+                  shadows: [
+                    BoxShadow(
+                      color: Color(0x22000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Text(
-              l.newButton,
-              style: theme.textTheme.small.copyWith(fontSize: 15),
+                child: Text(
+                  l.newButton,
+                  style: theme.textTheme.small.copyWith(fontSize: 15),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

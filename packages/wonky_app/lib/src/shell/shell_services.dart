@@ -184,6 +184,9 @@ class ShellServices implements ActiveDocumentHost {
     debugLabel: 'shell.screenshot',
   );
 
+  /// Whether a file is currently being created from a home screen or menu.
+  final ValueNotifier<bool> creatingFile = ValueNotifier(false);
+
   /// The active editor's controller.
   final ValueNotifier<DocumentController?> activeDocument = ValueNotifier(null);
 
@@ -462,6 +465,7 @@ class ShellServices implements ActiveDocumentHost {
     undo.dispose();
     supervisor.dispose();
     storage.dispose();
+    creatingFile.dispose();
     _driveChanges.close();
   }
 }

@@ -217,7 +217,10 @@ Single-window page at `/` of each app — layout:
   templates (Slides 04 §15) have slide-shaped (16:9, 1.4× wider) cards: the app may supply
   the picture (`WonkyAppConfig.templatePreview`; Wonky Slides renders the first slide),
   otherwise a title-slide miniature in the Slides theme's colors (`previewStyle` from the
-  theme, `previewText` = title and subtitle of the first slide).
+  theme, `previewText` = title and subtitle of the first slide). Clicking a card
+  immediately disables the card and shows a loading spinner (`ShadSpinner`) to prevent
+  duplicate creations from rapid clicks (T-7); if creation fails, the card re-enables
+  and the spinner is hidden.
 - **Filter bar**: view selector (Recent/Last opened by me/Last modified by me/Last modified),
   owner filter, grid/list toggle, sort menu (Name, Last modified, Last opened by me, Size;
   asc/desc), folders-on-top toggle. (v2) The type filter (Documents, Spreadsheets, Folders,
@@ -253,6 +256,8 @@ Single-window page at `/` of each app — layout:
   get the toast "Wonky Write can't open "x.zip". Upload it in Wonky Drive instead. [Open Wonky
   Drive]". Item drags onto folders are Drive-only.
 - **Empty states**: illustrated (light/dark variants) per view ("No starred files yet").
+  The primary creation button (`drive.empty.new`) disables and shows a loading spinner
+  (`ShadSpinner`) while file creation is in flight (T-7).
 
 ### 3.3 Dialogs
 - **Rename** (`ShadDialog` with input, Enter to save).

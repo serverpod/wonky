@@ -258,6 +258,12 @@ history (`CrossAppNavigator.historyBack`, back to Drive after *Open with*), and 
 it stays in the app (home) so the toast is seen. Server-built folder links (MCP results,
 notification emails) are `/drive/f/<uuid>`.
 
+**As built (T-7):** Rapid clicks on file creation buttons on start screens (the template
+strip's *Blank* or template cards, the empty home *Create a <kind>* button, or Drive's
+*+ New* button) immediately disable the button and show a visual loading spinner
+(`ShadSpinner`) until the new document loads, preventing unintentional duplicate file
+creations. If creation fails, the button re-enables and the spinner is removed.
+
 ### 3.4 Report a bug → Bugs & improvements (M12)
 
 M12 replaced *Report a bug* (the GitHub new-issue link, v2) and *Report a problem* with the

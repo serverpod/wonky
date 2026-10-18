@@ -187,26 +187,32 @@ List<Command<CommandArgs>> fileCommands(ShellServices s) {
     DriveItemKind kind, {
     UuidValue? template,
   }) async {
-    final parent = s.currentFolder.value?.uuid;
-    if (kind == s.config.primaryKind) {
-      final uuid = await s.config.createItem(
-        s,
-        parentUuid: parent,
+    if (s.creatingFile.value) return const CommandResult.cancelled();
+    s.creatingFile.value = true;
+    try {
+      final parent = s.currentFolder.value?.uuid;
+      if (kind == s.config.primaryKind) {
+        final uuid = await s.config.createItem(
+          s,
+          parentUuid: parent,
+          templateUuid: template,
+        );
+        if (uuid == null) return const CommandResult.cancelled();
+        s.router.go(s.config.itemPath(uuid.uuid));
+        return CommandResult.ok({'uuid': uuid.uuid});
+      }
+      // Other kinds are created by their app's `/new` route (suite 03 §2,
+      // Drive 04 §5): offline-first where that app supports it.
+      final app = appForKind(kind);
+      final path = NewItemRequest(
+        folderUuid: parent,
         templateUuid: template,
-      );
-      if (uuid == null) return const CommandResult.cancelled();
-      s.router.go(s.config.itemPath(uuid.uuid));
-      return CommandResult.ok({'uuid': uuid.uuid});
+      ).path;
+      await s.crossApp.open(app, path);
+      return CommandResult.ok({'app': app.name, 'path': path});
+    } finally {
+      s.creatingFile.value = false;
     }
-    // Other kinds are created by their app's `/new` route (suite 03 §2,
-    // Drive 04 §5): offline-first where that app supports it.
-    final app = appForKind(kind);
-    final path = NewItemRequest(
-      folderUuid: parent,
-      templateUuid: template,
-    ).path;
-    await s.crossApp.open(app, path);
-    return CommandResult.ok({'app': app.name, 'path': path});
   }
 
   // Drive has no primary kind (D-17 gives it its own New menu).
@@ -235,13 +241,14 @@ List<Command<CommandArgs>> fileCommands(ShellServices s) {
         },
       ),
       enabled: (ctx, a) =>
-          s.connectivity.online ||
-          kindOf(
-                a.values.containsKey('kind')
-                    ? a
-                    : JsonArgs({'kind': defaultKind.name}),
-              ) ==
-              s.config.primaryKind,
+          !s.creatingFile.value &&
+          (s.connectivity.online ||
+              kindOf(
+                    a.values.containsKey('kind')
+                        ? a
+                        : JsonArgs({'kind': defaultKind.name}),
+                  ) ==
+                  s.config.primaryKind),
       run: (ctx, a) {
         final kind = a.values.containsKey('kind') ? kindOf(a) : defaultKind;
         final t = a.string('templateUuid');

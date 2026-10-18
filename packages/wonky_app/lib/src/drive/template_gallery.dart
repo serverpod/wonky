@@ -26,35 +26,42 @@ Future<void> _createFrom(
   TemplateView? t, {
   DriveItemKind? kind,
 }) async {
+  if (s.creatingFile.value) return;
+  s.creatingFile.value = true;
   final l = WonkyAppLocalizations.of(context);
   final k = t?.kind ?? kind ?? s.config.primaryKind;
-  if (k != null && k != s.config.primaryKind) {
-    // Another app's kind (Wonky Drive's gallery): that app's `/new` route
-    // creates it (suite 03 §2, Drive 04 §5).
-    await s.crossApp.open(
-      appForKind(k),
-      NewItemRequest(
-        folderUuid: s.currentFolder.value?.uuid,
-        templateUuid: t?.uuid,
-      ).path,
-    );
-    return;
-  }
   try {
+    if (k != null && k != s.config.primaryKind) {
+      // Another app's kind (Wonky Drive's gallery): that app's `/new` route
+      // creates it (suite 03 §2, Drive 04 §5).
+      await s.crossApp.open(
+        appForKind(k),
+        NewItemRequest(
+          folderUuid: s.currentFolder.value?.uuid,
+          templateUuid: t?.uuid,
+        ).path,
+      );
+      return;
+    }
     final uuid = await s.config.createItem(
       s,
       parentUuid: s.currentFolder.value?.uuid,
       templateUuid: t?.uuid,
       name: t?.name,
     );
-    if (uuid != null) s.router.go(s.config.itemPath(uuid.uuid));
+    if (uuid != null) {
+      s.router.go(s.config.itemPath(uuid.uuid));
+    }
   } catch (e) {
     s.toasts.error(l.errorGeneric, description: errorMessage(e));
+    rethrow;
+  } finally {
+    s.creatingFile.value = false;
   }
 }
 
 /// A template preview card.
-class TemplateCard extends StatelessWidget {
+class TemplateCard extends StatefulWidget {
   const TemplateCard({
     super.key,
     required this.services,
@@ -74,90 +81,143 @@ class TemplateCard extends StatelessWidget {
   final double width;
 
   @override
+  State<TemplateCard> createState() => _TemplateCardState();
+}
+
+class _TemplateCardState extends State<TemplateCard> {
+  bool _creating = false;
+
+  Future<void> _handleTap() async {
+    if (_creating || widget.services.creatingFile.value) return;
+    setState(() => _creating = true);
+    try {
+      await _createFrom(
+        context,
+        widget.services,
+        widget.template,
+        kind: widget.kind,
+      );
+    } catch (_) {
+      // Handled in _createFrom (shows error toast)
+    } finally {
+      if (mounted) {
+        setState(() => _creating = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = WonkyAppLocalizations.of(context);
     final theme = ShadTheme.of(context);
-    final t = template;
+    final t = widget.template;
     final style = t?.previewStyle;
     final dark = theme.brightness == Brightness.dark;
     // (v2) Presentation cards are slide-shaped (16:9) and a little wider.
     final slide =
-        (t?.kind ?? kind ?? services.config.primaryKind) ==
+        (t?.kind ?? widget.kind ?? widget.services.config.primaryKind) ==
         DriveItemKind.presentation;
-    final width = slide ? this.width * 1.4 : this.width;
+    final width = slide ? widget.width * 1.4 : widget.width;
     // The preview area inside the 1 px border is exactly 16:9.
     final height = slide ? (width - 2) * 9 / 16 + 2 : width * 1.25;
-    return SizedBox(
-      width: width,
-      child: Semantics(
-        button: true,
-        label: t?.name ?? l.templateBlank,
-        child: GestureDetector(
-          key: ValueKey<String>(
-            'drive.template.${t?.key ?? t?.uuid.uuid ?? (kind == null ? 'blank' : 'blank.${kind!.name}')}',
-          ),
-          onTap: () => _createFrom(context, services, t, kind: kind),
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: height,
-                  width: width,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: style == null
-                        ? theme.colorScheme.page
-                        : _hex(dark ? style.darkPaper : style.paper),
-                    border: Border.all(color: theme.colorScheme.border),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: t == null
-                      ? Center(
-                          child: Icon(
-                            LucideIcons.plus,
-                            size: 40,
-                            color: services.config.brandColor,
-                          ),
-                        )
-                      : services.config.templatePreview(
-                              context,
-                              t,
-                              width: width - 2,
-                              height: height - 2,
-                            ) ??
-                            (slide
-                                ? _SlideThumbnail(
-                                    text: t.previewText,
-                                    style: style,
-                                  )
-                                // Clipped, not scrolled: a miniature never
-                                // scrolls.
-                                : _TemplateThumbnail(
-                                    text: t.previewText,
-                                    style: style,
-                                  )),
+
+    return ListenableBuilder(
+      listenable: widget.services.creatingFile,
+      builder: (context, _) {
+        final disabled = _creating || widget.services.creatingFile.value;
+        final previewContent = t == null
+            ? Center(
+                child: _creating
+                    ? const ShadSpinner()
+                    : Icon(
+                        LucideIcons.plus,
+                        size: 40,
+                        color: widget.services.config.brandColor,
+                      ),
+              )
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  widget.services.config.templatePreview(
+                        context,
+                        t,
+                        width: width - 2,
+                        height: height - 2,
+                      ) ??
+                      (slide
+                          ? _SlideThumbnail(text: t.previewText, style: style)
+                          // Clipped, not scrolled: a miniature never
+                          // scrolls.
+                          : _TemplateThumbnail(
+                              text: t.previewText,
+                              style: style,
+                            )),
+                  if (_creating)
+                    Container(
+                      color: dark
+                          ? const Color(0x99000000)
+                          : const Color(0x99FFFFFF),
+                      child: const Center(child: ShadSpinner()),
+                    ),
+                ],
+              );
+
+        return AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: disabled && !_creating ? 0.6 : 1.0,
+          child: SizedBox(
+            width: width,
+            child: Semantics(
+              button: !disabled,
+              enabled: !disabled,
+              label: t?.name ?? l.templateBlank,
+              child: GestureDetector(
+                key: ValueKey<String>(
+                  'drive.template.${t?.key ?? t?.uuid.uuid ?? (widget.kind == null ? 'blank' : 'blank.${widget.kind!.name}')}',
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  t?.name ??
-                      (kind == null
-                          ? l.templateBlank
-                          : '${l.templateBlank} · ${describeKind(l, kind!).toLowerCase()}'),
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.small,
-                ),
-                if (t != null)
-                  Text(
-                    templateCategoryLabel(l, t.category),
-                    style: theme.textTheme.muted.copyWith(fontSize: 12),
+                onTap: disabled ? null : _handleTap,
+                child: MouseRegion(
+                  cursor: disabled
+                      ? SystemMouseCursors.basic
+                      : SystemMouseCursors.click,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: height,
+                        width: width,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: style == null
+                              ? theme.colorScheme.page
+                              : _hex(dark ? style.darkPaper : style.paper),
+                          border: Border.all(color: theme.colorScheme.border),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: previewContent,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        t?.name ??
+                            (widget.kind == null
+                                ? l.templateBlank
+                                : '${l.templateBlank} · ${describeKind(l, widget.kind!).toLowerCase()}'),
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.small,
+                      ),
+                      if (t != null)
+                        Text(
+                          templateCategoryLabel(l, t.category),
+                          style: theme.textTheme.muted.copyWith(fontSize: 12),
+                        ),
+                    ],
                   ),
-              ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
