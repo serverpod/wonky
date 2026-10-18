@@ -18,12 +18,20 @@ abstract final class RevViews {
   static const maxBytes = 1 << 20;
 
   /// The view of a committed op whose applied form is [applied].
+  /// [encoded]: the codec text of [applied] and its gzip when they are
+  /// already at hand and equal the form without `before` (every change an
+  /// insert), so the op isn't encoded twice.
   static RevOpView of(
     RevOp op,
     RevCodec codec,
-    List<RowChange> applied,
-  ) {
-    final (text, gz) = wire(codec, applied, withBefore: false);
+    List<RowChange> applied, {
+    (String, Uint8List)? encoded,
+  }) {
+    final (text, gz) = encoded == null
+        ? wire(codec, applied, withBefore: false)
+        : encoded.$1.length <= compressAboveBytes
+        ? (encoded.$1, null)
+        : (null, ByteData.sublistView(encoded.$2));
     return RevOpView(
       revision: op.revision,
       clientOpId: op.clientOpId,
@@ -66,10 +74,6 @@ abstract final class RevViews {
       packed.gz == null ? null : ByteData.sublistView(packed.gz!),
     );
   }
-
-  /// The stored payload (gzip of the applied form with `before`).
-  static ByteData storePayload(RevCodec codec, List<RowChange> applied) =>
-      ByteData.sublistView(RevCodec.gzip(codec.encodeText(applied)));
 
   static Uint8List _bytes(ByteData b) =>
       b.buffer.asUint8List(b.offsetInBytes, b.lengthInBytes);

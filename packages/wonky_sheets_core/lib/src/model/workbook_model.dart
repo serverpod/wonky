@@ -424,8 +424,13 @@ final class WorkbookModel implements WorkbookReader {
   }) {
     SyncRecord merge(SyncRecord? existing) {
       if (existing == null || replace) {
-        return recordFromColumns(table, {...columns, Cols.id: id});
+        // Inserts carry their id already: no copy per row of a load.
+        return recordFromColumns(
+          table,
+          columns[Cols.id] == id ? columns : {...columns, Cols.id: id},
+        );
       }
+
       return existing.withColumns(columns);
     }
 
@@ -488,7 +493,6 @@ final class WorkbookModel implements WorkbookReader {
         final existing = s.cells.byId(id);
         final next = merge(existing) as CellRecord;
         s.cells.put(next);
-        _ruleOwner['$table:$id'] = ownerId;
         b.cell(ownerId, existing, next);
       case SheetsTables.namedRange:
         final next = merge(_named[id]) as NamedRangeRecord;
@@ -576,7 +580,6 @@ final class WorkbookModel implements WorkbookReader {
             ? s.cells.removeRow(id)
             : s.cells.removeColumn(id);
         for (final c in removed) {
-          _ruleOwner.remove('${SheetsTables.cell}:${c.id}');
           b.cell(ownerId, c, null);
         }
         b.structure(
@@ -586,7 +589,7 @@ final class WorkbookModel implements WorkbookReader {
           sizes: true,
         );
       case SheetsTables.cell:
-        final ownerId = _ruleOwner.remove('$table:$id');
+        final ownerId = _cellOwner(id);
         if (ownerId == null) return;
         final s = _sheets[ownerId]!;
         final removed = s.cells.remove(id);
@@ -626,7 +629,18 @@ final class WorkbookModel implements WorkbookReader {
   String? _ownerOf(String table, String id, Map<String, Object?> columns) {
     final s = columns[Cols.sheetId];
     if (s != null) return s.toString();
+    if (table == SheetsTables.cell) return _cellOwner(id);
     return _ruleOwner['$table:$id'];
+  }
+
+  /// The sheet holding cell [id] (cells are not in [_ruleOwner]: a 1M-cell
+  /// model would keep a million "table:id" keys; a sheet lookup per sheet
+  /// is cheaper).
+  String? _cellOwner(String id) {
+    for (final s in _sheets.values) {
+      if (s.cells.byId(id) != null) return s.id;
+    }
+    return null;
   }
 
   static Map<String, SyncRecord>? _childMap(SheetModel s, String table) =>

@@ -3,7 +3,8 @@ class: RevPage
 fields:
   ### Exact revision of every row in this page.
   revision: int
-  ### gzip NDJSON (04 §3.1).
+  ### The page body (04 §3.1): binary columnar (version 2) or gzip NDJSON
+  ### (version 1); the version is in the body.
   body: ByteData
   coverage: List<String>
   ### structure: tables the client must load with kind == rows.

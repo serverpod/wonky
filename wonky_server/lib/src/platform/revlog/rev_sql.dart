@@ -11,8 +11,9 @@ import 'package:wonky_revlog/schema.dart';
 /// Domain tables have the schema's columns plus `id`, `fileId` and
 /// `revision` (02 §2.1). Values in memory follow the column-map
 /// conventions (lower-case UUID strings, enum names, UTC `DateTime`,
-/// `double`); in SQL they travel as one JSON parameter per statement
-/// (`jsonb_to_recordset`) or as `uuid[]` arrays.
+/// `double`); writes send them as one binary array per column (`unnest`),
+/// prefetches read one row of typed arrays per table, and the cascade and
+/// headless reads take rows as JSON (`json_strip_nulls(row_to_json(t))`).
 final class RevSql {
   /// Creates the SQL layer of [schema]. [perSheetTables] are never read or
   /// deleted by `fileId` (Sheets `cell`, 02 §2.2).
@@ -48,21 +49,6 @@ final class RevSql {
   /// columns (most cell columns are null; [rowFromJson] reads absent
   /// columns as null).
   static const rowJson = 'json_strip_nulls(row_to_json(t))::text';
-
-  /// A JSON value for `jsonb_to_recordset` from an in-memory value.
-  static Object? toJson(RevColumn c, Object? v) {
-    if (v == null) return null;
-    return switch (c.type) {
-      RevColumnType.dateTime => switch (v) {
-        DateTime() => v.toUtc().toIso8601String(),
-        _ => v.toString(),
-      },
-      RevColumnType.double => (v as num).toDouble(),
-      RevColumnType.int => (v as num).toInt(),
-      RevColumnType.enumName => v is Enum ? v.name : v.toString(),
-      _ => v,
-    };
-  }
 
   /// An in-memory value from a `row_to_json` value.
   static Object? fromJson(RevColumn c, Object? v) {
@@ -115,6 +101,11 @@ final class RevSql {
 
   /// Full rows of [ids] per table, by id alone (no file filter, so foreign
   /// ids are detected). Locks the rows with [forUpdate].
+  ///
+  /// One statement for every table (a round trip per table costs more than
+  /// the rows of a small op), in runs of ≤ 10,000 ids per table. Each
+  /// table's rows come back as one row of typed arrays (`array_agg` per
+  /// column, null when every value is null): no JSON per row.
   Future<Map<(String, String), RevStoredRow>> fetchByIds(
     Session session,
     Map<String, Set<String>> ids, {
@@ -122,42 +113,87 @@ final class RevSql {
     bool forUpdate = false,
   }) async {
     final out = <(String, String), RevStoredRow>{};
-    // One statement for every table (a round trip per table costs more
-    // than the rows of a small op), in runs of ≤ 10,000 ids per table.
     final lists = {
       for (final MapEntry(key: name, value: set) in ids.entries)
         if (set.isNotEmpty) name: set.toList(),
     };
-    for (var i = 0; lists.values.any((l) => l.length > i); i += runSize * 10) {
+    const run = runSize * 10;
+    for (var i = 0; lists.values.any((l) => l.length > i); i += run) {
       final parts = <String>[];
       final params = <String, Object?>{};
+      final tables = <RevTable>[];
       for (final MapEntry(key: name, value: list) in lists.entries) {
         if (list.length <= i) continue;
-        final p = 'ids${parts.length}';
-        params[p] = list.sublist(i, (i + runSize * 10).clamp(0, list.length));
+        final p = 'ids${tables.length}';
+        params[p] = list.sublist(i, (i + run).clamp(0, list.length));
         parts.add(
-          'c${parts.length} AS (SELECT ${parts.length} AS k, ${RevSql.rowJson} AS j '
-          'FROM ${q(name)} t WHERE t.id = ANY(@$p::uuid[])'
-          '${forUpdate ? ' FOR UPDATE' : ''})',
+          '(SELECT ${columnArrays(schema.table(name), fileAndRevision: true)} '
+          'FROM (SELECT * FROM ${q(name)} WHERE id = ANY(@$p::uuid[])'
+          '${forUpdate ? ' FOR UPDATE' : ''}) t) c${tables.length}',
         );
+        tables.add(schema.table(name));
       }
-      final names = [
-        for (final MapEntry(key: name, value: list) in lists.entries)
-          if (list.length > i) name,
-      ];
       final rows = await session.db.unsafeQuery(
-        'WITH ${parts.join(', ')} '
-        '${[for (var n = 0; n < parts.length; n++) 'SELECT k, j FROM c$n'].join(' UNION ALL ')}',
+        'SELECT * FROM ${parts.join(', ')}',
         parameters: QueryParameters.named(params),
         transaction: transaction,
       );
-      for (final r in rows) {
-        final name = names[r[0]! as int];
-        final stored = _stored(schema.table(name), r[1]! as String);
-        out[(name, stored.row[RowChange.idColumn]! as String)] = stored;
+      final row = rows.first;
+      var at = 0;
+      for (final table in tables) {
+        final width = 3 + table.columns.length;
+        for (final s in storedRows(table, row.sublist(at, at + width))) {
+          out[(table.name, s.row[RowChange.idColumn]! as String)] = s;
+        }
+        at += width;
       }
     }
     return out;
+  }
+
+  /// The aggregate select list of [table] over rows `t`: (`fileId`,
+  /// `revision` with [fileAndRevision],) the ids, then one array per
+  /// column, null when every value is null. Read with [storedRows].
+  static String columnArrays(RevTable table, {bool fileAndRevision = false}) {
+    // UUIDs as text: Postgres formats them faster than the driver.
+    String agg(RevColumn c) {
+      final column = q(c.name);
+      final v = c.type == RevColumnType.uuid ? 't.$column::text' : 't.$column';
+      return 'CASE WHEN count(t.$column) = 0 THEN NULL ELSE array_agg($v) END';
+    }
+
+    return [
+      if (fileAndRevision) ...[
+        'array_agg(t."fileId")',
+        'array_agg(t."revision")',
+      ],
+      'array_agg(t.id::text)',
+      for (final c in table.columns) agg(c),
+    ].join(', ');
+  }
+
+  /// The rows of a [columnArrays] result (with `fileId` and `revision`):
+  /// in-memory rows with every column (null when null), `fileId` and
+  /// `revision` aside.
+  static List<RevStoredRow> storedRows(RevTable table, List<Object?> r) {
+    final ids = r[2] as List?;
+    if (ids == null) return const [];
+    final files = r[0]! as List;
+    final revisions = r[1]! as List;
+    final columns = [
+      for (var k = 0; k < table.columns.length; k++) r[3 + k] as List?,
+    ];
+    return [
+      for (var i = 0; i < ids.length; i++)
+        RevStoredRow(files[i]! as int, (revisions[i] as int?) ?? 0, {
+          RowChange.idColumn: ids[i]! as String,
+          for (final (k, c) in table.columns.indexed)
+            c.name: switch (columns[k]?[i]) {
+              final DateTime d => d.toUtc(),
+              final v => v,
+            },
+        }),
+    ];
   }
 
   RevStoredRow _stored(RevTable table, String json) {
@@ -238,9 +274,14 @@ final class RevSql {
         by.putIfAbsent(scope, () => []).add(id);
       }
       for (final MapEntry(key: scope, value: list) in by.entries) {
+        // One probe of the (q, p) index per parent: with `p = ANY(…)`
+        // Postgres may scan the whole scope through another index when its
+        // statistics don't know the scope is big (as cell pages, 05 §7.2).
         yield (
-          '$select WHERE t.${q(idx.first)} = @s::uuid '
-              'AND t.${q(p.column)} = ANY(@ids::uuid[])',
+          'SELECT ${RevSql.rowJson} FROM unnest(@ids::uuid[]) r(id), '
+              'LATERAL (SELECT * FROM ${q(child.name)} c '
+              'WHERE c.${q(idx.first)} = @s::uuid '
+              'AND c.${q(p.column)} = r.id OFFSET 0) t',
           {'s': scope, 'ids': list},
         );
       }
@@ -400,9 +441,53 @@ final class RevSql {
     return n;
   }
 
+  /// Rows per insert statement: the columns travel as binary arrays.
+  static const writeRunSize = 5000;
+
+  /// The array parameter type (`@p:<type>`) of a column of [type].
+  static String arrayType(RevColumnType type) => switch (type) {
+    RevColumnType.uuid => '_uuid',
+    RevColumnType.string ||
+    RevColumnType.json ||
+    RevColumnType.enumName => '_text',
+    RevColumnType.int => '_int8',
+    RevColumnType.double => '_float8',
+    RevColumnType.bool => '_bool',
+    RevColumnType.dateTime => '_timestamp',
+  };
+
+  /// An in-memory value as its array element (null stays null).
+  static Object? arrayValue(RevColumn c, Object? v) {
+    if (v == null) return null;
+    return switch (c.type) {
+      RevColumnType.dateTime => switch (v) {
+        DateTime() => v.toUtc(),
+        num() => DateTime.fromMillisecondsSinceEpoch(v.toInt(), isUtc: true),
+        _ => DateTime.parse(v.toString()).toUtc(),
+      },
+      RevColumnType.double => (v as num).toDouble(),
+      RevColumnType.int => (v as num).toInt(),
+      RevColumnType.bool => v as bool,
+      RevColumnType.enumName => v is Enum ? v.name : v.toString(),
+      RevColumnType.uuid ||
+      RevColumnType.string ||
+      RevColumnType.json => v.toString(),
+    };
+  }
+
   /// Upserts final row images of [table] (every column) at [revision].
   /// A row id of another file is never overwritten: the affected count is
   /// checked and a mismatch throws [RevForeignRowException].
+  ///
+  /// The rows travel as one binary array per column (`unnest`; UUIDs as
+  /// text, which Postgres parses faster than the driver encodes them); a
+  /// column that is null in every row of a run is a typed `NULL` instead.
+  /// Rows the op read and locked ([existing]) are updated in place (no
+  /// speculative insert, and content updates can be HOT), setting only the
+  /// [changed] columns when given; the others are inserted ([fresh]: they
+  /// did not exist, a plain insert; else an upsert). An update that misses
+  /// rows (deleted by a database cascade earlier in the op) falls back to
+  /// the upsert.
   Future<void> upsert(
     Session session,
     int fileId,
@@ -411,51 +496,86 @@ final class RevSql {
     List<Map<String, Object?>> rows, {
     Transaction? transaction,
     bool fresh = false,
+    bool existing = false,
+    Set<String>? changed,
   }) async {
     if (rows.isEmpty) return;
     final t = schema.table(table);
-    final cols = t.columns;
-    final record = [
-      'id uuid',
-      for (final c in cols) '${q(c.name)} ${pgType(c.type)}',
-    ].join(', ');
-    final names = ['id', for (final c in cols) q(c.name)];
-    final insert =
-        'INSERT INTO ${q(table)} AS t (id, "fileId", "revision", '
-        '${cols.map((c) => q(c.name)).join(', ')}) '
-        'SELECT r.id, @f, @rev, ${cols.map((c) => 'r.${q(c.name)}').join(', ')} '
-        'FROM jsonb_to_recordset(@rows::jsonb) AS r($record)';
-    // [fresh] rows did not exist when the op's rows were read under the
-    // file lock (by id, across files): a plain insert. A concurrent insert
-    // of the same id elsewhere fails the statement instead of merging.
-    final sql = fresh
-        ? insert
-        : '$insert ON CONFLICT (id) DO UPDATE SET "revision" = '
+    final cols = existing && changed != null
+        ? [
+            for (final c in t.columns)
+              if (changed.contains(c.name)) c,
+          ]
+        : t.columns;
+    final conflict = fresh || existing
+        ? ''
+        : ' ON CONFLICT (id) DO UPDATE SET "revision" = '
               'EXCLUDED."revision"${cols.isEmpty ? '' : ', '}'
               '${cols.map((c) => '${q(c.name)} = EXCLUDED.${q(c.name)}').join(', ')} '
               'WHERE t."fileId" = EXCLUDED."fileId"';
-    assert(names.isNotEmpty);
-    for (var i = 0; i < rows.length; i += runSize) {
-      final chunk = rows.sublist(i, (i + runSize).clamp(0, rows.length));
-      // Null columns are left out: jsonb_to_recordset reads them as null.
-      final json = jsonEncode([
-        for (final r in chunk)
-          {
-            'id': r[RowChange.idColumn],
-            for (final c in cols)
-              if (r[c.name] case final v?) c.name: toJson(c, v),
-          },
-      ]);
+    for (var i = 0; i < rows.length; i += writeRunSize) {
+      final chunk = rows.sublist(i, (i + writeRunSize).clamp(0, rows.length));
+      final params = <String, Object?>{
+        'f': fileId,
+        'rev': revision,
+        'ids': [for (final r in chunk) r[RowChange.idColumn]! as String],
+      };
+      final arrays = ['CAST(@ids:_text AS uuid[])'];
+      final aliases = ['id'];
+      final select = <String>[];
+      for (final (k, c) in cols.indexed) {
+        final values = List<Object?>.filled(chunk.length, null);
+        var any = false;
+        for (var j = 0; j < chunk.length; j++) {
+          final v = arrayValue(c, chunk[j][c.name]);
+          if (v != null) {
+            values[j] = v;
+            any = true;
+          }
+        }
+        if (!any) {
+          select.add('NULL::${pgType(c.type)}');
+          continue;
+        }
+        params['c$k'] = values;
+        arrays.add(
+          c.type == RevColumnType.uuid
+              ? 'CAST(@c$k:_text AS uuid[])'
+              : '@c$k:${arrayType(c.type)}',
+        );
+        aliases.add('c$k');
+        select.add('u.c$k');
+      }
+      final from = 'unnest(${arrays.join(', ')}) AS u(${aliases.join(', ')})';
       final n = await session.db.unsafeExecute(
-        sql,
-        parameters: QueryParameters.named({
-          'f': fileId,
-          'rev': revision,
-          'rows': json,
-        }),
+        existing
+            ? 'UPDATE ${q(table)} AS t SET "revision" = @rev'
+                  '${[for (final (k, c) in cols.indexed) ', ${q(c.name)} = ${select[k]}'].join()} '
+                  'FROM $from WHERE t.id = u.id AND t."fileId" = @f'
+            : 'INSERT INTO ${q(table)} AS t (id, "fileId", "revision"'
+                  '${cols.map((c) => ', ${q(c.name)}').join()}) '
+                  'SELECT u.id, @f, @rev${select.map((s) => ', $s').join()} '
+                  'FROM $from$conflict',
+        parameters: QueryParameters.named(params),
         transaction: transaction,
       );
-      if (n != chunk.length) throw RevForeignRowException(table);
+      if (n != chunk.length) {
+        // A row read by the op is gone: a database cascade of a row the op
+        // deleted first (Slides group members). Write the run again as an
+        // upsert of every column, which also detects foreign ids.
+        if (existing) {
+          await upsert(
+            session,
+            fileId,
+            revision,
+            table,
+            chunk,
+            transaction: transaction,
+          );
+          continue;
+        }
+        throw RevForeignRowException(table);
+      }
     }
   }
 }

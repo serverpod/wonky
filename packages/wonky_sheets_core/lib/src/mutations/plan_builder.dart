@@ -214,7 +214,27 @@ final class PlanBuilder {
   ) {
     if (columns.isEmpty) return;
     final id = SheetsIds.cellId(sheetId, rowId, colId);
-    final cur = current(SheetsTables.cell, id);
+    writeCellOf(
+      id,
+      sheetId,
+      rowId,
+      colId,
+      columns,
+      current(SheetsTables.cell, id),
+    );
+  }
+
+  /// [writeCell] for a caller that has the cell's [id] and its [cur]rent
+  /// columns already (bulk writes hash each cell id once).
+  void writeCellOf(
+    String id,
+    String sheetId,
+    String rowId,
+    String colId,
+    Map<String, Object?> columns,
+    Map<String, Object?>? cur,
+  ) {
+    if (columns.isEmpty) return;
     if (cur == null) {
       if (columns.values.every((v) => v == null)) return;
       insert(SheetsTables.cell, id, {
@@ -350,10 +370,10 @@ final class PlanBuilder {
         summary.sheets.add(src[Cols.sheetId].toString());
       }
     }
-    int rank(RowChange c) => SheetsTables.rank(c.table);
-    // Stable sorts: parents first for inserts/updates, children first for deletes.
-    final up = _stableSort(upserts, (a, b) => rank(a).compareTo(rank(b)));
-    final del = _stableSort(deletes, (a, b) => rank(b).compareTo(rank(a)));
+    // Stable sorts: parents first for inserts/updates, children first for
+    // deletes.
+    final up = _byRank(upserts);
+    final del = _byRank(deletes, descending: true);
     return MutationPlan(
       label: label,
       summary: summary,
@@ -380,12 +400,27 @@ final class PlanBuilder {
     summary.addDeleted(kind, id);
   }
 
-  static List<T> _stableSort<T>(List<T> list, int Function(T a, T b) cmp) {
-    final indexed = [for (var i = 0; i < list.length; i++) (i, list[i])];
-    indexed.sort((a, b) {
-      final c = cmp(a.$2, b.$2);
-      return c != 0 ? c : a.$1.compareTo(b.$1);
-    });
-    return [for (final e in indexed) e.$2];
+  /// [changes] ordered by table rank, stable (a bucket per rank: a 1M-cell
+  /// plan is one pass, not a comparison sort).
+  static List<RowChange> _byRank(
+    List<RowChange> changes, {
+    bool descending = false,
+  }) {
+    if (changes.length < 2) return changes;
+    final buckets = <int, List<RowChange>>{};
+    String? lastTable;
+    List<RowChange>? last;
+    for (final c in changes) {
+      if (!identical(c.table, lastTable) && c.table != lastTable) {
+        lastTable = c.table;
+        last = buckets[SheetsTables.rank(c.table)] ??= [];
+      }
+      last!.add(c);
+    }
+    if (buckets.length == 1) return last!;
+    final ranks = buckets.keys.toList()
+      ..sort((a, b) => descending ? b.compareTo(a) : a.compareTo(b));
+
+    return [for (final r in ranks) ...buckets[r]!];
   }
 }

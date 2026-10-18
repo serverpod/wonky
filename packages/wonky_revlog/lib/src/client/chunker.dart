@@ -95,6 +95,13 @@ ChangeSet? composeChangeSets(
   if (plain && newer.createdAt.difference(older.createdAt) > window) {
     return null;
   }
+  // Chunks of one plan touch different rows (the plan is composed): they
+  // only fit together when their sum does. Saves composing two full chunks
+  // per chunk of a big import just to find they don't fit (P9).
+  if (sameGroup &&
+      older.changes.length + newer.changes.length > limits.maxChangesPerOp) {
+    return null;
+  }
   final changes = composeRowChanges([...older.changes, ...newer.changes]);
   if (changes.length > limits.maxChangesPerOp) return null;
   return ChangeSet(

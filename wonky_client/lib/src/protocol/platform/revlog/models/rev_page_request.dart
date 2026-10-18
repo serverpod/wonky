@@ -24,6 +24,7 @@ abstract class RevPageRequest
     this.sheetId,
     this.rowIds,
     required this.maxRows,
+    this.format,
   });
 
   factory RevPageRequest({
@@ -33,6 +34,7 @@ abstract class RevPageRequest
     _isc.UuidValue? sheetId,
     List<_isc.UuidValue>? rowIds,
     required int maxRows,
+    int? format,
   }) = _RevPageRequestImpl;
 
   factory RevPageRequest.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -51,6 +53,7 @@ abstract class RevPageRequest
               jsonSerialization['rowIds'],
             ),
       maxRows: jsonSerialization['maxRows'] as int,
+      format: jsonSerialization['format'] as int?,
     );
   }
 
@@ -69,6 +72,10 @@ abstract class RevPageRequest
 
   int maxRows;
 
+  /// The newest page body version the client reads (04 §3.1); null = a
+  /// client from before format negotiation (served version 1).
+  int? format;
+
   /// Returns a shallow copy of this [RevPageRequest]
   /// with some or all fields replaced by the given arguments.
   @_isc.useResult
@@ -79,6 +86,7 @@ abstract class RevPageRequest
     _isc.UuidValue? sheetId = const _isc.$UndefinedUuidValue(),
     List<_isc.UuidValue>? rowIds = const _isc.$UndefinedList<_isc.UuidValue>(),
     int? maxRows,
+    int? format,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -91,6 +99,7 @@ abstract class RevPageRequest
       if (rowIds != null)
         'rowIds': rowIds?.toJson(valueToJson: (v) => v.toJson()),
       'maxRows': maxRows,
+      if (format != null) 'format': format,
     };
   }
 
@@ -105,6 +114,7 @@ abstract class RevPageRequest
       if (rowIds != null)
         'rowIds': rowIds?.toJson(valueToJson: (v) => v.toJson()),
       'maxRows': maxRows,
+      if (format != null) 'format': format,
     };
   }
 
@@ -124,6 +134,7 @@ class _RevPageRequestImpl extends RevPageRequest {
     _isc.UuidValue? sheetId,
     List<_isc.UuidValue>? rowIds,
     required int maxRows,
+    int? format,
   }) : super._(
          kind: kind,
          cursor: cursor,
@@ -131,6 +142,7 @@ class _RevPageRequestImpl extends RevPageRequest {
          sheetId: sheetId,
          rowIds: rowIds,
          maxRows: maxRows,
+         format: format,
        );
 
   /// Returns a shallow copy of this [RevPageRequest]
@@ -144,6 +156,7 @@ class _RevPageRequestImpl extends RevPageRequest {
     _isc.UuidValue? sheetId = const _isc.$UndefinedUuidValue(),
     List<_isc.UuidValue>? rowIds = const _isc.$UndefinedList<_isc.UuidValue>(),
     int? maxRows,
+    Object? format = _Undefined,
   }) {
     return RevPageRequest(
       kind: kind ?? this.kind,
@@ -154,6 +167,7 @@ class _RevPageRequestImpl extends RevPageRequest {
           ? this.rowIds?.map((e0) => e0).toList()
           : rowIds,
       maxRows: maxRows ?? this.maxRows,
+      format: format is int? ? format : this.format,
     );
   }
 }

@@ -171,6 +171,66 @@ final class AllCellsPlan implements RevBootstrapPlan {
   }
 }
 
+/// Loads the cells of [order] (rows of the structure) viewport-first: the
+/// first [viewport] rows, then one row per block; records what happened.
+final class RowBlocksPlan implements RevBootstrapPlan {
+  RowBlocksPlan(this.order, {this.viewport = 1, this.onReady});
+
+  /// Rows in load order.
+  final List<String> order;
+
+  /// Rows of the first block (before ready).
+  final int viewport;
+
+  /// Called when the model is usable (inside `open` for a cache).
+  final void Function()? onReady;
+
+  final List<String> _pending = [];
+  var _first = true;
+
+  /// Rows loaded so far, in order.
+  final List<String> loaded = [];
+  bool isReady = false;
+  final Completer<void> isComplete = Completer();
+
+  @override
+  void structureLoaded(List<(String, Map<String, Object?>)> structure) {
+    final present = {
+      for (final (t, r) in structure)
+        if (t == 'row') r[RowChange.idColumn]! as String,
+    };
+    _pending
+      ..clear()
+      ..addAll(order.where(present.contains));
+    _first = true;
+  }
+
+  @override
+  (String, List<String>)? nextCells() {
+    if (_pending.isEmpty) return null;
+    final n = _first ? viewport.clamp(1, _pending.length) : 1;
+    _first = false;
+    final block = _pending.sublist(0, n);
+    _pending.removeRange(0, n);
+    return (sheetId, block);
+  }
+
+  @override
+  void cellsLoaded(String scope, List<String> rowKeys) =>
+      loaded.addAll(rowKeys);
+
+  @override
+  void ready() {
+    isReady = true;
+    onReady?.call();
+  }
+
+  @override
+  void complete() {
+    if (!isComplete.isCompleted) isComplete.complete();
+  }
+}
+
 /// One user's device: a store on a temporary directory, a keeper and a
 /// transport.
 final class Device {
@@ -233,6 +293,31 @@ final class Device {
     _open.add(sync);
     await sync.open();
     return (sync, port, plan);
+  }
+
+  /// Opens [file] in a new tab with [plan] ([tabId]: reopen a tab's
+  /// outbox; [beforeOpen] runs on the connection before it opens).
+  Future<(RevFileSync, MapPort)> openWith(
+    String file,
+    RevBootstrapPlan plan, {
+    String? tabId,
+    void Function(RevFileSync sync)? beforeOpen,
+  }) async {
+    final port = MapPort();
+    final sync = RevFileSync(
+      store: store,
+      transport: transport,
+      keeper: keeper,
+      schema: testSchema,
+      fileUuid: file,
+      tabId: tabId ?? newId(),
+      port: port,
+      plan: plan,
+    );
+    _open.add(sync);
+    beforeOpen?.call(sync);
+    await sync.open();
+    return (sync, port);
   }
 
   /// A local edit as a session makes it.

@@ -7,4 +7,5 @@ export 'src/client/rev_file_sync.dart';
 export 'src/client/rev_log_client.dart';
 export 'src/store/rev_local_store.dart';
 export 'src/store/storage_mode.dart';
+export 'src/transport/rev_page_decoder.dart';
 export 'src/transport/rev_transport.dart';

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:clock/clock.dart';
@@ -15,6 +16,7 @@ import 'package:wonky_ui/wonky_ui.dart'
     show SyncLogEntry, SyncState, SyncStatus;
 
 import '../store/rev_local_store.dart';
+import '../transport/rev_page_decoder.dart';
 import '../transport/rev_transport.dart';
 
 /// The model side of a [RevFileSync] (the app binding: workbook, deck).
@@ -40,6 +42,11 @@ abstract interface class RevBootstrapPlan {
 
   /// The next cell rows to load as (scope, row keys): viewport first, then
   /// the grid's requests, then the rest; null when every row is loaded.
+  ///
+  /// Called again while earlier blocks are still loading (06 §5.2: several
+  /// pages in flight). Rows handed out before and not yet [cellsLoaded]
+  /// should be skipped; rows that are repeated anyway are not requested
+  /// twice, but then the loader waits for their page before asking again.
   (String, List<String>)? nextCells();
 
   /// The cells of [rowKeys] of [scope] are applied.
@@ -163,6 +170,8 @@ final class RevFileSync implements RevSyncHost {
 
   /// Runs store writes strictly in order.
   Future<void> _store(Future<void> Function() write) {
+    // A later page must not join a batch queued before this write.
+    _pageBatch = null;
     final next = _storeChain.then((_) => write()).catchError((Object e) {
       _log_('Saving locally failed: $e', isError: true);
       _setStatus(error: '$e');
@@ -188,36 +197,27 @@ final class RevFileSync implements RevSyncHost {
     ];
     var known = 0;
     var loaded = false;
+    var streaming = false;
     if (headless) {
       known = local?.revision ?? 0;
     } else if (local != null && local.complete && local.revision > 0) {
-      final rows = await store.loadRows(fileUuid);
-      port.apply([
-        for (final (t, r) in rows)
-          RowChange.insert(t, r[RowChange.idColumn]! as String, {
-            for (final e in r.entries)
-              if (e.key != RowChange.idColumn) e.key: e.value,
-          }),
-      ], remote: false);
       known = local.revision;
       loaded = true;
+      if (plan != null && _cellTable != null) {
+        // Viewport-first, like a cold open (06 §5.1): the structure and
+        // the viewport's cells, the outbox on top, ready; the rest of the
+        // cells stream in from the cache after connecting.
+        await _openFromCache(mine);
+        streaming = true;
+      } else {
+        _loadRows(await store.loadRows(fileUuid));
+        _applyOutbox(mine);
+      }
     } else if (local != null && local.revision > 0) {
       // A partial cache: reload it from the server (the outbox stays).
       await store.resetServerState(fileUuid);
     }
-    // The outbox on top of server state (03 §7).
-    for (final op in mine) {
-      for (final c in op.changes) {
-        if (!overlay.isShadowed(c.table, c.rowId)) {
-          overlay.seed(
-            c.table,
-            c.rowId,
-            port.reader.currentColumns(c.table, c.rowId),
-          );
-        }
-      }
-      port.apply(op.changes, remote: false);
-    }
+    if (!loaded) _applyOutbox(mine);
     await store.touchFile(fileUuid, opened: true);
     core = RevSyncCore(
       host: this,
@@ -239,7 +239,190 @@ final class RevFileSync implements RevSyncHost {
     );
     keeper.connectivity.addListener(_onConnectivity);
     _setStatus();
+    if (streaming) unawaited(_streamFromCache(++_cacheRun));
     return loaded || mine.isNotEmpty;
+  }
+
+  /// The table whose rows load per sheet row (Sheets cells), or null.
+  late final RevTable? _cellTable = schema.tables
+      .where(
+        (t) => t.coverage == RevCoverage.cellsByRow && t.parents.length >= 2,
+      )
+      .firstOrNull;
+
+  /// Applies stored rows to the model as loaded rows.
+  void _loadRows(List<(String, Map<String, Object?>)> rows) =>
+      port.apply([for (final (t, r) in rows) _insertOf(t, r)], remote: false);
+
+  /// The insert of a loaded full row (it holds its `id` already, as
+  /// `RowChange.insert` would add it; nothing changes the map any more).
+  static RowChange _insertOf(String table, Map<String, Object?> row) =>
+      RowChange.loaded(table, row);
+
+  /// Applies this tab's restored outbox on top of the model (03 §7): the
+  /// shadow of each touched row is its server version, i.e. the model's
+  /// row before the outbox (null for rows not loaded yet; loading them
+  /// seeds the shadow again).
+  void _applyOutbox(List<ChangeSet> mine) {
+    for (final op in mine) {
+      for (final c in op.changes) {
+        if (!overlay.isShadowed(c.table, c.rowId)) {
+          overlay.seed(
+            c.table,
+            c.rowId,
+            port.reader.currentColumns(c.table, c.rowId),
+          );
+        }
+      }
+      port.apply(op.changes, remote: false);
+    }
+  }
+
+  // ------------------------------------------------- reopen from the cache
+
+  /// Cells are streaming in from the cache (06 §5.1): ops processed
+  /// meanwhile are buffered for the rows not loaded yet, as during a
+  /// bootstrap.
+  bool _streaming = false;
+  int _cacheRun = 0;
+
+  /// Sheet rows per store read while streaming from the cache (a read and
+  /// its model batch stay short, so the UI and store writes keep flowing).
+  static const _cacheChunk = 250;
+
+  /// Tests: awaited after cells were read from the cache while streaming,
+  /// before they are applied (ops can arrive in between).
+  @visibleForTesting
+  Future<void> Function(String scope, List<String> rowKeys)? cachedCellsRead;
+
+  /// Opens a complete cache viewport-first: the structure and the first
+  /// block of cells the [plan] asks for, then the outbox on top, then
+  /// ready. The rest streams in from [_streamFromCache].
+  Future<void> _openFromCache(List<ChangeSet> mine) async {
+    final plan = this.plan!;
+    _streaming = true;
+    final structure = await store.loadStructure(fileUuid);
+    _loadRows(structure.rows);
+    plan.structureLoaded(structure.rows);
+    final first = plan.nextCells();
+    if (first != null) {
+      final (scope, keys) = first;
+      for (var i = 0; i < keys.length; i += _cacheChunk) {
+        final chunk = keys.sublist(i, (i + _cacheChunk).clamp(0, keys.length));
+        _applyCached(
+          await store.loadScopedAt(fileUuid, scope, chunk),
+          scope,
+          chunk,
+          mine,
+        );
+        plan.cellsLoaded(scope, chunk);
+      }
+    }
+    _applyOutbox(mine);
+    plan.ready();
+  }
+
+  bool _cacheStopped(int run) =>
+      _disposed || run != _cacheRun || _bootstrapping;
+
+  /// Loads the cells the [plan] asks for from the cache until every row
+  /// is loaded (06 §5.2 order: the grid's requests, the active sheet, the
+  /// other sheets). Stops when a bootstrap from the server takes over.
+  Future<void> _streamFromCache(int run) async {
+    final plan = this.plan!;
+    try {
+      while (!_cacheStopped(run)) {
+        final next = plan.nextCells();
+        if (next == null) {
+          _streaming = false;
+          _buffer.clear();
+          plan.complete();
+          _setStatus();
+          return;
+        }
+        final (scope, keys) = next;
+        for (var i = 0; i < keys.length; i += _cacheChunk) {
+          final chunk = keys.sublist(
+            i,
+            (i + _cacheChunk).clamp(0, keys.length),
+          );
+          final rows = await store.loadScopedAt(fileUuid, scope, chunk);
+          await cachedCellsRead?.call(scope, chunk);
+          if (_cacheStopped(run)) return;
+          _applyCached(rows, scope, chunk, core.outbox);
+          plan.cellsLoaded(scope, chunk);
+        }
+      }
+    } on Object catch (e) {
+      if (_cacheStopped(run)) return;
+      _log_('Loading from this device failed: $e', isError: true);
+      _setStatus(error: '$e');
+    } finally {
+      // Done, failed or replaced by a bootstrap from the server (which
+      // buffers ops itself and loads the rows again).
+      if (run == _cacheRun) _streaming = false;
+    }
+  }
+
+  /// Applies cells read from the cache for the sheet rows [keys] of
+  /// [scope], exactly as a page (06 §5.3): the stored rows are server
+  /// state at `stored.revision`; the buffered ops newer than that are
+  /// replayed on them; rows the [outbox] touches are rebuilt through the
+  /// overlay from that server state.
+  void _applyCached(
+    RevStoredRows stored,
+    String scope,
+    List<String> keys,
+    List<ChangeSet> outbox,
+  ) {
+    final table = _cellTable!;
+    final scopeCol = table.parents[0].column;
+    final keyCol = table.parents[1].column;
+    final keySet = keys.toSet();
+    // Server state of the loaded rows: stored rows + newer buffered ops.
+    final server = MapRowStore();
+    final touched = <(String, String)>{};
+    for (final (t, r) in stored.rows) {
+      final id = r[RowChange.idColumn]! as String;
+      server.put(t, id, r);
+      touched.add((t, id));
+    }
+    for (final (rev, changes) in _buffer) {
+      if (rev <= stored.revision) continue;
+      for (final c in changes) {
+        if (c.table != table.name) continue;
+        final k = (c.table, c.rowId);
+        final belongs = c.op == RowOp.insert
+            ? c.columnsAfter[scopeCol] == scope &&
+                  keySet.contains(c.columnsAfter[keyCol])
+            : touched.contains(k);
+        if (!belongs) continue;
+        replayApplied(server, [c]);
+        touched.add(k);
+      }
+    }
+    final outboxKeys = <(String, String)>{
+      for (final op in outbox)
+        for (final c in op.changes) (c.table, c.rowId),
+    };
+    final load = <RowChange>[];
+    final seeded = <(String, String)>{};
+    for (final k in touched) {
+      final row = server.row(k.$1, k.$2);
+      if (outboxKeys.contains(k)) {
+        overlay.seed(k.$1, k.$2, row);
+        seeded.add(k);
+      } else if (row != null) {
+        load.add(_insertOf(k.$1, row));
+      } else if (port.reader.currentColumns(k.$1, k.$2) != null) {
+        load.add(RowChange(table: k.$1, rowId: k.$2, op: RowOp.delete));
+      }
+    }
+    port.apply(load, remote: false);
+    if (seeded.isNotEmpty) {
+      final patch = overlay.rebuild(seeded, outbox, port.reader);
+      if (patch.isNotEmpty) port.apply(patch, remote: true);
+    }
   }
 
   Stream<api.RevServerMessage> _openStream() {
@@ -367,7 +550,7 @@ final class RevFileSync implements RevSyncHost {
   void applyRemote(RevOpIn op) {
     final patch = overlay.remote(op.applied, core.outbox, port.reader);
     port.apply(patch, remote: true);
-    if (_bootstrapping) _buffer.add((op.revision, op.applied));
+    if (_bootstrapping || _streaming) _buffer.add((op.revision, op.applied));
     final meta = _meta(op);
     unawaited(
       _store(
@@ -388,7 +571,7 @@ final class RevFileSync implements RevSyncHost {
   void applyAck(ChangeSet op, RevAckIn ack, List<RowChange> applied) {
     final patch = overlay.acked(op, applied, core.outbox, port.reader);
     if (patch.isNotEmpty) port.apply(patch, remote: true);
-    if (_bootstrapping) _buffer.add((ack.revision, applied));
+    if (_bootstrapping || _streaming) _buffer.add((ack.revision, applied));
     final meta = RevOpMeta(
       revision: ack.revision,
       authorUuid: null,
@@ -538,8 +721,8 @@ final class RevFileSync implements RevSyncHost {
   final List<(int, List<RowChange>)> _buffer = [];
   int _bootstrapRun = 0;
 
-  /// Whether pages are loading.
-  bool get bootstrapping => _bootstrapping;
+  /// Whether pages, or the cells of a reopened cache, are loading.
+  bool get bootstrapping => _bootstrapping || _streaming;
 
   @override
   void bootstrap(int revision) {
@@ -563,40 +746,54 @@ final class RevFileSync implements RevSyncHost {
     try {
       await _store(() => store.resetServerState(fileUuid));
       final file = api.UuidValue.fromString(fileUuid);
-      final structure = <(String, Map<String, Object?>)>[];
+      bool stale() => run != _bootstrapRun || _disposed;
+      final structure = <RevPageRow>[];
       String? cursor;
       var excluded = <String>[];
       do {
-        final page = await transport.page(
+        final (page, rows) = await _fetchPage(
           file,
           api.RevPageRequest(
             kind: api.RevPageKind.structure,
             cursor: cursor,
             maxRows: 20000,
+            format: RevPageCodec.version,
           ),
         );
-        if (run != _bootstrapRun || _disposed) return;
+        if (stale()) return;
         if (cursor == null) excluded = page.excludedTables;
-        structure.addAll(await _applyPage(page));
+        await _applyPage(page, rows);
+        structure.addAll(rows);
         cursor = page.nextCursor;
       } while (cursor != null);
-      for (final table in excluded) {
-        String? c;
-        do {
-          final page = await transport.page(
-            file,
-            api.RevPageRequest(
-              kind: api.RevPageKind.rows,
-              table: table,
-              cursor: c,
-              maxRows: 20000,
-            ),
-          );
-          if (run != _bootstrapRun || _disposed) return;
-          structure.addAll(await _applyPage(page));
-          c = page.nextCursor;
-        } while (c != null);
+      // Tables too large for structure pages: two at a time (06 §5.2),
+      // each along its cursor.
+      final tables = [...excluded];
+      Future<void> rowsWorker() async {
+        while (tables.isNotEmpty && !stale()) {
+          final table = tables.removeAt(0);
+          String? c;
+          do {
+            final (page, rows) = await _fetchPage(
+              file,
+              api.RevPageRequest(
+                kind: api.RevPageKind.rows,
+                table: table,
+                cursor: c,
+                maxRows: 20000,
+                format: RevPageCodec.version,
+              ),
+            );
+            if (stale()) return;
+            await _applyPage(page, rows);
+            structure.addAll(rows);
+            c = page.nextCursor;
+          } while (c != null);
+        }
       }
+
+      await Future.wait([rowsWorker(), rowsWorker()]);
+      if (stale()) return;
       // Cells (cellsByRow tables), in the order the app asks for.
       final plan = this.plan;
       plan?.structureLoaded(structure);
@@ -604,32 +801,8 @@ final class RevFileSync implements RevSyncHost {
           .where((t) => t.coverage == RevCoverage.cellsByRow)
           .firstOrNull;
       if (cellTable != null && plan != null) {
-        var first = true;
-        while (true) {
-          final next = plan.nextCells();
-          if (next == null) break;
-          final (scope, rows) = next;
-          for (var i = 0; i < rows.length; i += 500) {
-            final chunk = rows.sublist(i, (i + 500).clamp(0, rows.length));
-            final page = await transport.page(
-              file,
-              api.RevPageRequest(
-                kind: api.RevPageKind.cells,
-                sheetId: api.UuidValue.fromString(scope),
-                rowIds: [for (final r in chunk) api.UuidValue.fromString(r)],
-                maxRows: chunk.length,
-              ),
-            );
-            if (run != _bootstrapRun || _disposed) return;
-            await _applyPage(page);
-            plan.cellsLoaded(scope, chunk);
-          }
-          if (first) {
-            first = false;
-            plan.ready();
-          }
-        }
-        if (first) plan.ready();
+        await _loadCells(file, plan, stale);
+        if (stale()) return;
       } else {
         plan?.ready();
       }
@@ -637,7 +810,10 @@ final class RevFileSync implements RevSyncHost {
       _bootstrapping = false;
       _buffer.clear();
       _loadedOnce = true;
-      await _store(() => store.markComplete(fileUuid, complete: true));
+      final revision = core.serverRevision;
+      await _store(
+        () => store.markComplete(fileUuid, complete: true, revision: revision),
+      );
       plan?.complete();
     } on Object catch (e) {
       if (run != _bootstrapRun) return;
@@ -650,17 +826,148 @@ final class RevFileSync implements RevSyncHost {
 
   bool _loadedOnce = false;
 
-  /// Applies a page to the store and the model; returns its rows.
+  /// Cell pages requested at once (06 §5.2): fetching and decoding (off
+  /// the UI isolate) overlap with applying earlier pages.
+  static int maxPagesInFlight = 3;
+
+  /// Sheet rows per cell page.
+  static const _pageRows = 500;
+
+  /// Fewest sheet rows per cell page when a block is split over the free
+  /// request slots.
+  static int minPageRows = 100;
+
+  /// A page with its rows, decoded off the UI isolate.
+  Future<(api.RevPage, List<RevPageRow>)> _fetchPage(
+    api.UuidValue file,
+    api.RevPageRequest request,
+  ) async {
+    final page = await transport.page(file, request);
+    final body = page.body.buffer.asUint8List(
+      page.body.offsetInBytes,
+      page.body.lengthInBytes,
+    );
+    return (page, await RevPageDecoder.decode(schema, body));
+  }
+
+  /// Loads the cells [plan] asks for with up to [maxPagesInFlight] pages
+  /// in flight, applying them in request order. A block is split over the
+  /// free slots; rows the plan hands out again while their page is in
+  /// flight are not requested twice (the loop waits for that page).
+  /// `ready` follows the plan's first block.
+  Future<void> _loadCells(
+    api.UuidValue file,
+    RevBootstrapPlan plan,
+    bool Function() stale,
+  ) async {
+    final inFlight = Queue<_CellFetch>();
+    final requested = <String>{};
+    var block = 0;
+    var ready = false;
+    try {
+      while (true) {
+        while (inFlight.length < maxPagesInFlight) {
+          final next = plan.nextCells();
+          if (next == null) break;
+          final (scope, keys) = next;
+          final fresh = [
+            for (final k in keys)
+              if (requested.add('$scope:$k')) k,
+          ];
+          if (fresh.isEmpty) break;
+          final slots = maxPagesInFlight - inFlight.length;
+          final size = ((fresh.length + slots - 1) ~/ slots).clamp(
+            minPageRows,
+            _pageRows,
+          );
+          for (var i = 0; i < fresh.length; i += size) {
+            final chunk = fresh.sublist(i, (i + size).clamp(0, fresh.length));
+            final future = _fetchPage(
+              file,
+              api.RevPageRequest(
+                kind: api.RevPageKind.cells,
+                sheetId: api.UuidValue.fromString(scope),
+                rowIds: [for (final r in chunk) api.UuidValue.fromString(r)],
+                maxRows: chunk.length,
+                format: RevPageCodec.version,
+              ),
+            )..ignore();
+            inFlight.add(_CellFetch(scope, chunk, block, future));
+          }
+          block++;
+        }
+        if (inFlight.isEmpty) break;
+        final f = inFlight.removeFirst();
+        final (page, rows) = await f.page;
+        if (stale()) return;
+        await _applyPage(page, rows);
+        plan.cellsLoaded(f.scope, f.rows);
+        for (final k in f.rows) {
+          requested.remove('${f.scope}:$k');
+        }
+        if (!ready && !inFlight.any((p) => p.block == 0)) {
+          ready = true;
+          plan.ready();
+        }
+      }
+      if (!ready) plan.ready();
+    } finally {
+      for (final f in inFlight) {
+        f.page.ignore();
+      }
+    }
+  }
+
+  /// Page rows queued for the store and not written yet, and the page
+  /// writes in flight (oldest first).
+  int _pendingPageRows = 0;
+  static const _maxPendingPageRows = 120000;
+  final Queue<Future<void>> _pageWrites = Queue();
+
+  /// Waits while too many page rows wait for the store (memory): for the
+  /// oldest page writes, not for the whole chain.
+  Future<void> _pageBackpressure() async {
+    while (_pendingPageRows > _maxPendingPageRows && _pageWrites.isNotEmpty) {
+      await _pageWrites.first;
+    }
+  }
+
+  /// Pages queued in the last store write, which hasn't started yet: the
+  /// next page joins it (one transaction and a few statements for all the
+  /// pages that arrived while the store was busy).
+  List<RevPageWrite>? _pageBatch;
+
+  void _queuePageWrite(RevPageWrite write) {
+    final pending = write.rows.length + write.replay.length;
+    _pendingPageRows += pending;
+    final open = _pageBatch;
+    if (open != null) {
+      open.add(write);
+      return;
+    }
+    final batch = [write];
+    late final Future<void> done;
+    done = _store(() async {
+      if (identical(_pageBatch, batch)) _pageBatch = null;
+      try {
+        await store.applyPages(fileUuid, batch);
+      } finally {
+        for (final w in batch) {
+          _pendingPageRows -= w.rows.length + w.replay.length;
+        }
+        _pageWrites.remove(done);
+      }
+    });
+    _pageWrites.add(done);
+    _pageBatch = batch;
+  }
+
+  /// Applies a page and its decoded [rows] to the store and the model;
+  /// returns the rows.
   Future<List<(String, Map<String, Object?>)>> _applyPage(
     api.RevPage page,
+    List<RevPageRow> rows,
   ) async {
-    final body = RevCodec.gunzip(
-      page.body.buffer.asUint8List(
-        page.body.offsetInBytes,
-        page.body.lengthInBytes,
-      ),
-    );
-    final rows = RevPageCodec.decode(schema, body);
     final rp = page.revision;
     bool covered(RowChange c) {
       final t = schema.tryTable(c.table);
@@ -697,9 +1004,13 @@ final class RevFileSync implements RevSyncHost {
           for (final c in changes)
             if (covered(c)) c,
     ];
-    await _store(
-      () => store.applyPage(
-        fileUuid,
+    // The store write is queued in order but not awaited: the model (and
+    // ready, P6) doesn't wait for SQLite. Pages wait only when the writes
+    // fall far behind (memory).
+    await _pageBackpressure();
+
+    _queuePageWrite(
+      RevPageWrite(
         revision: rp,
         coverage: page.coverage,
         rows: rows,
@@ -713,23 +1024,30 @@ final class RevFileSync implements RevSyncHost {
     };
     port.apply([
       for (final (t, r) in rows)
-        if (!outboxKeys.contains((t, r[RowChange.idColumn])))
-          RowChange.insert(t, r[RowChange.idColumn]! as String, {
-            for (final e in r.entries)
-              if (e.key != RowChange.idColumn) e.key: e.value,
-          }),
+        if (!outboxKeys.contains((t, r[RowChange.idColumn]))) _insertOf(t, r),
     ], remote: false);
     if (replay.isNotEmpty) port.apply(replay, remote: true);
-    for (final (t, r) in rows) {
-      final id = r[RowChange.idColumn]! as String;
-      if (outboxKeys.contains((t, id))) overlay.seed(t, id, r);
-    }
     final pageKeys = {
       for (final (t, r) in rows)
         if (outboxKeys.contains((t, r[RowChange.idColumn])))
           (t, r[RowChange.idColumn]! as String),
     };
     if (pageKeys.isNotEmpty) {
+      // The server version of those rows: the page's, with the newer
+      // buffered changes on top (as the store has them).
+      final server = MapRowStore();
+      for (final (t, r) in rows) {
+        final id = r[RowChange.idColumn]! as String;
+        if (pageKeys.contains((t, id))) server.put(t, id, r);
+      }
+      replayApplied(server, [
+        for (final c in replay)
+          if (pageKeys.contains((c.table, c.rowId))) c,
+      ]);
+      for (final (t, id) in pageKeys) {
+        overlay.seed(t, id, server.row(t, id));
+      }
+
       final patch = overlay.rebuild(pageKeys, core.outbox, port.reader);
       if (patch.isNotEmpty) port.apply(patch, remote: true);
     }
@@ -773,8 +1091,13 @@ final class RevFileSync implements RevSyncHost {
   /// Reconnects now (the sync status "Retry").
   void retry() => keeper.reconnectNow(_key);
 
-  /// Closes the connection (flushes the store).
-  Future<void> dispose() async {
+  /// Closes the connection (flushes the store). Idempotent: a background
+  /// sync and the client's close may both dispose it.
+  Future<void> dispose() => _disposing ??= _dispose();
+
+  Future<void>? _disposing;
+
+  Future<void> _dispose() async {
     _disposed = true;
     _tick?.cancel();
     keeper.connectivity.removeListener(_onConnectivity);
@@ -791,4 +1114,16 @@ final class RevFileSync implements RevSyncHost {
     status.dispose();
     fatal.dispose();
   }
+}
+
+/// A cell page in flight (06 §5.2).
+final class _CellFetch {
+  _CellFetch(this.scope, this.rows, this.block, this.page);
+
+  final String scope;
+  final List<String> rows;
+
+  /// The plan block it belongs to (0 = the first, for ready).
+  final int block;
+  final Future<(api.RevPage, List<RevPageRow>)> page;
 }

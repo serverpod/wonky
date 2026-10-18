@@ -29,11 +29,29 @@ and the bindings `wonky_server/lib/src/sheets/revlog/`, `wonky_server/lib/src/sl
 
 Differences from parts 1–7, and decisions made while implementing:
 
-1. **Client cache layout (02, 06 §2).** Domain rows live in one generic table
-   `rev_row(file_uuid, tbl, id, scope, row_key, data JSON)` instead of one table per schema
-   table, so the cache needs no DDL per schema and survives schema changes with a reset. The
-   other tables (`rev_meta`, `rev_local_file`, `rev_coverage`, `rev_local_op`, `rev_outbox`,
-   `rev_outcome`) are as specified.
+1. **Client cache layout (02, 06 §2).** Domain rows live in generic tables instead of one table
+   per schema table, so the cache needs no DDL per schema and survives schema changes with a
+   reset (`RevDomainRows`, `wonky_revlog_flutter/lib/src/store/`):
+   - `rev_row(fid, tbl, id, data)` (`WITHOUT ROWID`) holds structure rows, one record each;
+   - `rev_cells(rid, fid, tbl, scope, row_key, data)` holds the rows of `cellsByRow` tables
+     (Sheets cells) with **one record per sheet row**: every cell of that row in one blob, so a
+     viewport or streaming read touches one record per sheet row and a bootstrap page writes
+     500 records instead of 13,000;
+   - `rev_cell_id(fid, h, rid)` finds a cell's record from its id (an applied update or delete
+     carries no sheet/row key): `h` is 52 bits of the id (exact on the web), and the decoded
+     ids are checked, so collisions only cost a decode. A bootstrap writes its records without
+     these entries and adds them, sorted, in the transaction that marks the file complete
+     (random-key inserts dirtied the whole index on every page); until then nothing looks
+     cells up by id (domain writes wait for the end of the bootstrap; a page's replayed changes
+     find their cells in the page).
+
+   `fid` is an integer per file (`rev_fid`), `tbl` the table's index in the schema, and `data`
+   a compact binary row encoding (`RevRowWriter`: the column's index and a tagged value; UUIDs
+   as 16 bytes, integers as varints, null columns and the key columns left out). A 1M-cell file
+   takes ~110 MB (~112 bytes per cell; the JSON layout took 700). Layout changes are cache
+   migrations that reset server state; the outbox stays. The other tables (`rev_meta`,
+   `rev_local_file`, `rev_coverage`, `rev_local_op`, `rev_outbox`, `rev_outcome`) are as
+   specified; a complete file keeps no coverage keys (a new bootstrap starts from a reset).
 2. **File ids.** The file uuid is the drive item uuid and `DriveItem.contentRef` (decks and
    spreadsheets created on a device use their own uuid for both).
 3. **Creation is atomic (04, 05 §8.3).** `RevLogService.createFile` inserts `rev_file`, the hook
@@ -107,6 +125,62 @@ Differences from parts 1–7, and decisions made while implementing:
     cache writes rows in batches, stores row JSON without null columns and rewrites only the
     outbox rows that changed. The measured gates and the misses (P7, P8, P10 as one
     transaction, P9's planner) are in part 7.
+24. **Client performance (R7, part 7).**
+    - **Reopen from the cache is viewport-first** (06 §5.1): the structure
+      (`RevLocalStore.loadStructure`), the cells of the plan's first block
+      (`loadScopedAt`), the outbox on top, then ready; the rest of the cells stream in from the
+      cache through the same `RevBootstrapPlan` (250 sheet rows per read), so `LoadingGate`,
+      `#LOADING` and the shimmer work as during a cold open. Exactness as for pages (06 §5.3):
+      each read returns its rows with the revision `Rs` of the stored state (one read
+      transaction); ops processed while streaming are buffered; the buffered changes newer than
+      `Rs` are replayed on the rows read; rows the outbox touches are seeded in the overlay with
+      that server state and rebuilt (`RevFileSync._applyCached`). A bootstrap from the server
+      stops the streaming. Decks (no cell table) load everything as before.
+    - **A finished bootstrap stores its revision** (`markComplete(revision:)`, the last op
+      processed), so the file reopens from the cache; before, a file without ops since its
+      download kept `revision = 0` and was downloaded again.
+    - **Page writes** don't hold up the model or ready (P6): they are queued in order and not
+      awaited, with backpressure on the oldest writes beyond 120,000 queued rows; consecutive
+      queued pages are written in one transaction (`applyPages`), and new cell rows in one
+      round trip to the database worker (`computeWithDatabase`, native; the web runs the
+      statements). A store write that waits for the UI isolate between its statements fell
+      behind a download.
+    - **Model and planner** (P7, P9): one cell id hash per written cell and `Uuid5` without
+      per-call allocations; row and column number formats read once per row and column of a
+      paste; plan changes ordered by rank with buckets instead of a comparison sort; cells kept
+      out of `WorkbookModel`'s owner map (a sheet lookup finds a cell's sheet); the formula
+      engine's cell keys are records instead of 110-character strings, and its range index
+      buckets the entries added since its last rebuild by blocks of 16 rows (stabs scanned all
+      of them); loaded rows are wrapped (`RowChange.loaded`) instead of copied; the chunker no
+      longer composes two full chunks of one plan just to find they don't fit.
+    - `_SheetsPlan` hands out each row once (a walk per sheet instead of copying the missing
+      rows per block), so several cell pages can be in flight (06 §5.2).
+25. **Wire and server performance (R7, part 7).**
+    - **Page format version 2** (04 §3.1): binary and columnar (ids once, per-column blocks
+      with presence bitmaps, UUID and string dictionaries, varints, zlib where it saves ≥ 20 %),
+      negotiated with `RevPageRequest.format`; version 1 (gzip NDJSON) is still served to
+      clients without `format` and decoded from servers that ignore it. Decoded rows leave null
+      columns out unless the column has a non-null default. A 13,000-cell page: 360 → 250 KB,
+      encode 52 → 4 ms, decode 64 → 13 ms.
+    - **Server pages** (05 §7) read each table as one row of typed arrays (`array_agg`, UUIDs
+      as `uuid_send` bytes) straight into `RevPageBuilder`; cell pages probe the
+      `(sheetId, rowId)` index once per sheet row (`unnest … LATERAL … OFFSET 0`), because with
+      `rowId = ANY(…)` and statistics older than a big sheet Postgres scanned the whole sheet
+      through `cell_col_idx` (2.4 s per page at 1M cells); the cascade of deleted rows' cells
+      uses the same form. `RevAnalyze` analyzes the cell table in the background after every
+      100,000 committed cell inserts.
+    - **Client pages** (06 §5.2): up to 3 cell pages in flight, applied in request order;
+      decoding off the UI thread (`RevPageDecoder`: an isolate per page on native, ~8 ms slices
+      on the web).
+    - **Commits** (05 §3.3): the prefetch reads typed arrays (UUIDs as text) instead of JSON
+      rows; inserts and updates send one binary array per column (`unnest`); rows the op read
+      are `UPDATE`d in place with only their changed columns (falling back to the upsert when a
+      database cascade removed one earlier in the op); the applied form is encoded and gzipped
+      once (an all-insert op's view reuses it); file creation answers the prefetch from memory
+      (`_CreatedRows`) and builds no views. The cell table has `fillfactor = 85`
+      (`RevStorage`, ensured at server start and in `withWonkyServerpod`, since models can't
+      declare storage parameters), so rewritten cells can be HOT.
+
 
 
 ## Part 1 · Decisions, terms, limits and configuration
@@ -1012,11 +1086,12 @@ fields:
   sheetId: UuidValue?        # kind == cells (Sheets)
   rowIds: List<UuidValue>?   # kind == cells: ≤ pageRows sheet rows
   maxRows: int               # server caps at structurePageRows (structure/rows) or pageRows (cells)
+  format: int?               # newest body version the client reads (§3.1); null = a client from before negotiation
 
 class: RevPage
 fields:
   revision: int              # exact revision of every row in this page (05 §7)
-  body: ByteData             # gzip NDJSON (§3.1), ≤ 4 MiB
+  body: ByteData             # binary columnar body, version 2 (§3.1); gzip NDJSON (version 1) for clients without `format`
   coverage: List<String>     # coverage keys (§3.2)
   excludedTables: List<String>   # structure: tables the client must load with kind == rows
   nextCursor: String?        # structure/rows: cursor of the next page; null = done
@@ -1024,14 +1099,49 @@ fields:
 
 #### 3.1 Page body
 
-One NDJSON line per row, with the same column dictionary approach as the codec:
+The body is self-describing: a binary body starts with `RVP` and its version byte, a version-1
+body with the gzip magic. **Negotiation:** the client sends the newest version it reads in
+`RevPageRequest.format`; the server serves `min(format, its newest)` (`RevPageCodec.negotiate`),
+and version 1 when `format` is absent (a client from before negotiation). The client decodes
+both versions; a version it does not know fails with a clear `RevCodecException` ("unsupported
+page version N"), and loading reports it. Caches need no migration: a page is applied the same
+way whatever its version.
+
+**Version 2** (current; `RevPageCodec`, `RevPageBuilder` in `wonky_revlog/lib/src/codec/`) —
+binary, columnar, little-endian, unsigned varints (7 bits per byte) and zigzag varints for
+signed values:
 
 ```
-{"t":["spreadsheet","sheet",…],"c":[[…],[…]]}           ← header line: tables and their columns
-[0,"<b62 id>",[…values…]]                               ← [tableIdx, id, values aligned with c[tableIdx]]
+body    := "RVP" 0x02 · flags (u8, 0) · str schemaHash · varint tableCount · table*
+table   := str name · varint n · varint columnCount · block ids · column*
+column  := str name · u8 RevColumnType.index · block
+block   := u8 enc · varint length · bytes        enc: bits 0–1 presence (0 all null, 1 all
+                                                 present, 2 bitmap), bit 2 dictionary,
+                                                 bit 7 zlib-compressed bytes
+str     := varint byteLength · UTF-8
 ```
 
-Values use the codec encoding (03 §3.2). Nulls are written; there are no "absent" sentinels.
+- **ids:** `n` × 16 raw bytes (never compressed).
+- **Presence:** with a bitmap (`ceil(n/8)` bytes, LSB first) the values follow for the present
+  rows only; an all-null column is an empty block.
+- **Values per type:** `uuid` 16 bytes each, or a dictionary (`varint d`, `d` × 16 bytes, `u8`
+  index width 1/2/4, indexes); `string`/`json`/`enumName` UTF-16 lengths as varints then one
+  UTF-8 blob (decoded once and sliced), or a dictionary (`varint d`, `d` lengths, `u8` width,
+  indexes, blob of the `d` strings) when values repeat; `int` zigzag varints; `double` float64;
+  `bool` a bitmap; `dateTime` zigzag varints of the millisecond delta to the previous value.
+- **Compression:** a block of ≥ 256 bytes is zlib-compressed (level 1) when that saves ≥ 20 %;
+  raw UUID blocks are never compressed (random bytes).
+- **Decoded rows** carry `id` and their non-null columns; a null column is left out (it reads as
+  null, as in the client cache) unless the column has a non-null default, where the null is
+  explicit. Unknown tables and columns (a newer compatible schema) are skipped; a known column
+  of another type is an error.
+
+A 13,000-cell page (500 sheet rows × 26) of the perf data is ~250 KB (version 1: ~360 KB);
+encoding takes ~4 ms and decoding ~13 ms on the desktop VM (version 1: ~52 / ~64 ms).
+
+**Version 1** (legacy): gzip NDJSON, a header line `{"s", "t": [tables], "c": [[columns]…]}`
+then one line `[tableIdx, "<b62 id>", [values aligned with c[tableIdx]]]` per row, values in
+the codec encoding (03 §3.2) with nulls written.
 
 #### 3.2 Coverage
 
@@ -1312,15 +1422,17 @@ changes. Per op the statements are:
 #### 3.3 Set-based SQL (`rev_sql.dart`)
 
 All statements are generated from `RevSchema` and run with `unsafeQuery`/`unsafeExecute` with
-named, explicitly cast parameters, following the repo convention of JSON strings cast to `jsonb`
-and `@ids::uuid[]` (inventory write-infra §6).
+named, explicitly cast or typed parameters (`@ids::uuid[]`, binary arrays `@c:_text`; inventory
+write-infra §6).
 
 ```sql
--- Prefetch (per table touched by the op): by id only, so foreign ids are detected
-SELECT "fileId", <all columns> FROM "cell" WHERE id = ANY(@ids::uuid[]) FOR UPDATE;
-
--- Parent existence (per parent table), within the file
-SELECT id FROM "sheet_row" WHERE "fileId" = @f AND id = ANY(@ids::uuid[]);
+-- Prefetch: every table the op touches in one statement, each as one row of typed arrays
+-- (UUIDs as text; a column without values as null); by id only, so foreign ids are detected
+SELECT * FROM
+  (SELECT array_agg(t."fileId"), array_agg(t."revision"), array_agg(t.id::text),
+          CASE WHEN count(t.content) = 0 THEN NULL ELSE array_agg(t.content) END, …
+     FROM (SELECT * FROM "cell" WHERE id = ANY(@ids0::uuid[]) FOR UPDATE) t) c0,
+  (SELECT … FROM (SELECT * FROM "sheet_row" WHERE id = ANY(@ids1::uuid[]) FOR UPDATE) t) c1;
 
 -- Cascaded cells of deleted rows / columns that the op didn't list (sheet-scoped, uses cell_row_idx / cell_col_idx)
 SELECT id, <all columns> FROM "cell"
@@ -1330,17 +1442,24 @@ SELECT id, <all columns> FROM "cell"
 -- Deletes (children first)
 DELETE FROM "cell" WHERE "fileId" = @f AND id = ANY(@ids::uuid[]);
 
--- Upserts of final row images (parents first); the WHERE guard makes a foreign-id overwrite impossible
-INSERT INTO "cell" AS t (id, "fileId", "revision", "createdAt", "sheetId", "rowId", "columnId", content, …)
-SELECT r.id, @f, @rev, r."createdAt", r."sheetId", r."rowId", r."columnId", r.content, …
-FROM jsonb_to_recordset(@rows::jsonb) AS r(id uuid, "createdAt" timestamp, "sheetId" uuid, …)
-ON CONFLICT (id) DO UPDATE SET "revision" = EXCLUDED."revision", content = EXCLUDED.content, …
-WHERE t."fileId" = EXCLUDED."fileId";
+-- Rows that did not exist at the prefetch: plain inserts of the final images (parents first),
+-- one binary array per column; a column null in every row is a typed NULL
+INSERT INTO "cell" AS t (id, "fileId", "revision", "sheetId", …, content, "note", …)
+SELECT u.id, @f, @rev, u.c0, …, u.c3, NULL::text, …
+FROM unnest(CAST(@ids:_text AS uuid[]), CAST(@c0:_text AS uuid[]), …, @c3:_text, …) AS u(id, c0, …, c3, …);
+
+-- Rows read (and locked) by the prefetch: updated in place, only the columns the op changed
+UPDATE "cell" AS t SET "revision" = @rev, content = u.c3
+FROM unnest(CAST(@ids:_text AS uuid[]), @c3:_text) AS u(id, c3)
+WHERE t.id = u.id AND t."fileId" = @f;
 -- the affected-row count must equal the number of rows; otherwise roll back with invalidChange
 ```
 
 - **Full row images are safe.** The file lock serializes every writer of the file's rows, and nothing else writes them after the migration.
-- **Runs.** A run is a sequence of consecutive changes to one table; runs over 1,000 rows are split. `jsonb_to_recordset` vs `unnest(@col::type[], …)` is measured in R0.2, and the faster one is kept.
+- **Runs.** A run is a sequence of consecutive changes to one table; inserts and updates go in runs of ≤ 5,000 rows, prefetches of ≤ 10,000 ids per table. Binary arrays (`unnest`) replaced `jsonb_to_recordset` and in-place `UPDATE`s replaced `INSERT … ON CONFLICT` for existing rows (an update that misses rows, removed by a database cascade earlier in the op, is written again as the upsert) (R6 follow-up: 5,000 updated cells 108 → 55–73 ms, their prefetch 65 → 35 ms).
+- **HOT updates.** The cell table has `fillfactor = 85` (`RevStorage`, ensured at server start because models can't declare it), so rewritten cells mostly stay on their page and skip the three index inserts.
+- **File creation (§8.3)** answers the prefetch from memory: every row of the new file was written by the creation's earlier ops (`_CreatedRows`), and its ops build no view (nobody is connected).
+- **One encoding per op.** The applied form is encoded once for `rev_op.payload`; an op of inserts only reuses that text and gzip for its view.
 - **Cell deletes rely on the explicit cascade.** `cell.rowId`/`columnId` have no DB FK (02 §2.1), so deleting a `sheet_row` never triggers a scan of `cell`.
 
 #### 3.4 Throughput and fairness
@@ -1489,37 +1608,44 @@ writes.
 
 #### 7.1 Structure and rows pages
 
-- **Structure pages** walk the non-cell tables in rank order. Their cursor is `{t: tableIdx, after: id}` (04 §3), and each page is built as **one SQL statement**, so it is one snapshot. A page stops at `structurePageRows` (20,000) rows or 4 MiB compressed, whichever comes first.
+- **Structure pages** walk the non-cell tables in rank order. Their cursor is `{t: tableIdx, after: id}` (04 §3), and each page is read in **one repeatable-read transaction** (one statement per table), so it is one snapshot. A page stops at `structurePageRows` (20,000) rows or 4 MiB compressed, whichever comes first.
 - Tables with more than 50,000 rows for the file (per `stats.tables`) are skipped by structure pages and listed in `excludedTables`. They are served as `rows` pages (keyset by id, the same caps); the client may run several in parallel.
 
 ```sql
-WITH h AS (SELECT "headRevision" AS rev FROM rev_file WHERE id = @f)
-SELECT h.rev, x.t, x.j FROM h, (
-  (SELECT 0 AS t, row_to_json(s)::text AS j FROM "sheet" s
-     WHERE s."fileId" = @f AND s.id > @after0::uuid ORDER BY s.id LIMIT @n0)
-  UNION ALL
-  (SELECT 1, row_to_json(g)::text FROM "dimension_group" g WHERE g."fileId" = @f … LIMIT @n1)
-  UNION ALL …
-) x;
+-- per table of the page (one repeatable-read transaction = one snapshot):
+WITH s AS (SELECT * FROM "sheet_row" WHERE "fileId" = @f AND id > @a::uuid ORDER BY id LIMIT @n + 1),
+     t AS (SELECT * FROM s ORDER BY id LIMIT @n)
+SELECT (SELECT count(*) FROM s) > @n,                        -- more rows follow
+       (SELECT id::text FROM t ORDER BY id DESC LIMIT 1),    -- the cursor
+       array_agg(uuid_send(t.id)),                           -- ids as 16-byte values
+       CASE WHEN count(t."sheetId") = 0 THEN NULL ELSE array_agg(uuid_send(t."sheetId")) END,
+       CASE WHEN count(t."sortKey") = 0 THEN NULL ELSE array_agg(t."sortKey") END, …
+FROM t;
 ```
 
-`row_to_json` output is converted to the page format (04 §3.1); `fileId` and `revision` are
-excluded. Coverage: one `tbl:<table>:<from>:<to>` key per table touched by the page.
+Each table comes back as **one row of typed arrays** (UUIDs as `uuid_send` bytes, a column
+without values as null), which go into the version-2 body (04 §3.1) through `RevPageBuilder`
+without row maps or JSON; `fileId` and `revision` are excluded. A client without `format` gets
+the same rows as version 1. Coverage: one `tbl:<table>:<from>:<to>` key per table touched by
+the page.
 
 #### 7.2 Cell pages (Sheets)
 
 ```sql
-WITH h AS (SELECT "headRevision" AS rev FROM rev_file WHERE id = @f)
-SELECT h.rev, row_to_json(c)::text FROM h, "cell" c
-WHERE c."sheetId" = @s AND c."rowId" = ANY(@rows::uuid[]);       -- @s verified to belong to @f
+SELECT f."headRevision", array_agg(uuid_send(t.id)) FILTER (WHERE t.id IS NOT NULL),
+       CASE WHEN count(t.content) = 0 THEN NULL ELSE array_agg(t.content) END, …
+FROM rev_file f JOIN "sheet" s ON s."fileId" = f.id
+LEFT JOIN "cell" t ON t."sheetId" = s.id AND t."rowId" = ANY(@rows::uuid[])
+WHERE f.id = @f AND s.id = @s::uuid GROUP BY f."headRevision";   -- no row: not a sheet of @f
 ```
 
-At most `pageRows` (1,000) sheet rows per request, and ≤ 4 MiB. Coverage: `row:<s>:<rowId>`
-for every requested row.
+One statement checks the sheet, reads the head and the cells. At most `pageRows` (1,000) sheet
+rows per request, and ≤ 4 MiB. Coverage: `row:<s>:<rowId>` for every requested row. A
+13,000-cell page takes ~50 ms on the server (R6: ~190 ms with `row_to_json` and NDJSON).
 
 #### 7.3 Consistency
 
-- **One snapshot per page.** Each page is a single statement and therefore one MVCC snapshot. An op writes its rows and `headRevision` in one transaction, so the snapshot holds exactly the ops ≤ `rev` for every row.
+- **One snapshot per page.** Each page is read in one repeatable-read transaction (a cell page in a single statement) and therefore one MVCC snapshot. An op writes its rows and `headRevision` in one transaction, so the snapshot holds exactly the ops ≤ `rev` for every row.
 - **Convergence.** Together with the client rule (06 §5.3: apply buffered ops > `Rp` to rows covered by the page; keep ops for uncovered rows), the client converges to the head. Property test: 09 §2.5.
 
 ### 8. Server-originated changes
@@ -1746,6 +1872,10 @@ completed (`whenDurable`, as Write).
 - `loadFile(fileUuid)` returns the `rev_local_file` row plus this tab's outbox and orphaned outbox rows (§2.6).
 - `loadRows(fileUuid, {skip: {cell}})` reads keyset pages of 10,000, as today's `loadSpace`.
 - `loadCells(fileUuid, sheetId, rowIds)` reads 500 row ids per query, as `SheetsReplica.loadCells`.
+  As built: `loadScoped(fileUuid, sheetId, rowIds)`; `loadStructure(fileUuid)` and
+  `loadScopedAt(…)` return the rows with the revision of the stored state they belong to (one
+  read transaction), for the viewport-first reopen (As built 24).
+
 - `coverage(fileUuid)`, `recentOps(fileUuid, since)`, `filesWithOutbox()` and `usage()`.
 
 #### 2.4 Schema versions
@@ -1919,8 +2049,17 @@ open(fileUuid):
    - first the grid's `prioritize` requests (newest of the last 4, ±50 rows);
    - then the active sheet;
    - then the other sheets in tab order.
-   At most 2 requests are in flight.
-5. **Progress.** `rowLoading.progress` = loaded rows / total rows, with the total taken from `RevInit.stats.sheets`.
+   At most `RevFileSync.maxPagesInFlight` (3) cell pages are in flight; they are fetched and
+   decoded concurrently and applied in request order. A block is split over the free slots
+   (≥ 100 rows per page), so even a plan that hands out one block at a time gets parallel
+   pages; rows the plan hands out again while their page is in flight are not requested twice
+   (the loop waits for that page instead). A plan that skips rows already handed out (not yet
+   loaded) keeps every slot busy.
+5. **Decoding** (`RevPageDecoder`, `wonky_revlog_flutter/lib/src/transport/`) runs off the UI
+   thread: on desktop and mobile in a short-lived isolate per page (`Isolate.run`; the rows come
+   back without a copy), on the web in slices of ~8 ms that yield to the event loop. Bodies under
+   32 KiB are decoded inline.
+6. **Progress.** `rowLoading.progress` = loaded rows / total rows, with the total taken from `RevInit.stats.sheets`.
 
 #### 5.3 Coverage and buffered ops (exactness)
 
@@ -2064,21 +2203,23 @@ batches still arrive as remote batches.
 Measured in R6 on a Windows desktop (debug JIT, embedded Postgres, in-process `FakeRevHub` for
 the clients); details, setup and the fixes in
 [`plans/sheets-sync-migration/baseline.md`](../plans/sheets-sync-migration/baseline.md), the
-misses in `TODO.md` ("RevLog sync — open items").
+misses in `TODO.md` ("RevLog sync — open items"). The client gates (P6–P9) were measured again
+in R7 after the client work of As built 24 (same machine, three runs). The server and wire gates (P3, P4, P6, P7,
+P10, P11) were measured again in R7 after As built 25.
 
 | # | Metric | Budget | Measured by | Measured (R6) |
 |---|--------|--------|-------------|---------------|
 | P1 | Local op → visible in another client's model, one instance | p95 < 250 ms | e2e + `revlog_perf_test` (two connections, 500 single-cell ops) | server 4.9 ms, client apply 5.6 ms (1M cells) — pass |
 | P2 | Same, two instances (`Cluster.debugDistributed` with Redis) | p95 < 400 ms | multi-instance perf test | not measured (no Redis) |
-| P3 | Server commit, ≤ 100 changes | p95 < 15 ms | `revlog_perf_test` | 1 change 6.5 ms, 100 changes 13.5 ms — pass |
-| P4 | Server commit, 5,000 changes | p95 < 300 ms | same | 288–306 ms — borderline |
+| P3 | Server commit, ≤ 100 changes | p95 < 15 ms | `revlog_perf_test` | 1 change 6.5 ms, 100 changes 13.5 ms → R7 6.7 / 11.4 ms — pass |
+| P4 | Server commit, 5,000 changes | p95 < 300 ms | same | 288–306 ms → R7 250 ms (282 ms in a run while other suites ran) — pass |
 | P5 | Idle server cost per connected client | no DB queries while idle except the 5-minute role check | query counter in the perf test | 0 — pass |
-| P6 | Cold open (not on the device) of a 1M-cell sheet → `WorkbookReady` | < 1.5 s desktop, < 3 s web (OPFS) | client perf test against a local server; web via release build | server part 1.1 s, client 1.44–2.0 s — borderline; decks 0.7 s; web not measured |
-| P7 | Complete download of a 1M-cell sheet | < 15 s desktop, < 30 s web | same | server part 31 s, client 98 s — **miss** |
-| P8 | Reopen from cache (1M cells) → ready | ≤ today (0.55 s for 200k; scale linearly) | client perf test | 28.6–47 s — **miss** (loads every row before ready); decks 0.29 s |
-| P9 | 1M-cell local import (`applyChanges` into the outbox) | < 30 s | client perf test | 30–32 s (planner 26 s, outbox 4–6 s) — miss |
-| P10 | Server import of 1M cells (server change, 200 ops) | < 60 s | `revlog_perf_test` | 57.8 s — pass; as a new file in one transaction 63–69 s — miss |
-| P11 | Storage per non-empty cell (Postgres, incl. indexes) | ≤ 250 bytes average for typical content | `pg_total_relation_size` / cells | 210 B — pass |
+| P6 | Cold open (not on the device) of a 1M-cell sheet → `WorkbookReady` | < 1.5 s desktop, < 3 s web (OPFS) | client perf test against a local server; web via release build | server part 1.1 s → R7 0.45–0.54 s; client 1.44–2.0 s → R7 0.89–1.12 s — pass; decks 0.70 → 0.38 s; web not measured |
+| P7 | Complete download of a 1M-cell sheet | < 15 s desktop, < 30 s web | same | server part 31 s → R7 7.1–7.3 s (pages 2.6 s, decode 0.8–0.9 s, model 3.4 s); client 98 s → R7 12.6–14.5 s (2.6–2.9 s of it the in-process page serving) — pass |
+| P8 | Reopen from cache (1M cells) → ready | ≤ today (0.55 s for 200k; scale linearly) | client perf test | 28.6–47 s → R7 0.28–0.43 s (viewport-first; every cell in 8.5–10.8 s in the background) — pass; decks 0.29 → 0.22 s |
+| P9 | 1M-cell local import (`applyChanges` into the outbox) | < 30 s | client perf test | 30–32 s → R7 17.3–18.6 s (planner + model 26 → 13.3–14.2 s, outbox 3.9–4.4 s) — pass |
+| P10 | Server import of 1M cells (server change, 200 ops) | < 60 s | `revlog_perf_test` | 57.8 s → R7 41–42 s — pass; as a new file in one transaction 63–69 s → R7 37.6–38.0 s — pass |
+| P11 | Storage per non-empty cell (Postgres, incl. indexes) | ≤ 250 bytes average for typical content | `pg_total_relation_size` / cells | 210 B → R7 238 B (`fillfactor = 85`) — pass |
 | P12 | Server commit on a warm 200k-cell file with 20 protections, ≤ 100 changes | p95 < 30 ms; no cold model load inside the lock while a connection is open | `revlog_perf_test` | 5.6 / 14.2 ms, 0 cold loads — pass |
 
 The suites: `wonky_server/test/integration/sheets/revlog/revlog_perf_test.dart`,

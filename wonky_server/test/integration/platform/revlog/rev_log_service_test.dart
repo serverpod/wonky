@@ -2,6 +2,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
@@ -269,13 +270,17 @@ void main() {
           session,
           binding,
           file,
-          RevPageRequest(kind: RevPageKind.structure, maxRows: 100),
+          RevPageRequest(
+            kind: RevPageKind.structure,
+            maxRows: 100,
+            format: RevPageCodec.version,
+          ),
         );
         expect(structure.revision, state.revision);
         expect(structure.nextCursor, isNull);
         final rows = RevPageCodec.decode(
           binding.schema,
-          RevCodec.gunzip(structure.body.buffer.asUint8List()),
+          _bytes(structure),
         );
         expect(rows.where((r) => r.$1 == 'rl_row'), hasLength(4));
         expect(structure.coverage, contains('tbl:rl_row:-:+'));
@@ -288,11 +293,12 @@ void main() {
             sheetId: UuidValue.fromString(ids.sheet),
             rowIds: [for (final r in ids.rows) UuidValue.fromString(r)],
             maxRows: 1000,
+            format: RevPageCodec.version,
           ),
         );
         final cellRows = RevPageCodec.decode(
           binding.schema,
-          RevCodec.gunzip(cells.body.buffer.asUint8List()),
+          _bytes(cells),
         );
         expect(cellRows.map((r) => r.$2['content']).toSet(), {'p', 'q'});
         expect(cells.coverage, hasLength(4));
@@ -319,12 +325,47 @@ void main() {
           seen.addAll(
             RevPageCodec.decode(
               binding.schema,
-              RevCodec.gunzip(p.body.buffer.asUint8List()),
+              _bytes(p),
             ).map((r) => r.$2['id']! as String),
           );
           cursor = p.nextCursor;
         } while (cursor != null);
         expect(seen.toSet(), {ids.doc, ids.sheet, ...ids.rows});
+      },
+    );
+
+    test(
+      'when a client asks for no page format then it gets the same rows as '
+      'version 1 and a version-2 client as version 2',
+      () async {
+        await submit([ids.setCell(1, 1, 'v'), ids.setCell(2, 0, 'w')]);
+        final file = (await RevFile.db.findById(session, state.fileId))!;
+        Future<RevPage> cells(int? format) => RevPages.page(
+          session,
+          binding,
+          file,
+          RevPageRequest(
+            kind: RevPageKind.cells,
+            sheetId: UuidValue.fromString(ids.sheet),
+            rowIds: [for (final r in ids.rows) UuidValue.fromString(r)],
+            maxRows: 1000,
+            format: format,
+          ),
+        );
+        final old = await cells(null);
+        final current = await cells(RevPageCodec.version);
+        Map<String, Map<String, Object?>> byId(RevPage p) => {
+          for (final (_, r) in RevPageCodec.decode(binding.schema, _bytes(p)))
+            r['id']! as String: {
+              for (final e in r.entries)
+                if (e.value != null) e.key: e.value,
+            },
+        };
+
+        expect(RevPageCodec.versionOf(_bytes(old)), 1);
+        expect(RevPageCodec.versionOf(_bytes(current)), 2);
+        expect(byId(current), byId(old));
+        expect(byId(current), hasLength(greaterThanOrEqualTo(2)));
       },
     );
 
@@ -398,3 +439,6 @@ void main() {
     });
   });
 }
+
+Uint8List _bytes(RevPage p) =>
+    p.body.buffer.asUint8List(p.body.offsetInBytes, p.body.lengthInBytes);

@@ -233,8 +233,11 @@ final class FakeRevHub {
     }
     return api.RevPage(
       revision: server.head,
+      // The format the client asked for, as the server negotiates it.
       body: ByteData.sublistView(
-        RevCodec.gzip(RevPageCodec.encode(schema, rows)),
+        RevPageCodec.negotiate(r.format) == RevPageCodec.version
+            ? RevPageCodec.encode(schema, rows)
+            : RevPageCodec.encodeLegacy(schema, rows),
       ),
       coverage: coverage,
       excludedTables: const [],

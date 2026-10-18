@@ -11,7 +11,7 @@ import 'package:wonky_app/wonky_app.dart' show SimpleConnectionKeeper;
 import 'package:wonky_client/wonky_client.dart' as api;
 import 'package:wonky_client/wonky_client.dart' show DriveItemKind, Uuid;
 import 'package:wonky_core/wonky_core.dart' show Role;
-import 'package:wonky_revlog/codec.dart' show ChangeSet, RevCodec, RevPageCodec;
+import 'package:wonky_revlog/codec.dart' show ChangeSet, RevPageCodec;
 import 'package:wonky_revlog_flutter/testing.dart';
 import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart';
 import 'package:wonky_sheets/features/revlog/logged_workbook_session.dart';
@@ -131,19 +131,25 @@ void main() {
       ),
     );
     // The SQLite part of one cell page (500 rows), alone.
-    final sample = await b.client.store.loadScoped(file.uuid, sheet, [
+    final sampleRows = [
       for (final id in s2.model.sheets.first.rows.ids.skip(1).take(500)) id,
-    ]);
+    ];
+    final sample = await b.client.store.loadScoped(
+      file.uuid,
+      sheet,
+      sampleRows,
+    );
     final storeUs = <int>[];
     for (var i = 0; i < 5; i++) {
       final w = Stopwatch()..start();
       await b.client.store.applyPage(
         'perf-scratch-$i',
         revision: 1,
-        coverage: const [],
+        coverage: [for (final r in sampleRows) 'row:$sheet:$r'],
         rows: sample,
         replay: const [],
       );
+
       storeUs.add(w.elapsedMicroseconds);
     }
     _results.add(
@@ -260,15 +266,32 @@ void main() {
     final s3 = await b.open(file, waitReady: false);
     await whenReady(s3, timeout: const Duration(minutes: 2));
     final reopened = watch.elapsedMilliseconds;
+    final atReady = s3.model.sheets.first.cells.count;
     _results.add(
       _Result(
         'P8',
-        'Reopen from the cache (${_n(s3.model.sheets.first.cells.count)} '
-            'cells) → WorkbookReady (alone: rows read $readMs ms, model '
-            'built $modelMs ms)',
+        'Reopen from the cache → WorkbookReady (viewport-first: structure + '
+            '${_n(atReady)} cells; for reference, reading all rows takes '
+            '$readMs ms and building the model of all of them $modelMs ms)',
         '≤ ${(2750 * scale).round()} ms (0.55 s per 200k)',
         _ms(reopened),
         pass: reopened <= 2750 * scale,
+      ),
+    );
+    // The rest streams in from the cache in the background.
+    await _eventually(
+      () => s3.rowLoading.complete,
+      const Duration(minutes: 10),
+    );
+    final streamed = watch.elapsedMilliseconds;
+    expect(s3.model.sheets.first.cells.count, cells);
+    _results.add(
+      _Result(
+        '—',
+        'Reopen from the cache: every cell loaded '
+            '(${_n(s3.model.sheets.first.cells.count)}, background after ready)',
+        'info',
+        _ms(streamed),
       ),
     );
     await s3.dispose();
@@ -293,7 +316,8 @@ void main() {
       _Result(
         '—',
         'Cache open (RevLocalStore.open, '
-            '${(size / 1048576).toStringAsFixed(0)} MiB SQLite file)',
+            '${(size / 1048576).toStringAsFixed(0)} MiB SQLite file, '
+            '${(size / cells).round()} B per cell)',
         'info',
         _ms(opened),
       ),
@@ -495,7 +519,9 @@ final class _IndexedTransport implements RevTransport {
     return api.RevPage(
       revision: head,
       body: ByteData.sublistView(
-        RevCodec.gzip(RevPageCodec.encode(sheetsSchema, rows)),
+        RevPageCodec.negotiate(request.format) == RevPageCodec.version
+            ? RevPageCodec.encode(sheetsSchema, rows)
+            : RevPageCodec.encodeLegacy(sheetsSchema, rows),
       ),
       coverage: [for (final id in ids) 'row:$sheet:$id'],
       excludedTables: const [],

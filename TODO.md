@@ -159,33 +159,24 @@ kit and the sync spaces were removed in R8. Deferred:
   (`specs/01-architecture.md` §6).
 - ☐ **Performance gates missed in R6** (`plans/sheets-sync-migration/baseline.md`, spec 17 part 7;
   Windows desktop, debug JIT, embedded Postgres, 1M = 38,461 rows × 26 columns):
-  - **P8 reopen from the cache** (≤ 2.75 s for 1M): 28.6–47.1 s; 1.9 s for 100k. Reading the 1M JSON
-    rows from SQLite takes 13.8–17.7 s, building the model 8.2–12.1 s. Fix: open from the cache
-    viewport-first like a cold open (structure + the viewport's rows from `rev_row` by
-    `scope/row_key`, ready, then the rest in the background through the same
-    `RevBootstrapPlan`), with the outbox overlay and buffered remote ops handled as for pages
-    (`RevFileSync._applyPage`). Decks pass (288 ms for 500 slides).
-  - **P7 complete download** (< 15 s for 1M): server side alone 31.2 s (pages 14.8 s, decode
-    6.4 s, model 9.4 s), the client with SQLite 98–101 s (about 160 ms per 13k-cell page in
-    `RevLocalStore.applyPage`). Needs a cheaper page format (columnar/binary instead of NDJSON of
-    full rows), decoding off the UI isolate, parallel page requests and a bulk model load.
-  - **P6 cold open on the client** (< 1.5 s): 1.44–2.0 s for 1M (the server part is 1.1 s): the
-    structure page of 38k sheet rows is written to SQLite and the model before ready.
-  - **P10 import into a new file** (< 60 s): 63–69 s; `createSpreadsheetFromSheets` commits
-    the ~210 ops in one transaction. A server change into an existing sheet passes, only
-    just (58 s). The cost per 5,000-cell op is ~85 ms of `INSERT … jsonb_to_recordset`, ~55 ms
-    op log and ~35 ms prefetch; next steps: `COPY`/binary arrays for bulk inserts, and the cell table's
-    `fillfactor` (< 100) so content updates are HOT (fewer index writes; also for P4).
-  - **P9 local import** (< 30 s): 30–32 s, of which 26 s is the Sheets planner and model
-    (`SetCellInputs` of 1M inputs); the RevLog outbox write is 4–6 s.
-  - **P3/P4 margin:** p95 of 100-change commits is 12–14 ms and of 5,000-change commits
-    250–306 ms (borderline), and 22 ms / 385 ms in a run right after the 1M-row
-    imports (Postgres autovacuum): re-measure on the CI machine.
-  - **Client cache size:** ~700 B per cell in SQLite (695–733 MiB for 1M cells): the generic
-    `rev_row` repeats file uuid, scope and row key as text in the row and both indexes. Integer
-    file ids, a compact row encoding or per-sheet blobs would shrink it.
-  - **Not measured:** P2 (two instances need Redis), web (OPFS) for P6/P7, and the e2e P1 against
-    `serverpod start`.
+  - **P7 client margin** (< 15 s for 1M): 12.6–14.5 s with SQLite since R7, of which ~2.6 s
+    is the in-process page serving of the test; most of the rest is the model and the formula
+    engine taking 1M cells on the UI isolate (~3.4 s) and the store's id index, built in one
+    sorted insert when the download completes (~1.9 s); a bulk model load and building that
+    index lazily (the open model knows every cell's row) are the next steps.
+  - **P3/P4 on the CI machine:** R7 p95 11.4 ms (100 changes) and 250 ms (5,000 changes) on
+    this desktop, 282 ms for P4 while other suites ran; re-measure on the CI machine.
+  - **Not measured:** P2 (two instances need Redis), web (OPFS) for P6/P7/P8 (the web runs the
+    cache's page writes as statements: `computeWithDatabase` needs the native worker), and the
+    e2e P1 against `serverpod start`.
+  - Resolved in R7 (client, spec 17 As built 24): P8 reopen from the cache (28.6–47.1 s →
+    0.28–0.43 s, viewport-first), P6 on the client (1.44–2.0 → 0.89–1.12 s), P9 local import
+    (30–32 → 17.3–18.6 s) and the cache size (695–733 → 107–108 MiB for 1M cells).
+  - Resolved in R7 (wire and server, spec 17 As built 25): P7 server side (31.2 → 7.1–7.3 s;
+    page format version 2, typed-array page reads, parallel pages decoded off the UI isolate),
+    P10 import into a new file (63–69 → 37.6–38.0 s) and into an existing sheet (58 → 41–42 s;
+    binary-array writes, in-place updates, creation prefetch from memory, one encoding per op),
+    P4 (288–322 → 250 ms) and the cell table's `fillfactor` (85, P11 210 → 238 B).
 - ☐ The generated client still carries the five client-database migrations of the CRDT era
   (`wonky_client/lib/migrations/`); no app opens that database any more. Remove them when the
   generator supports dropping the client database.

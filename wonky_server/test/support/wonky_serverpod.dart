@@ -2,6 +2,7 @@ import 'package:meta/meta.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/server.dart' show registerVersionProviders;
+import 'package:wonky_server/src/platform/revlog/rev_storage.dart';
 import 'package:wonky_server/src/slides/revlog/slides_revlog.dart';
 import 'package:wonky_server/src/write/ot/document_cache.dart';
 import 'package:wonky_server/src/write/themes/theme_service.dart';
@@ -37,6 +38,7 @@ void withWonkyServerpod(
         registerVersionProviders();
         SlidesRevlog.register();
         await ThemeService.upsertBuiltins(session);
+        await RevStorage.ensure(session);
       });
       tearDownAll(DocumentCache.clear);
       testClosure(sessionBuilder, endpoints);

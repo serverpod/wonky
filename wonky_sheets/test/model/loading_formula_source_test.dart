@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_client/wonky_client.dart'
     show RevPageKind, RevPageRequest, UuidValue;
 import 'package:wonky_sheets/features/model/loading_formula_source.dart';
+import 'package:wonky_sheets/features/revlog/logged_workbook_session.dart';
 import 'package:wonky_sheets_core/formula.dart' show FError, FNumber;
 import 'package:wonky_sheets_core/model.dart';
 
@@ -55,13 +56,21 @@ void main() {
     binding.dispose();
     commitPlan(hub, space, testUser, plan);
 
-    // Pages after the first cell block wait until the checks are done.
+    // Cell pages after the viewport's rows (the first block, possibly split
+    // over several pages in flight) wait until the checks are done.
     final device = await SheetsDevice.start(hub, testUser);
     final release = Completer<void>();
-    var cellPages = 0;
-    device.transport.beforePage = (RevPageRequest r) async {
-      if (r.kind == RevPageKind.cells && cellPages++ > 0) await release.future;
+    final viewport = {
+      for (var r = 0; r < LoggedWorkbookSession.viewportRows; r++)
+        sheet.rows.idAt(r),
     };
+    device.transport.beforePage = (RevPageRequest r) async {
+      if (r.kind == RevPageKind.cells &&
+          !r.rowIds!.any((id) => viewport.contains(id.uuid))) {
+        await release.future;
+      }
+    };
+
     final s = await device.openFile(space);
     expect(s.rowLoading.complete, isFalse);
     final id = s.model.sheets.single.id;

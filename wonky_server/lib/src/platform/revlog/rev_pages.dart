@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_revlog/codec.dart';
-import 'package:wonky_revlog/rows.dart';
+import 'package:wonky_revlog/schema.dart';
 
 import '../common/models.dart';
 import 'rev_binding.dart';
@@ -11,6 +11,13 @@ import 'rev_sql.dart';
 
 /// Bootstrap pages (RevLog spec 05 §7, 04 §3): each page is read in one
 /// repeatable-read transaction, so it is one snapshot at `revision`.
+///
+/// A table's rows are read column by column: one statement returns one
+/// row of typed arrays (`array_agg` per column; ids and UUID columns as
+/// 16-byte `uuid_send` values; a column without values as null), which go
+/// straight into the columnar body of format version 2 ([RevPageBuilder])
+/// without row maps. Clients that don't ask for a format get version 1
+/// (gzip NDJSON).
 abstract final class RevPages {
   /// Max rows of a structure/rows page (`structurePageRows`).
   static int structurePageRows = 20000;
@@ -56,6 +63,33 @@ abstract final class RevPages {
       if (!b.perSheetTables.contains(t.name)) t.name,
   ]..sort((x, y) => b.schema.rank(x).compareTo(b.schema.rank(y)));
 
+  /// The aggregate select list of [table] over the rows `t`: the ids, then
+  /// one array per column (null when every value is null).
+  static String _columns(RevTable table) {
+    String agg(String column, String expr) =>
+        'CASE WHEN count(t.$column) = 0 THEN NULL ELSE array_agg($expr) END';
+    return [
+      'array_agg(uuid_send(t.id)) FILTER (WHERE t.id IS NOT NULL)',
+      for (final c in table.columns)
+        agg(
+          RevSql.q(c.name),
+          c.type == RevColumnType.uuid
+              ? 'uuid_send(t.${RevSql.q(c.name)})'
+              : 't.${RevSql.q(c.name)}',
+        ),
+    ].join(', ');
+  }
+
+  /// Reads the result of a [_columns] select.
+  static _Cols _read(RevTable table, List<Object?> r) => _Cols(
+    table.name,
+    [...?(r[0] as List?)?.cast<Object>()],
+    {
+      for (final (i, c) in table.columns.indexed)
+        if (r[i + 1] case final List<Object?> values) c.name: values,
+    },
+  );
+
   static Future<RevPage> _structure(
     Session session,
     Transaction tx,
@@ -74,40 +108,36 @@ abstract final class RevPages {
         ? (t: 0, after: null)
         : _cursor(request.cursor!);
     final max = request.maxRows.clamp(1, structurePageRows);
-    final sql = RevSql(binding.schema, perSheetTables: binding.perSheetTables);
-    final rows = <(String, Map<String, Object?>)>[];
+    final cols = <_Cols>[];
+    var count = 0;
     final coverage = <String>[];
     String? next;
     for (var ti = cursor.t; ti < tables.length; ti++) {
       final name = tables[ti];
       if (excluded.contains(name)) continue;
       final after = ti == cursor.t ? cursor.after : null;
-      final left = max - rows.length;
-      final got = await _keyset(
+      final left = max - count;
+      final (got, more, last) = await _keyset(
         session,
         tx,
-        sql,
+        binding.schema.table(name),
         file.id!,
-        name,
         after,
-        left + 1,
+        left,
       );
-      final full = got.length <= left;
-      final take = full ? got : got.sublist(0, left);
-      rows.addAll([for (final r in take) (name, r)]);
-      final last = take.isEmpty
-          ? after
-          : take.last[RowChange.idColumn]! as String;
-      coverage.add('tbl:$name:${after ?? '-'}:${full ? '+' : last}');
-      if (!full) {
+      cols.add(got);
+      count += got.ids.length;
+      coverage.add('tbl:$name:${after ?? '-'}:${more ? last : '+'}');
+      if (more) {
         next = jsonEncode({'t': ti, 'after': last});
         break;
       }
     }
     return _page(
       binding,
+      request,
       head,
-      rows,
+      cols,
       coverage,
       next,
       request.cursor == null ? excluded.toList() : const [],
@@ -119,30 +149,33 @@ abstract final class RevPages {
     return (t: (m['t']! as num).toInt(), after: m['after'] as String?);
   }
 
-  static Future<List<Map<String, Object?>>> _keyset(
+  /// The first [limit] rows of [table] after [after] (by id), whether
+  /// more follow, and the last id read.
+  static Future<(_Cols, bool, String?)> _keyset(
     Session session,
     Transaction tx,
-    RevSql sql,
+    RevTable table,
     int fileId,
-    String name,
     String? after,
     int limit,
   ) async {
-    final table = sql.schema.table(name);
-    final rows = await session.db.unsafeQuery(
-      'SELECT ${RevSql.rowJson} FROM ${RevSql.q(name)} t '
-      'WHERE t."fileId" = @f${after == null ? '' : ' AND t.id > @a::uuid'} '
-      'ORDER BY t.id LIMIT $limit',
+    final r = await session.db.unsafeQuery(
+      'WITH s AS (SELECT * FROM ${RevSql.q(table.name)} '
+      'WHERE "fileId" = @f${after == null ? '' : ' AND id > @a::uuid'} '
+      'ORDER BY id LIMIT ${limit + 1}), '
+      't AS (SELECT * FROM s ORDER BY id LIMIT $limit) '
+      'SELECT (SELECT count(*) FROM s) > $limit, '
+      '(SELECT id::text FROM t ORDER BY id DESC LIMIT 1), '
+      '${_columns(table)} FROM t',
       parameters: QueryParameters.named({'f': fileId, 'a': ?after}),
       transaction: tx,
     );
-    return [
-      for (final r in rows)
-        sql.rowFromJson(
-          table,
-          (jsonDecode(r[0]! as String) as Map).cast<String, Object?>(),
-        ),
-    ];
+    final row = r.first;
+    return (
+      _read(table, row.sublist(2)),
+      row[0]! as bool,
+      (row[1] as String?) ?? after,
+    );
   }
 
   static Future<RevPage> _rows(
@@ -163,19 +196,21 @@ abstract final class RevPages {
         ? null
         : _cursor(request.cursor!).after;
     final max = request.maxRows.clamp(1, structurePageRows);
-    final sql = RevSql(binding.schema, perSheetTables: binding.perSheetTables);
-    final got = await _keyset(session, tx, sql, file.id!, name, after, max + 1);
-    final full = got.length <= max;
-    final take = full ? got : got.sublist(0, max);
-    final last = take.isEmpty
-        ? after
-        : take.last[RowChange.idColumn]! as String;
+    final (got, more, last) = await _keyset(
+      session,
+      tx,
+      binding.schema.table(name),
+      file.id!,
+      after,
+      max,
+    );
     return _page(
       binding,
+      request,
       head,
-      [for (final r in take) (name, r)],
-      ['tbl:$name:${after ?? '-'}:${full ? '+' : last}'],
-      full ? null : jsonEncode({'t': 0, 'after': last}),
+      [got],
+      ['tbl:$name:${after ?? '-'}:${more ? last : '+'}'],
+      more ? jsonEncode({'t': 0, 'after': last}) : null,
       const [],
     );
   }
@@ -198,44 +233,35 @@ abstract final class RevPages {
       (p) => p.table != scope.table,
       orElse: () => scope,
     );
-    // The sheet must belong to the file.
+    final ids = [
+      for (final r in rowIds.take(pageRows)) r.uuid,
+    ];
+    // The sheet must belong to the file (and the head, in the snapshot).
     final owner = await session.db.unsafeQuery(
-      'SELECT 1 FROM ${RevSql.q(scope.table)} WHERE id = @s::uuid '
-      'AND "fileId" = @f',
+      'SELECT f."headRevision" FROM rev_file f '
+      'JOIN ${RevSql.q(scope.table)} s ON s."fileId" = f.id '
+      'WHERE f.id = @f AND s.id = @s::uuid',
       parameters: QueryParameters.named({'s': sheetId.uuid, 'f': file.id}),
       transaction: tx,
     );
     if (owner.isEmpty) throw ArgumentError('unknown sheet');
-    final head = await _head(session, tx, file.id!);
-    final ids = [
-      for (final r in rowIds.take(pageRows)) r.uuid,
-    ];
-    final sql = RevSql(binding.schema, perSheetTables: binding.perSheetTables);
-    final rows = ids.isEmpty
-        ? const <List<Object?>>[]
-        : await session.db.unsafeQuery(
-            'SELECT ${RevSql.rowJson} FROM ${RevSql.q(table.name)} t '
-            'WHERE t.${RevSql.q(scope.column)} = @s::uuid '
-            'AND t.${RevSql.q(row.column)} = ANY(@rows::uuid[])',
-            parameters: QueryParameters.named({
-              's': sheetId.uuid,
-              'rows': ids,
-            }),
-            transaction: tx,
-          );
+    // One index probe per sheet row, in request order: with `rowId =
+    // ANY(…)` Postgres reads the whole sheet through the (sheetId,
+    // columnId) index when its statistics don't know the sheet is big
+    // (2.4 s instead of ~50 ms for a page of a 1M-cell sheet).
+    final r = await session.db.unsafeQuery(
+      'SELECT ${_columns(table)} FROM unnest(@rows::uuid[]) r(id), '
+      'LATERAL (SELECT * FROM ${RevSql.q(table.name)} c '
+      'WHERE c.${RevSql.q(scope.column)} = @s::uuid '
+      'AND c.${RevSql.q(row.column)} = r.id OFFSET 0) t',
+      parameters: QueryParameters.named({'s': sheetId.uuid, 'rows': ids}),
+      transaction: tx,
+    );
     return _page(
       binding,
-      head,
-      [
-        for (final r in rows)
-          (
-            table.name,
-            sql.rowFromJson(
-              table,
-              (jsonDecode(r[0]! as String) as Map).cast<String, Object?>(),
-            ),
-          ),
-      ],
+      request,
+      owner.first[0]! as int,
+      [_read(table, r.first)],
       [for (final id in ids) 'row:${sheetId.uuid}:$id'],
       null,
       const [],
@@ -244,19 +270,43 @@ abstract final class RevPages {
 
   static RevPage _page(
     RevBinding binding,
+    RevPageRequest request,
     int revision,
-    List<(String, Map<String, Object?>)> rows,
+    List<_Cols> tables,
     List<String> coverage,
     String? next,
     List<String> excluded,
   ) {
-    final body = RevCodec.gzip(RevPageCodec.encode(binding.schema, rows));
+    final schema = binding.schema;
+    final b = RevPageBuilder(schema);
+    for (final t in tables) {
+      if (t.ids.isEmpty) continue;
+      b.addTable(t.table, t.ids, t.columns);
+    }
+    var bytes = b.build();
+    if (RevPageCodec.negotiate(request.format) != RevPageCodec.version) {
+      // A client from before format negotiation: gzip NDJSON.
+      bytes = RevPageCodec.encodeLegacy(
+        schema,
+        RevPageCodec.decode(schema, bytes),
+      );
+    }
     return RevPage(
       revision: revision,
-      body: ByteData.sublistView(body),
+      body: ByteData.sublistView(bytes),
       coverage: coverage,
       excludedTables: excluded,
       nextCursor: next,
     );
   }
+}
+
+/// A table's rows as columns: [ids] (16-byte values) and the columns that
+/// have values, aligned with them.
+final class _Cols {
+  _Cols(this.table, this.ids, this.columns);
+
+  final String table;
+  final List<Object> ids;
+  final Map<String, List<Object?>> columns;
 }

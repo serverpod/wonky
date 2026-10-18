@@ -16,6 +16,7 @@ import 'src/platform/cluster/cluster.dart';
 import 'src/platform/cluster/cluster_bus.dart';
 import 'src/platform/common/guarded.dart';
 import 'src/platform/common/search_indexes.dart';
+import 'src/platform/revlog/rev_storage.dart';
 import 'src/platform/config/wonky_config.dart';
 import 'src/platform/files/file_routes.dart';
 import 'src/platform/mcp/mcp_route.dart';
@@ -77,6 +78,8 @@ void run(List<String> args) async {
   final session = await pod.createSession(enableLogging: false);
   try {
     await ThemeService.upsertBuiltins(session);
+    // Storage parameters the models cannot declare (RevLog 05 §3.3).
+    await RevStorage.ensure(session);
     if (pod.redisController == null &&
         (pod.runMode == ServerpodRunMode.staging ||
             pod.runMode == ServerpodRunMode.production)) {

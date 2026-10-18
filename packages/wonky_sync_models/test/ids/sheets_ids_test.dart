@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:test/test.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wonky_sync_models/ids.dart';
+import 'package:wonky_sync_models/src/ids/uuid5.dart';
 
 void main() {
   group('Given deterministic sheet ids', () {
@@ -78,6 +79,33 @@ void main() {
           ),
         );
       }
+    });
+  });
+
+  group('Given the UUIDv5 hasher', () {
+    final names = [
+      '',
+      'a',
+      for (final n in [39, 40, 47, 48, 55, 56, 63, 64, 119, 120, 300]) 'x' * n,
+      'Thème — größe',
+      'emoji 😀 and ä€',
+      'Ünïcödé ' * 20,
+    ];
+    for (final name in names) {
+      test('when hashing a name of ${name.length} code units then it equals '
+          'Uuid.v5', () {
+        expect(
+          Uuid5(SheetsIds.cellNamespace).of(name),
+          const Uuid().v5(SheetsIds.cellNamespace, name),
+        );
+      });
+    }
+
+    test('when one hasher hashes a long and then a short name then the '
+        'second id is not affected by the first', () {
+      final h = Uuid5(SheetsIds.cellNamespace);
+      h.of('y' * 500);
+      expect(h.of('short'), const Uuid().v5(SheetsIds.cellNamespace, 'short'));
     });
   });
 

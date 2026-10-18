@@ -289,6 +289,7 @@ void main() {
               kind: RevPageKind.structure,
               cursor: cursor,
               maxRows: 20000,
+              format: RevPageCodec.version,
             ),
           );
           bytes += p.body.lengthInBytes;
@@ -325,6 +326,7 @@ void main() {
               sheetId: UuidValue.fromString(sheetId),
               rowIds: ids,
               maxRows: ids.length,
+              format: RevPageCodec.version,
             ),
           );
           serverUs += w.elapsedMicroseconds;
@@ -924,9 +926,7 @@ final class _PerfClient {
 
 List<(String, Map<String, Object?>)> _decode(RevPage p) => RevPageCodec.decode(
   SheetsRevBinding.instance.schema,
-  RevCodec.gunzip(
-    p.body.buffer.asUint8List(p.body.offsetInBytes, p.body.lengthInBytes),
-  ),
+  p.body.buffer.asUint8List(p.body.offsetInBytes, p.body.lengthInBytes),
 );
 
 Future<RevFile> _revFile(Session session, UuidValue fileUuid) async =>

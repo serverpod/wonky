@@ -100,16 +100,15 @@ final class SlidesRevDevice {
           kind: RevPageKind.structure,
           cursor: cursor,
           maxRows: 20000,
+          format: RevPageCodec.version,
         ),
       );
       rows.addAll(
         RevPageCodec.decode(
           _binding.schema,
-          RevCodec.gunzip(
-            p.body.buffer.asUint8List(
-              p.body.offsetInBytes,
-              p.body.lengthInBytes,
-            ),
+          p.body.buffer.asUint8List(
+            p.body.offsetInBytes,
+            p.body.lengthInBytes,
           ),
         ),
       );

@@ -73,10 +73,11 @@ abstract final class SheetsTables {
   ];
 
   /// Rank of [table] in [dependencyOrder] (unknown tables last).
-  static int rank(String table) {
-    final i = dependencyOrder.indexOf(table);
-    return i < 0 ? dependencyOrder.length : i;
-  }
+  static int rank(String table) => _ranks[table] ?? dependencyOrder.length;
+
+  static final Map<String, int> _ranks = {
+    for (var i = 0; i < dependencyOrder.length; i++) dependencyOrder[i]: i,
+  };
 }
 
 /// Column names shared by several tables.

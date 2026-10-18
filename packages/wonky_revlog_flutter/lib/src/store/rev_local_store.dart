@@ -6,6 +6,8 @@ import 'package:wonky_revlog/codec.dart';
 import 'package:wonky_revlog/rows.dart';
 import 'package:wonky_revlog/schema.dart';
 
+import 'rev_domain_rows.dart';
+
 /// The cached state of one file (`rev_local_file`, RevLog spec 02 §3).
 final class RevLocalFile {
   /// Creates the record.
@@ -40,7 +42,44 @@ final class RevLocalFile {
   final bool orphaned;
 }
 
+/// Rows read from the store with the revision of the server state they
+/// belong to (read in one transaction).
+final class RevStoredRows {
+  /// Creates the record.
+  const RevStoredRows(this.revision, this.rows);
+
+  /// `rev_local_file.revision` at the read.
+  final int revision;
+
+  /// (table, full row).
+  final List<(String, Map<String, Object?>)> rows;
+}
+
+/// One bootstrap page for [RevLocalStore.applyPages].
+final class RevPageWrite {
+  /// Creates the record.
+  const RevPageWrite({
+    required this.revision,
+    required this.coverage,
+    required this.rows,
+    this.replay = const [],
+  });
+
+  /// The page revision `Rp`.
+  final int revision;
+
+  /// Its coverage keys.
+  final List<String> coverage;
+
+  /// Its rows (table, full row).
+  final List<(String, Map<String, Object?>)> rows;
+
+  /// Buffered changes newer than the page, for its keys.
+  final List<RowChange> replay;
+}
+
 /// An outbox row of the store.
+
 final class RevStoredOp {
   /// Creates the record.
   const RevStoredOp(this.tabId, this.op, {required this.inflight});
@@ -89,12 +128,15 @@ final class RevOpMeta {
 
 /// The local RevLog cache of one user and app (RevLog spec 02 §3, 06 §2).
 ///
-/// Domain rows live in one generic table `rev_row` (table, id, JSON row,
-/// plus the sheet/row key of cells for viewport and coverage reads), so the
-/// cache needs no DDL per schema table and survives schema changes by a
-/// simple reset.
+/// Domain rows live in generic tables ([RevDomainRows]: structure rows one
+/// per record, cells one record per sheet row, a compact binary row
+/// encoding), so the cache needs no DDL per schema table and survives
+/// schema changes by a simple reset.
 final class RevLocalStore {
-  RevLocalStore._(this.db, this.schema, this.app);
+  RevLocalStore._(this.db, this.schema, this.app)
+    : _rows = RevDomainRows(schema);
+
+  final RevDomainRows _rows;
 
   /// The database.
   final SqliteDatabase db;
@@ -122,11 +164,31 @@ final class RevLocalStore {
       directory: directory,
     );
     final store = RevLocalStore._(db, schema, app);
+    await store._pragmas();
     await store._checkSchema();
     return store;
   }
 
-  /// The cache's migrations (fixed DDL; domain data is JSON).
+  /// Per-connection settings (06 §2.1): a 64 MB page cache for the writer
+  /// (bulk page writes into a cache of a million cells), temp tables in
+  /// memory and fewer WAL checkpoints during bulk loads.
+  Future<void> _pragmas() async {
+    try {
+      await db.withAllConnections((writer, readers) async {
+        await writer.execute('PRAGMA cache_size = -65536');
+        await writer.execute('PRAGMA temp_store = MEMORY');
+        await writer.execute('PRAGMA wal_autocheckpoint = 20000');
+        for (final r in readers) {
+          await r.getAll('PRAGMA cache_size = -16384');
+        }
+      });
+    } on Object {
+      // Not every platform's pool allows it (web); the defaults work.
+    }
+  }
+
+  /// The cache's migrations (fixed DDL; domain rows are binary, see
+  /// [RevDomainRows]). A new layout resets server state (the outbox stays).
   static final migrations = SqliteMigrations()
     ..add(
       SqliteMigration(1, (tx) async {
@@ -201,6 +263,18 @@ final class RevLocalStore {
           'CREATE INDEX rev_row_scope ON rev_row (file_uuid, scope, row_key)',
         );
       }),
+    )
+    ..add(
+      // R7: integer file ids, cells grouped per sheet row, binary rows
+      // (~700 → ~70 bytes per cell). Server state is reloaded.
+      SqliteMigration(2, (tx) async {
+        await tx.execute('DROP TABLE rev_row');
+        await RevDomainRows.createTables(tx);
+        await tx.execute('DELETE FROM rev_coverage');
+        await tx.execute(
+          'UPDATE rev_local_file SET complete = 0, revision = 0',
+        );
+      }),
     );
 
   Future<void> _checkSchema() async {
@@ -212,7 +286,7 @@ final class RevLocalStore {
     await db.writeTransaction((tx) async {
       // A new schema: server state is reloaded (02 §2.4); the outbox stays
       // and is re-encoded below.
-      await tx.execute('DELETE FROM rev_row');
+      await _rows.deleteAll(tx);
       await tx.execute('DELETE FROM rev_coverage');
       await tx.execute('UPDATE rev_local_file SET complete = 0, revision = 0');
       await tx.execute(
@@ -362,19 +436,35 @@ final class RevLocalStore {
     );
   });
 
-  /// Marks [fileUuid] complete (every row loaded) at its revision.
-  Future<void> markComplete(String fileUuid, {required bool complete}) =>
-      db.execute('UPDATE rev_local_file SET complete = ? WHERE file_uuid = ?', [
-        complete ? 1 : 0,
+  /// Marks [fileUuid] complete (every row loaded) at its revision. A
+  /// finished bootstrap passes the [revision] its rows are at (pages and
+  /// the buffered ops replayed on them), so a reopen catches up from there
+  /// (the revision never decreases). A complete file needs no coverage
+  /// keys any more (a new bootstrap starts from a reset): they go.
+  Future<void> markComplete(
+    String fileUuid, {
+    required bool complete,
+    int? revision,
+  }) => db.writeTransaction((tx) async {
+    await tx.execute(
+      'UPDATE rev_local_file SET complete = ?, '
+      'revision = max(revision, ?) WHERE file_uuid = ?',
+      [complete ? 1 : 0, revision ?? 0, fileUuid],
+    );
+    if (complete) {
+      await tx.execute('DELETE FROM rev_coverage WHERE file_uuid = ?', [
         fileUuid,
       ]);
+      await _rows.indexPending(tx, fileUuid);
+    }
+  });
 
   /// Forgets the server state of [fileUuid] (re-bootstrap; the outbox
   /// stays).
   Future<void> resetServerState(String fileUuid) => db.writeTransaction((
     tx,
   ) async {
-    await tx.execute('DELETE FROM rev_row WHERE file_uuid = ?', [fileUuid]);
+    await _rows.deleteFile(tx, fileUuid);
     await tx.execute('DELETE FROM rev_coverage WHERE file_uuid = ?', [
       fileUuid,
     ]);
@@ -386,8 +476,9 @@ final class RevLocalStore {
 
   /// Removes everything of [fileUuid] except its outbox (eviction).
   Future<void> evict(String fileUuid) => db.writeTransaction((tx) async {
+    _filesWithRow.remove(fileUuid);
+    await _rows.deleteFile(tx, fileUuid);
     for (final t in const [
-      'rev_row',
       'rev_coverage',
       'rev_local_op',
       'rev_outcome',
@@ -541,131 +632,6 @@ final class RevLocalStore {
 
   // ---------------------------------------------------------------- rows
 
-  (String?, String?) _scope(String table, Map<String, Object?> row) {
-    final t = schema.tryTable(table);
-    if (t?.coverage != RevCoverage.cellsByRow) return (null, null);
-    final parents = t!.parents;
-    final scope = parents.isEmpty ? null : row[parents.first.column];
-    final key = parents.length < 2 ? null : row[parents[1].column];
-    return (scope as String?, key as String?);
-  }
-
-  static Object? _jsonSafe(Object? v) => switch (v) {
-    DateTime() => {r'$date': v.toUtc().millisecondsSinceEpoch},
-    _ => v,
-  };
-
-  static Object? _fromJsonSafe(Object? v) =>
-      v is Map && v.length == 1 && v.containsKey(r'$date')
-      ? DateTime.fromMillisecondsSinceEpoch(
-          (v[r'$date']! as num).toInt(),
-          isUtc: true,
-        )
-      : v;
-
-  /// The stored JSON of a full row. Null columns are left out (a cell has
-  /// ~30 columns, mostly null): an absent column reads back as null.
-  static String _encodeRow(Map<String, Object?> row) => jsonEncode({
-    for (final e in row.entries)
-      if (e.value != null) e.key: _jsonSafe(e.value),
-  });
-
-  static Map<String, Object?> _decodeRow(String json) => {
-    for (final e in (jsonDecode(json) as Map).entries)
-      e.key as String: _fromJsonSafe(e.value),
-  };
-
-  Future<void> _putRows(
-    SqliteWriteContext tx,
-    String fileUuid,
-    Iterable<(String, Map<String, Object?>)> rows,
-  ) async {
-    // One prepared statement for the whole set (a statement per row costs
-    // a round trip to the database isolate each).
-    final sets = <List<Object?>>[
-      for (final (table, row) in rows)
-        if (_scope(table, row) case (final scope, final key))
-          [
-            fileUuid,
-            table,
-            row[RowChange.idColumn]! as String,
-            scope,
-            key,
-            _encodeRow(row),
-          ],
-    ];
-    if (sets.isEmpty) return;
-    await tx.executeBatch(
-      'INSERT OR REPLACE INTO rev_row (file_uuid, tbl, id, scope, row_key, data) '
-      'VALUES (?, ?, ?, ?, ?, ?)',
-      sets,
-    );
-  }
-
-  /// Applies [applied] (in order) to the stored rows: the rows the updates
-  /// need are read in one query per table, the result is written in two
-  /// batches.
-  Future<void> _replay(
-    SqliteWriteContext tx,
-    String fileUuid,
-    List<RowChange> applied,
-  ) async {
-    if (applied.isEmpty) return;
-    // Final state per touched row: a row map, or null (deleted / absent).
-    final rows = <(String, String), Map<String, Object?>?>{};
-    final updated = <String, Set<String>>{};
-    final inserted = <(String, String)>{};
-    for (final c in applied) {
-      if (c.op == RowOp.update && !inserted.contains((c.table, c.rowId))) {
-        (updated[c.table] ??= {}).add(c.rowId);
-      } else if (c.op == RowOp.insert) {
-        inserted.add((c.table, c.rowId));
-      }
-    }
-    for (final MapEntry(key: table, value: ids) in updated.entries) {
-      final list = ids.toList();
-      for (var i = 0; i < list.length; i += 500) {
-        final chunk = list.sublist(i, (i + 500).clamp(0, list.length));
-        for (final r in await tx.getAll(
-          'SELECT id, data FROM rev_row WHERE file_uuid = ? AND tbl = ? '
-          'AND id IN (${List.filled(chunk.length, '?').join(', ')})',
-          [fileUuid, table, ...chunk],
-        )) {
-          rows[(table, r['id'] as String)] = _decodeRow(r['data'] as String);
-        }
-      }
-    }
-    final touched = <(String, String)>{};
-    for (final c in applied) {
-      final k = (c.table, c.rowId);
-      switch (c.op) {
-        case RowOp.insert:
-          rows[k] = {...c.columnsAfter, RowChange.idColumn: c.rowId};
-        case RowOp.update:
-          final cur = rows[k];
-          if (cur == null) continue;
-          rows[k] = {...cur, ...c.columnsAfter};
-        case RowOp.delete:
-          rows[k] = null;
-      }
-      touched.add(k);
-    }
-    final deletes = [
-      for (final k in touched)
-        if (rows[k] == null) [fileUuid, k.$1, k.$2],
-    ];
-    if (deletes.isNotEmpty) {
-      await tx.executeBatch(
-        'DELETE FROM rev_row WHERE file_uuid = ? AND tbl = ? AND id = ?',
-        deletes,
-      );
-    }
-    await _putRows(tx, fileUuid, [
-      for (final k in touched)
-        if (rows[k] case final row?) (k.$1, row),
-    ]);
-  }
-
   /// Applies a committed op (06 §2.2): only when [revision] is beyond the
   /// stored one (monotonic). Records its metadata and removes the acked
   /// outbox row. Returns whether it was applied.
@@ -688,7 +654,9 @@ final class RevLocalStore {
       [fileUuid],
     );
     if (f == null || (f['revision'] as int) >= revision) return false;
-    if (domain) await _replay(tx, fileUuid, applied);
+    if (domain && applied.isNotEmpty) {
+      await _rows.replay(tx, await _rows.fidFor(tx, fileUuid), applied);
+    }
     await tx.execute(
       'UPDATE rev_local_file SET revision = ? WHERE file_uuid = ?',
       [revision, fileUuid],
@@ -717,72 +685,127 @@ final class RevLocalStore {
     return true;
   });
 
+  /// Files whose `rev_local_file` row this store wrote (page writes skip
+  /// inserting it again; eviction and clearing forget them).
+  final Set<String> _filesWithRow = {};
+
   /// Applies a bootstrap page (06 §5.3): for each coverage key not already
+
   /// covered at a revision ≥ [revision], replaces the covered rows with
-  /// [rows] (absent ones are deleted), then replays [replay] (buffered ops'
-  /// changes newer than the page, for the covered keys) and records the
-  /// coverage. [coverage] are `tbl:<table>:<from>:<to>` / `row:<s>:<r>`.
+  /// [rows] (absent ones are deleted; rows of keys covered at a newer
+  /// revision are skipped), then replays [replay] (buffered ops' changes
+  /// newer than the page, for the covered keys) and records the coverage.
+  /// [coverage] are `tbl:<table>:<from>:<to>` / `row:<s>:<r>`.
   Future<void> applyPage(
     String fileUuid, {
     required int revision,
     required List<String> coverage,
     required List<(String, Map<String, Object?>)> rows,
     required List<RowChange> replay,
-  }) => db.writeTransaction((tx) async {
-    await tx.execute(
-      'INSERT OR IGNORE INTO rev_local_file (file_uuid, revision) VALUES (?, 0)',
-      [fileUuid],
-    );
-    // The coverage this page may replace: keys not covered at a revision
-    // ≥ the page's (read and written in batches; a cell page has 500).
+  }) => applyPages(fileUuid, [
+    RevPageWrite(
+      revision: revision,
+      coverage: coverage,
+      rows: rows,
+      replay: replay,
+    ),
+  ]);
+
+  /// [applyPage] for several pages, in order, in one transaction. Pages
+  /// whose coverage keys don't overlap are written together (a few
+  /// statements for the whole batch: a page write that waits for the UI
+  /// isolate between its statements falls behind a download).
+  Future<void> applyPages(String fileUuid, List<RevPageWrite> pages) =>
+      db.writeTransaction((tx) async {
+        if (!_filesWithRow.contains(fileUuid)) {
+          await tx.execute(
+            'INSERT OR IGNORE INTO rev_local_file (file_uuid, revision) '
+            'VALUES (?, 0)',
+            [fileUuid],
+          );
+          _filesWithRow.add(fileUuid);
+        }
+        final fid = await _rows.fidFor(tx, fileUuid);
+        // Consecutive pages with disjoint coverage form one write.
+        var from = 0;
+        while (from < pages.length) {
+          final keys = <String>{...pages[from].coverage};
+          var to = from + 1;
+          while (to < pages.length && !pages[to].coverage.any(keys.contains)) {
+            keys.addAll(pages[to].coverage);
+            to++;
+          }
+          await _writePages(tx, fileUuid, fid, pages.sublist(from, to));
+          from = to;
+        }
+      });
+
+  /// Writes [pages] with disjoint coverage keys as one page.
+  Future<void> _writePages(
+    SqliteWriteContext tx,
+    String fileUuid,
+    int fid,
+    List<RevPageWrite> pages,
+  ) async {
+    // The coverage these pages may replace: keys not covered at a
+    // revision ≥ their page's.
+    final revisionOf = <String, int>{
+      for (final p in pages)
+        for (final key in p.coverage) key: p.revision,
+    };
+    // New cells only (most of a download): one round trip.
+    if (pages.every((p) => p.replay.isEmpty) &&
+        await _rows.writeNewCells(tx, fileUuid, fid, revisionOf, [
+          for (final p in pages) ...p.rows,
+        ])) {
+      return;
+    }
+
+    final keys = revisionOf.keys.toList();
     final have = <String, int>{};
-    for (var i = 0; i < coverage.length; i += 500) {
-      final chunk = coverage.sublist(i, (i + 500).clamp(0, coverage.length));
+    // The largest record rowid comes with the first chunk (one statement
+    // less per batch).
+    int? maxRid;
+    for (var i = 0; i == 0 || i < keys.length; i += 2000) {
+      final chunk = keys.sublist(i, (i + 2000).clamp(0, keys.length));
       for (final r in await tx.getAll(
         'SELECT key, revision FROM rev_coverage WHERE file_uuid = ? AND key '
-        'IN (${List.filled(chunk.length, '?').join(', ')})',
+        'IN (${List.filled(chunk.length, '?').join(', ')})'
+        '${i == 0 ? ' UNION ALL SELECT NULL, coalesce(max(rid), 0) '
+                  'FROM rev_cells' : ''}',
         [fileUuid, ...chunk],
       )) {
-        have[r['key'] as String] = r['revision'] as int;
+        final key = r['key'] as String?;
+        if (key == null) {
+          maxRid = r['revision'] as int;
+        } else {
+          have[key] = r['revision'] as int;
+        }
       }
     }
-    final stale = [
-      for (final key in coverage)
+    final stale = {
+      for (final MapEntry(key: key, value: revision) in revisionOf.entries)
         if ((have[key] ?? -1) < revision) key,
-    ];
-    final rowKeys = <List<Object?>>[];
-    for (final key in stale) {
-      final parts = key.split(':');
-      if (parts.first == 'tbl') {
-        final table = parts[1];
-        final from = parts[2], to = parts[3];
-        await tx.execute(
-          'DELETE FROM rev_row WHERE file_uuid = ? AND tbl = ?'
-          '${from == '-' ? '' : ' AND id > ?'}${to == '+' ? '' : ' AND id <= ?'}',
-          [fileUuid, table, if (from != '-') from, if (to != '+') to],
-        );
-      } else if (parts.first == 'row') {
-        rowKeys.add([fileUuid, parts[1], parts[2]]);
-      }
-    }
-    if (rowKeys.isNotEmpty) {
-      await tx.executeBatch(
-        'DELETE FROM rev_row WHERE file_uuid = ? AND scope = ? AND row_key = ?',
-        rowKeys,
-      );
-    }
+    };
+    await _rows.writePage(
+      tx,
+      fid,
+      coverage: keys,
+      stale: stale,
+      rows: [for (final p in pages) ...p.rows],
+      replay: [for (final p in pages) ...p.replay],
+      maxRid: maxRid,
+    );
     if (stale.isNotEmpty) {
       await tx.executeBatch(
         'INSERT OR REPLACE INTO rev_coverage (file_uuid, key, revision) '
         'VALUES (?, ?, ?)',
         [
-          for (final key in stale) [fileUuid, key, revision],
+          for (final key in stale) [fileUuid, key, revisionOf[key]],
         ],
       );
     }
-    await _putRows(tx, fileUuid, rows);
-    await _replay(tx, fileUuid, replay);
-  });
+  }
 
   /// The coverage keys of [fileUuid] with their revisions.
   Future<Map<String, int>> coverage(String fileUuid) async => {
@@ -793,50 +816,63 @@ final class RevLocalStore {
       r['key'] as String: r['revision'] as int,
   };
 
-  /// Every row of [fileUuid] except [skip] tables, in keyset pages.
+  /// Every row of [fileUuid] except [skip] tables: the structure (parents'
+  /// tables first), then the cells.
   Future<List<(String, Map<String, Object?>)>> loadRows(
     String fileUuid, {
     Set<String> skip = const {},
-  }) async {
-    final out = <(String, Map<String, Object?>)>[];
-    String? afterTbl, afterId;
-    while (true) {
-      final rows = await db.getAll(
-        'SELECT tbl, id, data FROM rev_row WHERE file_uuid = ?'
-        '${afterTbl == null ? '' : ' AND (tbl, id) > (?, ?)'} '
-        'ORDER BY tbl, id LIMIT 10000',
-        [fileUuid, ?afterTbl, ?afterId],
-      );
-      for (final r in rows) {
-        final t = r['tbl'] as String;
-        if (skip.contains(t)) continue;
-        out.add((t, _decodeRow(r['data'] as String)));
-      }
-      if (rows.length < 10000) return out;
-      afterTbl = rows.last['tbl'] as String;
-      afterId = rows.last['id'] as String;
-    }
-  }
+  }) => db.readTransaction((tx) async {
+    final fid = await _rows.fidOf(tx, fileUuid);
+    if (fid == null) return const [];
+    return [
+      for (final r in [
+        ...await _rows.structure(tx, fid),
+        ...await _rows.allCells(tx, fid),
+      ])
+        if (!skip.contains(r.$1)) r,
+    ];
+  });
+
+  /// The structure of [fileUuid] (every row of a table that is not a cell
+  /// table, parents' tables first) and the revision it is at, read in one
+  /// transaction (viewport-first reopen, 06 §5.1).
+  Future<RevStoredRows> loadStructure(String fileUuid) =>
+      db.readTransaction((tx) async {
+        final revision = await _revision(tx, fileUuid);
+        final fid = await _rows.fidOf(tx, fileUuid);
+        return RevStoredRows(
+          revision,
+          fid == null ? const [] : await _rows.structure(tx, fid),
+        );
+      });
 
   /// The cells (cellsByRow rows) of [scope] (sheet) in [rowKeys].
   Future<List<(String, Map<String, Object?>)>> loadScoped(
     String fileUuid,
     String scope,
     List<String> rowKeys,
-  ) async {
-    final out = <(String, Map<String, Object?>)>[];
-    for (var i = 0; i < rowKeys.length; i += 500) {
-      final chunk = rowKeys.sublist(i, (i + 500).clamp(0, rowKeys.length));
-      final rows = await db.getAll(
-        'SELECT tbl, data FROM rev_row WHERE file_uuid = ? AND scope = ? '
-        'AND row_key IN (${List.filled(chunk.length, '?').join(', ')})',
-        [fileUuid, scope, ...chunk],
-      );
-      for (final r in rows) {
-        out.add((r['tbl'] as String, _decodeRow(r['data'] as String)));
-      }
-    }
-    return out;
+  ) async => (await loadScopedAt(fileUuid, scope, rowKeys)).rows;
+
+  /// [loadScoped] with the revision the rows are at (one transaction).
+  Future<RevStoredRows> loadScopedAt(
+    String fileUuid,
+    String scope,
+    List<String> rowKeys,
+  ) => db.readTransaction((tx) async {
+    final revision = await _revision(tx, fileUuid);
+    final fid = await _rows.fidOf(tx, fileUuid);
+    return RevStoredRows(
+      revision,
+      fid == null ? const [] : await _rows.scoped(tx, fid, scope, rowKeys),
+    );
+  });
+
+  Future<int> _revision(SqliteReadContext tx, String fileUuid) async {
+    final r = await tx.getOptional(
+      'SELECT revision FROM rev_local_file WHERE file_uuid = ?',
+      [fileUuid],
+    );
+    return (r?['revision'] as int?) ?? 0;
   }
 
   /// The stored row of ([table], [id]) of [fileUuid], or null.
@@ -845,11 +881,8 @@ final class RevLocalStore {
     String table,
     String id,
   ) async {
-    final r = await db.getOptional(
-      'SELECT data FROM rev_row WHERE file_uuid = ? AND tbl = ? AND id = ?',
-      [fileUuid, table, id],
-    );
-    return r == null ? null : _decodeRow(r['data'] as String);
+    final fid = await _rows.fidOf(db, fileUuid);
+    return fid == null ? null : _rows.row(db, fid, table, id);
   }
 
   // ------------------------------------------------------------- history
@@ -915,17 +948,13 @@ final class RevLocalStore {
   );
 
   /// Cache size for Settings (bytes of row data).
-  Future<int> usageBytes() async {
-    final r = await db.getOptional(
-      'SELECT coalesce(sum(length(data)), 0) AS n FROM rev_row',
-    );
-    return (r?['n'] as int?) ?? 0;
-  }
+  Future<int> usageBytes() => RevDomainRows.bytes(db);
 
   /// Empties the cache (Settings › Clear), keeping nothing.
   Future<void> clearAll() => db.writeTransaction((tx) async {
+    _filesWithRow.clear();
+    await _rows.deleteAll(tx);
     for (final t in const [
-      'rev_row',
       'rev_coverage',
       'rev_local_op',
       'rev_outcome',

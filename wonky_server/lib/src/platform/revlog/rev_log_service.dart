@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
@@ -20,6 +21,7 @@ import 'rev_bus.dart';
 import 'rev_file_state.dart';
 import 'rev_hooks.dart';
 import 'rev_sql.dart';
+import 'rev_storage.dart';
 import 'rev_views.dart';
 
 /// A committed op (RevLog spec 05 §3.1).
@@ -277,6 +279,7 @@ abstract final class RevLogService {
       ownModels?.release();
     }
     if (commit.duplicate || commit.view == null) return commit;
+    _noteInserts(session, binding, commit.applied!);
     // 4. After the commit, still in order: ring, bus.
     await state.lock(() async {
       state.advance(commit.view!);
@@ -333,6 +336,8 @@ abstract final class RevLogService {
     required UuidValue? recordId,
     required bool serverChange,
     required RevModelAccess? models,
+    bool withView = true,
+    _CreatedRows? created,
   }) async {
     final schema = binding.schema;
     final fileId = state.fileId;
@@ -409,12 +414,9 @@ abstract final class RevLogService {
         if (v is String) (ids[p.table] ??= {}).add(v);
       }
     }
-    final stored = await sql.fetchByIds(
-      session,
-      ids,
-      transaction: tx,
-      forUpdate: true,
-    );
+    final stored = created == null
+        ? await sql.fetchByIds(session, ids, transaction: tx, forUpdate: true)
+        : await created.fetch(session, sql, ids, tx);
     for (final s in stored.values) {
       if (s.fileId != fileId) {
         throw RevRejection(
@@ -511,12 +513,21 @@ abstract final class RevLogService {
     final deletes = <String, List<String>>{};
     final upserts = <String, List<Map<String, Object?>>>{};
     final inserts = <String, List<Map<String, Object?>>>{};
+    final changed = <String, Set<String>>{};
     for (final k in finals) {
       final row = store.row(k.$1, k.$2);
       if (row == null) {
         if (existed.contains(k)) (deletes[k.$1] ??= []).add(k.$2);
       } else {
         ((existed.contains(k) ? upserts : inserts)[k.$1] ??= []).add(row);
+        // The columns an update changes (the others stay as stored).
+        final before = stored[k]?.row;
+        if (before != null) {
+          final set = changed[k.$1] ??= {};
+          for (final c in schema.table(k.$1).columns) {
+            if (row[c.name] != before[c.name]) set.add(c.name);
+          }
+        }
       }
     }
     final ranked = schema.tables.map((t) => t.name).toList()
@@ -541,6 +552,8 @@ abstract final class RevLogService {
             list,
             transaction: tx,
             fresh: fresh,
+            existing: !fresh,
+            changed: fresh ? null : changed[t],
           );
         }
       }
@@ -550,6 +563,7 @@ abstract final class RevLogService {
         'The op references a row of another file.',
       );
     }
+    created?.wrote(fileId, revision, finals, store);
 
     // 3.12 Log.
     final equals = result.equalsSubmitted && extra.isEmpty && !titleAdjusted;
@@ -557,6 +571,11 @@ abstract final class RevLogService {
     final summary =
         cs.summary ??
         (jsonDecode(binding.summarize(applied)) as Map).cast<String, Object?>();
+    final payloadText = binding.codec.encodeText(applied);
+    final payloadGz = RevCodec.gzip(payloadText);
+    final allInserts = applied.every((c) => c.op == RowOp.insert);
+    final payload = ByteData.sublistView(payloadGz);
+    final sj = jsonEncode(summary);
     final now = clock.now().toUtc();
     final op = await RevOp.db.insertRow(
       session,
@@ -576,9 +595,9 @@ abstract final class RevLogService {
         groupLast: cs.groupLast,
         recordId: recordId,
         offline: cs.offline,
-        payload: RevViews.storePayload(binding.codec, applied),
+        payload: payload,
         changeCount: applied.length,
-        summaryJson: jsonEncode(summary),
+        summaryJson: sj,
         detailJson: cs.detail == null ? null : jsonEncode(cs.detail),
         outcomeJson: outcome,
         appliedEqualsSubmitted: equals,
@@ -611,14 +630,41 @@ abstract final class RevLogService {
       'in $ms ms',
       level: ms > 200 ? LogLevel.warning : LogLevel.debug,
     );
+    final view = !withView
+        ? null
+        : RevViews.of(
+            op,
+            binding.codec,
+            applied,
+            encoded: allInserts ? (payloadText, payloadGz) : null,
+          );
     return RevCommit(
       revision: revision,
       duplicate: false,
       applied: applied,
       appliedEqualsSubmitted: equals,
       outcomeJson: outcome,
-      view: RevViews.of(op, binding.codec, applied),
+      view: view,
     );
+  }
+
+  /// Counts the committed inserts into per-sheet tables (planner
+  /// statistics, [RevAnalyze]).
+  static void _noteInserts(
+    Session session,
+    RevBinding binding,
+    List<RowChange> changes,
+  ) {
+    if (binding.perSheetTables.isEmpty) return;
+    final n = <String, int>{};
+    for (final c in changes) {
+      if (c.op == RowOp.insert && binding.perSheetTables.contains(c.table)) {
+        n[c.table] = (n[c.table] ?? 0) + 1;
+      }
+    }
+    for (final MapEntry(key: t, value: k) in n.entries) {
+      RevAnalyze.inserted(session.serverpod, t, k);
+    }
   }
 
   static Map<String, Map<String, Map<String, Object?>>> _deletedRows(
@@ -874,6 +920,7 @@ abstract final class RevLogService {
       );
       if (initialChanges.isNotEmpty) {
         RevHooks.kick(session.serverpod, binding, file.id!);
+        _noteInserts(session, binding, initialChanges);
       }
       return file;
     }
@@ -908,6 +955,7 @@ abstract final class RevLogService {
     );
     if (initialChanges.isEmpty) return file;
     final state = RevFileState.detached(file.fileUuid, file.id!, binding);
+    final created = _CreatedRows(binding.schema);
     final ordered = parentsFirst(binding.schema, initialChanges);
     var chunk = 0;
     final chunks = RevChunker.split(
@@ -938,6 +986,8 @@ abstract final class RevLogService {
         recordId: null,
         serverChange: true,
         models: null,
+        withView: false,
+        created: created,
       );
       state.revision = commit.revision;
     }
@@ -1008,3 +1058,69 @@ final class _NoModels implements RevModelAccess {
 
 /// Converts [role] to the wire role.
 AccessRole revAccessRole(Role role) => role.access;
+
+/// The rows a file creation wrote so far (05 §8.3): every row of the file
+/// was written by the creation's own earlier ops, so the prefetch of the
+/// next op is answered from memory. Full rows are kept for parent tables
+/// (parent checks, few rows); for the others only the keys, and a row the
+/// op touches again is read from the database.
+final class _CreatedRows {
+  _CreatedRows(RevSchema schema)
+    : _parents = {
+        for (final t in schema.tables)
+          for (final p in t.parents) p.table,
+      };
+
+  final Set<String> _parents;
+  final Map<(String, String), RevStoredRow> _rows = {};
+  final Set<(String, String)> _keys = {};
+
+  /// The stored rows of [ids] (as [RevSql.fetchByIds]).
+  Future<Map<(String, String), RevStoredRow>> fetch(
+    Session session,
+    RevSql sql,
+    Map<String, Set<String>> ids,
+    Transaction tx,
+  ) async {
+    final out = <(String, String), RevStoredRow>{};
+    final read = <String, Set<String>>{};
+    for (final MapEntry(key: table, value: set) in ids.entries) {
+      for (final id in set) {
+        final k = (table, id);
+        final row = _rows[k];
+        if (row != null) {
+          out[k] = row;
+        } else if (_keys.contains(k)) {
+          (read[table] ??= {}).add(id);
+        }
+      }
+    }
+    if (read.isNotEmpty) {
+      out.addAll(
+        await sql.fetchByIds(session, read, transaction: tx, forUpdate: true),
+      );
+    }
+    return out;
+  }
+
+  /// Records the final state of the [keys] an op of [revision] wrote.
+  void wrote(
+    int fileId,
+    int revision,
+    Set<(String, String)> keys,
+    RevPrefetchStore store,
+  ) {
+    for (final k in keys) {
+      final row = store.row(k.$1, k.$2);
+      if (row == null) {
+        _keys.remove(k);
+        _rows.remove(k);
+      } else {
+        _keys.add(k);
+        if (_parents.contains(k.$1)) {
+          _rows[k] = RevStoredRow(fileId, revision, row);
+        }
+      }
+    }
+  }
+}

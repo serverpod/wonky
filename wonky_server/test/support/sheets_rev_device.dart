@@ -93,6 +93,7 @@ final class SheetsRevDevice {
           kind: RevPageKind.structure,
           cursor: cursor,
           maxRows: 20000,
+          format: RevPageCodec.version,
         ),
       );
       rows.addAll(_decode(p));
@@ -119,6 +120,7 @@ final class SheetsRevDevice {
             sheetId: UuidValue.fromString(s['id']! as String),
             rowIds: rowIds.sublist(i, (i + 1000).clamp(0, rowIds.length)),
             maxRows: 1000,
+            format: RevPageCodec.version,
           ),
         );
         rows.addAll(_decode(p));
@@ -137,9 +139,7 @@ final class SheetsRevDevice {
   static List<(String, Map<String, Object?>)> _decode(RevPage p) =>
       RevPageCodec.decode(
         _binding.schema,
-        RevCodec.gunzip(
-          p.body.buffer.asUint8List(p.body.offsetInBytes, p.body.lengthInBytes),
-        ),
+        p.body.buffer.asUint8List(p.body.offsetInBytes, p.body.lengthInBytes),
       );
 
   /// Applies the ops committed after [revision] (gap fill).

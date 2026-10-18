@@ -29,6 +29,15 @@ final class RowChange {
   }) : columnsBefore = Map.unmodifiable(columnsBefore ?? const {}),
        columnsAfter = Map.unmodifiable(columnsAfter ?? const {});
 
+  /// The insert of [row], a full row incl. `id` that nothing changes any
+  /// more (rows loaded from a page or the cache): wrapped, not copied, so a
+  /// million-cell load doesn't copy every row once more.
+  RowChange.loaded(this.table, Map<String, Object?> row)
+    : rowId = row[idColumn]! as String,
+      op = RowOp.insert,
+      columnsBefore = const {},
+      columnsAfter = UnmodifiableMapView(row);
+
   /// An insert of a full row.
   factory RowChange.insert(
     String table,

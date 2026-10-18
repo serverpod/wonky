@@ -108,7 +108,9 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
     sync.history.listen(_onOp);
     final loaded = await sync.open();
     if (_disposed) return;
-    if (loaded && model.sheets.isNotEmpty) {
+    // A cache reopened viewport-first turns ready through the plan (small
+    // files once every row is loaded).
+    if (loaded && model.sheets.isNotEmpty && !sync.bootstrapping) {
       _setLoad(const WorkbookReady());
     } else if (!client.keeper.online) {
       // The screen shows the localized offline title and hint.
@@ -369,6 +371,14 @@ final class _SheetsPlan implements RevBootstrapPlan {
   bool _viewportDone = false;
   List<String> _order = const [];
 
+  /// Per sheet: rows handed out (loaded or loading; a loader may run
+  /// several blocks at once, so a row is handed out once) and the index
+  /// the sheet's walk in row order continues from.
+  final Map<String, Set<String>> _handed = {};
+  final Map<String, int> _cursor = {};
+
+  Set<String> _handedOf(String sheetId) => _handed[sheetId] ??= {};
+
   RowLoadTracker get _rows => s._rows;
 
   @override
@@ -381,6 +391,8 @@ final class _SheetsPlan implements RevBootstrapPlan {
       total += sheet.rows.length;
     }
     _small = total <= LoggedWorkbookSession.smallFileRows;
+    _handed.clear();
+    _cursor.clear();
     final first = _viewportSheet();
     _order = [?first?.id, for (final sheet in sheets) sheet.id];
     if (!s._isReady) {
@@ -404,6 +416,7 @@ final class _SheetsPlan implements RevBootstrapPlan {
       final sheet = _viewportSheet();
       if (sheet != null) {
         final ids = _viewportRows(sheet);
+        _handedOf(sheet.id).addAll(ids);
         if (ids.isNotEmpty) return (sheet.id, ids);
       }
     }
@@ -414,6 +427,7 @@ final class _SheetsPlan implements RevBootstrapPlan {
       final sheet = s.model.sheet(sheetId);
       if (sheet == null || _rows.isSheetLoaded(sheetId)) continue;
       final n = sheet.rows.length;
+      final handed = _handedOf(sheetId);
       final ids = <String>[];
       for (
         var r = (first - 50).clamp(0, n);
@@ -421,26 +435,47 @@ final class _SheetsPlan implements RevBootstrapPlan {
         r++
       ) {
         final id = sheet.rows.idAt(r);
-        if (!_rows.isRowLoaded(sheetId, id)) ids.add(id);
+        if (!_rows.isRowLoaded(sheetId, id) && handed.add(id)) ids.add(id);
       }
       if (ids.isNotEmpty) return (sheetId, ids);
     }
+    // The sheets in order, each walked once in row order (O(rows) for the
+    // whole load, not per block).
     for (final sheetId in _order) {
       if (_rows.isSheetLoaded(sheetId)) continue;
       final sheet = s.model.sheet(sheetId);
-      final missing = _rows.missingOf(sheetId);
+      final handed = _handedOf(sheetId);
       final ids = <String>[];
       if (sheet != null) {
-        for (final id in sheet.rows.ids) {
-          if (missing.remove(id)) ids.add(id);
-          if (ids.length >= 500) break;
+        final n = sheet.rows.length;
+        var i = _cursor[sheetId] ?? 0;
+        while (i < n && ids.length < 500) {
+          final id = sheet.rows.idAt(i++);
+          if (!_rows.isRowLoaded(sheetId, id) && handed.add(id)) ids.add(id);
         }
+        _cursor[sheetId] = i;
       }
-      if (ids.isEmpty) {
-        _rows.markLoaded(sheetId, missing);
-        continue;
+      if (ids.isNotEmpty) return (sheetId, ids);
+      // Walked to the end: missing rows not handed out moved behind the
+      // walk (sorts, moves) or are gone (deleted meanwhile).
+      final rest = [
+        for (final id in _rows.missingOf(sheetId))
+          if (!handed.contains(id)) id,
+      ];
+      final present = [
+        if (sheet != null)
+          for (final id in rest)
+            if (sheet.rows.contains(id)) id,
+      ];
+      final keep = present.toSet();
+      _rows.markLoaded(sheetId, rest.where((id) => !keep.contains(id)));
+
+      if (present.isNotEmpty) {
+        final block = present.take(500).toList();
+        handed.addAll(block);
+        return (sheetId, block);
       }
-      return (sheetId, ids);
+      // What is left is loading (handed out to a block in flight).
     }
     return null;
   }

@@ -50,7 +50,8 @@ abstract class RevPage
   /// Exact revision of every row in this page.
   int revision;
 
-  /// gzip NDJSON (04 §3.1).
+  /// The page body (04 §3.1): binary columnar (version 2) or gzip NDJSON
+  /// (version 1); the version is in the body.
   _idt.ByteData body;
 
   List<String> coverage;

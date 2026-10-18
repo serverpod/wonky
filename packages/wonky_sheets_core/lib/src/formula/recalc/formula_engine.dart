@@ -40,17 +40,21 @@ sealed class _Dep {
   const _Dep();
 }
 
+/// A cell by (sheet id, row id, column id): a record, so lookups hash three
+/// cached string hashes instead of building a 110-character key per cell.
+typedef _CellKey = (String, String, String);
+
 final class _CellDep extends _Dep {
   final String sheetId;
   final String rowId;
   final String colId;
-  final String key;
+  final _CellKey key;
 
   /// Registration order of the registered instance (the one in the engine's
   /// per-sheet key set): ascending along that set's iteration order.
   int seq = 0;
   _CellDep(this.sheetId, this.rowId, this.colId)
-    : key = '$sheetId\u0001$rowId\u0001$colId';
+    : key = (sheetId, rowId, colId);
   @override
   bool operator ==(Object other) => other is _CellDep && other.key == key;
   @override
@@ -70,7 +74,7 @@ final class _Node {
   final String sheetId;
   final String rowId;
   final String colId;
-  final String key;
+  final _CellKey key;
   EngineCellInput input;
   late String formula;
   late CompiledFormula compiled;
@@ -118,7 +122,7 @@ final class _Node {
   Set<String> customDeps = const {};
 
   _Node(this.sheetId, this.rowId, this.colId, this.input)
-    : key = '$sheetId\u0001$rowId\u0001$colId';
+    : key = (sheetId, rowId, colId);
 
   bool get onChain => evaluating || waiting;
   bool get spills => spillRows > 0;
@@ -155,9 +159,9 @@ final class FormulaEngine implements EvalHost, CellSource {
   @override
   final LookupCache lookupCache = LookupCache();
 
-  final Map<String, _Node> _nodes = {};
+  final Map<_CellKey, _Node> _nodes = {};
   final Map<String, Set<_Node>> _nodesBySheet = {};
-  final Map<String, Set<_Node>> _cellDeps = {};
+  final Map<_CellKey, Set<_Node>> _cellDeps = {};
   final Map<String, Set<_CellDep>> _cellDepKeysBySheet = {};
 
   /// The registered cell dependencies by row id and by column id (structural
@@ -513,7 +517,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     }
     if (!input.isFormula) return ComputedValue(input.value);
     final node =
-        _nodes['${sheet.id}\u0001${sheet.rows.idAt(row)}\u0001${sheet.columns.idAt(col)}'];
+        _nodes[(sheet.id, sheet.rows.idAt(row), sheet.columns.idAt(col))];
     if (node == null || (!node.hasValue && node.dirty)) return null;
     return _computed(node, sheet);
   }
@@ -646,8 +650,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     }
     sheet.forEachInput(rect, (r, c, input) {
       if (!input.isFormula) return;
-      final n =
-          _nodes['${sheet.id}\u0001${sheet.rows.idAt(r)}\u0001${sheet.columns.idAt(c)}'];
+      final n = _nodes[(sheet.id, sheet.rows.idAt(r), sheet.columns.idAt(c))];
       if (n != null && n.dirtyStamp != 0 && _dirty.contains(n)) inView.add(n);
     });
     inView.sort((a, b) => a.dirtyStamp.compareTo(b.dirtyStamp));
@@ -777,8 +780,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     }
     sheet.forEachInput(rect, (r, c, input) {
       if (!input.isFormula) return;
-      final key =
-          '$sheetId\u0001${sheet.rows.idAt(r)}\u0001${sheet.columns.idAt(c)}';
+      final key = (sheetId, sheet.rows.idAt(r), sheet.columns.idAt(c));
       final n = _nodes[key];
       if (n == null) {
         _markDirty(_createNode(sheet, r, c, input), work);
@@ -804,7 +806,7 @@ final class FormulaEngine implements EvalHost, CellSource {
   void _cellChanged(SheetView sheet, int row, int col, Queue<_Node> work) {
     lookupCache.bumpColumn(sheet.id, col);
     final rowId = sheet.rows.idAt(row), colId = sheet.columns.idAt(col);
-    final key = '${sheet.id}\u0001$rowId\u0001$colId';
+    final key = (sheet.id, rowId, colId);
     final input = sheet.inputAt(row, col);
     final existing = _nodes[key];
     if (input != null && input.isFormula) {
@@ -1004,8 +1006,7 @@ final class FormulaEngine implements EvalHost, CellSource {
       if (rect.bottom < 0 || rect.right < 0) continue;
       sheet.forEachInput(rect, (r, c, input) {
         if (input.isFormula) {
-          final key =
-              '${sheet.id}\u0001${sheet.rows.idAt(r)}\u0001${sheet.columns.idAt(c)}';
+          final key = (sheet.id, sheet.rows.idAt(r), sheet.columns.idAt(c));
           if (!_nodes.containsKey(key)) {
             _markDirty(_createNode(sheet, r, c, input), work);
           }
@@ -1113,8 +1114,7 @@ final class FormulaEngine implements EvalHost, CellSource {
   ) {
     final d = input.engineData;
     if (d is _Node && identical(d.input, input) && !d.removed) return d;
-    final key =
-        '${sheet.id}\u0001${sheet.rows.idAt(row)}\u0001${sheet.columns.idAt(col)}';
+    final key = (sheet.id, sheet.rows.idAt(row), sheet.columns.idAt(col));
     final n = _nodes[key];
     if (n != null) {
       if (!identical(n.input, input)) {
@@ -1479,7 +1479,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     String colId,
     Queue<_Node> work,
   ) {
-    final deps = _cellDeps['${sheet.id}\u0001$rowId\u0001$colId'];
+    final deps = _cellDeps[(sheet.id, rowId, colId)];
     if (deps != null) {
       for (final d in deps) {
         _markDirty(d, work);
@@ -1496,8 +1496,7 @@ final class FormulaEngine implements EvalHost, CellSource {
       final rows = sheet.rows, cols = sheet.columns;
       for (var r = rect.top; r <= rect.bottom && r < rows.length; r++) {
         for (var c = rect.left; c <= rect.right && c < cols.length; c++) {
-          final deps =
-              _cellDeps['${sheet.id}\u0001${rows.idAt(r)}\u0001${cols.idAt(c)}'];
+          final deps = _cellDeps[(sheet.id, rows.idAt(r), cols.idAt(c))];
           if (deps != null) {
             for (final d in deps) {
               _markDirty(d, work);
@@ -1816,8 +1815,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     final out = <_Node>{};
     void addCell(SheetView s, int r, int c, EngineCellInput input) {
       if (!input.isFormula) return;
-      final x =
-          _nodes['${s.id}\u0001${s.rows.idAt(r)}\u0001${s.columns.idAt(c)}'];
+      final x = _nodes[(s.id, s.rows.idAt(r), s.columns.idAt(c))];
       if (x != null) out.add(x);
     }
 
@@ -2482,8 +2480,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     while (work.isNotEmpty) {
       final (s, r, c) = work.removeFirst();
       final found = <_Node>{};
-      final deps =
-          _cellDeps['${s.id}\u0001${s.rows.idAt(r)}\u0001${s.columns.idAt(c)}'];
+      final deps = _cellDeps[(s.id, s.rows.idAt(r), s.columns.idAt(c))];
       if (deps != null) found.addAll(deps);
       _rangeIndexes[s.id]?.stab(r, c, found.add);
       for (final d in found) {
