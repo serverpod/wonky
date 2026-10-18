@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
+import '../../platform/ai/ai_call.dart';
+import '../../platform/ai/ai_config.dart';
 import '../../platform/ai/ai_models.dart';
 import '../../platform/ai/ai_usage_service.dart';
-import '../../platform/ai/ai_keys.dart';
 import '../../platform/ai/llm/ai_client.dart';
-import '../../platform/ai/assistant_service.dart'
-    show AssistantErrors, AssistantService;
 import '../../platform/common/actor.dart';
 import '../../platform/common/models.dart';
 import '../mcp/headless_editor.dart';
@@ -94,80 +93,71 @@ abstract final class ProofreadService {
     int? length,
     Future<Session> Function()? runSession,
   }) async {
-    await AiUsageService.requireAvailable(session, actor.userId);
+    final ai = await AiCall.open(session, actor);
     final target = await HeadlessDocumentEditor.resolve(
       session,
       actor,
       itemUuid,
     );
-    final backend = await AiKeys.backendFor(session, actor.userId);
-    if (backend == null) {
-      throw WonkyException(
-        code: WonkyErrorCode.unavailable,
-        message: AiUsageService.notConfiguredMessage,
-      );
-    }
-    final quality = await AiUsageService.quality(session, actor.userId);
+    final quality = await ai.quality(session);
     final ctx = await WriteContextBuilder.load(session, target);
-    final release = AiUsageService.acquire(actor.userId);
     final sections = split(ctx, start: start, length: length);
-    final cancel = AiCancelToken();
-    final out = StreamController<ProofreadEvent>();
-    out.onCancel = cancel.cancel;
-    void emit(ProofreadEvent e) {
-      if (!out.isClosed) out.add(e);
-    }
-
-    Future<void> body() async {
-      final s = runSession == null
-          ? await session.serverpod.createSession(enableLogging: false)
-          : await runSession();
-      var done = 0;
-      var refused = false;
-      String? error;
-      String? errorCode;
-      try {
+    // Last, right before the run starts: the run holds the slot until it
+    // ends.
+    return ai.stream(
+      session,
+      runSession: runSession,
+      (s, cancel, emit) async {
+        var done = 0;
+        var refused = false;
+        AiFailure? failure;
+        // Budget between sections (CQ-31): the day's budget and the per-run
+        // cap stop a long document part-way instead of after every section.
+        final config = AiConfig.current;
+        var budgetHit = false;
+        final usedAtStart = await AiUsageService.usedToday(s, actor.userId);
+        bool overBudget() =>
+            ai.usedTokens >= config.maxRunTokens ||
+            (config.dailyTokenBudget > 0 &&
+                usedAtStart + ai.usedTokens >= config.dailyTokenBudget);
         final queue = List.of(sections);
         var n = 0;
         Future<void> worker() async {
           while (queue.isNotEmpty && !cancel.isCancelled) {
+            if (overBudget()) {
+              budgetHit = true;
+              return;
+            }
             final section = queue.removeAt(0);
             final i = n++;
             try {
               final req = request(
                 section,
                 quality,
-                model: backend.model,
+                model: ai.model,
                 userId: actor.userId,
               );
-              final msg = await backend.client.send(req, cancel: cancel);
-              await AiUsageService.record(
-                s,
-                userId: actor.userId,
-                model: msg.model ?? req.model,
-                feature: 'proofread',
-                usage: msg.usage,
+              final msg = await ai.send(s, req, cancel: cancel);
+              final issues = validate(ctx, section, msg, prefix: 's$i');
+              emit(
+                ProofreadEvent(
+                  type: 'issues',
+                  issues: issues,
+                  sectionsDone: ++done,
+                  sectionsTotal: sections.length,
+                  revision: ctx.revision,
+                ),
               );
-              if (msg.stopReason == AiStopReason.refusal) {
-                refused = true;
-              } else {
-                final issues = validate(ctx, section, msg, prefix: 's$i');
-                emit(
-                  ProofreadEvent(
-                    type: 'issues',
-                    issues: issues,
-                    sectionsDone: ++done,
-                    sectionsTotal: sections.length,
-                    revision: ctx.revision,
-                  ),
-                );
-                continue;
-              }
+              continue;
             } on AiCancelledException {
               return;
-            } on AiApiException catch (e) {
-              error ??= AssistantErrors.message(e);
-              errorCode ??= AssistantErrors.code(e);
+            } on WonkyException catch (e) {
+              final f = AiFailure.of(e)!;
+              if (f.isRefusal) {
+                refused = true;
+              } else {
+                failure ??= f;
+              }
             }
             emit(
               ProofreadEvent(
@@ -182,17 +172,20 @@ abstract final class ProofreadService {
         await Future.wait([
           for (var w = 0; w < parallel && w < sections.length; w++) worker(),
         ]);
-        if (error != null) {
+        if (failure == null && budgetHit) {
+          failure = AiFailure(
+            ai.usedTokens >= config.maxRunTokens
+                ? 'Proofreading stopped part-way: it reached its token limit.'
+                : AiUsageService.budgetMessage,
+            'budget',
+          );
+        }
+        if (failure case final f?) {
           emit(
-            ProofreadEvent(type: 'error', error: error, errorCode: errorCode),
+            ProofreadEvent(type: 'error', error: f.message, errorCode: f.code),
           );
         } else if (refused && done == 0) {
-          emit(
-            ProofreadEvent(
-              type: 'refusal',
-              error: AssistantService.refusalText,
-            ),
-          );
+          emit(ProofreadEvent(type: 'refusal', error: AiFailure.refusalText));
         }
         emit(
           ProofreadEvent(
@@ -202,28 +195,13 @@ abstract final class ProofreadService {
             revision: ctx.revision,
           ),
         );
-      } finally {
-        if (runSession == null) await s.close();
-      }
-    }
-
-    unawaited(
-      body()
-          .catchError((Object e) {
-            emit(
-              ProofreadEvent(
-                type: 'error',
-                error: 'Something went wrong. Please try again.',
-                errorCode: 'internal',
-              ),
-            );
-          })
-          .whenComplete(() {
-            release();
-            if (!out.isClosed) unawaited(out.close());
-          }),
+      },
+      onFailure: (f) => ProofreadEvent(
+        type: f.isRefusal ? 'refusal' : 'error',
+        error: f.message,
+        errorCode: f.code,
+      ),
     );
-    return out.stream;
   }
 
   static int _words(String s) => RegExp(r'\S+').allMatches(s).length;

@@ -174,7 +174,7 @@ class SheetsPresenceController extends ChangeNotifier {
 
   PresenceViewport? _viewport() {
     final s = editor.activeSheet;
-    final g = editor.lastGeometry;
+    final g = editor.geometry;
     if (s == null || g == null || s.rows.length == 0 || s.columns.length == 0) {
       return null;
     }

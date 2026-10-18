@@ -11,12 +11,35 @@ abstract interface class SlideImageResolver {
   /// Bytes already in memory (pending upload, cache), or null.
   Uint8List? cachedBytes(SlideImageRef ref);
 
-  /// The image bytes, or null when unavailable (deleted, no access,
-  /// offline and not cached).
+  /// The image bytes, or null when unavailable (deleted, no access, not
+  /// an image). Throws [SlideImageTransientException] when they can't be
+  /// loaded right now (offline and not cached, a server error): renderers
+  /// try again later.
   Future<Uint8List?> bytes(SlideImageRef ref);
 
   /// A URL the renderer may load (signed, cached), or null.
   Future<Uri?> url(SlideImageRef ref);
+}
+
+/// [SlideImageResolver.bytes] couldn't load the bytes now (offline, a
+/// transient server error); a later attempt may succeed (CQ-43).
+final class SlideImageTransientException implements Exception {
+  /// Creates the exception.
+  const SlideImageTransientException([this.cause]);
+
+  /// What failed.
+  final Object? cause;
+
+  @override
+  String toString() => 'SlideImageTransientException($cause)';
+}
+
+/// A [SlideImageResolver] that tells when failed loads are worth trying
+/// again (the connection came back).
+abstract interface class RetryingSlideImageResolver
+    implements SlideImageResolver {
+  /// Emits when transient failures should be retried.
+  Stream<void> get retries;
 }
 
 /// A [SlideImageResolver] over an in-memory map (tests, previews, AI suggest

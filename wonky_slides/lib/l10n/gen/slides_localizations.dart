@@ -3733,6 +3733,18 @@ abstract class SlidesLocalizations {
   /// **'Some changes weren’t undone because a collaborator changed them since'**
   String get toastUndoPartial;
 
+  /// A change the server rejected (RevLog 06 §4.6); it is undone on this device.
+  ///
+  /// In en, this message translates to:
+  /// **'“{label}” couldn’t be saved: {reason}'**
+  String toastChangeNotSaved(String label, String reason);
+
+  /// A change was rejected because the user lost edit access.
+  ///
+  /// In en, this message translates to:
+  /// **'You can no longer edit this presentation'**
+  String get toastChangeNoAccess;
+
   /// Title of the command `slides.select.elements` (menus, palette, tooltips, undo).
   ///
   /// In en, this message translates to:
@@ -12930,6 +12942,114 @@ abstract class SlidesLocalizations {
   /// In en, this message translates to:
   /// **'{name}\'s pointer'**
   String pointerOnSlide(String name);
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'This object is locked.'**
+  String get errorObjectLocked;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'There are too many guides'**
+  String get errorTooManyGuides;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'Select a text box'**
+  String get errorSelectTextBox;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'The copy couldn’t be made'**
+  String get errorCopyFailed;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to restore'**
+  String get errorNothingToRestore;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'The crop removes the whole image'**
+  String get errorCropRemovesImage;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one slide'**
+  String get errorSelectSlide;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'The clipboard holds no slides'**
+  String get errorClipboardNoSlides;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to move there'**
+  String get errorNothingToMove;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'One emoji is expected'**
+  String get errorOneEmoji;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'The text has changed'**
+  String get errorTextChanged;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'One word is expected'**
+  String get errorOneWord;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'No slides selected'**
+  String get errorNoSlidesSelected;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to fix'**
+  String get errorNothingToFix;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to paste'**
+  String get errorNothingToPaste;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'The line is not on the current slide'**
+  String get errorLineNotOnSlide;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'Route handles are not available inside groups'**
+  String get errorRouteHandlesInGroups;
+
+  /// Message of a command that can't run (shown as a toast; CQ-57).
+  ///
+  /// In en, this message translates to:
+  /// **'Straight lines have no waypoints'**
+  String get errorStraightLineWaypoints;
 }
 
 class _SlidesLocalizationsDelegate

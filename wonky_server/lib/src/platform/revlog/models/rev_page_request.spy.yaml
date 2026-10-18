@@ -1,0 +1,12 @@
+### A bootstrap page request (RevLog spec 04 §3).
+class: RevPageRequest
+fields:
+  kind: RevPageKind
+  ### structure/rows: cursor of the previous page; null = start.
+  cursor: String?
+  ### kind == rows: the table.
+  table: String?
+  ### kind == cells (Sheets).
+  sheetId: UuidValue?
+  rowIds: List<UuidValue>?
+  maxRows: int

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:serverpod/serverpod.dart';
-import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_write_core/wonky_write_core.dart' as core;
 
 import '../../platform/common/actor.dart';
@@ -544,11 +543,4 @@ abstract final class ThemeService {
     }
     return count;
   }
-
-  /// Access check helper for document theme reads in exports.
-  static Future<void> requireDocumentAccess(
-    Session session,
-    Actor actor,
-    DriveItem item,
-  ) => AccessService.requireRole(session, actor, item, Role.viewer);
 }

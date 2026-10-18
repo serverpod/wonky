@@ -8,6 +8,7 @@ import 'package:clock/clock.dart';
 import 'package:mcp_dart/mcp_dart.dart' as mcp;
 import 'package:serverpod/serverpod.dart';
 
+import '../common/rate_limiter.dart';
 import '../users/account_service.dart';
 import 'mcp_config.dart';
 import 'mcp_session_directory.dart';
@@ -181,7 +182,7 @@ class McpExchangeTransport implements mcp.Transport {
 
   /// Opens the standalone `GET` event stream (replaces an older one).
   Stream<List<int>> openEvents() {
-    _events?.close();
+    unawaited(_events?.close());
     _keepAlive?.cancel();
     final events = StreamController<List<int>>();
     _events = events;
@@ -255,12 +256,32 @@ class McpSession {
 /// instance that does not know a session resumes it from its record, and a
 /// session deleted or expired in the directory is gone everywhere.
 class McpHttpHandler {
-  McpHttpHandler({McpConfig? config, McpSessionDirectory? directory})
-    : _config = config,
-      _directory = directory;
+  McpHttpHandler({
+    McpConfig? config,
+    McpSessionDirectory? directory,
+    RateLimiter? rateLimiter,
+  }) : _config = config,
+       _directory = directory,
+       _rateLimiter = rateLimiter;
 
   final McpConfig? _config;
   McpConfig get config => _config ?? McpConfig.current;
+
+  final RateLimiter? _rateLimiter;
+
+  /// The per-token limit (suite 09 §2): shared with `tools/call` (the
+  /// executor's limiter), so reads count against the same budget.
+  RateLimiter get rateLimiter =>
+      _rateLimiter ?? WonkyMcpServer.executor.rateLimiter;
+
+  /// Requests that do work per call (database reads, file content) and
+  /// are rate-limited per token here; `tools/call` is limited by the
+  /// executor.
+  static const rateLimitedMethods = {
+    mcp.Method.resourcesRead,
+    mcp.Method.resourcesList,
+    mcp.Method.promptsGet,
+  };
 
   final McpSessionDirectory? _directory;
   RedisMcpSessionDirectory? _redisDirectory;
@@ -284,7 +305,11 @@ class McpHttpHandler {
   Timer? _sweeper;
 
   static const maxSessionsPerUser = 20;
-  static const maxBodyChars = 30 * 1024 * 1024;
+
+  /// The largest request body: a 10 MB inline upload (`drive.upload_file`)
+  /// as base64 plus the JSON-RPC envelope. Checked before the body is read
+  /// (declared size) and while reading it.
+  static const maxBodyChars = 16 * 1024 * 1024;
 
   /// Live sessions (tests, diagnostics).
   Iterable<McpSession> get sessions => _sessions.values;
@@ -300,7 +325,13 @@ class McpHttpHandler {
     };
   }
 
-  Future<McpHttpResponse> handle(Session session, McpHttpRequest r) async {
+  static final _bearer = RegExp(r'^Bearer\s+(\S+)$', caseSensitive: false);
+
+  /// The checks that need only the headers of [r] (enabled, host, origin,
+  /// the bearer header's format, a declared body size): the answer when
+  /// [r] is refused, else null. [McpRoute] runs them before it reads the
+  /// body, so refused requests never buffer one.
+  McpHttpResponse? precheck(McpHttpRequest r) {
     if (!config.enabled) {
       return McpHttpResponse.rpcError(404, -32000, 'MCP is disabled.');
     }
@@ -318,6 +349,62 @@ class McpHttpHandler {
         body: 'Forbidden: origin not allowed',
       );
     }
+    if (r.method == 'OPTIONS') return null;
+    if (!_bearer.hasMatch((r.header('authorization') ?? '').trim())) {
+      return _missingToken(_cors(r));
+    }
+    final declared = int.tryParse(r.header('content-length') ?? '');
+    if (declared != null && declared > maxBodyChars) {
+      return McpHttpResponse.rpcError(413, -32600, 'Request too large.');
+    }
+    return null;
+  }
+
+  static McpHttpResponse _missingToken(Map<String, String> cors) =>
+      McpHttpResponse.rpcError(
+        401,
+        -32001,
+        'Missing bearer token. Create a personal access token in '
+        'Settings › Developer and send "Authorization: Bearer '
+        'wkpat_…".',
+        headers: {
+          ...cors,
+          'www-authenticate': 'Bearer realm="wonky", error="invalid_token"',
+        },
+      );
+
+  /// [precheck] plus the token itself (CQ-13): the route calls this before
+  /// it reads a request body, so an unauthenticated caller can't make the
+  /// server buffer up to [maxBodyChars]. Returns the refusal, or null.
+  Future<McpHttpResponse?> preauthenticate(
+    Session session,
+    McpHttpRequest r,
+  ) async {
+    final refused = precheck(r);
+    if (refused != null || r.method == 'OPTIONS' || r.method == 'GET') {
+      return refused;
+    }
+    final match = _bearer.firstMatch((r.header('authorization') ?? '').trim());
+    if (match == null) return _missingToken(_cors(r));
+    final resolved = await AccountService.authenticate(
+      session,
+      match.group(1)!,
+    );
+    if (resolved != null) return null;
+    return McpHttpResponse.rpcError(
+      401,
+      -32001,
+      'Invalid, expired or revoked access token.',
+      headers: {
+        ..._cors(r),
+        'www-authenticate': 'Bearer realm="wonky", error="invalid_token"',
+      },
+    );
+  }
+
+  Future<McpHttpResponse> handle(Session session, McpHttpRequest r) async {
+    final refused = precheck(r);
+    if (refused != null) return refused;
     final cors = _cors(r);
     if (r.method == 'OPTIONS') {
       return McpHttpResponse(
@@ -335,22 +422,17 @@ class McpHttpHandler {
 
     // Bearer auth only: the web apps' auth cookie is ignored here (CSRF).
     final auth = r.header('authorization') ?? '';
-    final match = RegExp(
-      r'^Bearer\s+(\S+)$',
-      caseSensitive: false,
-    ).firstMatch(auth.trim());
-    final resolved = match == null
-        ? null
-        : await AccountService.authenticate(session, match.group(1)!);
+    final match = _bearer.firstMatch(auth.trim());
+    if (match == null) return _missingToken(cors);
+    final resolved = await AccountService.authenticate(
+      session,
+      match.group(1)!,
+    );
     if (resolved == null) {
       return McpHttpResponse.rpcError(
         401,
         -32001,
-        match == null
-            ? 'Missing bearer token. Create a personal access token in '
-                  'Settings › Developer and send "Authorization: Bearer '
-                  'wkpat_…".'
-            : 'Invalid, expired or revoked access token.',
+        'Invalid, expired or revoked access token.',
         headers: {
           ...cors,
           'www-authenticate': 'Bearer realm="wonky", error="invalid_token"',
@@ -520,6 +602,20 @@ class McpHttpHandler {
         id: id,
         headers: cors,
       );
+    }
+    if (rateLimitedMethods.contains(method)) {
+      final retry = await rateLimiter.check(
+        token.id ?? 'user:${actor.userId}',
+      );
+      if (retry != null) {
+        return McpHttpResponse.rpcError(
+          429,
+          -32000,
+          'Too many requests; retry in ${retry.inSeconds + 1} s.',
+          id: id,
+          headers: {...cors, 'retry-after': '${retry.inSeconds + 1}'},
+        );
+      }
     }
     if (method == 'subscriptions/listen') {
       return _json(

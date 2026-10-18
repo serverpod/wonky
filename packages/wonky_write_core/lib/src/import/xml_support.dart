@@ -8,6 +8,7 @@ import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
 import 'encoding.dart';
+import 'import_limits.dart';
 
 /// Parses [text] as XML: strictly first, then without namespace and
 /// nesting validation. Returns `null` when the text is not XML at all.
@@ -104,19 +105,26 @@ final class ZipPackage {
       (bytes[3] == 0x04 || bytes[3] == 0x06 || bytes[3] == 0x08);
 
   /// Opens [bytes]; `null` when they are not a readable ZIP archive.
-  static ZipPackage? open(Uint8List bytes) {
+  /// Throws [ImportTooLargeException] when the archive exceeds [limits]
+  /// (checked before any part is inflated).
+  static ZipPackage? open(
+    Uint8List bytes, {
+    ArchiveLimits limits = ArchiveLimits.standard,
+  }) {
     if (!isZip(bytes)) return null;
+    final Archive archive;
     try {
-      final archive = ZipDecoder().decodeBytes(bytes);
-      final files = <String, ArchiveFile>{};
-      for (final f in archive.files) {
-        if (!f.isFile) continue;
-        files[normalizePath(f.name)] = f;
-      }
-      return ZipPackage._(files);
+      archive = ZipDecoder().decodeBytes(bytes);
     } on Object {
       return null;
     }
+    limits.check(archive);
+    final files = <String, ArchiveFile>{};
+    for (final f in archive.files) {
+      if (!f.isFile) continue;
+      files[normalizePath(f.name)] = f;
+    }
+    return ZipPackage._(files);
   }
 
   /// All part names.

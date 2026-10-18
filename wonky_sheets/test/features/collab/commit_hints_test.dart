@@ -5,9 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_client/wonky_client.dart'
     show PresenceHints, PresenceRoster;
 import 'package:wonky_sheets/features/collab/hints/commit_hints.dart';
+import 'package:wonky_sheets_core/model.dart';
 
 import 'support/collab_harness.dart';
 
+/// Commit hints (Sheets 10 §2): typing previews and the `pending` shimmer of
+/// big commits; committed values arrive as ops (no per-cell hints).
 void main() {
   group('Given an open spreadsheet with commit hints', () {
     late CollabHarness s;
@@ -27,103 +30,82 @@ void main() {
     });
     tearDown(() => s.dispose());
 
-    Map<String, Object?> lastHint() {
-      final hints = s.presenceRepo.updates.expand((u) => u.hints ?? const []);
-      return (jsonDecode(hints.last) as Map).cast<String, Object?>();
+    List<Map<String, Object?>> sentHints() => [
+      for (final h in s.presenceRepo.updates.expand(
+        (u) => u.hints ?? const <String>[],
+      ))
+        (jsonDecode(h) as Map).cast<String, Object?>(),
+    ];
+
+    String pendingHint() {
+      final (r1, c1) = s.ids('A1');
+      final (r2, c2) = s.ids('B5');
+      return jsonEncode({
+        't': 'pending',
+        'sheetId': s.sheetId,
+        'range': {'r1': r1, 'c1': c1, 'r2': r2, 'c2': c2},
+        'hlcMillis': 1,
+      });
     }
 
-    test('when a cell is committed then a cell hint with its stored content '
-        'is sent', () async {
+    test('when a cell is committed then no value hint is sent', () async {
       await s.type('B2', '42');
-      await pumpEventQueue();
       await Future<void>.delayed(Duration.zero);
-
-      final h = lastHint();
-      final (r, c) = s.ids('B2');
-      expect(h['t'], 'cell');
-      expect((h['rowId'], h['colId'], h['content']), (r, c, 'n:42'));
+      expect(sentHints().where((h) => h['t'] != 'typing'), isEmpty);
     });
 
-    test(
-      'when a formula is committed then its computed value is sent too',
-      () async {
-        await s.type('A1', '2');
-        await s.type('A2', '=A1*21');
-        await Future<void>.delayed(Duration.zero);
-
-        // Both commits ran in one turn: one range hint.
-        final h = lastHint();
-        expect(h['t'], 'range');
-        final formula = (h['cells']! as List).cast<Map>().singleWhere(
-          (c) => (c['content'] as String).startsWith('='),
-        );
-        expect(formula['v'], 'n:42');
-      },
-    );
-
-    test('when a hint arrives then the cell shows the hinted value until the '
-        'synced change arrives', () async {
-      final (r, c) = s.ids('C3');
-      s.presenceRepo.emit(
-        PresenceHints(
-          sessionId: 'bo',
-          hints: [
-            jsonEncode({
-              't': 'cell',
-              'sheetId': s.sheetId,
-              'rowId': r,
-              'colId': c,
-              'content': 's:Hello',
-              'hlcMillis': 1,
-            }),
+    test('when more than 500 cells are committed then a pending hint covers '
+        'their range', () async {
+      s.session.execute(
+        SetCellInputs(
+          sheetId: s.sheetId,
+          row: 0,
+          col: 0,
+          inputs: [
+            for (var r = 0; r < 26; r++)
+              [for (var c = 0; c < 20; c++) CellInput.user('$r')],
           ],
         ),
       );
-      await pumpEventQueue();
-      expect(s.text('C3'), 'Hello');
-      expect(s.model.cellAt(s.sheetId, 2, 2), isNull);
-
-      // A local edit of the cell wins over the hint.
-      await s.type('C3', 'Mine');
       await Future<void>.delayed(Duration.zero);
-      expect(s.collab.hints.cells, isEmpty);
-      expect(s.text('C3'), 'Mine');
+      final h = sentHints().singleWhere((h) => h['t'] == 'pending');
+      final (r1, c1) = s.ids('A1');
+      final (r2, c2) = s.ids('T26');
+      expect(h['range'], {'r1': r1, 'c1': c1, 'r2': r2, 'c2': c2});
     });
 
-    test('when 5 s pass then the hint expires', () async {
-      final (r, c) = s.ids('D4');
+    test('when a pending hint arrives then it shows until 5 s pass', () {
       final t0 = DateTime(2026, 10, 1, 12);
       withClock(Clock.fixed(t0), () {
         s.collab.hints.receive(
-          PresenceHints(
-            sessionId: 'bo',
-            hints: [
-              jsonEncode({
-                't': 'range',
-                'sheetId': s.sheetId,
-                'cells': [
-                  {'rowId': r, 'colId': c, 'content': 'n:7'},
-                  {'rowId': 'unknown', 'colId': c, 'content': 'n:8'},
-                ],
-                'hlcMillis': 1,
-              }),
-            ],
-          ),
+          PresenceHints(sessionId: 'bo', hints: [pendingHint()]),
         );
       });
-      expect(s.collab.hints.cells, hasLength(1));
-      expect(s.text('D4'), '7');
-
+      expect(s.collab.hints.pending, hasLength(1));
       withClock(
         Clock.fixed(t0.add(CommitHints.lifetime + const Duration(seconds: 1))),
         s.collab.hints.expire,
       );
-      expect(s.collab.hints.cells, isEmpty);
-      expect(s.text('D4'), '');
+      expect(s.collab.hints.pending, isEmpty);
     });
 
-    test('when the sender leaves then their hints are dropped', () async {
-      final (r, c) = s.ids('A5');
+    test('when the sender leaves then their pending hint is dropped', () async {
+      s.collab.hints.receive(
+        PresenceHints(sessionId: 'bo', hints: [pendingHint()]),
+      );
+      expect(s.collab.hints.pending, hasLength(1));
+      s.presenceRepo.emit(
+        PresenceRoster(
+          sessionId: 'me',
+          participants: [participant('me', userId: 1, name: 'Anna')],
+        ),
+      );
+      await pumpEventQueue();
+      expect(s.collab.hints.pending, isEmpty);
+    });
+
+    test('when an old client sends a cell hint then it is ignored', () {
+      final (r, c) = s.ids('C3');
       s.collab.hints.receive(
         PresenceHints(
           sessionId: 'bo',
@@ -133,20 +115,13 @@ void main() {
               'sheetId': s.sheetId,
               'rowId': r,
               'colId': c,
-              'content': 'b:1',
+              'content': 's:Hello',
             }),
           ],
         ),
       );
-      expect(s.collab.hints.cells, hasLength(1));
-      s.presenceRepo.emit(
-        PresenceRoster(
-          sessionId: 'me',
-          participants: [participant('me', userId: 1, name: 'Anna')],
-        ),
-      );
-      await pumpEventQueue();
-      expect(s.collab.hints.cells, isEmpty);
+      expect(s.text('C3'), '');
+      expect(s.collab.hints.pending, isEmpty);
     });
   });
 }

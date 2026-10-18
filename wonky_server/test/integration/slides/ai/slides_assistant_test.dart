@@ -15,7 +15,7 @@ import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/slides/ai/slides_shadow.dart';
 import 'package:wonky_server/src/slides/headless/deck_text_claims.dart';
 import 'package:wonky_server/src/slides/headless/headless_deck.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_server/src/slides/mcp/slides_writes.dart';
 
 import '../../../support/mcp_harness.dart';
@@ -82,7 +82,7 @@ void main() {
     DeckOverlays.clear();
     DeckAgentPresence.clear();
     DeckTextClaims.clear();
-    HeadlessDeckCache.clear();
+    HeadlessFileCache.clear();
   });
 
   withWonkyServerpod('Given a presentation and the assistant', (
@@ -194,6 +194,7 @@ void main() {
       expect(call('t1').range, s2);
       expect(call('t1').objectId, isNotNull);
       expect(call('t2').range, isNotNull);
+      expect(events.last.error, isNull);
       expect(events.last.type, AssistantEventType.done);
       expect(events.last.changeId, isNotNull);
       expect(await titles(), [
@@ -236,7 +237,7 @@ void main() {
         anna.endpointSession,
         UuidValue.fromString(events.last.changeId!),
       );
-      HeadlessDeckCache.clear();
+      HeadlessFileCache.clear();
       expect(await titles(), [
         'Q3 Review',
         'Highlights',
@@ -309,7 +310,7 @@ void main() {
       );
       expect(applied.appliedCalls, 2);
       expect(applied.changeId, isNotNull);
-      HeadlessDeckCache.clear();
+      HeadlessFileCache.clear();
       expect(await titles(), [
         'Q3 Review',
         'Agenda',
@@ -359,7 +360,7 @@ void main() {
         )
         ..enqueue((AiScript()..text('Deleted.')).response);
       await chat('Remove the last slides', allow: true);
-      HeadlessDeckCache.clear();
+      HeadlessFileCache.clear();
       expect(await titles(), ['Q3 Review', 'Highlights']);
     });
 
@@ -421,7 +422,7 @@ void main() {
           {'slide': 3, 'notes': _injections.first},
         ],
       });
-      HeadlessDeckCache.clear();
+      HeadlessFileCache.clear();
       final s3 = await slideId(3);
       // A model that "obeys" the injections: every such call is refused.
       fake
@@ -497,6 +498,7 @@ void main() {
       await SheetsFixtures.share(mcp, deck, bo.email, 'viewer');
       fake.enqueue((AiScript()..text('Hi')).response);
       final events = await chat('Hello', as: bo);
+      expect(events.last.error, isNull);
       expect(events.last.type, AssistantEventType.done);
       final names = fake.requests.single.tools.map((t) => t.name).toSet();
       expect(names, contains('slides_get_slide'));

@@ -13,8 +13,8 @@
 import 'dart:async' as _ida;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:wonky_server/src/generated/protocol.dart' as _il4umwa0;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
 import '../../platform/comments/comment_system_event.dart' as _ikzs0dm0;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 abstract class Comment
     implements _is.TableRow<int?>, _is.ProtocolSerialization {
@@ -38,7 +38,7 @@ abstract class Comment
     required int threadId,
     _is.UuidValue? uuid,
     int? authorId,
-    required _i810rwvy.ActorKind authorKind,
+    required _ipbpecg8.ActorKind authorKind,
     required String body,
     required List<int> mentions,
     String? reactions,
@@ -56,7 +56,7 @@ abstract class Comment
           ? null
           : _is.UuidValueJsonExtension.fromJson(jsonSerialization['uuid']),
       authorId: jsonSerialization['authorId'] as int?,
-      authorKind: _i810rwvy.ActorKind.fromJson(
+      authorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['authorKind'] as String),
       ),
       body: jsonSerialization['body'] as String,
@@ -96,7 +96,7 @@ abstract class Comment
   /// Null for system comments.
   int? authorId;
 
-  _i810rwvy.ActorKind authorKind;
+  _ipbpecg8.ActorKind authorKind;
 
   /// Markdown (inline subset).
   String body;
@@ -127,7 +127,7 @@ abstract class Comment
     int? threadId,
     _is.UuidValue? uuid = const _is.$UndefinedUuidValue(),
     int? authorId,
-    _i810rwvy.ActorKind? authorKind,
+    _ipbpecg8.ActorKind? authorKind,
     String? body,
     List<int>? mentions,
     String? reactions,
@@ -210,7 +210,7 @@ class _CommentImpl extends Comment {
     required int threadId,
     _is.UuidValue? uuid,
     int? authorId,
-    required _i810rwvy.ActorKind authorKind,
+    required _ipbpecg8.ActorKind authorKind,
     required String body,
     required List<int> mentions,
     String? reactions,
@@ -242,7 +242,7 @@ class _CommentImpl extends Comment {
     int? threadId,
     _is.UuidValue? uuid = const _is.$UndefinedUuidValue(),
     Object? authorId = _Undefined,
-    _i810rwvy.ActorKind? authorKind,
+    _ipbpecg8.ActorKind? authorKind,
     String? body,
     List<int>? mentions,
     String? reactions,
@@ -291,8 +291,8 @@ class CommentUpdateTable extends _is.UpdateTable<CommentTable> {
     value,
   );
 
-  _is.ColumnValue<_i810rwvy.ActorKind, _i810rwvy.ActorKind> authorKind(
-    _i810rwvy.ActorKind value,
+  _is.ColumnValue<_ipbpecg8.ActorKind, _ipbpecg8.ActorKind> authorKind(
+    _ipbpecg8.ActorKind value,
   ) => _is.ColumnValue(
     table.authorKind,
     value,
@@ -401,7 +401,7 @@ class CommentTable extends _is.Table<int?> {
   /// Null for system comments.
   late final _is.ColumnInt authorId;
 
-  late final _is.ColumnEnum<_i810rwvy.ActorKind> authorKind;
+  late final _is.ColumnEnum<_ipbpecg8.ActorKind> authorKind;
 
   /// Markdown (inline subset).
   late final _is.ColumnString body;

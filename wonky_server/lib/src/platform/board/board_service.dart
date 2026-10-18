@@ -7,6 +7,8 @@ import 'board_moderation.dart';
 import 'board_posts.dart';
 import 'board_search.dart';
 import 'board_tasks.dart';
+import 'board_task_bundles.dart';
+import 'board_task_claims.dart';
 import 'board_votes.dart';
 
 /// Facade of Bugs & improvements (specs/16): the endpoint delegates here;
@@ -124,9 +126,9 @@ abstract final class BoardService {
     UuidValue? commentUuid,
   ) => BoardComments.unflag(session, number, commentUuid);
   static Future<BoardTaskView> claimTask(Session session, int number) =>
-      BoardTasks.claim(session, number);
+      BoardTaskClaims.claim(session, number);
   static Future<BoardTaskView> releaseTask(Session session, int number) =>
-      BoardTasks.release(session, number);
+      BoardTaskClaims.release(session, number);
   static Future<BoardReviewCounts> reviewCounts(Session session) =>
       BoardModerationService.reviewCounts(session);
   static Future<List<BoardReviewItem>> reviewQueue(
@@ -230,10 +232,10 @@ abstract final class BoardService {
   ) => BoardTasks.linkPullRequest(session, number, url);
   static Future<List<BoardBundleSuggestionView>> suggestBundles(
     Session session,
-  ) => BoardTasks.suggestBundles(session);
+  ) => BoardTaskBundles.suggestBundles(session);
   static Future<List<BoardBundleSuggestionView>> listSuggestions(
     Session session,
-  ) => BoardTasks.listSuggestions(session);
+  ) => BoardTaskBundles.listSuggestions(session);
   static Future<void> dismissSuggestion(Session session, int id) =>
-      BoardTasks.dismissSuggestion(session, id);
+      BoardTaskBundles.dismissSuggestion(session, id);
 }

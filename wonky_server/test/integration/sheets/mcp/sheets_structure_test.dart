@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:test/test.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
 
@@ -430,7 +433,7 @@ void main() {
         'cell': 'Data!A2',
       });
       expect(h['cell'], 'Data!A2');
-      expect(h['entries'], isA<List>());
+      expect(h['entries'], isA<List<Object?>>());
     });
   });
 }

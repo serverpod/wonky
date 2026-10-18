@@ -204,7 +204,9 @@ abstract final class BoardTasks {
     BoardPostStatus.shipped,
   };
 
-  static Future<List<BoardPost>> _syncPosts(
+  /// Moves the linked posts of task [taskId] to the post status of
+  /// [status] (for the claim and bundle code too).
+  static Future<List<BoardPost>> syncPosts(
     Session session,
     int taskId,
     BoardTaskStatus status,
@@ -234,7 +236,7 @@ abstract final class BoardTasks {
     int taskId,
     BoardTaskStatus status,
   ) async {
-    await _syncPosts(session, taskId, status);
+    await syncPosts(session, taskId, status);
     return _postsOf(session, taskId);
   }
 
@@ -282,11 +284,13 @@ abstract final class BoardTasks {
     var updated = await BoardTask.db.updateRow(
       session,
       task.copyWith(promptRequestedAt: nowUtc(), promptNote: null),
+      columns: (t) => [t.promptRequestedAt, t.promptNote],
     );
     if (!await BoardJobs.schedule(session, BoardJob.prompt, task.id!)) {
       updated = await BoardTask.db.updateRow(
         session,
         updated.copyWith(promptRequestedAt: null, promptNote: promptFailedNote),
+        columns: (t) => [t.promptRequestedAt, t.promptNote],
       );
     }
     return updated;
@@ -349,6 +353,12 @@ abstract final class BoardTasks {
         promptRequestedAt: null,
         promptNote: note,
       ),
+      columns: (t) => [
+        t.promptBody,
+        t.promptGeneratedAt,
+        t.promptRequestedAt,
+        t.promptNote,
+      ],
     );
     if (body != null &&
         lint.isEmpty &&
@@ -387,7 +397,8 @@ abstract final class BoardTasks {
         'for a task';
   }
 
-  static Map<String, Object?> _snap(BoardTask t) => {
+  /// The audited fields of [t] (before/after of a change).
+  static Map<String, Object?> snapshot(BoardTask t) => {
     'status': t.status.name,
     'title': t.title,
     'area': t.area.name,
@@ -396,7 +407,8 @@ abstract final class BoardTasks {
     'prNumber': t.prNumber,
   };
 
-  static Future<BoardTaskView> _done(
+  /// Notifies live watchers of [task] and returns its view.
+  static Future<BoardTaskView> changed(
     Session session,
     BoardCaller c,
     BoardTask task,
@@ -449,6 +461,7 @@ abstract final class BoardTasks {
       task = await BoardTask.db.updateRow(
         session,
         task.copyWith(promptNote: promptBudgetNote),
+        columns: (t) => [t.promptNote],
       );
     }
     // A pending suggestion with exactly these posts is now accepted.
@@ -461,6 +474,7 @@ abstract final class BoardTasks {
         await BoardBundleSuggestion.db.updateRow(
           session,
           s.copyWith(state: 'accepted'),
+          columns: (t) => [t.state],
         );
       }
     }
@@ -470,12 +484,12 @@ abstract final class BoardTasks {
       action: 'createTask',
       targetKind: BoardTargetKind.task,
       targetId: task.id!,
-      after: {..._snap(task), 'postIds': ids.toList()},
+      after: {...snapshot(task), 'postIds': ids.toList()},
     );
     for (final p in posts) {
       await BoardLive.post(session, p.id!);
     }
-    return _done(session, c, task);
+    return changed(session, c, task);
   }
 
   static Future<BoardTaskView> update(
@@ -490,6 +504,7 @@ abstract final class BoardTasks {
     final updated = await BoardTask.db.updateRow(
       session,
       task.copyWith(title: _title(title), area: area, size: size),
+      columns: (t) => [t.title, t.area, t.size],
     );
     await BoardLog.write(
       session,
@@ -497,10 +512,10 @@ abstract final class BoardTasks {
       action: 'updateTask',
       targetKind: BoardTargetKind.task,
       targetId: task.id!,
-      before: _snap(task),
-      after: _snap(updated),
+      before: snapshot(task),
+      after: snapshot(updated),
     );
-    return _done(session, c, updated);
+    return changed(session, c, updated);
   }
 
   static Future<BoardTaskView> setPosts(
@@ -543,7 +558,7 @@ abstract final class BoardTasks {
         transaction: tx,
       );
     });
-    await _syncPosts(session, task.id!, task.status);
+    await syncPosts(session, task.id!, task.status);
     for (final p in removed) {
       await BoardLive.post(session, p.id!);
     }
@@ -556,7 +571,7 @@ abstract final class BoardTasks {
       before: {'postIds': before.map((p) => p.id).toList()},
       after: {'postIds': ids.toList()},
     );
-    return _done(session, c, task);
+    return changed(session, c, task);
   }
 
   static Future<BoardTaskView> regeneratePrompt(
@@ -581,7 +596,7 @@ abstract final class BoardTasks {
       targetId: task.id!,
       before: {'promptBody': task.promptBody},
     );
-    return _done(session, c, updated);
+    return changed(session, c, updated);
   }
 
   static Future<BoardTaskView> setPrompt(
@@ -606,6 +621,13 @@ abstract final class BoardTasks {
         promptRequestedAt: null,
         promptNote: null,
       ),
+      columns: (t) => [
+        t.promptBody,
+        t.promptEditedById,
+        t.promptEditedAt,
+        t.promptRequestedAt,
+        t.promptNote,
+      ],
     );
     await BoardLog.write(
       session,
@@ -616,7 +638,7 @@ abstract final class BoardTasks {
       before: {'promptBody': task.promptBody},
       after: {'promptBody': clean},
     );
-    return _done(session, c, updated);
+    return changed(session, c, updated);
   }
 
   static Future<BoardTaskView> publish(Session session, int number) async {
@@ -653,7 +675,7 @@ abstract final class BoardTasks {
     BoardCaller c,
     BoardTask task,
     BoardTaskStatus status,
-  ) async => _done(
+  ) async => changed(
     session,
     c,
     await _applyStatus(session, task, status, adminId: c.id, actor: c.actor),
@@ -698,8 +720,19 @@ abstract final class BoardTasks {
         claimWarnedAt: keepClaim ? task.claimWarnedAt : null,
         claimCode: keepClaim ? task.claimCode : null,
       ),
+      columns: (t) => [
+        t.status,
+        t.publishedAt,
+        t.doneAt,
+        t.shippedAt,
+        t.claimedById,
+        t.claimedAt,
+        t.claimExpiresAt,
+        t.claimWarnedAt,
+        t.claimCode,
+      ],
     );
-    await _syncPosts(session, task.id!, status);
+    await syncPosts(session, task.id!, status);
     final event = switch (status) {
       BoardTaskStatus.done => 'done',
       BoardTaskStatus.shipped => 'shipped',
@@ -722,8 +755,8 @@ abstract final class BoardTasks {
       action: 'setTaskStatus',
       targetKind: BoardTargetKind.task,
       targetId: task.id!,
-      before: _snap(task),
-      after: _snap(updated),
+      before: snapshot(task),
+      after: snapshot(updated),
       reason: reason,
     );
     final line = switch (status) {
@@ -784,6 +817,16 @@ abstract final class BoardTasks {
           claimExpiresAt: claimed ? task.claimExpiresAt : null,
           claimCode: claimed ? task.claimCode : null,
         ),
+        columns: (t) => [
+          t.status,
+          t.pullRequestUrl,
+          t.prNumber,
+          t.prAuthorLogin,
+          t.claimedById,
+          t.claimedAt,
+          t.claimExpiresAt,
+          t.claimCode,
+        ],
       );
       await BoardComments.systemRow(
         session,
@@ -811,6 +854,7 @@ abstract final class BoardTasks {
               'https://github.com/${BoardConfig.current.repository}/pull/$prNumber',
           prNumber: prNumber,
         ),
+        columns: (t) => [t.status, t.pullRequestUrl, t.prNumber],
       );
       await BoardComments.systemRow(
         session,
@@ -820,395 +864,16 @@ abstract final class BoardTasks {
         body: updated.pullRequestUrl!,
       );
     }
-    await _syncPosts(session, task.id!, updated.status);
+    await syncPosts(session, task.id!, updated.status);
     await BoardLog.write(
       session,
       adminId: c.id,
       action: 'linkPullRequest',
       targetKind: BoardTargetKind.task,
       targetId: task.id!,
-      before: {..._snap(task), 'pullRequestUrl': task.pullRequestUrl},
-      after: {..._snap(updated), 'pullRequestUrl': updated.pullRequestUrl},
+      before: {...snapshot(task), 'pullRequestUrl': task.pullRequestUrl},
+      after: {...snapshot(updated), 'pullRequestUrl': updated.pullRequestUrl},
     );
-    return _done(session, c, updated);
-  }
-
-  // ---------------------------------------------------------------- claims
-
-  static Future<BoardTaskView> claim(Session session, int number) async {
-    final c = await BoardAccess.requireWriter(session);
-    await BoardAccess.task(session, c, number);
-    final config = BoardConfig.current;
-    final now = nowUtc();
-    final (task, expiredClaimant) = await session.db.transaction((tx) async {
-      final task = await BoardTask.db.findById(
-        session,
-        number,
-        transaction: tx,
-        lockMode: LockMode.forUpdate,
-      );
-      if (task == null) throw Errors.notFound('Task');
-      final valid = BoardViews.claimValid(task, now);
-      if (valid && task.claimedById == c.id) return (task, null);
-      final status = BoardViews.effectiveStatus(task, now);
-      if (status == BoardTaskStatus.claimed ||
-          status == BoardTaskStatus.inReview) {
-        throw Errors.conflict('This task is already claimed.');
-      }
-      if (status != BoardTaskStatus.published) {
-        throw Errors.conflict('Only published tasks can be claimed.');
-      }
-      final active = await BoardTask.db.count(
-        session,
-        where: (t) =>
-            t.claimedById.equals(c.id) &
-            t.status.equals(BoardTaskStatus.claimed) &
-            (t.claimExpiresAt > now) &
-            t.id.notEquals(task.id!),
-        transaction: tx,
-      );
-      if (active >= config.maxActiveClaimsPerUser) {
-        throw Errors.limit(
-          'You can hold ${config.maxActiveClaimsPerUser} claims at a time. '
-          'Finish or release one first.',
-        );
-      }
-      final expired = task.status == BoardTaskStatus.claimed
-          ? task.claimedById
-          : null;
-      if (task.status == BoardTaskStatus.claimed) {
-        await BoardComments.systemRow(
-          session,
-          taskId: task.id,
-          event: 'expired',
-          actorId: task.claimedById,
-          transaction: tx,
-        );
-      }
-      final updated = await BoardTask.db.updateRow(
-        session,
-        task.copyWith(
-          status: BoardTaskStatus.claimed,
-          claimedById: c.id,
-          claimedAt: now,
-          claimExpiresAt: now.add(config.claimDuration),
-          claimWarnedAt: null,
-          claimCode: newClaimCode(),
-        ),
-        transaction: tx,
-      );
-      await BoardComments.systemRow(
-        session,
-        taskId: task.id,
-        event: 'claimed',
-        actorId: c.id,
-        transaction: tx,
-      );
-      return (updated, expired);
-    });
-    if (expiredClaimant != null && expiredClaimant != c.id) {
-      await BoardNotify.claim(
-        session,
-        userId: expiredClaimant,
-        task: task,
-        line: _expiredLine(task),
-      );
-    }
-    return _done(session, c, task);
-  }
-
-  static String _expiredLine(BoardTask t) =>
-      'Your claim on T-${t.id} ${BoardText.quoted(t.title)} expired. The '
-      'task is up for grabs again.';
-
-  static Future<BoardTaskView> release(Session session, int number) async {
-    final c = await BoardAccess.requireWriter(session);
-    final task = await BoardAccess.task(session, c, number);
-    final now = nowUtc();
-    final valid = BoardViews.claimValid(task, now);
-    if (!valid) {
-      if (task.status == BoardTaskStatus.claimed &&
-          (c.isAdmin || c.isAuthor(task.claimedById))) {
-        // Expired: shows as published already; clean up.
-        return _expire(session, task, notify: false, viewer: c);
-      }
-      throw Errors.conflict('This task is not claimed.');
-    }
-    final claimant = c.isAuthor(task.claimedById);
-    if (!claimant && !c.isAdmin) throw Errors.forbidden();
-    final updated = await BoardTask.db.updateRow(
-      session,
-      task.copyWith(
-        status: BoardTaskStatus.published,
-        claimedById: null,
-        claimedAt: null,
-        claimExpiresAt: null,
-        claimWarnedAt: null,
-        claimCode: null,
-        pullRequestUrl: null,
-        prNumber: null,
-        prAuthorLogin: null,
-      ),
-    );
-    await BoardComments.systemRow(
-      session,
-      taskId: task.id,
-      event: 'released',
-      actorId: c.id,
-    );
-    if (!claimant) {
-      await BoardLog.write(
-        session,
-        adminId: c.id,
-        action: 'releaseClaim',
-        targetKind: BoardTargetKind.task,
-        targetId: task.id!,
-        before: _snap(task),
-        after: _snap(updated),
-      );
-      await BoardNotify.claim(
-        session,
-        userId: task.claimedById!,
-        task: task,
-        line:
-            'An admin released your claim on T-${task.id} '
-            '${BoardText.quoted(task.title)}.',
-        actor: c.actor,
-      );
-    }
-    await _syncPosts(session, task.id!, BoardTaskStatus.published);
-    return _done(session, c, updated);
-  }
-
-  static Future<BoardTaskView> _expire(
-    Session session,
-    BoardTask task, {
-    required bool notify,
-    BoardCaller? viewer,
-  }) async {
-    final updated = await BoardTask.db.updateRow(
-      session,
-      task.copyWith(
-        status: BoardTaskStatus.published,
-        claimedById: null,
-        claimedAt: null,
-        claimExpiresAt: null,
-        claimWarnedAt: null,
-        claimCode: null,
-      ),
-    );
-    await BoardComments.systemRow(
-      session,
-      taskId: task.id,
-      event: 'expired',
-      actorId: task.claimedById,
-    );
-    if (notify && task.claimedById != null) {
-      await BoardNotify.claim(
-        session,
-        userId: task.claimedById!,
-        task: task,
-        line: _expiredLine(task),
-      );
-    }
-    await BoardLive.task(session, task.id!);
-    return BoardViews.task(
-      session,
-      viewer ?? const BoardCaller.signedOut(),
-      updated,
-    );
-  }
-
-  /// Sweep: expired claims go back to published (system row and a
-  /// `boardClaim` notification). Returns the count.
-  static Future<int> expireClaims(Session session) async {
-    final now = nowUtc();
-    final tasks = await BoardTask.db.find(
-      session,
-      where: (t) =>
-          t.status.equals(BoardTaskStatus.claimed) & (t.claimExpiresAt <= now),
-      limit: 500,
-    );
-    for (final t in tasks) {
-      await _expire(session, t, notify: true);
-    }
-    return tasks.length;
-  }
-
-  /// Sweep: one reminder per claim with `claimWarnHours` or less left.
-  static Future<int> warnClaims(Session session) async {
-    final now = nowUtc();
-    final config = BoardConfig.current;
-    final tasks = await BoardTask.db.find(
-      session,
-      where: (t) =>
-          t.status.equals(BoardTaskStatus.claimed) &
-          (t.claimExpiresAt > now) &
-          (t.claimExpiresAt <=
-              now.add(Duration(hours: config.claimWarnHours))) &
-          t.claimWarnedAt.equals(null),
-      limit: 500,
-    );
-    for (final t in tasks) {
-      await BoardTask.db.updateRow(
-        session,
-        t.copyWith(claimWarnedAt: now),
-        columns: (c) => [c.claimWarnedAt],
-      );
-      final hours = (t.claimExpiresAt!.difference(now).inMinutes / 60).ceil();
-      await BoardNotify.claim(
-        session,
-        userId: t.claimedById!,
-        task: t,
-        line:
-            'Your claim on T-${t.id} ${BoardText.quoted(t.title)} expires in '
-            '$hours ${hours == 1 ? 'hour' : 'hours'}. Link your pull request '
-            'or release the task.',
-      );
-    }
-    return tasks.length;
-  }
-
-  // --------------------------------------------------------------- bundles
-
-  static Future<List<BoardBundleSuggestionView>> suggestBundles(
-    Session session,
-  ) async {
-    await BoardAccess.requireAdmin(session);
-    final ai = BoardAi.instance;
-    if (!ai.geminiConfigured) {
-      throw Errors.unavailable('The board AI is not configured.');
-    }
-    if (!await ai.geminiAvailable(session)) {
-      throw Errors.unavailable("Today's AI budget is used up.");
-    }
-    final cancelled = {
-      for (final t in await BoardTask.db.find(
-        session,
-        where: (t) => t.status.equals(BoardTaskStatus.cancelled),
-      ))
-        t.id!,
-    };
-    final posts = [
-      for (final p in await BoardPost.db.find(
-        session,
-        where: (t) =>
-            t.moderation.equals(BoardModeration.visible) &
-            t.status.equals(BoardPostStatus.open) &
-            t.size.equals(BoardSize.small) &
-            t.deletedAt.equals(null),
-        orderBy: (t) => t.score.desc(),
-        limit: maxBundleInput * 2,
-      ))
-        if (p.taskId == null || cancelled.contains(p.taskId)) p,
-    ].take(maxBundleInput).toList();
-    if (posts.length < 2) return listSuggestions(session);
-    final List<BoardBundleProposal> proposals;
-    try {
-      proposals = await ai.suggestBundles(session, posts);
-    } on BoardAiException catch (e) {
-      throw Errors.unavailable(
-        'The AI could not suggest bundles: ${e.message}',
-      );
-    }
-    final allowed = {for (final p in posts) p.id!};
-    final known = {
-      for (final s in await BoardBundleSuggestion.db.find(
-        session,
-        where: (t) => t.state.inSet({'pending', 'dismissed'}),
-      ))
-        _key(s.postIds),
-    };
-    final now = nowUtc();
-    for (final p in proposals) {
-      final ids = {
-        for (final id in p.postIds)
-          if (allowed.contains(id)) id,
-      };
-      if (ids.length < 2) continue;
-      final key = _key(ids);
-      if (!known.add(key)) continue;
-      await BoardBundleSuggestion.db.insertRow(
-        session,
-        BoardBundleSuggestion(
-          title: p.title.trim().isEmpty ? 'Bundle' : p.title.trim(),
-          rationale: p.rationale.trim(),
-          area: p.area,
-          postIds: ids.toList()..sort(),
-          state: 'pending',
-          createdAt: now,
-        ),
-      );
-    }
-    return listSuggestions(session);
-  }
-
-  static String _key(Iterable<int> ids) =>
-      (ids.toSet().toList()..sort()).join(',');
-
-  static Future<List<BoardBundleSuggestionView>> listSuggestions(
-    Session session,
-  ) async {
-    final c = await BoardAccess.requireAdmin(session);
-    final suggestions = await BoardBundleSuggestion.db.find(
-      session,
-      where: (t) => t.state.equals('pending'),
-      orderBy: (t) => t.id.desc(),
-    );
-    final ids = {for (final s in suggestions) ...s.postIds};
-    final posts = ids.isEmpty
-        ? const <BoardPost>[]
-        : await BoardPost.db.find(session, where: (t) => t.id.inSet(ids));
-    final activeTasks = {
-      for (final t in await BoardTask.db.find(
-        session,
-        where: (t) => t.status.notEquals(BoardTaskStatus.cancelled),
-      ))
-        t.id!,
-    };
-    final usable = {
-      for (final p in posts)
-        if (p.deletedAt == null &&
-            p.moderation == BoardModeration.visible &&
-            p.status == BoardPostStatus.open &&
-            !activeTasks.contains(p.taskId))
-          p.id!: p,
-    };
-    final result = <BoardBundleSuggestionView>[];
-    for (final s in suggestions) {
-      final members = [
-        for (final id in s.postIds)
-          if (usable[id] != null) usable[id]!,
-      ];
-      if (members.length < 2) continue;
-      result.add(
-        BoardBundleSuggestionView(
-          id: s.id!,
-          title: s.title,
-          rationale: s.rationale,
-          area: s.area,
-          posts: await BoardViews.listItems(session, c, members),
-          createdAt: s.createdAt,
-        ),
-      );
-    }
-    return result;
-  }
-
-  static Future<void> dismissSuggestion(Session session, int id) async {
-    final c = await BoardAccess.requireAdmin(session);
-    final s = await BoardBundleSuggestion.db.findById(session, id);
-    if (s == null) throw Errors.notFound('Suggestion');
-    await BoardBundleSuggestion.db.updateRow(
-      session,
-      s.copyWith(state: 'dismissed'),
-    );
-    await BoardLog.write(
-      session,
-      adminId: c.id,
-      action: 'dismissSuggestion',
-      targetKind: BoardTargetKind.task,
-      targetId: id,
-    );
+    return changed(session, c, updated);
   }
 }

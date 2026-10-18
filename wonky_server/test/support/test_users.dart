@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_auth_idp_server/core.dart' as auth;
 import 'package:wonky_server/src/platform/common/actor.dart';
@@ -41,7 +42,7 @@ abstract final class TestUsers {
     );
     _counter++;
     final email =
-        '${name.toLowerCase().replaceAll(' ', '.')}.${DateTime.now().microsecondsSinceEpoch}.$_counter@example.test';
+        '${name.toLowerCase().replaceAll(' ', '.')}.${clock.now().microsecondsSinceEpoch}.$_counter@example.test';
     final profile = await UserService.ensureProfile(
       session,
       authUser.id!,

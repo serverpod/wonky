@@ -5,7 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart' show UuidValue;
 import 'package:wonky_sheets_core/model.dart';
-import 'package:wonky_sync_models/tables.dart';
+import 'package:wonky_revlog/schema.dart' show RevColumnType;
+import 'package:wonky_sheets_core/revlog.dart' show sheetsSchema;
 
 /// Rows of a version snapshot, normalized to the column types the app's
 /// model expects (DateTime columns as `DateTime`, doubles as `double`).
@@ -78,15 +79,21 @@ class VersionSnapshots {
   }
 
   /// Converts JSON column values (ISO dates, ints for doubles) into the
-  /// model's column types through the synced table specs.
+  /// model's column types through the RevLog schema.
   static Map<String, Object?> normalize(String table, Map<String, Object?> c) {
-    final spec = SyncedTables.byName[table];
-    if (spec == null) return c;
-    try {
-      return spec.toColumns(spec.fromColumns(c));
-    } catch (_) {
-      return c;
-    }
+    final t = sheetsSchema.tryTable(table);
+    if (t == null) return c;
+    return {
+      for (final e in c.entries)
+        e.key: switch ((t.column(e.key)?.type, e.value)) {
+          (RevColumnType.dateTime, final String v) =>
+            DateTime.tryParse(v)?.toUtc() ?? v,
+          (RevColumnType.double, final num v) => v.toDouble(),
+          (RevColumnType.int, final num v) => v.toInt(),
+          (RevColumnType.uuid, final String v) => v.toLowerCase(),
+          _ => e.value,
+        },
+    };
   }
 
   /// Clears the cache (tests).

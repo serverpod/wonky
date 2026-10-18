@@ -23,3 +23,7 @@ indexes:
   document_op_client_idx:
     fields: documentId, clientOpId
     unique: true
+  ### Prune scans (Write 02 §6).
+  document_op_created_idx:
+    fields: createdAt
+    type: brin

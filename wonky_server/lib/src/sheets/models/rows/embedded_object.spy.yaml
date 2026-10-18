@@ -1,0 +1,23 @@
+### A chart, image or slicer floating over the grid (Sheets 08).
+class: EmbeddedObject
+table: embedded_object
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  sheet: Sheet?, relation(onDelete=Cascade, deferred)
+  kind: EmbeddedObjectKind
+  ### {v, rowId, colId, dx, dy, width, height, lockAspect} or {"ownSheet": true}.
+  anchorJson: String
+  ### ChartSpec / ImageSpec / SlicerSpec, always with "v".
+  specJson: String
+  zIndex: int, default=0
+  title: String?
+  altText: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  embedded_object_file_idx:
+    fields: fileId, id

@@ -587,13 +587,14 @@ void _remapReferences(
     for (final (s, _) in blocks)
       for (var r = s.top; r <= s.bottom; r++) src.rows.idAt(r),
   };
+  final srcTokens = StoredFormula.idTokens(srcRowIds);
   for (final sheet in b.model.sheets) {
-    for (final cell in sheet.cells.all) {
+    for (final cell in sheet.cells.formulaCells) {
       final content = cell.content;
       if (content == null || !content.startsWith('=')) continue;
       // Cells written by this plan were handled above.
       if (b.touched(SheetsTables.cell, cell.id)) continue;
-      if (!StoredFormula.mayReference(content, srcRowIds)) continue;
+      if (!StoredFormula.referencesAny(content, srcTokens)) continue;
       final r = remapBlocks(hooks, content, sheet.id, src.id, dst.id, blocks);
       if (r != null && r != content) {
         b.update(SheetsTables.cell, cell.id, {CellCols.content: r});

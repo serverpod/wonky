@@ -20,7 +20,7 @@ import '../features/elements/element_activation.dart';
 import '../features/elements/image/image_adjust_preview.dart';
 import '../features/elements/image/crop_mode.dart';
 import '../features/elements/image/image_canvas.dart';
-import '../features/elements/image/image_clipboard.dart';
+import 'package:wonky_app/platform.dart' show ImageClipboard;
 import '../features/elements/image/image_dialogs.dart';
 import '../features/elements/image/image_geometry.dart';
 import '../features/elements/image/image_rules.dart';
@@ -202,7 +202,9 @@ List<Command<CommandArgs>> imageCommands(ShellServices s) {
         }
         final crop = ImageCrop.fromJson(a.values['crop']);
         if (crop.visibleWidth < 0.001 || crop.visibleHeight < 0.001) {
-          return const CommandResult.failed('The crop removes the whole image');
+          return CommandResult.failed(
+            slidesL10nOf(ed.services).errorCropRemovesImage,
+          );
         }
         final x = _num(a, 'x'), y = _num(a, 'y');
         final w = _num(a, 'width'), h = _num(a, 'height');
@@ -751,7 +753,7 @@ CommandResult _place(
     ed.canvasFocus.requestFocus();
   }
   return ok({
-    'elementIds': ids is List ? ids : const [],
+    'elementIds': ids is List ? ids : const <Object?>[],
     'elementId': ids is List && ids.isNotEmpty ? ids.first : null,
   });
 }

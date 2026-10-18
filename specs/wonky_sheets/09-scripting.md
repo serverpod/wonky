@@ -10,7 +10,8 @@ Read first:
 - Suite [01-architecture.md](../01-architecture.md) decision **A8** (compile on the
   server, run bytecode on server and client), §2 packages (`wonky_sheets_script`).
 - [02-data-model.md](02-data-model.md) §3.6 (`ScriptProject`, `ScriptFile`, `ScriptBuild`,
-  `ScriptTrigger`, `Macro`, `ScriptProperty`), §3.7 (`ChangeLog`), §7 (`SheetsWriter`).
+  `ScriptTrigger`, `Macro`, `ScriptProperty`), §3.7 (op log), §7 (writes); suite
+  [17](../17-revlog-sync.md) part 5 §6.2 (`scripts` hook), §8 (server changes).
 - Suite [08-commands-and-undo.md](../08-commands-and-undo.md) (dynamic
   `sheets.macro.<id>` commands, undo).
 - [05-formula-engine.md](05-formula-engine.md) (custom-function hook, recalculation),
@@ -87,23 +88,23 @@ Remaining language gaps (documented in the Wonky Dart guide): no enums with `nam
 ## 3. Architecture overview
 
 ```
- ┌──────────────── Sync space (spreadsheet) ─────────────────┐
+ ┌──────────────── RevLog file (spreadsheet) ────────────────┐
  │ ScriptProject ─ ScriptFile* ─ ScriptBuild ─ ScriptTrigger* │
  │              └ Macro* ─ ScriptProperty*                    │
  └───────────────┬───────────────────────────────▲────────────┘
-     source edits │ (sync)                        │ ScriptBuild row (sync) + bytecode StoredFile
+     source edits │ (ops)                         │ ScriptBuild row (system op) + bytecode StoredFile
                   ▼                               │
  ┌─────────────── wonky_server ────────────────────────────────────────────────────────┐
  │ ScriptCompileService (isolate, analyzer + dart_eval Compiler + WonkyScriptPlugin)     │
- │ ScriptScheduler (time-driven) · ChangeLog consumer (installable onEdit/onChange)      │
+ │ ScriptScheduler (time-driven) · `scripts` hook (compile, installable onEdit/onChange) │
  │ ScriptJobQueue ──► ScriptWorker(s): isolate pool, ServerScriptHost ─► HeadlessWorkbook │
- │                                                       └► ServerSheetsWriter (txForUser)│
+ │                                          └► server change (submitServerChange)        │
  │ UrlFetchProxy (SSRF-safe) · ScriptEndpoint · MCP sheets.* script tools                 │
  └──────────────────────────────────────────────────────────────────────────────────────┘
                   │ bytecode download (signed URL, cached locally)
                   ▼
  ┌─────────────── wonky_sheets (app) ─────────────────────────────────────────────────────┐
- │ ScriptService ─ ClientScriptHost ─► WorkbookModel + SheetsWriter + UI (dialogs/toasts)│
+ │ ScriptService ─ ClientScriptHost ─► WorkbookModel + session write + UI (dialogs/toasts)│
  │      │  SyncChannel (native: Mailbox · web: SharedArrayBuffer + Atomics)              │
  │      ▼                                                                               │
  │ Sandbox: Isolate (desktop) / Web Worker (web) running dart_eval Runtime + guest proxies│
@@ -161,8 +162,8 @@ abstract interface class WorkbookAccess {
 client and server. `ModelWorkbookAccess` is the implementation over a `WorkbookModel` (it
 creates or reuses a `ModelEngineBinding`). Writes are `SheetsOperation`s planned by the
 `SheetsMutationPlanner` and applied to the model immediately (read-your-writes); the caller
-persists `ExecutionResult.applied`: the app through its `SheetsWriter` (one undo step), the
-server through `SheetsBulkWriter.applyRecorded` (one `ServerChangeRecord`) after the run, on a
+persists `ExecutionResult.applied`: the app through its session (one undo step), the
+server as a recorded server change (`SheetsBulkWriter.applyRecorded`, one `ServerChangeRecord`) after the run, on a
 private copy of the `HeadlessWorkbook` model (script tables loaded from the database).
 
 ---
@@ -299,7 +300,7 @@ abstract class SpreadsheetApp {
 
 ```dart
 abstract class Spreadsheet {
-  String get id;                              // spreadsheet (space) UUID
+  String get id;                              // spreadsheet (file) UUID
   String get name;  set name(String value);   // renames the Drive item (undoable)
   String get url;                             // https://<host>/sheets/s/<id>
   String get locale; set locale(String value);
@@ -559,9 +560,9 @@ abstract class Logger {
 
 ```dart
 abstract class PropertiesService {
-  /// Shared by everyone with access; stored in ScriptProperty (synced, in the space).
+  /// Shared by everyone with access; stored in ScriptProperty (a table of the spreadsheet's file).
   static Properties get documentProperties;
-  /// Per user per spreadsheet; stored in ScriptUserProperty (user's personal space).
+  /// Per user per spreadsheet; stored in ScriptUserProperty (server table, private per user).
   static Properties get userProperties;
 }
 abstract class Properties {
@@ -575,19 +576,22 @@ abstract class Properties {
 ```
 
 Property writes are **not** on the spreadsheet undo stack (Apps Script parity) but are written
-through `SheetsWriter` with the script's `ChangeLog` (so collaborators sync them).
+as ops of the spreadsheet with the script's label (so collaborators receive them).
 
-**User properties — where they live (decided 2026-10-14).** `ScriptUserProperty` rows are
-in the user's **personal space** (space UUID = auth user id; `spreadsheetId` is a plain
-column). The client reads the spreadsheet's rows from its local replica when the script
-service starts (`ReplicaUserProperties`, `features/scripts/runtime/user_properties.dart`),
-keeps them in memory (scripts read synchronously) and writes changes back to the replica in
-the background (`transactionForUser` in the personal space, then a sync kick), so they work
-offline and follow the user to other devices. Server runs load the run-as user's rows before
-the run and write the changes after it (`ServerUserProperties` in
-`wonky_server/lib/src/sheets/scripts/script_service.dart`). The table is in the server's
-`syncedTablesByName` and has the `SheetsTables.scriptUserProperty` constant, but it is not part
-of a spreadsheet space (`SheetsTables.dependencyOrder`).
+**User properties — where they live (suite 17 part 2 §2.4).**
+`ScriptUserProperty(userId, fileUuid, key, value, updatedAt)` is a
+server table, private per user and spreadsheet (unique `(userId, fileUuid, key)`; ≤ 500
+properties, values ≤ 9 KB), outside the spreadsheet's RevLog file. Clients read and write it
+with `sheets.getUserProperties(fileUuid)` / `sheets.setUserProperties(fileUuid, changes)`
+(Viewer+, null = delete; `ScriptUserProperties` in
+`wonky_server/lib/src/sheets/scripts/script_user_properties.dart`), keep the values in memory
+while the script service runs (scripts read synchronously) and write changes back in the
+background. A copy of the values and the unsent changes are kept in the user's local store
+(`sheets.userProps.<fileUuid>`, `features/scripts/runtime/user_properties.dart`), so offline
+runs read the last values and their writes are sent on the next load or write (last write wins
+per key). Server runs load the run-as user's rows before the run and write the changes
+after it in one transaction (`ServerUserProperties` in
+`wonky_server/lib/src/sheets/scripts/script_service.dart`).
 
 ### 6.10 Event objects
 
@@ -598,7 +602,7 @@ abstract class EditEvent {
   Object? get value;          // only when a single cell was edited
   Object? get oldValue;       // only when a single cell was edited
   String? get triggerUid;     // installable only
-  bool get offline;           // installable: edit was made offline and synced later
+  bool get offline;           // installable: the edit's op was made offline (`op.offline`) and synced later
 }
 abstract class SelectionChangeEvent { Spreadsheet get source; Range get range; User get user; }
 abstract class ChangeEvent {
@@ -845,7 +849,7 @@ void countRuns() {
 
 ### 8.1 Where each kind runs
 
-| Invocation | Runtime | Run-as | UI | Time limit | Undo | `ChangeLog.actorKind` |
+| Invocation | Runtime | Run-as | UI | Time limit | Undo | Op `actorKind` |
 |------------|---------|--------|----|------------|------|-----------------------|
 | Custom function | client sandbox (pure worker), server for headless reads | n/a (no side effects) | no | 3 s per call, 30 s per recalc batch | — | — |
 | Run from editor | client sandbox (UI worker) | current user | yes | 30 s (P1 "Run on server": 6 min) | one step "Script: fn" | `script` |
@@ -1012,8 +1016,8 @@ All fetches go through the server: the client host forwards `fetch` to
 - Opens an undo transaction **"Script: <functionName>"** (source `script`) when the first write
   arrives; commits when `Done` arrives (or on error/timeout: commits what was applied, then
   shows the error toast "Script error in fn: message — View details · Undo").
-- Writes go through `SheetsWriter` like any command, producing one `ChangeLog` row per DB
-  transaction chunk with `actorKind: script` and the same label.
+- Writes go through the session like any command (`session.execute(op, actorKind: 'script')`),
+  producing ops with `actorKind: script` and the same label.
 - Structure ops (insert rows, add sheet…) call the same internal operations as the
   corresponding commands (`sheets.rows.insert…`) so maintenance invariants and id generation
   are identical.
@@ -1024,23 +1028,26 @@ All fetches go through the server: the client host forwards `fetch` to
 
 ### 8.5 Server bridge (`ServerScriptHost`)
 
-- Uses `HeadlessWorkbook` (shared with MCP tools; loaded via admin read of the space, cached
-  with LRU and invalidated on `onMergeSuccess`; see [12-mcp-and-ai.md](12-mcp-and-ai.md) §2).
-- Ensures space membership of the run-as user (`SpaceSubscription` reason **`script`**,
-  temporary; removed after 1 h of inactivity unless another reason exists).
-- Writes via `ServerSheetsWriter` in `transactionForUser(runAsUserUuid, spaceId)`, chunked; a
-  `ChangeLog` per chunk (`actorKind: script`, or `mcp`/`ai` when invoked by those, label
-  `"Script: <fn>"`), and one `ServerChangeRecord` per execution so `changes.revert(change_id)`
-  works for 24 h ([12-mcp-and-ai.md](12-mcp-and-ai.md) §2.5).
+- Uses `HeadlessWorkbook` (shared with MCP tools; the RevLog headless model of the file, which
+  follows its ops; see [12-mcp-and-ai.md](12-mcp-and-ai.md) §2). The function runs against a
+  private copy of it.
+- Writes after the run as RevLog server changes of the **run-as user** (`SheetsBulkWriter` →
+  `RevLogService.submitServerChange`, chunked; `actorKind: script`, or `mcp`/`ai` when invoked
+  by those, label `"Script: <fn>"`), so the sequencer checks the run-as user's role and the
+  protected ranges like any edit (RevLog spec 05 §3.5; only `system` ops, e.g. script builds,
+  are exempt). The ops share one record id and one `ServerChangeRecord` per execution, so
+  `changes.revert(change_id)` works for 24 h ([12-mcp-and-ai.md](12-mcp-and-ai.md) §2.5). A
+  rejected commit fails the execution ("The changes could not be saved").
 - `Ui` throws `UiUnavailableException`; `toast` is logged and, if the run-as user has an open
   window, relayed as a toast through the presence channel (P1).
 - `activeSheet` = first visible sheet; `activeRange` = A1 of it.
 - **Job queue (built)**: installable triggers are enqueued as `ScriptJob` rows
   (`ScriptJobQueue`, `wonky_server/lib/src/sheets/scripts/script_jobs.dart`) and run by
   instances with the worker role (`wonky.sheets.scriptWorker`, default true; instances without
-  it only enqueue). Claims are leases (`FOR UPDATE SKIP LOCKED`, lease = server timeout + 2 min);
-  an expired lease is queued again (3 attempts). At most `wonky.sheets.scriptUserConcurrency`
-  (10) running jobs per run-as user and one per trigger; at most 100 queued per trigger, the
+  it only enqueue). Claims are leases (`FOR UPDATE SKIP LOCKED`, lease = server timeout + 2 min),
+  serialized across instances by a transaction-scoped advisory lock so the per-user and
+  per-trigger limits hold; an expired lease is queued again (3 attempts). At most
+  `wonky.sheets.scriptUserConcurrency` (10) running jobs per run-as user and one per trigger; at most 100 queued per trigger, the
   overflow is merged into the newest job (`e.coalesced`, bounding range). Finished jobs are
   pruned after a day (`scriptsPrune`). *Run on server*, MCP `run_function` and AI runs stay
   synchronous request/response (`ScriptEndpoint.run`; `runLive` streams log lines first).
@@ -1115,21 +1122,20 @@ timestamp). Otherwise they form their own step "Script: onEdit".
 
 #### 8.7.3 Installable triggers (server)
 
-- Created in the Triggers dialog (§14.6) or via `ScriptApp.newTrigger`. Stored as synced
+- Created in the Triggers dialog (§14.6) or via `ScriptApp.newTrigger`. Stored as
   `ScriptTrigger` rows (`runAsUserId` = creator). Server state (next run, failures) lives in
   the server-only `ScriptTriggerState` table.
-- The server learns about trigger rows from change-log processing after `onMergeSuccess`
-  (`ChangeLog.summaryJson.kinds ∋ scripts`) and on startup (full scan of triggers in active
-  spaces).
+- Time-driven triggers are read from the `script_trigger` table (plain reads by file); changes
+  to them reach the server as ops like any other edit.
 - **Time-driven**: `ScriptScheduler` FutureCall `sheets.scripts.tick` every minute selects due
   triggers (`nextRunAt ≤ now`, `FOR UPDATE SKIP LOCKED`), enqueues `ScriptJob`s, computes the
   next run in the project time zone (with ±15 min deterministic jitter per trigger id for
   `atHour`).
-- **Installable onEdit/onChange**: the change-log consumer enqueues one job per `ChangeLog` row
-  whose `actorKind ∈ {user, ai}` (and `mcp` if the trigger option `fireForMcp` is set; never
+- **Installable onEdit/onChange**: the `scripts` post-commit hook (suite 17 part 5 §6.2) enqueues
+  one job per op whose `actorKind ∈ {user, ai}` (and `mcp` if the trigger option `fireForMcp` is set; never
   `script`). Per trigger, at most 100 jobs queued; overflow is coalesced into one job with
   `e.coalesced = true` and the bounding range. Offline edits fire when they sync, with
-  `e.offline = true` and the original edit time.
+  `e.offline = true` (the op's `offline` flag).
 - **Installable onOpen** (P1): the client calls `ScriptEndpoint.notifyOpen(spreadsheetUuid)`
   after opening online; the server enqueues the jobs.
 - Run-as checks before each run: installer still has **edit** access (via `AccessService`),
@@ -1173,10 +1179,12 @@ timestamp). Otherwise they form their own step "Script: onEdit".
 
 ### 9.1 Flow
 
-1. **Trigger**: the editor saves files (sync) and, when online, calls
-   `ScriptEndpoint.compile(spreadsheetUuid)`. The server also compiles when change-log
-   processing sees `kinds ∋ scripts` for file changes without a matching build (covers offline
-   saves that synced later and MCP updates).
+1. **Trigger**: the editor saves files (ops) and, when online, waits until they are
+   acknowledged (`session.whenSynced`, 10 s) and calls `ScriptEndpoint.compile(spreadsheetUuid)`.
+   The server also compiles when the `scripts` hook sees `kinds ∋ scripts` for file changes
+   without a matching build (Editor+ authors; covers offline saves that synced later and MCP
+   updates). The build row is written as a `system` server change (`script_build` is not
+   client-writable).
 2. Load all `ScriptFile` rows of the project (admin read), compute
    `sourceHash = sha256(apiVersion ‖ compilerVersion ‖ sorted(name ‖ \0 ‖ source))`. If
    `ScriptBuild.sourceHash == sourceHash` → done.
@@ -1194,9 +1202,9 @@ timestamp). Otherwise they form their own step "Script: onEdit".
 4. Upload bytecode as a `StoredFile` (owner = the spreadsheet's DriveItem; content-addressed
    name `scripts/<projectId>/<sourceHash>.evc`).
 5. Write the `ScriptBuild` row (deterministic id `SheetsIds.scriptBuildId(projectId)`) in
-   `transactionForUser(requestingUser)`: on success set `bytecodeFileUuid`, `lastGood*` fields;
+   a `system` server change (`submitServerChange`, attributed to the requesting user): on success set `bytecodeFileUuid`, `lastGood*` fields;
    on errors keep `lastGood*` untouched and set `bytecodeFileUuid = null` (Additions A-09-1).
-6. Return diagnostics to the caller of `compile` directly (fast path) in addition to the synced row.
+6. Return diagnostics to the caller of `compile` directly (fast path) in addition to the build row.
 
 ### 9.2 Diagnostics format (`diagnosticsJson`)
 
@@ -1228,7 +1236,7 @@ timestamp). Otherwise they form their own step "Script: onEdit".
 
 ### 9.4 Offline and stale builds
 
-- Editing and saving work offline (files are synced rows). The editor status shows **"Will
+- Editing and saving work offline (file saves are ops in the outbox). The editor status shows **"Will
   compile when online"** and the problems panel keeps the last known diagnostics marked
   "outdated".
 - Custom functions, menus and triggers always use the **last good build** (`lastGood*`), even
@@ -1336,9 +1344,10 @@ disabled") and their installable triggers pause. Admins can disable scripts serv
 - **Server**: script workers run in separate containers in production, with a container memory
   cap, no outbound network except through the `UrlFetchProxy` egress (network policy), and no
   access to secrets beyond DB/storage credentials of the worker role. The DB role used by
-  workers can only write synced tables through the sync engine.
+  workers can only write the file tables through server changes (`submitServerChange`).
 - **Run-as integrity**: server executions use the run-as user's `AccessService` role at
-  execution time; protected ranges are enforced in `ServerSheetsWriter`.
+  execution time; protected ranges are enforced by the script host's guard and, authoritatively,
+  by the RevLog sequencer on the run-as user's ops (RevLog spec 05 §3.5).
 - **SSRF**: §8.3.
 - **Denial of service**: time limits, kill, quotas, queue caps, compile rate limits.
 - **Data exfiltration** by a malicious collaborator's script: scripts run with the *runner's*
@@ -1411,8 +1420,8 @@ fetch calls), *Revert changes* (server runs, 24 h, Editors+), *Open in editor*.
 
 ### 14.1 Route and layout
 Full-screen in-app route **`/s/:uuid/script`** (suite routing table). Back arrow returns to
-`/s/:uuid` keeping the grid state. The editor shares the spreadsheet's sync session (same
-space), so it works offline.
+`/s/:uuid` keeping the grid state. The editor shares the spreadsheet's session (same file and
+outbox), so it works offline.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
@@ -1469,7 +1478,7 @@ Integration (`wonky_sheets/lib/features/scripts/editor/`):
 
 ### 14.3 Saving, concurrency and undo
 - **Save** (`sheets.script.saveFile`, Mod+S; *Save all* Mod+Alt+S) writes `ScriptFile.source`,
-  `contentHash`, `updatedBy`, `updatedAt` via `SheetsWriter`. Saving is **not** an undo step on
+  `contentHash`, `updatedBy`, `updatedAt` through the session. Saving is **not** an undo step on
   the spreadsheet stack: text undo/redo is editor-local (`re_editor` history, kept across saves
   for the session). Unsaved drafts are persisted every 2 s so a reload or crash loses nothing
   (built in the device's script store `sheets_scripts_<user>.db`, table `local_script_draft`,
@@ -1695,8 +1704,8 @@ UI bridge: `ui.invoke_command` with the commands above (e.g. `sheets.macro.<id>`
 | A-09-1 | `ScriptBuild` gains `status: ScriptBuildStatus` (`ok`, `errors`), `apiVersion: int`, `compilerVersion: String`, `requestedBy: UuidValue`, `lastGoodSourceHash: String?`, `lastGoodBytecodeFileUuid: UuidValue?`, `lastGoodExportsJson: String?`, `lastGoodBuiltAt: DateTime?`, `positionsFileUuid: UuidValue?` (DE-1 table). |
 | A-09-2 | `ScriptFile` gains `contentHash: String` (sha256 hex of `source`). |
 | A-09-3 | `ScriptTrigger` gains `optionsJson: String?` (`{fireForMcp, notify: immediately\|daily\|never}`) and `createdAt`. `TriggerKind` gains `installableOnOpen`; simple triggers are not stored as rows (they're detected from exports). |
-| A-09-4 | New synced table `ScriptUserProperty` (in the user's **personal space**): `spreadsheetId: UuidValue` (plain), `key: String`, `value: String`, index (spreadsheetId, key). |
-| A-09-5 | `ChangeLog.summaryJson.kinds` uses `scripts` for changes to script tables. |
+| A-09-4 | Server table `ScriptUserProperty(userId, fileUuid, key, value, updatedAt)`, unique (userId, fileUuid, key); endpoints `sheets.getUserProperties` / `setUserProperties` (suite 17 part 2 §2.4). |
+| A-09-5 | The op summary (`summaryJson.kinds`) uses `scripts` for changes to script tables. |
 | A-09-6 | Server tables: `ScriptExecution` (§13.1); `ScriptQuotaUsage(userId, day: DateTime (UTC date), serverRuntimeMs, clientRuntimeMs, urlFetchCalls, urlFetchBytes, triggerRuns)`; `ScriptAuthorization(userId, spreadsheetUuid, scopes: List<String>, grantedAt, revokedAt?)`; `ScriptTriggerState(triggerId: UuidValue, spreadsheetUuid, nextRunAt?, lastRunAt?, lastStatus?, consecutiveFailures, disabledReason?)`; `ScriptJob(uuid, kind, spreadsheetUuid, runAsUserId, payloadJson, status, enqueuedAt, leaseOwner?, leaseUntil?, attempts, resultJson?)`. |
 | A-09-7 | Local-only client tables (built in `sheets_scripts_<user>.db`, `features/scripts/local/script_local_store.dart`): `local_script_execution_log` (pending uploads, ≤ 1000 per spreadsheet), `local_script_history(fileId, savedAt, source, note)` (last 20 per file), `local_script_draft(spreadsheet, fileId, text, baseHash, baseText)`, and the bytecode in `local_blob_cache(key, mime, bytes, createdAt)` (last 12 builds; the image cache of A-08-5 can share the table). |
 | A-09-9 | `ScriptTriggerState.lastNotifiedAt` (daily failure notifications); `ScriptJob` gains `itemUuid`, `triggerId`, `functionName`, `coalesced`, `finishedAt` (status reuses `ScriptExecutionStatus`). |
@@ -1715,7 +1724,7 @@ UI bridge: `ui.invoke_command` with the commands above (e.g. `sheets.macro.<id>`
 3. A script with an extension method shows a `wonky_extension` error at the right line; the
    previous good build keeps running.
 4. `onOpen` adds a "Report" menu next to Extensions; clicking an item runs the function; its
-   writes are one undo step "Script: archive"; `ChangeLog.actorKind = script`.
+   writes are one undo step "Script: archive"; the ops have `actorKind = script`.
 5. The `onEdit` timestamp example writes the time when D changes; one Mod+Z undoes both the
    edit and the timestamp.
 6. An infinite loop in a menu function is stopped after 30 s with "Exceeded maximum execution
@@ -1777,7 +1786,7 @@ UI bridge: `ui.invoke_command` with the commands above (e.g. `sheets.macro.<id>`
 - Flutter integration tests (flutter_driver + MCP) for the editor: create file, type, save,
   run, see log, add trigger, record macro.
 - Multi-client: two clients with `onEdit` triggers editing concurrently; installable trigger
-  fires once per synced change.
+  fires once per committed op.
 
 ---
 

@@ -10,7 +10,6 @@ resolution: workspace
 
 dependencies:
   clock: ^1.1.3
-  collection: ^1.19.1
   crypto: ^3.0.7
   dart_jsonwebtoken: ^3.4.1
   dart_quill_delta: ^9.6.0
@@ -22,19 +21,16 @@ dependencies:
   serverpod: 4.1.0-beta.3
   serverpod_auth_idp_server: 4.1.0-beta.3
   serverpod_cloud_storage: 4.1.0-beta.3
-  serverpod_offline_sync: 0.0.9
-  serverpod_offline_sync_server: 0.0.9
-  uuid: ^4.6.0
   wonky_core:
     path: ../packages/wonky_core
   wonky_sheets_core:
     path: ../packages/wonky_sheets_core
   wonky_sheets_script:
     path: ../packages/wonky_sheets_script
+  wonky_revlog:
+    path: ../packages/wonky_revlog
   wonky_slides_core:
     path: ../packages/wonky_slides_core
-  wonky_sync_kit:
-    path: ../packages/wonky_sync_kit
   wonky_sync_models:
     path: ../packages/wonky_sync_models
   wonky_write_core:
@@ -43,15 +39,12 @@ dependencies:
 
 dev_dependencies:
   async: ^2.13.1
-  lints: '>=3.0.0 <7.0.0'
+  wonky_lints:
+    path: ../packages/wonky_lints
   meta: ^1.19.0
-  path: ^1.9.1
   pointycastle: ^4.0.0
   serverpod_test: 4.1.0-beta.3
   test: ^1.25.5
-  # Sheets sync devices in tests (client replica + generated client).
-  wonky_client:
-    path: ../wonky_client
   wonky_mcp_stdio:
     path: ../packages/wonky_mcp_stdio
 
@@ -61,46 +54,17 @@ serverpod:
     # (specs/01-architecture.md §2.4): wonky_<app> → web/<app> (/<app>/) for
     # drive, write, sheets and slides; app folders that don't exist yet are
     # skipped. Built with --wasm (cross-origin isolation for
-    # OPFS/SharedArrayBuffer, specs/13 §3). posix builds the apps one after
-    # another (parallel builds swap on a 16 GB machine) and fails if any build
-    # fails.
-    # Windows uses xcopy since flutter's --output flag doesn't work there.
-    # See: https://github.com/flutter/flutter/issues/157886
-    # On failure, clean and retry once to clear stale Flutter build caches.
+    # OPFS/SharedArrayBuffer, specs/13 §3), one app after another (parallel
+    # builds swap on a 16 GB machine), by tool/build_web.dart on both
+    # platforms: it copies each build (flutter's --output flag doesn't work on
+    # Windows, flutter/flutter#157886), drops the font families the app never
+    # uses (tool/prune_web_fonts.dart, CQ-45), prints the bundle sizes and
+    # exits non-zero when any build fails (CQ-64h). There is no automatic
+    # `flutter clean` retry (it hid real errors); pass --clean-retry to the
+    # script for one.
     flutter_build:
-      windows: >-
-        for %A in (drive write sheets slides) do
-        @if exist ..\wonky_%A\pubspec.yaml (
-        (if exist web\%A rmdir /S /Q web\%A)
-        & pushd ..\wonky_%A
-        & (call flutter build web --wasm --base-href /%A/
-        || (flutter clean && call flutter build web --wasm --base-href /%A/))
-        && xcopy /E /I /Y build\web ..\wonky_server\web\%A
-        & popd )
-      posix: |
-        set -e
-        build() {
-          out=../wonky_server/web/$1
-          rm -rf "$out" || return 1
-          cd "../wonky_$1" || return 1
-          set -- web --wasm --base-href "/$1/" --output "$out"
-          flutter build "$@" || { flutter clean && flutter build "$@"; }
-        }
-        failed=""
-        for app in drive write sheets slides; do
-          [ -f "../wonky_$app/pubspec.yaml" ] || continue
-          echo "Building $app..."
-          if ( build "$app" ); then
-            echo "Built $app"
-          else
-            echo "Building $app failed"
-            failed="$failed $app"
-          fi
-        done
-        if [ -n "$failed" ]; then
-          echo "Failed:$failed"
-          exit 1
-        fi
+      windows: dart ..\tool\build_web.dart
+      posix: dart ../tool/build_web.dart
 
   # The apps run from their flutter_driver entry point, on fixed ports so
   # their origins are stable for `allowedOrigins` and cookie auth

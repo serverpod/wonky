@@ -1,0 +1,11 @@
+### A bootstrap page (RevLog spec 04 §3).
+class: RevPage
+fields:
+  ### Exact revision of every row in this page.
+  revision: int
+  ### gzip NDJSON (04 §3.1).
+  body: ByteData
+  coverage: List<String>
+  ### structure: tables the client must load with kind == rows.
+  excludedTables: List<String>
+  nextCursor: String?

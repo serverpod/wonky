@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:wonky_client/wonky_client.dart' show UuidValue, DriveItemKind;
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_ui/wonky_ui.dart';
@@ -11,7 +10,8 @@ import '../undo/undo_service.dart';
 /// The contract between the shell and an open document (Write's
 /// `WriteDocumentController`, Sheets' `SheetEditorController`).
 ///
-/// The editor screen makes its controller active with `DocumentScope`; shell
+/// The editor screen makes its controller active (`EditorScaffold` calls
+/// `ShellServices.activate`); shell
 /// commands (`shell.edit.*`, comments, versions, view) then delegate to it
 /// through `CommandContext.document`. Defaults make every capability
 /// optional, so apps override only what they support.
@@ -152,76 +152,11 @@ class DownloadFormat {
   final String label;
 }
 
-/// Makes [controller] the active document while this widget is mounted.
-class DocumentScope extends StatefulWidget {
-  const DocumentScope({
-    super.key,
-    required this.controller,
-    required this.child,
-  });
-
-  final DocumentController controller;
-  final Widget child;
-
-  @override
-  State<DocumentScope> createState() => _DocumentScopeState();
-}
-
-/// Registered by the shell; DocumentScope talks to it.
+/// Makes documents active (implemented by `ShellServices`: `EditorScaffold`
+/// calls [activate] when the editor shows and [deactivate] when it goes).
 abstract class ActiveDocumentHost {
   void activate(DocumentController controller);
   void deactivate(DocumentController controller);
-}
-
-/// Provides the [ActiveDocumentHost] to [DocumentScope]s.
-class ActiveDocumentHostScope extends InheritedWidget {
-  const ActiveDocumentHostScope({
-    super.key,
-    required this.host,
-    required super.child,
-  });
-
-  final ActiveDocumentHost host;
-
-  static ActiveDocumentHost? maybeOf(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<ActiveDocumentHostScope>()?.host;
-
-  @override
-  bool updateShouldNotify(ActiveDocumentHostScope oldWidget) =>
-      oldWidget.host != host;
-}
-
-class _DocumentScopeState extends State<DocumentScope> {
-  ActiveDocumentHost? _host;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final host = ActiveDocumentHostScope.maybeOf(context);
-    if (host != _host) {
-      _host?.deactivate(widget.controller);
-      _host = host;
-      host?.activate(widget.controller);
-    }
-  }
-
-  @override
-  void didUpdateWidget(DocumentScope oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      _host?.deactivate(oldWidget.controller);
-      _host?.activate(widget.controller);
-    }
-  }
-
-  @override
-  void dispose() {
-    _host?.deactivate(widget.controller);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// A minimal [DocumentController] for screens without a real editor yet

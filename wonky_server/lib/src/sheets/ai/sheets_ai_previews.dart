@@ -1,11 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_sheets_core/wonky_sheets_core.dart'
     hide ActorKind, CellInput;
 
+import '../../platform/ai/ai_preview_records.dart';
 import '../../platform/common/models.dart';
 import '../mcp/sheets_shadow.dart';
 
@@ -42,7 +41,7 @@ class StoredAiPreview {
 /// purged on the next save.
 abstract final class SheetsAiPreviewStore {
   /// Previews whose encoded changes are larger stay in memory only.
-  static const maxBytes = 8 * 1024 * 1024;
+  static const maxBytes = AiPreviewRecords.maxBytes;
 
   /// Stores [preview] of [shadow].
   static Future<void> save(
@@ -50,40 +49,21 @@ abstract final class SheetsAiPreviewStore {
     SheetsShadow shadow,
     SheetsAiPreview preview,
   ) async {
-    final now = clock.now().toUtc();
-    await SheetsAiPreviewRecord.db.deleteWhere(
+    await AiPreviewRecords.save(
       session,
-      where: (t) => t.expiresAt < now,
-    );
-    final changes = base64Encode(
-      gzip.encode(
-        utf8.encode(
-          jsonEncode({
-            for (final c in shadow.calls)
-              c.callId: {
-                'kinds': c.kinds.toList(),
-                'changes': [for (final r in c.changes) r.toJson()],
-              },
-          }),
-        ),
-      ),
-    );
-    if (changes.length > maxBytes) return;
-    await SheetsAiPreviewRecord.db.deleteWhere(
-      session,
-      where: (t) => t.previewId.equals(shadow.previewId),
-    );
-    await SheetsAiPreviewRecord.db.insertRow(
-      session,
-      SheetsAiPreviewRecord(
-        previewId: shadow.previewId,
-        userId: shadow.userId,
-        spreadsheetUuid: shadow.space,
-        previewJson: jsonEncode(preview.toJson()),
-        changesJson: changes,
-        createdAt: shadow.createdAt.toUtc(),
-        expiresAt: preview.expiresAt.toUtc(),
-      ),
+      previewId: shadow.previewId,
+      userId: shadow.userId,
+      fileUuid: shadow.space,
+      previewJson: jsonEncode(preview.toJson()),
+      changesJson: AiPreviewRecords.encode({
+        for (final c in shadow.calls)
+          c.callId: {
+            'kinds': c.kinds.toList(),
+            'changes': [for (final r in c.changes) r.toJson()],
+          },
+      }),
+      createdAt: shadow.createdAt,
+      expiresAt: preview.expiresAt,
     );
   }
 
@@ -92,22 +72,13 @@ abstract final class SheetsAiPreviewStore {
     Session session,
     String previewId,
   ) async {
-    final row = await SheetsAiPreviewRecord.db.findFirstRow(
-      session,
-      where: (t) => t.previewId.equals(previewId),
-    );
+    final row = await AiPreviewRecords.load(session, previewId);
     if (row == null) return null;
-    if (row.expiresAt.isBefore(clock.now().toUtc())) {
-      await SheetsAiPreviewRecord.db.deleteRow(session, row);
-      return null;
-    }
-    final decoded =
-        jsonDecode(utf8.decode(gzip.decode(base64Decode(row.changesJson))))
-            as Map;
+    final decoded = AiPreviewRecords.decode(row.changesJson)! as Map;
     return StoredAiPreview(
       previewId: row.previewId,
       userId: row.userId,
-      space: row.spreadsheetUuid,
+      space: row.fileUuid,
       preview: SheetsAiPreview.fromJson(
         (jsonDecode(row.previewJson) as Map).cast<String, dynamic>(),
       ),
@@ -125,10 +96,6 @@ abstract final class SheetsAiPreviewStore {
   }
 
   /// Deletes the stored preview [previewId].
-  static Future<void> delete(Session session, String previewId) async {
-    await SheetsAiPreviewRecord.db.deleteWhere(
-      session,
-      where: (t) => t.previewId.equals(previewId),
-    );
-  }
+  static Future<void> delete(Session session, String previewId) =>
+      AiPreviewRecords.delete(session, previewId);
 }

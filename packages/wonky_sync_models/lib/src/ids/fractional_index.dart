@@ -1,4 +1,4 @@
-import 'base62.dart';
+import 'package:wonky_revlog/base62.dart';
 
 /// Fractional indexing over base-62 keys (Figma / `fractional-indexing`
 /// algorithm, specs/wonky_sheets/02 §2).

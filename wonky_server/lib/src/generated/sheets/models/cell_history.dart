@@ -12,7 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 /// Cell value history kept after ChangeLog pruning (Sheets 10 §6), latest
 /// 100 per cell.
@@ -20,11 +20,11 @@ abstract class CellHistory
     implements _is.TableRow<int?>, _is.ProtocolSerialization {
   CellHistory._({
     this.id,
-    required this.spreadsheetUuid,
+    required this.fileUuid,
     required this.sheetId,
     required this.rowId,
     required this.colId,
-    required this.changeLogId,
+    required this.revision,
     required this.userUuid,
     required this.actorKind,
     required this.label,
@@ -35,13 +35,13 @@ abstract class CellHistory
 
   factory CellHistory({
     int? id,
-    required _is.UuidValue spreadsheetUuid,
+    required _is.UuidValue fileUuid,
     required _is.UuidValue sheetId,
     required _is.UuidValue rowId,
     required _is.UuidValue colId,
-    required _is.UuidValue changeLogId,
+    required int revision,
     required _is.UuidValue userUuid,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required String label,
     required DateTime at,
     String? before,
@@ -51,21 +51,19 @@ abstract class CellHistory
   factory CellHistory.fromJson(Map<String, dynamic> jsonSerialization) {
     return CellHistory(
       id: jsonSerialization['id'] as int?,
-      spreadsheetUuid: _is.UuidValueJsonExtension.fromJson(
-        jsonSerialization['spreadsheetUuid'],
+      fileUuid: _is.UuidValueJsonExtension.fromJson(
+        jsonSerialization['fileUuid'],
       ),
       sheetId: _is.UuidValueJsonExtension.fromJson(
         jsonSerialization['sheetId'],
       ),
       rowId: _is.UuidValueJsonExtension.fromJson(jsonSerialization['rowId']),
       colId: _is.UuidValueJsonExtension.fromJson(jsonSerialization['colId']),
-      changeLogId: _is.UuidValueJsonExtension.fromJson(
-        jsonSerialization['changeLogId'],
-      ),
+      revision: jsonSerialization['revision'] as int,
       userUuid: _is.UuidValueJsonExtension.fromJson(
         jsonSerialization['userUuid'],
       ),
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       label: jsonSerialization['label'] as String,
@@ -82,7 +80,7 @@ abstract class CellHistory
   @override
   int? id;
 
-  _is.UuidValue spreadsheetUuid;
+  _is.UuidValue fileUuid;
 
   _is.UuidValue sheetId;
 
@@ -90,11 +88,12 @@ abstract class CellHistory
 
   _is.UuidValue colId;
 
-  _is.UuidValue changeLogId;
+  /// The op that wrote the value.
+  int revision;
 
   _is.UuidValue userUuid;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   String label;
 
@@ -112,13 +111,13 @@ abstract class CellHistory
   @_is.useResult
   CellHistory copyWith({
     int? id,
-    _is.UuidValue? spreadsheetUuid,
+    _is.UuidValue? fileUuid,
     _is.UuidValue? sheetId,
     _is.UuidValue? rowId,
     _is.UuidValue? colId,
-    _is.UuidValue? changeLogId,
+    int? revision,
     _is.UuidValue? userUuid,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     String? label,
     DateTime? at,
     String? before,
@@ -129,11 +128,11 @@ abstract class CellHistory
     return {
       '__className__': 'CellHistory',
       if (id != null) 'id': id,
-      'spreadsheetUuid': spreadsheetUuid.toJson(),
+      'fileUuid': fileUuid.toJson(),
       'sheetId': sheetId.toJson(),
       'rowId': rowId.toJson(),
       'colId': colId.toJson(),
-      'changeLogId': changeLogId.toJson(),
+      'revision': revision,
       'userUuid': userUuid.toJson(),
       'actorKind': actorKind.toJson(),
       'label': label,
@@ -181,24 +180,24 @@ class _Undefined {}
 class _CellHistoryImpl extends CellHistory {
   _CellHistoryImpl({
     int? id,
-    required _is.UuidValue spreadsheetUuid,
+    required _is.UuidValue fileUuid,
     required _is.UuidValue sheetId,
     required _is.UuidValue rowId,
     required _is.UuidValue colId,
-    required _is.UuidValue changeLogId,
+    required int revision,
     required _is.UuidValue userUuid,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required String label,
     required DateTime at,
     String? before,
     String? after,
   }) : super._(
          id: id,
-         spreadsheetUuid: spreadsheetUuid,
+         fileUuid: fileUuid,
          sheetId: sheetId,
          rowId: rowId,
          colId: colId,
-         changeLogId: changeLogId,
+         revision: revision,
          userUuid: userUuid,
          actorKind: actorKind,
          label: label,
@@ -213,13 +212,13 @@ class _CellHistoryImpl extends CellHistory {
   @override
   CellHistory copyWith({
     Object? id = _Undefined,
-    _is.UuidValue? spreadsheetUuid,
+    _is.UuidValue? fileUuid,
     _is.UuidValue? sheetId,
     _is.UuidValue? rowId,
     _is.UuidValue? colId,
-    _is.UuidValue? changeLogId,
+    int? revision,
     _is.UuidValue? userUuid,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     String? label,
     DateTime? at,
     Object? before = _Undefined,
@@ -227,11 +226,11 @@ class _CellHistoryImpl extends CellHistory {
   }) {
     return CellHistory(
       id: id is int? ? id : this.id,
-      spreadsheetUuid: spreadsheetUuid ?? this.spreadsheetUuid,
+      fileUuid: fileUuid ?? this.fileUuid,
       sheetId: sheetId ?? this.sheetId,
       rowId: rowId ?? this.rowId,
       colId: colId ?? this.colId,
-      changeLogId: changeLogId ?? this.changeLogId,
+      revision: revision ?? this.revision,
       userUuid: userUuid ?? this.userUuid,
       actorKind: actorKind ?? this.actorKind,
       label: label ?? this.label,
@@ -245,12 +244,11 @@ class _CellHistoryImpl extends CellHistory {
 class CellHistoryUpdateTable extends _is.UpdateTable<CellHistoryTable> {
   CellHistoryUpdateTable(super.table);
 
-  _is.ColumnValue<_is.UuidValue, _is.UuidValue> spreadsheetUuid(
-    _is.UuidValue value,
-  ) => _is.ColumnValue(
-    table.spreadsheetUuid,
-    value,
-  );
+  _is.ColumnValue<_is.UuidValue, _is.UuidValue> fileUuid(_is.UuidValue value) =>
+      _is.ColumnValue(
+        table.fileUuid,
+        value,
+      );
 
   _is.ColumnValue<_is.UuidValue, _is.UuidValue> sheetId(_is.UuidValue value) =>
       _is.ColumnValue(
@@ -270,10 +268,8 @@ class CellHistoryUpdateTable extends _is.UpdateTable<CellHistoryTable> {
         value,
       );
 
-  _is.ColumnValue<_is.UuidValue, _is.UuidValue> changeLogId(
-    _is.UuidValue value,
-  ) => _is.ColumnValue(
-    table.changeLogId,
+  _is.ColumnValue<int, int> revision(int value) => _is.ColumnValue(
+    table.revision,
     value,
   );
 
@@ -283,8 +279,8 @@ class CellHistoryUpdateTable extends _is.UpdateTable<CellHistoryTable> {
         value,
       );
 
-  _is.ColumnValue<_i810rwvy.ActorKind, _i810rwvy.ActorKind> actorKind(
-    _i810rwvy.ActorKind value,
+  _is.ColumnValue<_ipbpecg8.ActorKind, _ipbpecg8.ActorKind> actorKind(
+    _ipbpecg8.ActorKind value,
   ) => _is.ColumnValue(
     table.actorKind,
     value,
@@ -314,8 +310,8 @@ class CellHistoryUpdateTable extends _is.UpdateTable<CellHistoryTable> {
 class CellHistoryTable extends _is.Table<int?> {
   CellHistoryTable({super.tableRelation}) : super(tableName: 'cell_history') {
     updateTable = CellHistoryUpdateTable(this);
-    spreadsheetUuid = _is.ColumnUuid(
-      'spreadsheetUuid',
+    fileUuid = _is.ColumnUuid(
+      'fileUuid',
       this,
     );
     sheetId = _is.ColumnUuid(
@@ -330,8 +326,8 @@ class CellHistoryTable extends _is.Table<int?> {
       'colId',
       this,
     );
-    changeLogId = _is.ColumnUuid(
-      'changeLogId',
+    revision = _is.ColumnInt(
+      'revision',
       this,
     );
     userUuid = _is.ColumnUuid(
@@ -363,7 +359,7 @@ class CellHistoryTable extends _is.Table<int?> {
 
   late final CellHistoryUpdateTable updateTable;
 
-  late final _is.ColumnUuid spreadsheetUuid;
+  late final _is.ColumnUuid fileUuid;
 
   late final _is.ColumnUuid sheetId;
 
@@ -371,11 +367,12 @@ class CellHistoryTable extends _is.Table<int?> {
 
   late final _is.ColumnUuid colId;
 
-  late final _is.ColumnUuid changeLogId;
+  /// The op that wrote the value.
+  late final _is.ColumnInt revision;
 
   late final _is.ColumnUuid userUuid;
 
-  late final _is.ColumnEnum<_i810rwvy.ActorKind> actorKind;
+  late final _is.ColumnEnum<_ipbpecg8.ActorKind> actorKind;
 
   late final _is.ColumnString label;
 
@@ -388,11 +385,11 @@ class CellHistoryTable extends _is.Table<int?> {
   @override
   List<_is.Column> get columns => [
     id,
-    spreadsheetUuid,
+    fileUuid,
     sheetId,
     rowId,
     colId,
-    changeLogId,
+    revision,
     userUuid,
     actorKind,
     label,

@@ -1,9 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wonky_write/features/editor/applier/delta_applier.dart';
 import 'package:wonky_write/features/editor/controller/write_editor_controller.dart';
 import 'package:wonky_write/features/outline/outline_panel.dart';
 import 'package:wonky_write/features/screen/document_insights.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 Delta sample() => const MarkdownCodec()
     .importMarkdown(

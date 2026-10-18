@@ -200,6 +200,18 @@ Rules (applied per op component of `C`, against the attributes of `docBefore` at
 Constraints are kept valid: e.g. a suggested `code` format still excludes `bold/italic/strike`
 (the rewriter records all removed attrs in `before`).
 
+**As built (CQ-50):** one implementation, `SuggestionRewriter` in `wonky_write_core`
+(`collab/suggestion_rewriter.dart`), used by the editor (on a window around the change,
+Write 04 §32.1), the AI assistant and the server's MCP headless editor, so all three produce the
+same suggestions. Beyond the table: `insert, delete` runs are reordered to `delete, insert`
+(the `ins` part of a replacement follows the struck text, §2.4); the user's own typing inside,
+right after or right before their own typed insertion **extends** it (same key and mark), while
+agent edits (`via`) always get a mark of their own (attribution and the returned suggestion id
+stay right); the inserts of one change share one mark; an attribute change with no effect on a piece adds no
+`fmt`, and attributes invalid for a piece (block keys on text, inline keys on `"\n"`) are
+dropped. The editor's former copy is kept only as the oracle of
+`test/collab/suggestion_rewriter_differential_test.dart`.
+
 ### 2.4 Suggestion identity and caret behavior
 
 - `SuggestionSession` reuses the current suggestion id for consecutive insertions/deletions by
@@ -413,7 +425,8 @@ Comparing revisions `A < B` (default in the UI: each version vs. the previous ve
 list):
 
 1. **Attributed replay** (exact authorship) when all ops `A+1…B` are retained and their count
-   ≤ 20,000:
+   ≤ 20,000 (`WriteHistoryService.maxReplayOps`; past it the ops are not loaded at all and the
+   diff compares the two snapshots, step 2):
    - Start from `doc(A)` with `cmt_*`/`sug_*` stripped; maintain a *tombstone document* `T` in
      which every char carries an internal mark: `orig` (present at A), `ins{by}`,
      `del{by}` (present at A, deleted later — kept as a tombstone), `fmt{by, before}`.

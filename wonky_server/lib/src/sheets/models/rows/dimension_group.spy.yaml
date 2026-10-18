@@ -1,0 +1,21 @@
+### Row/column grouping (outline).
+class: DimensionGroup
+table: dimension_group
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  sheet: Sheet?, relation(onDelete=Cascade, deferred)
+  dimension: Dimension
+  startId: UuidValue
+  endId: UuidValue
+  ### 1..8.
+  depth: int
+  collapsed: bool, default=false
+  createdAt: DateTime, defaultModel=now
+indexes:
+  dimension_group_file_idx:
+    fields: fileId, id

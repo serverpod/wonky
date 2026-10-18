@@ -1,0 +1,4 @@
+class: RevRoleChanged
+extends: RevServerMessage
+fields:
+  role: AccessRole

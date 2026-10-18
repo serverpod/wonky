@@ -1,17 +1,15 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wonky_app/wonky_app.dart';
-import 'package:wonky_client/wonky_client.dart' show ChangeLog;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart' show RevOpMeta;
 import 'package:wonky_sheets_core/formula.dart' show CellPos;
 import 'package:wonky_sheets_core/model.dart';
 import 'package:wonky_sync_models/ids.dart' show SheetsIds;
 
 import '../sheet_editor/sheet_editor_controller.dart';
-import '../sync/sheets_sessions.dart';
-import '../sync/synced_workbook_session.dart';
+import '../revlog/logged_workbook_session.dart';
 
 /// Why an offline edit didn't survive the merge.
 enum LocalConflictKind {
@@ -158,8 +156,8 @@ class SheetsConflicts extends ChangeNotifier {
   final SheetEditorController editor;
   final LocalStore store;
 
-  /// The local change log (overrides the replica's; tests).
-  final Future<List<ChangeLog>> Function()? changeLogs;
+  /// The local op metadata (overrides the session's; tests).
+  final Future<List<RevOpMeta>> Function()? changeLogs;
 
   /// Whether writes count as offline (overrides connectivity; tests).
   final bool Function()? isOffline;
@@ -393,50 +391,32 @@ class SheetsConflicts extends ChangeNotifier {
     _wasOnline = online;
   }
 
-  /// Waits until the sync after reconnecting merged our pending writes and
-  /// the remote changes were applied, then [check]s.
+  /// Waits until the outbox drained after reconnecting (our pending writes
+  /// are committed and the remote ops before them applied), then [check]s.
   void _afterSync() {
     _settle?.cancel();
     final session = editor.session;
-    if (session is! SyncedWorkbookSession) return;
-    var tries = 0;
-    int? startCycle;
-    unawaited(
-      SheetsData.ready(services).then((c) => startCycle = c?.cycles.value),
-    );
-    _settle = Timer.periodic(const Duration(seconds: 1), (t) async {
-      tries++;
-      final c = await SheetsData.ready(services);
-      final synced =
-          session.pendingChanges == 0 &&
-          c != null &&
-          startCycle != null &&
-          c.cycles.value > startCycle!;
-      if (_disposed || _offline) {
-        t.cancel();
-        return;
+    if (session is! LoggedWorkbookSession) return;
+    // A timer only marks that a check is pending (dispose cancels it).
+    _settle = Timer(const Duration(days: 1), () {});
+    unawaited(() async {
+      try {
+        await session.whenSynced(timeout: const Duration(seconds: 90));
+      } catch (_) {
+        // Check what arrived anyway.
       }
-      if (synced || tries >= 90) {
-        t.cancel();
-        // Give the remote patch a moment to reach the model.
-        await Future<void>.delayed(const Duration(milliseconds: 800));
-        if (!_disposed) await check();
-      }
-    });
+      if (_disposed || _offline || !(_settle?.isActive ?? false)) return;
+      _settle?.cancel();
+      if (!_disposed) await check();
+    }());
   }
 
-  Future<List<ChangeLog>> _logs() async {
+  Future<List<RevOpMeta>> _logs() async {
     final f = changeLogs;
     if (f != null) return f();
     final session = editor.session;
-    if (session is! SyncedWorkbookSession) return const [];
-    return ChangeLog.db.find(
-      session.host.replica.session,
-      where: (t) =>
-          t.spreadsheetId.equals(session.spaceUuid) &
-          (t.at > clock.now().subtract(const Duration(days: 30))),
-      limit: 20000,
-    );
+    if (session is! LoggedWorkbookSession) return const [];
+    return session.recentOps(const Duration(days: 30));
   }
 
   /// Compares the cells written offline with the merged model and records
@@ -444,14 +424,14 @@ class SheetsConflicts extends ChangeNotifier {
   Future<List<LocalConflict>> check() async {
     if (_cells.isEmpty && _sorts.isEmpty) return const [];
     final me = editor.session.userId;
-    List<ChangeLog> logs;
+    List<RevOpMeta> logs;
     try {
       logs = await _logs();
     } catch (e) {
       debugPrint('Reading the change log failed: $e');
       logs = const [];
     }
-    logs = [...logs]..sort((a, b) => b.at.compareTo(a.at));
+    logs = [...logs]..sort((a, b) => b.revision.compareTo(a.revision));
     final model = editor.model;
     final found = <LocalConflict>[];
     final now = clock.now().toUtc();
@@ -463,7 +443,7 @@ class SheetsConflicts extends ChangeNotifier {
       final col = sheet?.columns.indexOf(x.colId) ?? -1;
       LocalConflictKind kind;
       String? theirs;
-      ChangeLog? by;
+      RevOpMeta? by;
       if (sheet == null || row < 0 || col < 0) {
         kind = sheet == null
             ? LocalConflictKind.sheetDeleted
@@ -484,13 +464,13 @@ class SheetsConflicts extends ChangeNotifier {
           final s = _summary(l);
           return (s?.deleted[listKey] ?? const []).contains(id);
         });
-        if (by != null && by.userId.uuid == me) continue;
+        if (by != null && by.authorUuid == me) continue;
       } else {
         theirs = sheet.cellAt(row, col)?.content;
         if (theirs == x.content) continue;
         kind = LocalConflictKind.overwritten;
         by = _firstWhere(logs, (l) => _wrote(l, x.sheetId, x.rowId, x.colId));
-        if (by != null && by.userId.uuid == me) continue;
+        if (by != null && by.authorUuid == me) continue;
       }
       final label = sheet == null || row < 0 || col < 0
           ? null
@@ -504,9 +484,9 @@ class SheetsConflicts extends ChangeNotifier {
           colId: x.colId,
           myValue: x.content,
           theirValue: theirs,
-          theirUserId: by?.userId.uuid,
-          theirName: by == null ? null : nameOf(by.userId.uuid),
-          changeLogId: by?.id.uuid,
+          theirUserId: by?.authorUuid,
+          theirName: by == null ? null : nameOf(by.authorUuid ?? ''),
+          changeLogId: by == null ? null : '${by.revision}',
           label: label,
           detectedAt: now,
         ),
@@ -528,8 +508,8 @@ class SheetsConflicts extends ChangeNotifier {
       }
       if (known == 0 || differ * 2 < known) continue;
       // Sorts are labeled "Sort range" / "Sort sheet" (kinds: values).
-      bool onSheet(ChangeLog l) {
-        if (l.userId.uuid == me) return false;
+      bool onSheet(RevOpMeta l) {
+        if (l.authorUuid == me) return false;
         final s = _summary(l);
         return s != null && s.sheets.contains(e.key);
       }
@@ -542,7 +522,7 @@ class SheetsConflicts extends ChangeNotifier {
           _firstWhere(logs, onSheet);
       if (by == null) continue;
       sortReplaced = true;
-      sortWinner = nameOf(by.userId.uuid);
+      sortWinner = nameOf(by.authorUuid ?? '');
     }
     lastSortReplacedBy = sortReplaced ? sortWinner : null;
     _cells.clear();
@@ -558,40 +538,31 @@ class SheetsConflicts extends ChangeNotifier {
     return found;
   }
 
-  static ChangeLog? _firstWhere(List<ChangeLog> l, bool Function(ChangeLog) f) {
+  static RevOpMeta? _firstWhere(List<RevOpMeta> l, bool Function(RevOpMeta) f) {
     for (final x in l) {
       if (f(x)) return x;
     }
     return null;
   }
 
-  static ChangeSummary? _summary(ChangeLog l) {
+  static ChangeSummary? _summary(RevOpMeta l) {
+    final s = l.summary;
+    if (s == null) return null;
     try {
-      return ChangeSummary.parse(l.summaryJson);
+      return ChangeSummary.fromJson(s);
     } catch (_) {
       return null;
     }
   }
 
   /// Whether [l] wrote the cell (its details, else its ranges).
-  bool _wrote(ChangeLog l, String sheetId, String rowId, String colId) {
-    final d = l.detailJson;
-    if (d != null) {
-      try {
-        final j = jsonDecode(d);
-        final cells = j is Map ? j['cells'] : null;
-        if (cells is List) {
-          return cells.any(
-            (c) =>
-                c is Map &&
-                c['s'] == sheetId &&
-                c['r'] == rowId &&
-                c['c'] == colId,
-          );
-        }
-      } on FormatException {
-        return false;
-      }
+  bool _wrote(RevOpMeta l, String sheetId, String rowId, String colId) {
+    final cells = l.detail?['cells'];
+    if (cells is List) {
+      return cells.any(
+        (c) =>
+            c is Map && c['s'] == sheetId && c['r'] == rowId && c['c'] == colId,
+      );
     }
     final s = _summary(l);
     if (s == null) return false;

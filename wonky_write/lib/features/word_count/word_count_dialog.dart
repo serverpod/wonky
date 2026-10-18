@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:shad/shad.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../../l10n/write_l10n.dart';
@@ -93,6 +94,7 @@ class WordCountDialog extends StatelessWidget {
         );
         return ShadDialog(
           key: const ValueKey<String>('write.dialog.wordCount'),
+          closeIcon: const WonkyDialogCloseButton(),
           title: Text(l.wordCountTitle),
           constraints: const BoxConstraints(maxWidth: 420),
           actions: [

@@ -1,6 +1,10 @@
 import 'package:collection/collection.dart';
 
 /// Base of the chart spec value classes: value equality over the canonical JSON.
+///
+/// Nodes are immutable, so the hash is computed once per instance (CQ-47:
+/// views key their scene caches on the spec, and hashing used to serialize
+/// it on every hover move).
 abstract base class SpecNode {
   /// Const base constructor.
   const SpecNode();
@@ -9,15 +13,17 @@ abstract base class SpecNode {
   Map<String, Object?> toJson();
 
   static const _eq = DeepCollectionEquality();
+  static final Expando<int> _hashes = Expando('SpecNode.hashCode');
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other.runtimeType == runtimeType &&
+          hashCode == other.hashCode &&
           _eq.equals(toJson(), (other as SpecNode).toJson()));
 
   @override
-  int get hashCode => _eq.hash(toJson());
+  int get hashCode => _hashes[this] ??= _eq.hash(toJson());
 
   @override
   String toString() => '$runtimeType(${toJson()})';

@@ -1,0 +1,19 @@
+### A recorded or written macro bound to a function.
+class: Macro
+table: macro
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  project: ScriptProject?, relation(onDelete=Cascade, deferred)
+  name: String
+  functionName: String
+  ### 1..10 → Mod+Alt+Shift+<n>.
+  shortcutSlot: int?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  macro_file_idx:
+    fields: fileId, id

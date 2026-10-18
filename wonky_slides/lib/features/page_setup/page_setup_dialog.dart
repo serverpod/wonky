@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_slides_core/themes.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/slides_l10n.dart';
 import '../editor_screen/deck_editor_controller.dart';
@@ -421,6 +422,7 @@ class _PageSetupDialogState extends State<PageSetupDialog>
       bindings: {const SingleActivator(LogicalKeyboardKey.enter): _apply},
       child: ShadDialog(
         key: const ValueKey<String>('slides.dialog.pageSetup'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.pageSetupTitle),
         constraints: BoxConstraints(maxWidth: narrow ? 360 : 620),
         actions: [

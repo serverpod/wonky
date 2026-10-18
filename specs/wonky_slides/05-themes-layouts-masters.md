@@ -239,7 +239,7 @@ move the registry into a shared package **`packages/wonky_fonts`** (pure-Dart ma
 > `AssetFontRegistry` (`ensure(family, weight, italic)`, `ensureAll`, `generation`,
 > `registerLicenses`) and `BundledAssetFontProvider` (a `FontProvider` over the package assets
 > with per-category substitutes). Write keeps its `WriteFonts`/`AssetFontProvider` for now.
-> Sheets still bundles its own copy in `wonky_sheets/assets/fonts/` (TODO, Wonky Drive).
+> Sheets loads the same package assets (`CellFonts`, `print_fonts.dart`; its own copy in `wonky_sheets/assets/fonts/` was dropped in CQ-64g).
 
 ### 3.2 Families available in Slides
 

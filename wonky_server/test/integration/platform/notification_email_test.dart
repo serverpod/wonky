@@ -1,5 +1,9 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
@@ -298,6 +302,87 @@ void main() {
       await NotificationService.sendDigests(sessionBuilder.build());
 
       expect(mail.to(anna.email), hasLength(1));
+    });
+
+    group('(CQ-28)', () {
+      final digestBatch = NotificationService.digestBatch;
+      tearDown(() => NotificationService.digestBatch = digestBatch);
+
+      test('when another user has many in-app notifications then the digest '
+          'still reaches Bo', () async {
+        await _settings(endpoints, bo, {'replies': 'email'});
+        final thread = await _comment(endpoints, bo, doc);
+        // Bo replies three times in Anna's thread (in-app for Anna, who
+        // sorts first), Anna once in Bo's (email for Bo).
+        final mine = await _comment(endpoints, anna, doc);
+        for (var i = 0; i < 3; i++) {
+          await endpoints.comment.reply(
+            bo.endpointSession,
+            mine.uuid,
+            'R$i',
+            [],
+          );
+        }
+        await endpoints.comment.reply(
+          anna.endpointSession,
+          thread.uuid,
+          'Hi',
+          [],
+        );
+        NotificationService.digestBatch = 1;
+
+        await NotificationService.sendDigests(sessionBuilder.build());
+
+        expect(mail.to(bo.email), hasLength(1));
+        expect(mail.to(anna.email), isEmpty);
+      });
+
+      test('when the immediate email and the digest run at once then the '
+          'mention is emailed once', () async {
+        await _settings(endpoints, bo, {'mentions': 'email'});
+        final scheduled = <int>[];
+        NotificationService.scheduleImmediateEmail = (_, id) async =>
+            scheduled.add(id);
+        await _comment(endpoints, anna, doc, mentions: [bo.id]);
+
+        await Future.wait([
+          NotificationService.sendImmediate(
+            sessionBuilder.build(),
+            scheduled.single,
+          ),
+          NotificationService.sendDigests(sessionBuilder.build()),
+        ]);
+
+        expect(mail.to(bo.email), hasLength(1));
+      });
+
+      test('when old notifications are purged then read ones go after 90 '
+          'days and unread ones after a year', () async {
+        final session = sessionBuilder.build();
+        final now = clock.now().toUtc();
+        UserNotification row(int days, {bool read = false}) => UserNotification(
+          userId: bo.id,
+          kind: NotificationKind.reply,
+          payload: '{}',
+          createdAt: now.subtract(Duration(days: days)),
+          readAt: read ? now : null,
+        );
+        final rows = await UserNotification.db.insert(session, [
+          row(100, read: true),
+          row(100),
+          row(400),
+          row(10, read: true),
+        ]);
+
+        await NotificationService.purgeOld(session, now: now);
+        final left = await UserNotification.db.find(
+          session,
+          where: (t) => t.id.inSet(<int>{for (final r in rows) r.id!}),
+          orderBy: (t) => t.id,
+        );
+
+        expect(left.map((r) => r.id), [rows[1].id, rows[3].id]);
+      });
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
@@ -382,7 +383,7 @@ void main() {
         return v.contentRef!;
       }
 
-      final now = DateTime.now();
+      final now = clock.now();
       final old = await cached('Old', now.subtract(const Duration(days: 20)));
       final pinned = await cached(
         'Pinned',

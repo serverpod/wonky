@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wonky_app/uploads.dart' show PendingUpload;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_sheets/features/import_export/pending_uploads.dart';
@@ -145,7 +146,7 @@ void main() {
       final store = SqliteSheetsUploadStore(db);
 
       await store.put(
-        SheetsPendingUpload(
+        PendingUpload(
           fileUuid: _id,
           itemUuid: _id,
           bytes: bytes,

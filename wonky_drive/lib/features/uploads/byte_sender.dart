@@ -65,10 +65,14 @@ class UploadDescription {
     if (type != 'binary' && type != 'multipart') {
       throw FormatException('Unknown upload type $type');
     }
+    final url = data['url'];
+    if (url is! String) {
+      throw const FormatException('The upload description has no url');
+    }
     final multipart = type == 'multipart';
     return UploadDescription._(
       multipart: multipart,
-      url: Uri.parse(data['url'] as String),
+      url: Uri.parse(url),
       method: multipart ? 'POST' : (data['method'] as String?) ?? 'POST',
       headers: {
         if (!multipart) 'Content-Type': 'application/octet-stream',

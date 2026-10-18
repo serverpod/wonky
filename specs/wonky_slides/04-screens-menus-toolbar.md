@@ -46,13 +46,13 @@ grid_view,outline_view,menus,toolbar,dialogs,home}/`.
 | `/` and drive routes (`/recent`, `/f/:folder`, `/shared`, `/starred`, `/trash`, `/search`) | **Home** (Drive filtered to presentations, D2) | shell `DriveHomeScreen` with `SlidesAppConfig.homeScope` = `HomeScope.kind(presentation)` | §15 |
 | `/templates` | Template gallery (presentation categories) | shell | §15 |
 | `/p/:uuid` (`?slide=<slideId>&comment=<threadUuid>`) | **Deck editor** | `DeckEditorScreen` | §2 |
-| `/p/:uuid` while downloading | "Downloading presentation… 42 %" (skeleton navigator + slide) | `DeckLoadingView` | 02 §9.1 |
+| `/p/:uuid` while downloading | "Downloading presentation…" (skeleton navigator + slide) until the deck's structure page arrived; a deck in the device cache opens at once | `DeckLoadingView` | 02 §9.1 |
 | `/p/:uuid/present` (`?slide=&from=start`) | Presenting in this window (full screen, or presenter view; audience on other devices/browsers via the presentation session, 10 §5.2) | `PresentScreen` | [10](10-presenting-and-pdf.md) |
 | `/p/:uuid/print` | Print / PDF preview with options | `SlidesPrintPreviewScreen` | [10](10-presenting-and-pdf.md) |
 | `/p/:uuid/history` (`?version=`) | Version history (full-screen) | `SlidesVersionHistoryScreen` | [09 §4](09-collaboration-history.md) |
 | `/settings` | **Wonky Work settings** (suite-level, D4) | shell | suite 04 |
 | `/settings/app` | **Slides settings** (D4) | shell page + Slides sections | §13.16 |
-| No access / not found / unavailable offline | shell pages ("This presentation isn't available offline") | shell | suite 03 §4 |
+| No access / not found / unavailable offline | Empty state in the editor route: "This presentation isn't available offline." with "It opens by itself when you're back online.", or the session's reason ("You don't have access to this presentation.", "You no longer have access to this presentation.") and *Back to Slides* | `DeckEditorScreen` (`slides.unavailable`) | suite 03 §4, 02 §9.1 |
 
 `/p/:uuid/present` and `/p/:uuid/print` are editor child routes (the deck session stays mounted,
 `WonkyAppConfig.editorRoutes`). Dev web port **8104** (`serverpod: flutter_apps: slides`, D1).
@@ -124,7 +124,7 @@ Follows suite 03 §3.1 with Slides additions:
 |------|----------|
 | App icon | Slides product icon (`WonkyProduct.slides`) → Home |
 | `DocumentTitleField` | Rename = `shell.drive.rename` (shell stack step) |
-| Star, Move, `SyncStatusIndicator` | Shell |
+| Star, Move, `SyncStatusIndicator` | Shell. *Saved* means every change is acknowledged by the server; *Saving* while this tab's outbox holds changes; *Offline — changes saved on this device* without a connection ([17](../17-revlog-sync.md) part 6 §9) |
 | `PresenceAvatarStack` | Avatars show "Editing slide 4" / "Presenting" / "Viewing"; ⋮ › *Follow* (09 §1.5) |
 | Comments button | `shell.comments.togglePanel` (badge = open threads) |
 | **Bugs & improvements** (M12) | Icon button (Lucide `messageSquarePlus`, tooltip "Bugs & improvements") → `shell.board.report` (replaced *Report a bug*, D5) |
@@ -1079,7 +1079,7 @@ Built as the Slides app's settings sections (`WonkyAppConfig.settingsSections`),
   `kindMask` — decided in the v2 review, Q7, suite 03 §3.3). The left menu follows D2: apps section (Drive, Write, Sheets, **Slides**
   highlighted), the Slides navigation, then *Slides settings*, *Wonky Work settings*, *Bugs &
   Improvements* (M12; was *Report a bug*), storage meter ("12.3 MB of 50 MB"); *Open in Wonky Drive* link.
-- **+ New** → *Presentation* (works offline via reserved spaces, 02 §9.3) and *From template…*.
+- **+ New** → *Presentation* (created on the device, works offline, 02 §9.3) and *From template…*.
 - **Template strip**: Blank, Pitch deck, Project kickoff, Quarterly review (with linked-chart
   placeholders), Tech talk (code walkthrough with type-in), Lesson, Product launch, Weekly
   update, Portfolio, Workshop agenda — server-shipped presentations with `DriveItem.templateOf`
@@ -1115,7 +1115,8 @@ Built as the Slides app's settings sections (`WonkyAppConfig.settingsSections`),
   unchanged. Thumbnails don't count toward quota (D3).
 - Drag-and-drop of images onto the home creates nothing (no import of PPTX/Keynote); dropping a
   PDF shows "Wonky Slides can't import PDF or PowerPoint files" (non-goal).
-- Offline: decks in the Slides active set show as available offline; others dimmed.
+- Offline: decks kept complete in the device cache (opened in the last 14 days, pinned, or with
+  unsent changes; 02 §9.1) show as available offline; others dimmed.
 
 ---
 
@@ -1158,7 +1159,7 @@ mode; widening the window returns to the editor as it was.
 |---|----------|
 | A-04-1 | `LocalViewState` keys (02 §7): `collapsedGroups`, `navigatorWidth`, `notesHeight`, `notesVisible`, `inspectorVisible`, `inspectorTab`, `inspectorSections`, `viewMode`, `gridThumbSize`. |
 | A-04-2 | `UserPreferences.slidesDefaults` (suite 04, D4): `{defaultThemeKey, defaultAppearance, defaultSize, defaultLanguage, units, smartGuides, snapObjects, snapGuides, scrollChangesSlides, smartQuotes, autoformatLists, showRemoteCursors, defaultTransition, defaultBuild, previewOnHover, reduceEditorMotion, codeFontSize, codeLanguage, typeInSound, typingSpeed, chartsAutoUpdate, underlineSpelling}`; presenter preferences live in `UserPreferences.slidesPresenter` (10 A-10-4). |
-| A-04-3 | **Suite (drive)**: `DriveItemKind.presentation`, `drive.registerPresentation(spaceUuid, name, parentUuid?)` (idempotent, queued offline as a `PendingDriveOp`), `drive.createPresentation` (server path), template category values for presentations, `drive.setThumbnail` reused. |
+| A-04-3 | **Suite (drive)**: `DriveItemKind.presentation`, `drive.registerPresentation(spaceUuid, name, parentUuid?)` (= `createPresentation(fileUuid: spaceUuid, initialize: false)`; idempotent, queued offline as a `PendingDriveOp`), `drive.createPresentation` (server path; `fileUuid`/`initialize`, RevLog), template category values for presentations, `drive.setThumbnail` reused. |
 | A-04-4 | **Suite (shell)**: `EditorScaffold.titleActions` slot for app buttons in the title row (Present split button); `shell.board.report` header icon (D5, formerly `shell.help.reportBug`) placement before Share. |
 | A-04-5 | **Suite (comments)**: `CommentAnchorKind` values `slide` and `element` (09 §3.1). |
 | A-04-6 | Tokens: `groupColor.{gray,red,orange,amber,green,teal,blue,violet,pink}` (light/dark), `navigatorBackground`, `thumbnailRing`. |

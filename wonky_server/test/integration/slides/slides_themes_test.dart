@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/slides/headless/headless_deck.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/planner.dart';
@@ -51,7 +51,7 @@ void main() {
       await deck.write(ApplyThemeToSlides(botanical, [first]));
     });
 
-    tearDown(HeadlessDeckCache.clear);
+    tearDown(HeadlessFileCache.clear);
 
     test('when a viewer lists its themes then every theme comes with its '
         'masters, layouts, elements and usage, and the entries import into '

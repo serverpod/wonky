@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
 import 'package:serverpod/serverpod.dart' show UuidValue;

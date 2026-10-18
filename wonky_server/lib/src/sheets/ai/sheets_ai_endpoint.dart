@@ -3,6 +3,8 @@ import 'package:serverpod/serverpod.dart';
 import '../../platform/common/models.dart';
 import '../../platform/users/user_service.dart';
 import 'sheets_ai_service.dart';
+import 'sheets_ai_preview_service.dart';
+import 'sheets_ai_cells.dart';
 
 /// The inline AI features of Wonky Sheets (Sheets 12 §6.4–6.10) and the AI
 /// changes preview of Suggest-mode assistant runs (§6.3). The assistant
@@ -101,7 +103,7 @@ class SheetsAiEndpoint extends Endpoint {
   /// The AI changes preview of a Suggest-mode run (`previewId` of the
   /// `previewReady` / `done` assistant events).
   Future<SheetsAiPreview> getPreview(Session session, String previewId) async =>
-      SheetsAiService.getPreview(
+      SheetsAiPreviews.getPreview(
         session,
         await UserService.actorOf(session),
         previewId,
@@ -112,7 +114,7 @@ class SheetsAiEndpoint extends Endpoint {
     Session session,
     String previewId,
     List<String>? callIds,
-  ) async => SheetsAiService.applyPreview(
+  ) async => SheetsAiPreviews.applyPreview(
     session,
     await UserService.actorOf(session),
     previewId,
@@ -126,7 +128,7 @@ class SheetsAiEndpoint extends Endpoint {
     UuidValue itemUuid,
     List<SheetsAiCellRequest> requests,
     bool refresh,
-  ) async => SheetsAiService.evaluateAiCells(
+  ) async => SheetsAiCells.evaluateAiCells(
     session,
     await UserService.actorOf(session),
     itemUuid,
@@ -136,7 +138,7 @@ class SheetsAiEndpoint extends Endpoint {
 
   /// Discards a preview.
   Future<void> discardPreview(Session session, String previewId) async =>
-      SheetsAiService.discardPreview(
+      SheetsAiPreviews.discardPreview(
         session,
         await UserService.actorOf(session),
         previewId,

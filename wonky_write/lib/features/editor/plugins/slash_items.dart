@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../../l10n/write_l10n.dart';
 import '../commands/write_editor_commands.dart';
 import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
@@ -79,163 +80,166 @@ class SlashHost {
 }
 
 /// The slash menu items.
-List<SlashItem> defaultSlashItems() => [
-  SlashItem(
-    id: 'text',
-    title: 'Text',
-    group: SlashGroup.basic,
-    commandId: 'write.format.blockType',
-    aliases: const ['p', 'normal', 'paragraph'],
-    run: (c, h) => c.setBlockType(BlockKind.paragraph, toggle: false),
-  ),
-  for (var level = 1; level <= 6; level += 1)
+List<SlashItem> defaultSlashItems([WriteLocalizations? strings]) {
+  final l = strings ?? writeL10nEnglish;
+  return [
     SlashItem(
-      id: 'h$level',
-      title: 'Heading $level',
+      id: 'text',
+      title: l.slashText,
       group: SlashGroup.basic,
       commandId: 'write.format.blockType',
-      aliases: ['h$level', if (level == 1) 'title', 'heading'],
-      run: (c, h) => c.setBlockType(
-        BlockKind.values[BlockKind.heading1.index + level - 1],
-        toggle: false,
-      ),
+      aliases: const ['p', 'normal', 'paragraph'],
+      run: (c, h) => c.setBlockType(BlockKind.paragraph, toggle: false),
     ),
-  SlashItem(
-    id: 'bulleted',
-    title: 'Bulleted list',
-    group: SlashGroup.basic,
-    commandId: 'write.list.toggleBulleted',
-    aliases: const ['ul', 'bullet', '-'],
-    run: (c, h) => c.setBlockType(BlockKind.bulleted, toggle: false),
-  ),
-  SlashItem(
-    id: 'numbered',
-    title: 'Numbered list',
-    group: SlashGroup.basic,
-    commandId: 'write.list.toggleNumbered',
-    aliases: const ['ol', '1.'],
-    run: (c, h) => c.setBlockType(BlockKind.numbered, toggle: false),
-  ),
-  SlashItem(
-    id: 'checklist',
-    title: 'Checklist',
-    group: SlashGroup.basic,
-    commandId: 'write.list.toggleChecklist',
-    aliases: const ['todo', 'task', '[]'],
-    run: (c, h) => c.setBlockType(BlockKind.checklist, toggle: false),
-  ),
-  SlashItem(
-    id: 'quote',
-    title: 'Quote',
-    group: SlashGroup.basic,
-    commandId: 'write.format.blockType',
-    aliases: const ['blockquote', '>'],
-    run: (c, h) => c.setBlockType(BlockKind.quote, toggle: false),
-  ),
-  SlashItem(
-    id: 'code',
-    title: 'Code block',
-    group: SlashGroup.basic,
-    commandId: 'write.format.blockType',
-    aliases: const ['code', 'pre', '```'],
-    run: (c, h) => c.setBlockType(BlockKind.codeBlock, toggle: false),
-  ),
-  SlashItem(
-    id: 'divider',
-    title: 'Divider',
-    group: SlashGroup.basic,
-    commandId: 'write.insert.divider',
-    aliases: const ['hr', '---', 'line'],
-    run: (c, h) => c.insertDivider(),
-  ),
-  SlashItem(
-    id: 'image',
-    title: 'Image',
-    group: SlashGroup.media,
-    commandId: 'write.insert.image',
-    aliases: const ['img', 'picture', 'upload'],
-    run: (c, h) => h.onInsertImage?.call(),
-  ),
-  SlashItem(
-    id: 'imageUrl',
-    title: 'Image from URL',
-    group: SlashGroup.media,
-    commandId: 'write.insert.imageFromUrl',
-    aliases: const ['image url', 'url'],
-    run: (c, h) => h.onInsertImageFromUrl?.call(),
-  ),
-  SlashItem(
-    id: 'table',
-    title: 'Table',
-    group: SlashGroup.media,
-    commandId: 'write.insert.table',
-    aliases: const ['grid'],
-    suggestable: false,
-    run: (c, h) {
-      final id = c.insertTable();
-      if (id != null) h.onTableInserted?.call(id);
-    },
-  ),
-  SlashItem(
-    id: 'link',
-    title: 'Link',
-    group: SlashGroup.insert,
-    commandId: 'write.link.insert',
-    aliases: const ['url', 'href'],
-    run: (c, h) => h.onInsertLink?.call(),
-  ),
-  SlashItem(
-    id: 'mention',
-    title: 'Mention person',
-    group: SlashGroup.insert,
-    commandId: 'write.insert.mention',
-    aliases: const ['@', 'person', 'user'],
-    run: (c, h) {
-      c.insertText('@', label: 'Mention');
-      h.onMention?.call();
-    },
-  ),
-  SlashItem(
-    id: 'comment',
-    title: 'Comment',
-    group: SlashGroup.insert,
-    commandId: 'shell.comments.create',
-    aliases: const ['note'],
-    run: (c, h) => h.onComment?.call(),
-  ),
-  SlashItem(
-    id: 'emoji',
-    title: 'Emoji…',
-    group: SlashGroup.insert,
-    commandId: 'write.insert.emoji',
-    aliases: const ['smiley', 'emoticon'],
-    run: (c, h) => h.onEmoji?.call(),
-  ),
-  SlashItem(
-    id: 'specialCharacter',
-    title: 'Special characters…',
-    group: SlashGroup.insert,
-    commandId: 'write.insert.specialCharacter',
-    aliases: const ['special', 'symbol', 'character', 'unicode'],
-    run: (c, h) => h.onSpecialCharacter?.call(),
-  ),
-  SlashItem(
-    id: 'ai',
-    title: 'Ask AI…',
-    group: SlashGroup.insert,
-    commandId: 'write.ai.inline',
-    aliases: const ['ai', 'assistant', 'generate', 'write'],
-    run: (c, h) => h.onAskAi?.call(),
-  ),
-  SlashItem(
-    id: 'aiContinue',
-    title: 'Continue writing',
-    group: SlashGroup.insert,
-    commandId: 'write.ai.continue',
-    aliases: const ['ai continue', 'continue', 'ai'],
-    run: (c, h) => h.onContinueWriting?.call(),
-  ),
-];
+    for (var level = 1; level <= 6; level += 1)
+      SlashItem(
+        id: 'h$level',
+        title: l.slashHeading(level),
+        group: SlashGroup.basic,
+        commandId: 'write.format.blockType',
+        aliases: ['h$level', if (level == 1) 'title', 'heading'],
+        run: (c, h) => c.setBlockType(
+          BlockKind.values[BlockKind.heading1.index + level - 1],
+          toggle: false,
+        ),
+      ),
+    SlashItem(
+      id: 'bulleted',
+      title: l.slashBulletedList,
+      group: SlashGroup.basic,
+      commandId: 'write.list.toggleBulleted',
+      aliases: const ['ul', 'bullet', '-'],
+      run: (c, h) => c.setBlockType(BlockKind.bulleted, toggle: false),
+    ),
+    SlashItem(
+      id: 'numbered',
+      title: l.slashNumberedList,
+      group: SlashGroup.basic,
+      commandId: 'write.list.toggleNumbered',
+      aliases: const ['ol', '1.'],
+      run: (c, h) => c.setBlockType(BlockKind.numbered, toggle: false),
+    ),
+    SlashItem(
+      id: 'checklist',
+      title: l.slashChecklist,
+      group: SlashGroup.basic,
+      commandId: 'write.list.toggleChecklist',
+      aliases: const ['todo', 'task', '[]'],
+      run: (c, h) => c.setBlockType(BlockKind.checklist, toggle: false),
+    ),
+    SlashItem(
+      id: 'quote',
+      title: l.slashQuote,
+      group: SlashGroup.basic,
+      commandId: 'write.format.blockType',
+      aliases: const ['blockquote', '>'],
+      run: (c, h) => c.setBlockType(BlockKind.quote, toggle: false),
+    ),
+    SlashItem(
+      id: 'code',
+      title: l.slashCodeBlock,
+      group: SlashGroup.basic,
+      commandId: 'write.format.blockType',
+      aliases: const ['code', 'pre', '```'],
+      run: (c, h) => c.setBlockType(BlockKind.codeBlock, toggle: false),
+    ),
+    SlashItem(
+      id: 'divider',
+      title: l.slashDivider,
+      group: SlashGroup.basic,
+      commandId: 'write.insert.divider',
+      aliases: const ['hr', '---', 'line'],
+      run: (c, h) => c.insertDivider(),
+    ),
+    SlashItem(
+      id: 'image',
+      title: l.slashImage,
+      group: SlashGroup.media,
+      commandId: 'write.insert.image',
+      aliases: const ['img', 'picture', 'upload'],
+      run: (c, h) => h.onInsertImage?.call(),
+    ),
+    SlashItem(
+      id: 'imageUrl',
+      title: l.slashImageFromUrl,
+      group: SlashGroup.media,
+      commandId: 'write.insert.imageFromUrl',
+      aliases: const ['image url', 'url'],
+      run: (c, h) => h.onInsertImageFromUrl?.call(),
+    ),
+    SlashItem(
+      id: 'table',
+      title: l.slashTable,
+      group: SlashGroup.media,
+      commandId: 'write.insert.table',
+      aliases: const ['grid'],
+      suggestable: false,
+      run: (c, h) {
+        final id = c.insertTable();
+        if (id != null) h.onTableInserted?.call(id);
+      },
+    ),
+    SlashItem(
+      id: 'link',
+      title: l.slashLink,
+      group: SlashGroup.insert,
+      commandId: 'write.link.insert',
+      aliases: const ['url', 'href'],
+      run: (c, h) => h.onInsertLink?.call(),
+    ),
+    SlashItem(
+      id: 'mention',
+      title: l.slashMentionPerson,
+      group: SlashGroup.insert,
+      commandId: 'write.insert.mention',
+      aliases: const ['@', 'person', 'user'],
+      run: (c, h) {
+        c.insertText('@', label: l.undoMention);
+        h.onMention?.call();
+      },
+    ),
+    SlashItem(
+      id: 'comment',
+      title: l.slashComment,
+      group: SlashGroup.insert,
+      commandId: 'shell.comments.create',
+      aliases: const ['note'],
+      run: (c, h) => h.onComment?.call(),
+    ),
+    SlashItem(
+      id: 'emoji',
+      title: l.slashEmoji,
+      group: SlashGroup.insert,
+      commandId: 'write.insert.emoji',
+      aliases: const ['smiley', 'emoticon'],
+      run: (c, h) => h.onEmoji?.call(),
+    ),
+    SlashItem(
+      id: 'specialCharacter',
+      title: l.slashSpecialCharacters,
+      group: SlashGroup.insert,
+      commandId: 'write.insert.specialCharacter',
+      aliases: const ['special', 'symbol', 'character', 'unicode'],
+      run: (c, h) => h.onSpecialCharacter?.call(),
+    ),
+    SlashItem(
+      id: 'ai',
+      title: l.slashAskAi,
+      group: SlashGroup.insert,
+      commandId: 'write.ai.inline',
+      aliases: const ['ai', 'assistant', 'generate', 'write'],
+      run: (c, h) => h.onAskAi?.call(),
+    ),
+    SlashItem(
+      id: 'aiContinue',
+      title: l.slashContinueWriting,
+      group: SlashGroup.insert,
+      commandId: 'write.ai.continue',
+      aliases: const ['ai continue', 'continue', 'ai'],
+      run: (c, h) => h.onContinueWriting?.call(),
+    ),
+  ];
+}
 
 /// Whether [item] is available with [host] (AI items need AI).
 bool slashItemAvailable(SlashItem item, SlashHost? host) => switch (item.id) {

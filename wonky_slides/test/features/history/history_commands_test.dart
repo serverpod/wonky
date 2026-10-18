@@ -1,12 +1,9 @@
-import 'dart:convert';
-
+import 'package:clock/clock.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart'
     show
-        ActorKind,
-        DeckChangeLog,
         ItemVersionView,
         RevertResult,
         UuidValue,
@@ -14,6 +11,7 @@ import 'package:wonky_client/wonky_client.dart'
         VersionRestoreResult,
         VersionStorage;
 import 'package:wonky_core/wonky_core.dart' show JsonSchema;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart' show RevOpMeta;
 import 'package:wonky_slides/config/slides_features.dart';
 import 'package:wonky_slides/features/history/conflict_review_dialog.dart';
 import 'package:wonky_slides/features/history/local_conflicts.dart';
@@ -22,7 +20,7 @@ import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/schema.dart';
 import 'package:wonky_slides_core/testing.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 import '../../harness/deck_harness.dart';
 import '../../support/slides_harness.dart';
@@ -153,7 +151,7 @@ void main() {
     late String box;
     late String slide;
     late SlidesConflicts c;
-    late List<DeckChangeLog> logs;
+    late List<RevOpMeta> logs;
     var offline = true;
 
     setUp(() async {
@@ -195,19 +193,19 @@ void main() {
         ),
       ], origin: DeckChangeOrigin.remote);
       logs.add(
-        DeckChangeLog(
-          deckId: UuidValue.fromString(d.fixture.deckId),
-          userId: UuidValue.fromString(_bo),
-          actorKind: ActorKind.user,
+        RevOpMeta(
+          revision: logs.length + 1,
+          authorUuid: _bo,
+          actorKind: 'user',
           sessionId: 'bo',
           label: 'Typing',
-          summaryJson: jsonEncode({
+          summary: {
             'v': 1,
             'kinds': ['text'],
             'slides': [slide],
             'elements': [box],
-          }),
-          at: DateTime.now().toUtc(),
+          },
+          committedAt: clock.now().toUtc(),
         ),
       );
     }
@@ -253,19 +251,19 @@ void main() {
         ),
       ], origin: DeckChangeOrigin.remote);
       logs.add(
-        DeckChangeLog(
-          deckId: UuidValue.fromString(d.fixture.deckId),
-          userId: UuidValue.fromString(_bo),
-          actorKind: ActorKind.user,
+        RevOpMeta(
+          revision: logs.length + 1,
+          authorUuid: _bo,
+          actorKind: 'user',
           sessionId: 'bo',
           label: 'Delete',
-          summaryJson: jsonEncode({
+          summary: {
             'v': 1,
             'deleted': {
               'elements': [box],
             },
-          }),
-          at: DateTime.now().toUtc(),
+          },
+          committedAt: clock.now().toUtc(),
         ),
       );
       offline = false;

@@ -126,7 +126,7 @@ class SpellDictionaries {
       );
     } catch (e) {
       debugPrint('Spellcheck: loading ${info.tag} failed ($e)');
-      _engines.remove(info.tag);
+      unawaited(_engines.remove(info.tag));
       return null;
     }
   }

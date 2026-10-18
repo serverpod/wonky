@@ -1,6 +1,10 @@
+@Tags(['integration'])
+library;
+
 import 'dart:async';
 
 import 'package:async/async.dart';
+import 'package:clock/clock.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/cluster/cluster.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
@@ -88,6 +92,81 @@ void main() {
 
       await expectLater(stream.first, throwsA(isA<WonkyException>()));
     });
+
+    test('when the owner removes a joined user then the user\'s stream '
+        'ends with notFound', () async {
+      final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
+      final bo = await TestUsers.create(sessionBuilder, name: 'Bo');
+      final doc = await TestDrive.document(endpoints, anna);
+      await TestDrive.share(endpoints, doc, anna, bo, AccessRole.viewer);
+      final updates = StreamController<PresenceUpdate>();
+      final events = StreamQueue(
+        endpoints.presence.join(bo.endpointSession, doc.uuid, updates.stream),
+      );
+      await nextWhere(events, (e) => e is PresenceRoster);
+
+      await endpoints.sharing.remove(anna.endpointSession, doc.uuid, bo.id);
+
+      await expectLater(
+        nextWhere(events, (e) => false),
+        throwsA(
+          isA<WonkyException>().having(
+            (e) => e.code,
+            'code',
+            WonkyErrorCode.notFound,
+          ),
+        ),
+      );
+      await updates.close();
+      await events.cancel(immediate: true);
+    });
+
+    test(
+      'when a cursor is over the size limit then it is not relayed',
+      () async {
+        final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
+        final bo = await TestUsers.create(sessionBuilder, name: 'Bo');
+        final doc = await TestDrive.document(endpoints, anna);
+        await TestDrive.share(endpoints, doc, anna, bo, AccessRole.viewer);
+        final annaUpdates = StreamController<PresenceUpdate>();
+        final annaEvents = StreamQueue(
+          endpoints.presence.join(
+            anna.endpointSession,
+            doc.uuid,
+            annaUpdates.stream,
+          ),
+        );
+        await nextWhere(annaEvents, (e) => e is PresenceRoster);
+        final boUpdates = StreamController<PresenceUpdate>();
+        final boEvents = StreamQueue(
+          endpoints.presence.join(
+            bo.endpointSession,
+            doc.uuid,
+            boUpdates.stream,
+          ),
+        );
+        await nextWhere(boEvents, (e) => e is PresenceRoster);
+
+        annaUpdates.add(
+          PresenceUpdate(
+            state: PresenceState.active,
+            cursorJson: 'x' * (PresenceService.maxCursorBytes + 1),
+          ),
+        );
+        annaUpdates.add(
+          PresenceUpdate(state: PresenceState.idle, cursorJson: '{}'),
+        );
+        final updated =
+            await nextWhere(boEvents, (e) => e is PresenceUpdated)
+                as PresenceUpdated;
+
+        expect((updated.state, updated.cursorJson), (PresenceState.idle, '{}'));
+        await annaUpdates.close();
+        await boUpdates.close();
+        await annaEvents.cancel(immediate: true);
+        await boEvents.cancel(immediate: true);
+      },
+    );
   });
 
   withWonkyServerpod('Given a cluster with Redis', (sessionBuilder, endpoints) {
@@ -129,7 +208,7 @@ void main() {
               role: AccessRole.viewer,
               actorKind: ActorKind.user,
               state: PresenceState.active,
-              joinedAt: DateTime.now().toUtc(),
+              joinedAt: clock.now().toUtc(),
             ),
           ),
         );

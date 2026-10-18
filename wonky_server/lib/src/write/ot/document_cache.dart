@@ -5,6 +5,7 @@ import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../../platform/common/models.dart';
 import 'document_store.dart';
+import 'edit_bookkeeping.dart';
 
 /// A recently applied op kept in memory.
 class CachedOp {
@@ -16,8 +17,10 @@ class CachedOp {
 /// In-memory state of one document on this server instance (Write 03 §2):
 /// head content, recent ops (last 1,000) and overlay counts. Shared by all
 /// connections of the document on this instance; disposed 60 s after the
-/// last one leaves. The database row lock stays authoritative across
-/// instances, so the state catches up from the op log when it is behind.
+/// last one leaves, or 60 s after its last headless use (MCP, AI, restores)
+/// when no connection retains it. The database row lock stays
+/// authoritative across instances, so the state catches up from the op log
+/// when it is behind.
 class DocumentState {
   DocumentState._(
     this.documentUuid,
@@ -35,14 +38,34 @@ class DocumentState {
   int connections = 0;
   Timer? _disposeTimer;
 
-  /// Throttles for side effects (drive modifiedAt, search text, activity).
-  DateTime lastModifiedTouch = DateTime.fromMillisecondsSinceEpoch(0);
-  DateTime lastSearchTextUpdate = DateTime.fromMillisecondsSinceEpoch(0);
-  final Map<int, DateTime> lastUserEdit = {};
+  /// Activity, version and drive bookkeeping of committed ops, batched and
+  /// written a few seconds later (Write 03 §2 step 8).
+  late final PendingEdits edits = PendingEdits(runSideEffect);
 
   Future<void> _tail = Future.value();
 
+  /// Post-commit side effects (activity, versions, drive bookkeeping,
+  /// overlay lifecycle, snapshots), run one after the other outside [lock]
+  /// so the next op of the document doesn't wait for them (Write 03 §2).
+  Future<void> _effects = Future.value();
+
   static const maxRecent = 1000;
+
+  /// Queues [work] after the side effects of earlier ops of this document.
+  /// The returned future completes when [work] is done; its errors are
+  /// passed on to it but never break the queue.
+  Future<void> runSideEffect(Future<void> Function() work) {
+    final done = _effects.then((_) => work());
+    _effects = done.catchError((Object _) {});
+    return done;
+  }
+
+  /// Writes the pending edit bookkeeping now and completes when every side
+  /// effect queued so far has run.
+  Future<void> settle() {
+    unawaited(edits.flush());
+    return _effects;
+  }
 
   /// Runs [action] exclusively for this document on this instance.
   Future<T> lock<T>(Future<T> Function() action) {
@@ -92,7 +115,11 @@ class DocumentState {
         lock(() async {
           if (minRevision <= revision) return;
           final fresh = await Document.db.findById(session, documentId);
-          if (fresh == null) return;
+          if (fresh == null) {
+            // Deleted (purged): don't keep it cached.
+            DocumentCache.evict(documentUuid, deleted: true);
+            return;
+          }
           await catchUp(session, fresh.headRevision);
         }).whenComplete(() {
           if (identical(_catchingUp, future)) _catchingUp = null;
@@ -149,15 +176,17 @@ abstract final class DocumentCache {
   static final Map<String, DocumentState> _states = {};
   static final Map<String, Future<DocumentState>> _loading = {};
 
-  static const disposeAfter = Duration(seconds: 60);
+  /// Variable for tests.
+  static Duration disposeAfter = const Duration(seconds: 60);
 
-  /// The state of [doc], loading it on first use.
+  /// The state of [doc], loading it on first use. A state that nothing
+  /// retains (headless use) is disposed [disposeAfter] after the last call.
   static Future<DocumentState> of(Session session, Document doc) async {
     final key = doc.uuid.uuid;
     final existing = _states[key];
-    if (existing != null) return existing;
+    if (existing != null) return _touch(existing);
     final loading = _loading[key];
-    if (loading != null) return loading;
+    if (loading != null) return _touch(await loading);
     final future = () async {
       final content = await DocumentStore.head(session, doc);
       final state = DocumentState._(
@@ -177,6 +206,7 @@ abstract final class DocumentCache {
         state.remember(op.revision, DocumentStore.decodeDelta(op.deltaJson));
       }
       _states[key] = state;
+      _touch(state);
       return state;
     }();
     _loading[key] = future;
@@ -187,32 +217,64 @@ abstract final class DocumentCache {
     }
   }
 
-  /// A connection starts using [state].
+  /// A connection (or a multi-step headless use) starts using [state].
   static void retain(DocumentState state) {
     state.connections++;
     state._disposeTimer?.cancel();
     state._disposeTimer = null;
   }
 
-  /// A connection stopped using [state]; disposes it after [disposeAfter].
+  /// A user of [state] stopped; disposes it after [disposeAfter] when it
+  /// was the last one.
   static void release(DocumentState state) {
     state.connections--;
-    if (state.connections > 0) return;
-    state._disposeTimer?.cancel();
-    state._disposeTimer = Timer(disposeAfter, () {
-      if (state.connections <= 0) _states.remove(state.documentUuid.uuid);
-    });
+    _touch(state);
   }
 
-  /// Drops the cached state (document deleted, tests).
-  static void evict(UuidValue documentUuid) {
+  /// (Re)starts the dispose timer of [state] when nothing retains it.
+  static DocumentState _touch(DocumentState state) {
+    if (state.connections > 0) return state;
+    state._disposeTimer?.cancel();
+    state._disposeTimer = Timer(disposeAfter, () {
+      final key = state.documentUuid.uuid;
+      if (state.connections <= 0 && identical(_states[key], state)) {
+        _states.remove(key);
+        // Normally empty (connections and server-side callers settle).
+        unawaited(state.edits.flush());
+      }
+    });
+    return state;
+  }
+
+  /// Whether a state of [documentUuid] is cached on this instance (tests).
+  static bool isCached(UuidValue documentUuid) =>
+      _states.containsKey(documentUuid.uuid);
+
+  /// Writes the pending edit bookkeeping of [documentUuid] and completes
+  /// when its side effects queued so far have run (tests, callers that
+  /// read their results).
+  static Future<void> settle(UuidValue documentUuid) =>
+      _states[documentUuid.uuid]?.settle() ?? Future.value();
+
+  /// Drops the cached state (document deleted or purged, tests).
+  /// Connections still holding it keep working on their copy. The pending
+  /// edit bookkeeping is written, or dropped when the document was
+  /// [deleted].
+  static void evict(UuidValue documentUuid, {bool deleted = false}) {
     final state = _states.remove(documentUuid.uuid);
-    state?._disposeTimer?.cancel();
+    if (state == null) return;
+    state._disposeTimer?.cancel();
+    if (deleted) {
+      state.edits.cancel();
+    } else {
+      unawaited(state.edits.flush());
+    }
   }
 
   static void clear() {
     for (final s in _states.values) {
       s._disposeTimer?.cancel();
+      s.edits.cancel();
     }
     _states.clear();
   }

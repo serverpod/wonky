@@ -143,7 +143,24 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
 - **Spec**: Write 04 §15.4
 - **Upstream**: generally useful (also for super_text_layout's own painter); to be proposed.
 
+## SE-9 — Linear selection styling
+
+- **Reason**: `SingleColumnLayoutSelectionStyler` computed the selected nodes
+  (`getNodesInside`, O(n)) again for every component and searched them linearly, and built a log
+  line per selected node for every component even with logging off: a selection over a whole
+  100-page document took about 350 ms per style pass in the Write perf suite (CQ-42).
+- **Changes**: the selected nodes (and a set of their ids) are computed once per `style` pass;
+  membership is a set lookup; the per-node log loop runs only when `FINER` is logged.
+- **Files**: `lib/src/default_editor/layout_single_column/_styler_user_selection.dart`
+- **Tests**: the package's selection tests (behavior unchanged); timed by
+  `wonky_write/test/perf/write_perf_test.dart` (select all).
+- **Spec**: Write 04 §36
+- **Upstream**: generally useful; to be proposed.
+
 ## Infra
 
 - `pubspec.yaml`: `dependency_overrides: attributed_text: {path: ../attributed_text}` so the
   vendored suite runs against the vendored, patched `attributed_text` (patch AT-1).
+- `pubspec.yaml`: `golden_toolkit` is a `dev_dependency` (upstream: a regular one), so its
+  Roboto font no longer ships in every app's web build (CQ-45). Only `lib/super_test.dart`
+  (golden helpers) imports it; nothing in the workspace imports that library.

@@ -10,9 +10,9 @@ import '../../platform/common/actor.dart';
 import '../../platform/common/models.dart';
 import '../../platform/mcp/tool_executor.dart';
 import '../../platform/mcp/tool_support.dart';
+import '../../platform/revlog/server_change_records.dart';
 import '../../platform/sharing/access_service.dart';
-import '../../sheets/mcp/sheets_changes.dart';
-import '../headless/headless_deck_cache.dart';
+import '../revlog/slides_revlog.dart';
 import 'slides_context_builder.dart';
 import 'slides_prompts.dart';
 import 'slides_shadow.dart';
@@ -96,7 +96,7 @@ class SlidesAssistantTarget extends AssistantTarget {
   }
 
   Future<DeckModel> _model(Session session) async =>
-      (await HeadlessDeckCache.open(session, space)).model;
+      SlidesRevlog.model(session, space);
 
   @override
   Future<(List<TextPart>, AssistantThread)> userTurn(
@@ -311,12 +311,12 @@ class SlidesAssistantTarget extends AssistantTarget {
       return;
     }
     if (changeIds.isEmpty) return;
-    // One undo step for the whole run (11 §6.3): the deck records share
-    // Sheets' ServerChangeRecord table, so the composite is Sheets'.
-    final composite = await SheetsChanges.composite(
+    // One undo step for the whole run (11 §6.3): the ops of the run's
+    // records join one record.
+    final composite = await ServerChangeRecords.composite(
       session,
       actor: actor.copyWith(kind: ActorKind.ai),
-      item: item,
+      fileUuid: item.contentRef!,
       changeIds: changeIds,
       label: 'AI: ${_short(title)}',
     );

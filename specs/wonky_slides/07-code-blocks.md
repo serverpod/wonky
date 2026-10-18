@@ -236,7 +236,10 @@ Plus `HighlightSteps.parse` (§4.1), `CodeEditScript.compute` (§5.2), `TypingSc
 - **Editing** (§3.5): `CodeEditorField` (`wonky_code_flutter`, re_editor) over the code area;
   the stage keeps drawing box and chrome, the field draws text and numbers; a baseline
   correction (`baselineInRow`) aligns re_editor's proportional leading with the grid. Tokens
-  come from the shared cached tokenizer (whole text per edit; no `tokenizeLine`). The field
+  come from the shared cached tokenizer (whole text per edit up to 20,000 characters; longer
+  texts keep their tokens shifted past the edit and are tokenized again after 150 ms without
+  typing, CD-2; no `tokenizeLine`). `CodeView` memoizes its line spans, widest line and font
+  metrics per input (CD-1). The field
   writes after 300 ms idle and on exit (`CodeEditSession`, coalesced "Typing" steps per state);
   undo/redo flush pending typing first. Auto size re-fits on each write, not per keystroke.
   Inside the field `Mod+Z` is re_editor's own undo (its result is written like typing). The soft

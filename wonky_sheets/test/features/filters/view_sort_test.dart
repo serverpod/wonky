@@ -139,7 +139,7 @@ void main() {
       );
       await tester.pump();
       expect(tester.takeException(), isNull);
-      final g = s.editor.lastGeometry!;
+      final g = s.editor.geometry!;
       // Screen row 1 (y of display row 1) holds model row 4 ("a").
       final y = g.main.yDisplay(1) + 2;
       expect(g.rowAtY(y), 4);

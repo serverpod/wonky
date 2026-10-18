@@ -1,0 +1,162 @@
+- id: sum-range-ignores-text-and-booleans
+  setup: {A1: 1, A2: "'2", A3: true, A4: 4}
+  formula: =SUM(A1:A4)
+  expect: {value: 5}
+  source: manual
+  note: text and booleans inside a range are skipped
+- id: sum-direct-arguments-are-coerced
+  formula: =SUM(1,"2",TRUE)
+  expect: {value: 4}
+  source: manual
+- id: sum-propagates-errors
+  setup: {A1: 1, A2: "#DIV/0!"}
+  formula: =SUM(A1:A2)
+  expect: {value: "#DIV/0!"}
+  source: manual
+- id: sumproduct-two-ranges
+  setup: {A1: 1, A2: 2, A3: 3, B1: 4, B2: 5, B3: 6}
+  formula: =SUMPRODUCT(A1:A3,B1:B3)
+  expect: {value: 32}
+  source: manual
+- id: product-arguments
+  formula: =PRODUCT(2,3,4)
+  expect: {value: 24}
+  source: manual
+- id: round-half-away-from-zero
+  formula: =ROUND(2.5,0)
+  expect: {value: 3}
+  source: manual
+- id: round-negative-half-away-from-zero
+  formula: =ROUND(-2.5,0)
+  expect: {value: -3}
+  source: manual
+- id: round-negative-digits
+  formula: =ROUND(1234.5678,-2)
+  expect: {value: 1200}
+  source: manual
+- id: roundup-two-digits
+  formula: =ROUNDUP(3.14159,2)
+  expect: {value: 3.15}
+  source: manual
+- id: rounddown-negative-number
+  formula: =ROUNDDOWN(-3.14159,1)
+  expect: {value: -3.1}
+  source: manual
+- id: mod-negative-dividend
+  formula: =MOD(-3,2)
+  expect: {value: 1}
+  source: manual
+  note: the result has the sign of the divisor
+- id: mod-negative-divisor
+  formula: =MOD(3,-2)
+  expect: {value: -1}
+  source: manual
+- id: mod-by-zero
+  formula: =MOD(1,0)
+  expect: {value: "#DIV/0!"}
+  source: manual
+- id: int-rounds-down
+  formula: =INT(-2.5)
+  expect: {value: -3}
+  source: manual
+- id: trunc-toward-zero
+  formula: =TRUNC(-2.5)
+  expect: {value: -2}
+  source: manual
+- id: power-left-associative
+  formula: =2^3^2
+  expect: {value: 64}
+  source: manual
+  note: (2^3)^2, unlike mathematical notation
+- id: unary-minus-before-power
+  formula: =-2^2
+  expect: {value: 4}
+  source: manual
+- id: sqrt-of-negative
+  formula: =SQRT(-1)
+  expect: {value: "#NUM!"}
+  source: manual
+- id: division-by-zero
+  formula: =1/0
+  expect: {value: "#DIV/0!"}
+  source: manual
+- id: division-by-empty-cell
+  formula: =1/A1
+  expect: {value: "#DIV/0!"}
+  source: manual
+- id: ceiling-significance
+  formula: =CEILING(2.5,1)
+  expect: {value: 3}
+  source: manual
+- id: floor-significance
+  formula: =FLOOR(2.5,1)
+  expect: {value: 2}
+  source: manual
+- id: abs-negative
+  formula: =ABS(-7.5)
+  expect: {value: 7.5}
+  source: manual
+- id: sumif-criterion-operator
+  setup: {A1: 1, A2: 2, A3: 3, A4: 4}
+  formula: =SUMIF(A1:A4,">2")
+  expect: {value: 7}
+  source: manual
+- id: sumif-separate-sum-range
+  setup: {A1: a, A2: b, A3: a, B1: 10, B2: 20, B3: 30}
+  formula: =SUMIF(A1:A3,"a",B1:B3)
+  expect: {value: 40}
+  source: manual
+- id: sumifs-text-criterion
+  setup: {A1: 1, A2: 2, A3: 3, A4: 4, B1: a, B2: b, B3: a, B4: b}
+  formula: =SUMIFS(A1:A4,B1:B4,"a")
+  expect: {value: 4}
+  source: manual
+- id: sumifs-two-criteria
+  setup: {A1: 1, A2: 2, A3: 3, A4: 4, B1: a, B2: b, B3: a, B4: b}
+  formula: =SUMIFS(A1:A4,B1:B4,"b",A1:A4,">2")
+  expect: {value: 4}
+  source: manual
+- id: countif-wildcard
+  setup: {A1: apple, A2: banana, A3: apricot, A4: cherry}
+  formula: =COUNTIF(A1:A4,"ap*")
+  expect: {value: 2}
+  source: manual
+- id: countif-case-insensitive
+  setup: {A1: Apple, A2: apple, A3: APPLE}
+  formula: =COUNTIF(A1:A3,"apple")
+  expect: {value: 3}
+  source: manual
+- id: countifs-two-criteria
+  setup: {A1: 1, A2: 2, A3: 3, B1: x, B2: y, B3: x}
+  formula: =COUNTIFS(A1:A3,">1",B1:B3,"x")
+  expect: {value: 1}
+  source: manual
+- id: averageif-criterion
+  setup: {A1: 1, A2: 2, A3: 3, A4: 4}
+  formula: =AVERAGEIF(A1:A4,">1")
+  expect: {value: 3}
+  source: manual
+- id: averageif-no-match
+  setup: {A1: 1}
+  formula: =AVERAGEIF(A1:A1,">5")
+  expect: {value: "#DIV/0!"}
+  source: manual
+- id: max-of-empty-range
+  formula: =MAX(A1:A3)
+  expect: {value: 0}
+  source: manual
+- id: count-numbers-only
+  setup: {A1: 1, A2: x, A3: true}
+  formula: =COUNT(A1:A4)
+  expect: {value: 1}
+  source: manual
+- id: counta-non-empty
+  setup: {A1: 1, A2: x, A3: true}
+  formula: =COUNTA(A1:A4)
+  expect: {value: 3}
+  source: manual
+- id: countblank-empty
+  setup: {A1: 1, A2: x, A3: true}
+  formula: =COUNTBLANK(A1:A4)
+  expect: {value: 1}
+  source: manual

@@ -7,6 +7,7 @@ import 'package:wonky_sheets_core/model.dart';
 import 'package:wonky_sheets_script/wonky_sheets_script.dart';
 import 'package:wonky_sync_models/ids.dart' show FractionalIndex;
 
+import '../history/change_labels.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
 
 /// Template of a new project's `main.dart` (09 §4).
@@ -128,7 +129,7 @@ class ScriptProjectWriter {
         ScriptCols.name: '${model.spreadsheet.title} script',
         ScriptCols.settingsJson: '{}',
         ScriptCols.createdAt: _now,
-      }, label: 'Create script project'),
+      }, label: SheetsChangeLabels.createScriptProject),
     );
     createFile(ctx, 'main.dart', source: scriptTemplate);
     return scriptProjectOf(model)!;
@@ -171,7 +172,7 @@ class ScriptProjectWriter {
         'updatedBy': _user,
         'updatedAt': _now,
         ScriptCols.createdAt: _now,
-      }, label: 'Create script file'),
+      }, label: SheetsChangeLabels.createScriptFile),
     );
     return id;
   }
@@ -181,7 +182,7 @@ class ScriptProjectWriter {
     ctx,
     GenericRowWrite(SheetsTables.scriptFile, id, {
       ScriptCols.name: name,
-    }, label: 'Rename script file'),
+    }, label: SheetsChangeLabels.renameScriptFile),
   );
 
   /// Deletes the file [id] (undo restores its source).
@@ -192,7 +193,7 @@ class ScriptProjectWriter {
       id,
       const {},
       delete: true,
-      label: 'Delete script file',
+      label: SheetsChangeLabels.deleteScriptFile,
     ),
   );
 
@@ -210,7 +211,7 @@ class ScriptProjectWriter {
       ctx,
       GenericRowWrite(SheetsTables.scriptFile, id, {
         ScriptCols.sortKey: FractionalIndex.between(key(i - 1), key(i)),
-      }, label: 'Move script file'),
+      }, label: SheetsChangeLabels.moveScriptFile),
     );
   }
 
@@ -224,7 +225,7 @@ class ScriptProjectWriter {
         ScriptCols.contentHash: hash,
         'updatedBy': _user,
         'updatedAt': _now,
-      }, label: 'Save script file'),
+      }, label: SheetsChangeLabels.saveScriptFile),
     );
     return hash;
   }
@@ -237,7 +238,7 @@ class ScriptProjectWriter {
       ctx,
       GenericRowWrite(SheetsTables.scriptProject, p.id, {
         ScriptCols.settingsJson: jsonEncode(settings),
-      }, label: 'Script settings'),
+      }, label: SheetsChangeLabels.scriptSettings),
     );
   }
 
@@ -258,7 +259,7 @@ class ScriptProjectWriter {
         ScriptCols.functionName: functionName,
         ScriptCols.shortcutSlot: shortcutSlot,
         ScriptCols.createdAt: _now,
-      }, label: 'Create macro'),
+      }, label: SheetsChangeLabels.createMacro),
     );
     return id;
   }
@@ -267,7 +268,12 @@ class ScriptProjectWriter {
   void updateMacro(CommandContext? ctx, String id, Map<String, Object?> cols) =>
       editor.apply(
         ctx,
-        GenericRowWrite(SheetsTables.macro, id, cols, label: 'Edit macro'),
+        GenericRowWrite(
+          SheetsTables.macro,
+          id,
+          cols,
+          label: SheetsChangeLabels.editMacro,
+        ),
       );
 
   /// Deletes the macro [id].
@@ -278,7 +284,7 @@ class ScriptProjectWriter {
       id,
       const {},
       delete: true,
-      label: 'Delete macro',
+      label: SheetsChangeLabels.deleteMacro,
     ),
   );
 
@@ -298,7 +304,7 @@ class ScriptProjectWriter {
         ScriptCols.contentHash: scriptContentHash(source),
         'updatedBy': _user,
         'updatedAt': _now,
-      }, label: 'Record macro'),
+      }, label: SheetsChangeLabels.recordMacro),
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:intl/date_symbol_data_local.dart' as intl_data;
 import 'package:intl/intl.dart';
 import 'package:timezone/data/latest_10y.dart' as tzdata;
@@ -95,7 +97,9 @@ abstract final class PrintDateTime {
       utc.second,
     ).add(off);
     if (!_intlReady) {
-      intl_data.initializeDateFormatting();
+      // The local symbol data loads synchronously; the future is already
+      // complete.
+      unawaited(intl_data.initializeDateFormatting());
       _intlReady = true;
     }
     final loc = Intl.verifiedLocale(

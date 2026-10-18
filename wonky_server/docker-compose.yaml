@@ -1,3 +1,7 @@
+# The database and Redis passwords below are NOT secrets: they protect local
+# development and test containers only (bound to localhost ports) and are
+# repeated in config/passwords.example.yaml, .vscode/tasks.json and the CI
+# workflows. Production passwords are managed by Serverpod Cloud.
 services:
   # Development services
   postgres:

@@ -34,9 +34,7 @@ import '../pivot/ui/pivot_editor_panel.dart';
 import '../scripts/runtime/script_panels.dart';
 import '../scripts/executions_panel.dart';
 import '../status/selection_stats_button.dart';
-import '../sync/sheets_sessions.dart';
-import '../sync/synced_workbook_session.dart'
-    show SyncedWorkbookSession, ViewportHint;
+import '../revlog/sheets_rev_log.dart';
 import '../tab_bar/sheet_tab_bar.dart';
 import '../toolbar/command_ui.dart';
 import '../toolbar/sheets_toolbar.dart';
@@ -110,7 +108,7 @@ class _SheetEditorScreenState extends State<SheetEditorScreen> {
       // `?gid=`: that sheet's first rows load first (viewport-first).
       final gid = widget.initialSheetId;
       if (gid != null &&
-          session is SyncedWorkbookSession &&
+          session is LoggedWorkbookSession &&
           session.viewportHint?.sheetId != gid) {
         session.viewportHint = ViewportHint(sheetId: gid);
       }
@@ -187,7 +185,7 @@ class _SheetEditorScreenState extends State<SheetEditorScreen> {
   void _openMenuAtActive() {
     final editor = _editor;
     final ctx = _gridKey.currentContext;
-    final g = editor?.lastGeometry;
+    final g = editor?.geometry;
     if (editor == null || ctx == null || g == null) return;
     final r = editor.selection.resolved;
     final rect = g.cellRect(r.activeRow, r.activeCol);
@@ -331,7 +329,7 @@ class _SheetEditorScreenState extends State<SheetEditorScreen> {
                   ? EmptyIllustration.offline
                   : EmptyIllustration.error,
               title: offline ? l.screenOfflineUnavailable : l.screenUnavailable,
-              description: reason,
+              description: offline ? l.screenOfflineHint : reason,
               actions: [
                 ShadButton.ghost(
                   onPressed: () => s.router.go('/'),
@@ -440,12 +438,7 @@ class SpreadsheetLoadingView extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  p == null
-                      ? l.loadingSpreadsheet
-                      : l.downloadingSpreadsheet((p * 100).round()),
-                  style: theme.textTheme.small,
-                ),
+                Text(l.loadingSpreadsheet, style: theme.textTheme.small),
                 const SizedBox(height: 12),
                 ShadProgress(value: p),
               ],

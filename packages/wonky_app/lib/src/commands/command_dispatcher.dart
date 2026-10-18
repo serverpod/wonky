@@ -168,6 +168,9 @@ class CommandDispatcher {
     if (!command.isUndoable) return command.execute(ctx, args);
 
     final undo = services.undo;
+    // Only the transaction of this call chain: a command that starts while
+    // another one awaits (typing during a long sort, an agent command) gets
+    // its own step instead of joining the other one.
     final outer = undo.currentTransaction;
     if (outer != null) {
       // Nested command: joins the gesture's transaction.
@@ -186,9 +189,13 @@ class CommandDispatcher {
           : doc?.undoStackKey ?? UndoStackKey.shell,
       source: ctx.source,
       selectionBefore: ctx.selection,
+      scoped: true,
     );
     try {
-      final r = await command.execute(ctx.withTransaction(t), args);
+      final r = await undo.runInTransaction(
+        t,
+        () => command.execute(ctx.withTransaction(t), args),
+      );
       if (r.status == CommandStatus.ok) {
         t.commit(selectionAfter: ctx.selection);
       } else {

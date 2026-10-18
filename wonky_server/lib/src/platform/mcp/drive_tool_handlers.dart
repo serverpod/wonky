@@ -15,6 +15,9 @@ import '../../write/export/write_import_service.dart';
 import '../../write/mcp/headless_editor.dart';
 import '../common/models.dart';
 import '../drive/drive_service.dart';
+import '../drive/drive_trash.dart';
+import '../drive/drive_user_state.dart';
+import '../drive/drive_copies.dart';
 import '../sharing/sharing_service.dart';
 import '../storage/storage_service.dart';
 import 'drive_file_tool_handlers.dart';
@@ -355,7 +358,7 @@ abstract final class DriveToolHandlers {
     }
     return _added(
       ctx,
-      await DriveService.copy(
+      await DriveCopies.copy(
         ctx.session,
         ctx.actor,
         uuid,
@@ -370,7 +373,7 @@ abstract final class DriveToolHandlers {
 
   static Future<ToolResult> trash(ToolContext ctx, ToolArgs a) async {
     final uuids = a.uuids('uuids');
-    await DriveService.trash(ctx.session, ctx.actor, uuids);
+    await DriveTrash.trash(ctx.session, ctx.actor, uuids);
     return ToolResult({
       'trashed': [for (final u in uuids) u.uuid],
     }, text: 'Moved ${uuids.length} item(s) to the trash');
@@ -378,7 +381,7 @@ abstract final class DriveToolHandlers {
 
   static Future<ToolResult> restore(ToolContext ctx, ToolArgs a) async {
     final uuids = a.uuids('uuids');
-    await DriveService.restore(ctx.session, ctx.actor, uuids);
+    await DriveTrash.restore(ctx.session, ctx.actor, uuids);
     return ToolResult({
       'restored': [for (final u in uuids) u.uuid],
     }, text: 'Restored ${uuids.length} item(s)');
@@ -387,7 +390,7 @@ abstract final class DriveToolHandlers {
   static Future<ToolResult> star(ToolContext ctx, ToolArgs a) async {
     final starred = a.boolean('starred') ?? true;
     return _changed(
-      await DriveService.setStarred(
+      await DriveUserStates.setStarred(
         ctx.session,
         ctx.actor,
         a.requireUuid('uuid'),

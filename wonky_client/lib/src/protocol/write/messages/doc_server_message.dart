@@ -12,8 +12,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'package:wonky_client/src/protocol/protocol.dart' as _i8pkqg1o;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
 import '../../platform/common/access_role.dart' as _iv7g6vuy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 import '../../platform/presence/participant.dart' as _iekwkhcm;
 import '../../protocol.dart' as _iototaiw;
 import '../models/doc_reject_code.dart' as _i9a4p9z2;

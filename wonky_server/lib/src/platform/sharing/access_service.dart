@@ -146,14 +146,47 @@ abstract final class AccessService {
     Session session,
     DriveItem item, {
     Transaction? transaction,
+  }) async =>
+      (await interestedUsersOf(
+        session,
+        [item],
+        transaction: transaction,
+      ))[item.id!] ??
+      {item.ownerId};
+
+  /// [interestedUsers] of every item in [items] by item id, in two queries
+  /// per 1,000 items (folder fan-out, CQ-26).
+  static Future<Map<int, Set<int>>> interestedUsersOf(
+    Session session,
+    List<DriveItem> items, {
+    Transaction? transaction,
   }) async {
-    final users = await grantedUsers(session, item, transaction: transaction);
-    final states = await DriveItemUserState.db.find(
-      session,
-      where: (t) => t.itemId.equals(item.id!),
-      transaction: transaction,
-    );
-    return {...users, for (final s in states) s.userId};
+    final result = <int, Set<int>>{
+      for (final i in items) i.id!: {i.ownerId},
+    };
+    final ids = result.keys.toList();
+    for (var start = 0; start < ids.length; start += 1000) {
+      final chunk = ids
+          .sublist(start, start + 1000 > ids.length ? ids.length : start + 1000)
+          .toSet();
+      final grants = await DriveItemPermission.db.find(
+        session,
+        where: (t) => t.itemId.inSet(chunk) & t.userId.notEquals(null),
+        transaction: transaction,
+      );
+      for (final g in grants) {
+        result[g.itemId]!.add(g.userId!);
+      }
+      final states = await DriveItemUserState.db.find(
+        session,
+        where: (t) => t.itemId.inSet(chunk),
+        transaction: transaction,
+      );
+      for (final s in states) {
+        result[s.itemId]!.add(s.userId);
+      }
+    }
+    return result;
   }
 
   /// Whether [role] may share [item] (add people, change roles, links).
@@ -162,26 +195,43 @@ abstract final class AccessService {
 
   // ----------------------------------------------------------- inheritance
 
-  /// The chain of ancestors of [item], nearest first.
+  /// The chain of ancestors of [item], nearest first: one recursive query
+  /// (cycle-safe, at most 1,000 levels) and one load.
   static Future<List<DriveItem>> ancestors(
     Session session,
     DriveItem item, {
     Transaction? transaction,
   }) async {
-    final result = <DriveItem>[];
-    final seen = <int>{item.id!};
-    var parentId = item.parentId;
-    while (parentId != null && seen.add(parentId)) {
-      final parent = await DriveItem.db.findById(
+    if (item.parentId == null) return const [];
+    final rows = await session.db.unsafeQuery(
+      'WITH RECURSIVE chain(id, "parentId", depth, path) AS ('
+      ' SELECT d.id, d."parentId", 1, ARRAY[CAST(@self AS bigint), d.id]'
+      ' FROM drive_item d WHERE d.id = @parent'
+      ' UNION ALL'
+      ' SELECT d.id, d."parentId", c.depth + 1, c.path || d.id'
+      ' FROM drive_item d JOIN chain c ON d.id = c."parentId"'
+      ' WHERE NOT d.id = ANY(c.path) AND c.depth < 1000)'
+      ' SELECT id FROM chain ORDER BY depth',
+      parameters: QueryParameters.named({
+        'self': item.id!,
+        'parent': item.parentId!,
+      }),
+      transaction: transaction,
+    );
+    final ids = [for (final r in rows) r[0]! as int];
+    if (ids.isEmpty) return const [];
+    final byId = {
+      for (final d in await DriveItem.db.find(
         session,
-        parentId,
+        where: (t) => t.id.inSet(ids.toSet()),
         transaction: transaction,
-      );
-      if (parent == null) break;
-      result.add(parent);
-      parentId = parent.parentId;
-    }
-    return result;
+      ))
+        d.id!: d,
+    };
+    return [
+      for (final id in ids)
+        if (byId[id] != null) byId[id]!,
+    ];
   }
 
   /// [root] and all its descendants, parents before children.
@@ -191,19 +241,23 @@ abstract final class AccessService {
     Transaction? transaction,
   }) async {
     final result = <DriveItem>[root];
-    var frontier = <int>[root.id!];
+    var frontier = <int>{root.id!};
     final seen = <int>{root.id!};
     while (frontier.isNotEmpty) {
       final children = await DriveItem.db.find(
         session,
-        where: (t) => t.parentId.inSet(frontier.toSet()),
+        where: (t) => t.parentId.inSet(frontier),
         transaction: transaction,
       );
-      frontier = [
-        for (final c in children)
-          if (seen.add(c.id!)) c.id!,
-      ];
-      result.addAll(children.where((c) => frontier.contains(c.id)));
+      // A Set: linear in the subtree (a list made this quadratic).
+      final next = <int>{};
+      for (final c in children) {
+        if (seen.add(c.id!)) {
+          next.add(c.id!);
+          result.add(c);
+        }
+      }
+      frontier = next;
     }
     return result;
   }
@@ -277,7 +331,8 @@ abstract final class AccessService {
     for (final node in nodes) {
       for (final folderId in folderAncestorsOf(node)) {
         final folder = foldersById[folderId]!;
-        for (final g in directByFolder[folderId] ?? const []) {
+        for (final g
+            in directByFolder[folderId] ?? const <DriveItemPermission>[]) {
           if (g.userId == node.ownerId) continue;
           final k = key(node.id!, g.userId, g.invitedEmail, folderId);
           final prev = desired[k];

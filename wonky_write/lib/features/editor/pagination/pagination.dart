@@ -62,10 +62,32 @@ class PaginationController extends ChangeNotifier {
   /// [PaginationStylePhase]).
   void markApplied(Map<String, double> gaps) => _applied = gaps;
 
+  /// Natural geometry of each node at the last [measure], by node instance
+  /// (super_editor nodes are immutable: the same instance is the same
+  /// content), valid for [_measuredWith].
+  Map<DocumentNode, _Measured> _measured = Map.identity();
+  Object? _measuredWith;
+
+  /// Number of nodes the last [measure] asked the layout for (tests).
+  @visibleForTesting
+  int debugLastQueries = 0;
+
   /// Measures the laid-out [document] and recomputes the page breaks.
   /// Returns whether the injected gaps changed (the layout must be redone and
   /// measured again).
-  bool measure(DocumentLayout layout, Document document) {
+  ///
+  /// Incremental (Write 04 §36): a node whose instance and component size
+  /// are unchanged since the last measure keeps its natural rect, shifted by
+  /// how far the nodes above it moved; only changed nodes (and the first
+  /// unchanged node after them, to learn that shift) are measured through
+  /// the layout. A caret move measures nothing. [componentSize] reports a
+  /// node's laid-out size (default: its component's render box).
+  bool measure(
+    DocumentLayout layout,
+    Document document, {
+    Size? Function(String nodeId)? componentSize,
+  }) {
+    componentSize ??= (id) => _componentSize(layout, id);
     final contentHeight = this.contentHeight;
     final nodes = document.toList();
 
@@ -73,9 +95,33 @@ class PaginationController extends ChangeNotifier {
     // For keep-with-next, also the natural bottom of each block's first line.
     final natural = List<Rect?>.filled(nodes.length, null);
     final firstLineBottom = List<double?>.filled(nodes.length, null);
+    final key = (layout, _setup, _zoom);
+    final previous = key == _measuredWith ? _measured : null;
+    final measured = Map<DocumentNode, _Measured>.identity();
+    var queries = 0;
     var appliedShift = 0.0;
+    // How far unchanged nodes moved since the last measure (null: unknown
+    // until the next unchanged node is measured). Nothing is above the
+    // first node.
+    double? moved = previous == null ? null : 0;
     for (var i = 0; i < nodes.length; i += 1) {
       final node = nodes[i];
+      final before = previous?[node];
+      final size = componentSize(node.id);
+      final unchanged = before != null && size != null && before.size == size;
+      if (unchanged && moved != null) {
+        final rect = before.rect;
+        if (rect == null) {
+          measured[node] = before;
+          continue;
+        }
+        appliedShift += _applied[node.id] ?? 0;
+        natural[i] = rect.translate(0, moved);
+        firstLineBottom[i] = before.firstLineBottom! + moved;
+        measured[node] = _Measured(natural[i], firstLineBottom[i], size);
+        continue;
+      }
+      queries += 1;
       final begin = DocumentPosition(
         nodeId: node.id,
         nodePosition: node.beginningPosition,
@@ -84,12 +130,24 @@ class PaginationController extends ChangeNotifier {
         begin,
         DocumentPosition(nodeId: node.id, nodePosition: node.endPosition),
       );
-      if (rect == null) continue;
+      if (rect == null) {
+        measured[node] = _Measured(null, null, size);
+        moved = null;
+        continue;
+      }
       appliedShift += _applied[node.id] ?? 0;
       natural[i] = rect.translate(0, -appliedShift);
       final firstLine = layout.getRectForPosition(begin);
       firstLineBottom[i] = (firstLine?.bottom ?? rect.bottom) - appliedShift;
+      measured[node] = _Measured(natural[i], firstLineBottom[i], size);
+      final beforeRect = before?.rect;
+      moved = unchanged && beforeRect != null
+          ? natural[i]!.top - beforeRect.top
+          : null;
     }
+    _measured = measured;
+    _measuredWith = key;
+    debugLastQueries = queries;
 
     final newGaps = <String, double>{};
     var shift = 0.0;
@@ -156,6 +214,15 @@ class PaginationController extends ChangeNotifier {
     return changed;
   }
 
+  /// The laid-out size of [nodeId]'s component (its height changes when an
+  /// image loads, a font arrives or the width changes, without a new node).
+  static Size? _componentSize(DocumentLayout layout, String nodeId) {
+    final component = layout.getComponentByNodeId(nodeId);
+    if (component == null || !component.mounted) return null;
+    final box = component.context.findRenderObject();
+    return box is RenderBox && box.hasSize ? box.size : null;
+  }
+
   static int? _nextLaidOut(List<Rect?> rects, int index) {
     for (var j = index + 1; j < rects.length; j += 1) {
       if (rects[j] != null) return j;
@@ -171,6 +238,18 @@ class PaginationController extends ChangeNotifier {
     }
     return true;
   }
+}
+
+/// What [PaginationController.measure] learned about one node.
+class _Measured {
+  const _Measured(this.rect, this.firstLineBottom, this.size);
+
+  /// Natural rect (without injected gaps); null when not laid out.
+  final Rect? rect;
+  final double? firstLineBottom;
+
+  /// Component size when measured (null when unknown).
+  final Size? size;
 }
 
 /// Injects the page-break gaps of a [PaginationController] as extra top

@@ -2,17 +2,18 @@
 
 How the suite collaboration framework ([07-collaboration.md](../07-collaboration.md)) applies to
 decks: **presence** (avatars per slide, selection outlines, live pointers, follow mode, following
-a presenter), **soft locks** on text and **ephemeral hints** for a live feel on top of the CRDT
-loop, **comments** on slides and elements, **version history** (snapshots, per-slide diff,
+a presenter), **soft locks** on text and **ephemeral hints** for a live feel on top of RevLog
+sync, **comments** on slides and elements, **version history** (snapshots, per-slide diff,
 restore, copies), **activity**, and **offline behavior** with a table of conflict scenarios.
 
-Read first: suite [07](../07-collaboration.md), [12 §2](../12-offline-and-sync.md),
-[08 §3](../08-commands-and-undo.md); Slides [02](02-data-model.md) (ids, `DeckChangeLog`, soft
-lock §4.4, invariants §10). Sheets [10](../wonky_sheets/10-collaboration-history.md) is the model
-this spec mirrors.
+Read first: suite [07](../07-collaboration.md), [17 · RevLog sync](../17-revlog-sync.md) (part 6
+§6 conflicts and outcomes), [08 §3](../08-commands-and-undo.md); Slides [02](02-data-model.md)
+(ids, op summaries §3.10, soft lock §4.4, invariants §10). Sheets
+[10](../wonky_sheets/10-collaboration-history.md) is the model this spec mirrors.
 
 Owned folders: `wonky_slides/lib/features/{collab,comments,history}/`,
-`wonky_slides_core/lib/src/{snapshot,diff}/`, `wonky_server/lib/src/slides/{versions,changelog}/`.
+`wonky_slides_core/lib/src/{snapshot,diff}/`, `wonky_server/lib/src/slides/versions/` and the
+deck hooks (`wonky_server/lib/src/slides/revlog/slides_hooks.dart`, `deck_comments.dart`).
 
 Priorities: soft locks and the presence roster are **M9** (needed as soon as two people edit);
 the rest is **M11** unless marked.
@@ -42,8 +43,8 @@ the rest is **M11** unless marked.
   while the pointer is over the slide and the window is focused.
 - Unknown ids (rows not synced yet) are ignored until they arrive.
 - Agents: headless MCP/AI writes inject a transient participant (suite 07 §1.1) whose `slideId`
-  and `selection` come from the `DeckChangeLog.summaryJson` of their writes, for 5 s
-  (`SlidesAgentCursors`, server change-log consumer — as Sheets' `AgentCursors`).
+  and `selection` come from the plan summary of their writes, for 5 s (`DeckAgentPresence`,
+  shown by the server's MCP write path after the write — as Sheets' `AgentCursors`).
 
 ### 1.2 Where presence shows
 
@@ -146,7 +147,10 @@ The `editing` field of the cursor (02 §4.4):
 
 Hints ride on the presence stream (`PresenceUpdate.hints` → `PresenceEvent.Hints`, suite
 extension A-10-6) — never persisted, never echoed to the sender; the synced rows remain the
-truth.
+truth. Committed edits reach other editors in about one round trip (RevLog ops are fanned out
+at once, [17](../17-revlog-sync.md) part 7 P1), so hints only bridge the time until the editor
+commits (the 300 ms typing pause of 02 §4.4, a drag in progress); their behavior doesn't depend
+on the sync timing (17 part 6 §10).
 
 ```jsonc
 // Text being typed (throttled 4/s per body; ≤ 16 KB; full body when ≤ 4 KB, else a Delta diff
@@ -161,14 +165,18 @@ truth.
 { "t": "structure", "slideIds": ["…"], "groupIds": ["…"], "hlcMillis": … }
 ```
 
+`hlcMillis` is the sender's wall clock when the hint was made (the name is kept for the wire);
+committed ops carry no comparable time, so receivers clear text hints by content (below, §2.5).
+
 Receiver (`SlidesHintOverlay`):
 
-- **Text**: renders the hinted text in place of the stored body (same styles) until a synced
-  write of that column with HLC ≥ `hlcMillis` arrives, the claim ends + 5 s, or a local edit
-  happens. A diff whose `baseHash` doesn't match the receiver's text is ignored (the next full
-  hint or the sync fixes it).
+- **Text**: renders the hinted text in place of the stored body (same styles) until a remote
+  batch brings a committed text of that body equal to the hint, the claim ends + 5 s, or a local
+  edit happens. A diff whose `baseHash` doesn't match the receiver's text is ignored (the next
+  full hint or the committed text fixes it).
 - **Transform**: draws the moving elements' outlines (not content) at the hinted frames in the
-  mover's color; cleared on the synced write or after 2 s.
+  mover's color; cleared on the committed write (a remote batch touching the element) or after
+  2 s.
 - **Structure**: a 1 s shimmer on the affected navigator rows.
 - Limits: ≤ 20 hint messages/s per session, ≤ 64 KB per message; the server drops hints from
   participants below Editor.
@@ -215,7 +223,7 @@ Receiver (`SlidesHintOverlay`):
   followPresenter`, `slides.text.editAnyway {elementId?, rowId?, columnId?}`.
 
 Deviations: text hints carry the **full body** only (no `diff`/`baseHash`; bodies over 16 KB
-send no hint); a hint is cleared when the synced text **equals** it (change batches carry no HLC),
+send no hint); a hint is cleared when the synced text **equals** it (ops carry no comparable time),
 when the sender's claim ended + 5 s (30 s without updates at most) or on a local edit; table
 cell and notes bodies get claims but no live hints. (Built since by SL-37, §2.6: `structure`
 hints and the navigator shimmer, live pointers, the Present button's live dot, the 300 ms fade
@@ -312,7 +320,7 @@ shell comments UI (`CommentsController`, `CommentThreadBody`, side panel). Slide
 | Element moved/resized/restyled, text edited | Unchanged; pin follows the element |
 | **Cut & paste** of elements (same or other slide of the same deck) | The paste re-anchors threads of the cut elements to the new element ids (`comment.updateAnchor`, `comments` undo domain, part of the paste step), as Sheets 10 §3.2 |
 | Copy & paste, duplicate slide/element, copy to another deck | Comments are **not** copied |
-| Element or slide **deleted** | Thread becomes `orphaned` — server-side from `DeckChangeLog.summaryJson.deleted` (02 §3.10.1) with `orphanReasonJson {kind: slide\|element, id, changeLogId}`; the client hides unresolvable anchors immediately |
+| Element or slide **deleted** | Thread becomes `orphaned` — server-side from the op summary's `deleted` (02 §3.10.1) with `orphanReasonJson {kind: slide\|element, id, revision}`; the client hides unresolvable anchors immediately |
 | Deletion **undone** (revived ids in `summaryJson.revived`) | Previous status restored |
 | Slide's group deleted with slides | Each slide's threads orphaned (as slide deletion) |
 
@@ -367,7 +375,7 @@ moves queued and posted in order, pending marker) as Sheets 10 §3.7.
   the element); otherwise element pins sit at the top-right corner and slide pins stack down
   from the slide's top-right corner. *Comment on presentation* (`document`, P1) has no UI;
   `shell.comments.create {anchorKind: document, anchorJson: '{"v":1}'}` works.
-- **Survival**: server plugin `comments` of the deck change log (`DeckCommentOrphans`)
+- **Survival**: server hook `comments` of the deck's RevLog ops (`slides/revlog/slides_hooks.dart`)
   orphans open threads when `deleted.elements` holds the element (reason `slide` when its
   slide went too) or `deleted.slides` holds a slide anchor's slide, and revives them from
   `revived`. Resolved threads stay resolved. An element anchor whose slide hint is deleted
@@ -408,15 +416,16 @@ moves queued and posted in order, pending marker) as Sheets 10 §3.7.
 
 Implements the suite contract (capture, materialize, restore) + diff and copy.
 
-- **Capture triggers**: the `DeckChangeLog` consumer (after `onMergeSuccess`) updates the shared
+- **Capture triggers**: the `versions` hook of the deck's RevLog ops updates the shared
   `ItemVersionState` (`lastEditAt`, `editorsSinceLastVersion`, dirty marks); the scheduler
   (FutureCall every minute) applies the suite policy (auto version after ≥ 5 min of inactivity,
   at most one per 30 min of continuous editing, named versions immediately).
 - **Snapshot** (`snapshot.wsd`, gzip): header JSON line `{"format":"wonky-slides-snapshot","v":1,
-  "deckId","capturedAt","engineHlc","syncTablesHash","counts":{…}}` + NDJSON records
-  `{"tb":"<table>","row":{…}}` for every synced Slides table in dependency order (deck, themes,
+  "deckId","capturedAt","counts":{…}}` + NDJSON records
+  `{"tb":"<table>","row":{…}}` for every deck table in dependency order (deck, themes,
   masters, layouts, groups, slides, elements (parents first), table axes, cells, builds, code
-  states, chart links); `deck_change_log` excluded. Admin read in one read transaction; typical
+  states, chart links). Read with the file's head revision in one repeatable-read transaction
+  (below); typical
   size 50–500 KB. Stored as a `StoredFile` (`ItemVersion.storageKind = snapshotFile`; not counted
   toward quota, D3).
 - **Uploaded files referenced by versions**: files removed from the current deck stay stored while
@@ -425,8 +434,12 @@ Implements the suite contract (capture, materialize, restore) + diff and copy.
   Drive storage spec.
 - **`SlidesSnapshotIndex`** (02 §8): per version the slide list (id, title, group, skipped) and
   `changes` `{slides: {<id>: [authorIds]}, elements: {<id>: [authorIds]}, structure: [...],
-  theme: [authorIds]}` built from the `DeckChangeLog` rows consumed since the previous capture
-  (`summaryJson.slides/elements/deleted/revived` + `userId`/`actorKind`).
+  theme: [authorIds]}` built from the ops committed since the previous capture
+  (`summaryJson.slides/elements/deleted/revived` + author/`actorKind`).
+- **Revision windows**: a capture reads every row of the file and its `headRevision` in one
+  repeatable-read transaction and records `ItemVersion.revision`; the window of a version is
+  the revisions (previous capture's revision, this one's] — by commit time for versions without
+  a revision. Ops whose payload was pruned (> 30 days) mark the changes `approx`.
 
 ### 4.2 Viewing a version
 
@@ -434,7 +447,7 @@ Route `/p/:uuid/history?version=<id>` (suite 07 §5 UI) — `SlidesVersionRender
 (`VersionRenderer` hook):
 
 1. Download the snapshot (signed URL) and the **previous** version's snapshot; decode in a
-   background isolate into two read-only `DeckModel`s (no replica, no writer). Fonts and images
+   background isolate into two read-only `DeckModel`s (no cache, no session). Fonts and images
    load as usual (images via signed URLs of the referenced files).
 2. **Layout**: left = the version's navigator (groups, thumbnails) with change badges; center = the
    selected slide on a read-only canvas; right = suite versions list + **Changes on this slide**.
@@ -481,11 +494,11 @@ result for decks > 20 MB snapshot size, P2):
 2. Stream snapshot and current rows (admin read), row diff by id: snapshot-only rows → insert
    with the same id (revives tombstones); current-only rows → delete; both → update naming only
    differing columns.
-3. Apply with `ServerSlidesWriter` in `transactionForUser(restoringUser, deckSpace)`, chunks of
-   ≤ 5,000 changes in dependency order, each with a `DeckChangeLog` (label "Restore version
-   '<name or time>'", `deleted`/`revived` summaries for comment orphaning). One
-   `ServerChangeRecord` stores the inverse.
-4. Collaborators see the change through sync plus the toast "Anna restored a previous version"
+3. Commit as a RevLog server change (`SlidesServerWrites.applyRecorded`,
+   [17](../17-revlog-sync.md) part 5 §8.1; chunked op group, label "Restore version '<name or
+   time>'", inserts counted as `revived` (`insertsAreRevivals`) so orphaned comments come back).
+   One `ServerChangeRecord` joins the ops (`recordId`); revert inverts their applied forms.
+4. Collaborators receive the ops like any other edit, plus the toast "Anna restored a previous version"
    (presence notice `versionRestored`). Restore never blocks others; their later writes win
    (LWW).
 5. **Undo**: the response's `changeId` → one `UndoStep` "Restore version" in the
@@ -513,7 +526,7 @@ the suite `versions.*` endpoints (not undoable; metadata).
 - **Core** (`package:wonky_slides_core/history.dart`): `SlidesSnapshotCodec` writes the §4.1
   format (gzip on `archive`, abbreviated column keys per table, null columns omitted, `$d`
   dates, elements parents first) and is used by the server (capture) and the client (viewing);
-  the header's `engineHlc`/`syncTablesHash` are left empty by the server. `DeckDiff` follows
+  the header's optional `engineHlc`/`syncTablesHash` fields are never written. `DeckDiff` follows
   §4.3 with these choices: the first version is diffed against an empty deck (everything new,
   as Sheets); a changed child whose group did not change keeps its own entry and outlines its
   top-level ancestor (the canvas outlines top-level frames); builds add an `animation` kind;
@@ -523,11 +536,11 @@ the suite `versions.*` endpoints (not undoable; metadata).
 - **Index**: `SlidesSnapshotIndex(itemVersionId, slidesJson, changesJson, authorIds)` with
   `changesJson = {v, slides: {id: [userIds]}, elements, groups, theme, deck, agents, approx}`
   (latest author last; `agents` = authors who edited through MCP/AI in the window, shown as
-  "Claude via MCP (Anna)") — no `structure` list. Attribution uses the change-log rows whose
-  receipts were processed in the capture window (offline edits belong to the version that
-  consumed them). `slidesVersion.changes` returns it (computed on the fly for versions without
-  an index). The deck change log is pruned after 30 days (`DeckChangeLogPruning`, daily job);
-  captured versions keep their attribution in the index.
+  "Claude via MCP (Anna)") — no `structure` list. Attribution uses the ops of the capture
+  window (§4.1; offline edits belong to the version whose window holds their commit).
+  `slidesVersion.changes` returns it (computed on the fly for versions without an index). Op
+  payloads are pruned after 30 days (`revlog.pruneOps`); captured versions keep their
+  attribution in the index.
 - **Viewing**: the shell's history route (`/p/:uuid/history`, `?version=<id>` selects a
   version — added to the shell) with `SlidesVersionRenderer`: navigator (group headers with
   *New*/*Renamed*/*Moved* tags, slide thumbnails with *New*, *↕ Moved* and the author dot,
@@ -540,7 +553,7 @@ the suite `versions.*` endpoints (not undoable; metadata).
   *Side by side* (P1), the read-only master view of a theme change and the faint outlines of
   inherited changes.
 - **Restore** as §4.4 through `VersionEndpoint.restore` → `SlidesVersionProvider.restore`
-  (`ServerSlidesWriter.applyRecorded`, record kept 7 days); the shell command records SL-43's
+  (`SlidesServerWrites.applyRecorded`, record kept 7 days); the shell command records SL-43's
   `SlidesServerChangeEntry` (undo = `slides.revertChange`, redo = `slides.reapplyChange`).
   Collaborators get "Anna restored a previous version" (presence notice, shown by
   `SlidesConflicts`).
@@ -559,7 +572,8 @@ the suite `versions.*` endpoints (not undoable; metadata).
 
 ## 5. Activity
 
-The `DeckChangeLog` consumer (exactly-once receipts, `DeckChangeLogReceipt`) produces:
+The post-commit hooks of the deck's RevLog ops (at least once per op, cursors in
+`rev_hook_state`, [17](../17-revlog-sync.md) part 5 §6) produce:
 
 - `DriveItem.modifiedAt` / `modifiedById` and search text (titles, text, notes, group titles;
   throttled 10 s with a trailing refresh) — as Sheets.
@@ -579,22 +593,25 @@ The `DeckChangeLog` consumer (exactly-once receipts, `DeckChangeLogReceipt`) pro
 
 ### 6.1 Offline behavior
 
-- Everything in the editor works offline on decks in the replica: editing, groups, themes,
-  builds, code states, notes, comments (queued), creating decks (reserved spaces), copying and
+- Everything in the editor works offline on decks in the device cache (02 §9.1): editing, groups,
+  themes, builds, code states, notes, comments (queued), creating decks (02 §9.3), copying and
   pasting between decks on the device (file re-homing queued), PDF export (fonts and images
   cached; images not on the device render as placeholders with a warning in the export dialog).
 - Not offline: version history (view/restore), *Update* of linked charts (shows "Connect to update
   this chart"), importing themes/slides from decks not on the device, image by URL, AI.
 - Presence, soft locks and hints are absent offline; the header shows *Offline*; the offline
   banner (suite 03 §4) appears.
-- On reconnect, the sync engine merges (field LWW); maintenance (02 §10) repairs; the conflict
-  tracker (§6.3) reports overwritten text.
+- Offline edits go into the outbox (*Offline — changes saved on this device*). On reconnect the
+  session catches up with the ops it missed, then sends the outbox; the server applies the ops in
+  arrival order (field LWW: an offline edit sent late overwrites newer online edits of the same
+  column, a deleted row stays deleted, [17](../17-revlog-sync.md) Q1); maintenance (02 §10)
+  repairs; the conflict tracker (§6.3) reports overwritten text.
 
 ### 6.2 Conflict UX
 
 - **Partial undo** toast (suite): *"Some changes couldn't be undone because they were edited by
   someone else."* with *Details* listing the elements/slides and who changed them (from the
-  latest `DeckChangeLog`).
+  latest op touching them in the session's recent ops).
 - **Moved to the end**: when maintenance moves orphaned slides (group deleted concurrently), the
   editor that wrote them sees "1 slide moved to the end because its group was deleted by Anna" —
   *Show* selects them.
@@ -607,10 +624,12 @@ The `DeckChangeLog` consumer (exactly-once receipts, `DeckChangeLogReceipt`) pro
 `SlidesConflicts` (`features/history/local_conflicts.dart`):
 
 - While a body is edited **offline** or with a **forced** claim, the client records
-  `{target, myText, myHlc}` per body in `slides.offlineEdits.<deckId>` (local store). After the
-  next sync merge, for each recorded body: if the merged value differs from `myText` and the
-  winning write came from another user (latest `DeckChangeLog` touching the element), it records a
-  `LocalConflict {target, myText, theirText, theirUserId, changeLogId, detectedAt}` in
+  `{target, myText}` per body in `slides.offlineEdits.<deckId>` (local store). Once the outbox
+  has drained after reconnecting (every change acknowledged, the ops before them applied), for
+  each recorded body: if the current value differs from `myText` and the deciding write came
+  from another user (the latest op touching the body in the session's recent ops, `rev_local_op`),
+  it records a `LocalConflict {target, myText, theirText, theirUserId, changeLogId (the deciding
+  op's revision), detectedAt}` in
   `slides.conflicts.<deckId>`. Deleted targets record "deleted by Anna".
 - Toast: "2 of your text edits were replaced by newer edits from Bo — Review". The review dialog
   (`WonkyDialogSpec`, 04 §13.14) lists each body (slide number, element label, *Yours* vs
@@ -619,15 +638,21 @@ The `DeckChangeLog` consumer (exactly-once receipts, `DeckChangeLogReceipt`) pro
   clipboard; *Dismiss all*. Conflicts expire after 7 days.
 - As built (SL-39): `SlidesConflicts` (`features/history/local_conflicts.dart`) tracks element
   text, table cell text and speaker notes (not code states) written offline or under a forced
-  soft lock; the check runs once the sync after reconnecting wrote our changes and merged
-  (`SyncSessionHost.merges`, ≤ 90 s). The winner is the latest replica `DeckChangeLog` row
-  that touched the body (or deleted it) from another user. The dialog's buttons are *Dismiss
-  all*, *Copy* and *Restore* (short labels so three fit the dialog).
+  soft lock; the check runs once the outbox drained after reconnecting
+  (`LoggedDeckSession.whenSynced`, ≤ 90 s). The winner is the latest op of another user in
+  `LoggedDeckSession.recentOps` (30 days) that touched the body (or deleted it). The dialog's
+  buttons are *Dismiss all*, *Copy* and *Restore* (short labels so three fit the dialog).
+- **Follow-up** ([17](../17-revlog-sync.md) As built 11): feed the review directly from the
+  session's outcomes (`LoggedDeckSession.outcomes`: `conflicts` on the `text`/`notes`/`code`
+  columns of `offline` or forced ops, `dropped` for deleted targets, 17 part 6 §6) instead of the
+  tracked bodies; the outcomes are already stored (`rev_outcome`) and exposed.
 
 ### 6.4 Offline collaboration scenarios
 
-Anna (A) and Bo (B), both offline, then both reconnect; "later" = later HLC. Every row is a test
-case in the multi-client sync harness ([12 §7.3](12-implementation-plan.md)).
+Anna (A) and Bo (B), both offline, then both reconnect; "later" = the op that reaches the server
+later (arrival order, [17](../17-revlog-sync.md) Q1). Every row is a test case in the
+multi-client sync harness ([12 §7.3](12-implementation-plan.md); with RevLog the clients run
+against `FakeRevServer`, 17 As built 16).
 
 | # | Scenario | Data-model behavior | Outcome | UX |
 |---|----------|--------------------|---------|----|
@@ -635,7 +660,7 @@ case in the multi-client sync harness ([12 §7.3](12-implementation-plan.md)).
 | 2 | A moves an element, B recolors it | Different columns | Moved and recolored | — |
 | 3 | Both edit the same text box | `text` LWW | Later text wins | Loser: overwritten-text review |
 | 4 | A edits the title, B the body of one slide | Different rows | Both | — |
-| 5 | A deletes slide S, B edits S | Slide tombstoned; cascades hide B's rows | S gone | B: "Slide deleted by Anna" + text review; A's undo revives S incl. B's surviving rows |
+| 5 | A deletes slide S, B edits S | Slide deleted (the sequencer cascades its rows); B's changes to S are dropped | S gone | B: "Slide deleted by Anna" + text review; A's undo revives S incl. B's surviving rows |
 | 6 | Both insert a slide after slide 4 | `FractionalIndex.between` may tie; order by `(sortKey, id)` | Both slides, same deterministic order everywhere | — |
 | 7 | A moves slide X into group G, B moves X to the end (top level) | `groupId`+`sortKey` written together by both | Later move wins both columns; X is either in G or at the end, never torn | — |
 | 8 | A deletes group G with its slides, B adds a new slide to G | A's slides deleted; B's slide's group missing → orphan | B's slide shown at the end; maintenance writes it top-level | B: "moved to the end" toast |
@@ -648,19 +673,19 @@ case in the multi-client sync harness ([12 §7.3](12-implementation-plan.md)).
 | 15 | A applies theme T1 to all, B applies T2 to all | `Deck.themeId` and each slide's `layoutId` LWW; both wrote all slides | Deck ends with the later theme on all slides it touched; slides added meanwhile keep theirs; the other copy is unused | "Remove unused themes" available |
 | 16 | A moves a layout placeholder, B moves the instance on one slide | Layout row vs instance frame | B's slide keeps B's frame; others follow A | — |
 | 17 | A groups E1+E2, B moves E1 | Grouping keeps child frames numerically (child space = slide space at creation) | E1 moved by B inside the group | — |
-| 18 | A deletes element E, B edits E's text | Tombstone wins | E gone | B: text review "deleted by Anna" |
+| 18 | A deletes element E, B edits E's text | Delete wins (B's change dropped) | E gone | B: text review "deleted by Anna" |
 | 19 | A adds a build on E, B deletes E | Build cascades | No build | — |
 | 20 | A reorders builds, B adds a build | Different rows / sortKeys | Both, ordered by sortKey | — |
 | 21 | A types in table cell (r1,c1), B in (r2,c2) / same cell | Deterministic cell ids | Different cells: both; same cell: LWW per column | Same-cell loser: text review |
 | 22 | A inserts a table row, B inserts a column | Separate axis rows | Both | — |
 | 23 | A updates a linked chart, B changes its deck style | `ChartLink` row vs element `dataJson` | Both | — |
 | 24 | A changes the deck size (scale content), B edits frames offline | B's later frame writes keep pre-scale coordinates | B's edited elements may be misplaced | Page setup warns when collaborators edited in the last 24 h: "Changing the slide size while others are editing offline may misplace their changes" |
-| 25 | A edits code state 2, B deletes state 2 | Tombstone wins | State gone | A: text review |
+| 25 | A edits code state 2, B deletes state 2 | Delete wins (A's change dropped) | State gone | A: text review |
 | 26 | A edits notes, B edits notes of the same slide | `Slide.notes` LWW | Later wins | Loser: text review |
 | 27 | A undoes a move after B moved the same element | Per-column skip rule (frame set as a unit) | B's position stays | Partial-undo toast |
-| 28 | A downgraded to viewer while offline with pending edits | Engine rejects A's writes (`readOnly`) | A's edits discarded | Suite rule: toast + "Unsaved changes" export |
-| 29 | A creates a deck offline | Reserved space; `registerPresentation` queued | Appears in Drive for others after A reconnects and shares | — |
-| 30 | A comments offline on an element B deletes | Queued create posts; server orphans it on the next consumer pass | Thread orphaned | A sees it under "Orphaned" |
+| 28 | A downgraded to viewer while offline with pending edits | The server rejects A's ops (`forbiddenForRole`) | A's edits rolled back; the deck turns read-only for A | Toast naming the change and the reason; *Save my changes as a copy* is a follow-up ([17](../17-revlog-sync.md) As built 10) |
+| 29 | A creates a deck offline | Client UUID; the creation op waits in the outbox; `registerPresentation` queued (02 §9.3) | Appears in Drive for others after A reconnects and shares | — |
+| 30 | A comments offline on an element B deletes | Queued create posts on an anchor whose element is gone (the `comments` hook, §3) | Thread orphaned | A sees it under "Orphaned" |
 
 ---
 
@@ -733,6 +758,6 @@ Details in [11](11-mcp-and-ai.md).
 | A-09-1 | `PresenceCursor` JSON for Slides (§1.1) and the `editing` claim (§2.1). |
 | A-09-2 | Hint messages `text`, `transform`, `structure` on the suite hint channel (Sheets A-10-6). |
 | A-09-3 | `CommentAnchorKind.slide` / `.element` (suite 07; 04 A-04-5) with the anchor JSON of §3.1. |
-| A-09-4 | Server `SlidesSnapshotIndex(itemVersionId, slidesJson, changesJson, authorIds)` and `DeckChangeLogReceipt`; snapshot format §4.1. |
+| A-09-4 | Server `SlidesSnapshotIndex(itemVersionId, slidesJson, changesJson, authorIds)` and `ItemVersion.revision`; snapshot format §4.1. |
 | A-09-5 | Local-store keys `slides.offlineEdits.<deckId>`, `slides.conflicts.<deckId>` (02 §7). |
 | A-09-6 | **Drive/quota**: files referenced only by retained versions are kept (not counted) and garbage-collected after the last reference + 30 days. |

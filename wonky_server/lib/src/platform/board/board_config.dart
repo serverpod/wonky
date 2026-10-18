@@ -1,7 +1,6 @@
 import 'dart:io';
 
-import 'package:serverpod/serverpod.dart';
-import 'package:yaml/yaml.dart';
+import '../config/wonky_config_file.dart';
 
 /// Settings of Bugs & improvements from the `wonky: board:` section of
 /// `config/<runMode>.yaml` (specs/16 §12). The defaults are the production
@@ -64,25 +63,10 @@ class BoardConfig {
   /// Replaces the configuration (tests).
   static set current(BoardConfig config) => _current = config;
 
-  static BoardConfig _load() {
-    String runMode;
-    try {
-      runMode = Serverpod.instance.runMode;
-    } on Object {
-      runMode = ServerpodRunMode.development;
-    }
-    final file = File('${Directory.current.path}/config/$runMode.yaml');
-    Map<dynamic, dynamic> section = const {};
-    if (file.existsSync()) {
-      final yaml = loadYaml(file.readAsStringSync());
-      if (yaml is Map &&
-          yaml['wonky'] is Map &&
-          yaml['wonky']['board'] is Map) {
-        section = yaml['wonky']['board'] as Map;
-      }
-    }
-    return fromMap(section, environment: Platform.environment);
-  }
+  static BoardConfig _load() => fromMap(
+    WonkyConfigFile.section('board'),
+    environment: Platform.environment,
+  );
 
   /// Builds a configuration from the `board:` [map] with [environment]
   /// overrides.
@@ -126,6 +110,11 @@ class BoardConfig {
         votesPerHour: limits.i('votesPerHour', d.votesPerHour),
         flagsPerDay: limits.i('flagsPerDay', d.flagsPerDay),
         similarPerMinute: limits.i('similarPerMinute', d.similarPerMinute),
+        editsPerHour: limits.i('editsPerHour', d.editsPerHour),
+        signedOutSearchesPerMinute: limits.i(
+          'signedOutSearchesPerMinute',
+          d.signedOutSearchesPerMinute,
+        ),
       ),
       ai: BoardAiConfig(
         jevModel: ai.s('jevModel', 'jev-1.13.0'),
@@ -160,6 +149,8 @@ class BoardLimits {
     this.votesPerHour = 300,
     this.flagsPerDay = 30,
     this.similarPerMinute = 60,
+    this.editsPerHour = 30,
+    this.signedOutSearchesPerMinute = 300,
   });
 
   final int postsPerHour;
@@ -167,7 +158,17 @@ class BoardLimits {
   final int commentsPerHour;
   final int votesPerHour;
   final int flagsPerDay;
+
+  /// Similar-post queries per user; signed out, per client address.
   final int similarPerMinute;
+
+  /// Edits of posts and comments together (each one is checked by Jev).
+  final int editsPerHour;
+
+  /// Searches (`similar`, `list` with a query) of all signed-out callers
+  /// together, per instance or across instances with Redis: a bound that
+  /// holds when client addresses are spoofed or rotated.
+  final int signedOutSearchesPerMinute;
 }
 
 /// The board AI (specs/16 §6). Keys are the passwords [jevPassword] and

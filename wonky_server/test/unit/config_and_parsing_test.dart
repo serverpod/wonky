@@ -26,12 +26,12 @@ void main() {
     test('when an environment variable is set then it overrides the file', () {
       final c = WonkyConfig.fromMap(
         {
-          'sheets': {'maxActiveSpacesPerUser': 5},
+          'sheets': {'maxSheetsPerSpreadsheet': 5},
         },
-        environment: {'WONKY_SHEETS_MAX_ACTIVE_SPACES_PER_USER': '7'},
+        environment: {'WONKY_SHEETS_MAX_SHEETS_PER_SPREADSHEET': '7'},
       );
 
-      expect(c.maxActiveSpacesPerUser, 7);
+      expect(c.maxSheetsPerSpreadsheet, 7);
     });
 
     test('when the section is missing then defaults are used', () {

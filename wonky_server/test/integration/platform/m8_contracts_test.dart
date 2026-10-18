@@ -1,5 +1,9 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_core/files.dart';
@@ -115,7 +119,7 @@ void main() {
       'when storing counters and a reservation then the tables exist',
       () async {
         final session = sessionBuilder.build();
-        final now = DateTime.now().toUtc();
+        final now = clock.now().toUtc();
         // New users get their (reconciled) counters row at sign-up (D-9).
         final storage = (await UserStorage.db.findFirstRow(
           session,
@@ -140,45 +144,13 @@ void main() {
     );
 
     test(
-      'when reserving a space then its kind defaults to spreadsheet',
-      () async {
-        final session = sessionBuilder.build();
-        final row = await SpaceReservation.db.insertRow(
-          session,
-          SpaceReservation(
-            userId: anna.id,
-            spaceUuid: UuidValue.fromString(
-              '0190a0e0-0000-7000-8000-0000000000d1',
-            ),
-            createdAt: DateTime.now().toUtc(),
-          ),
-        );
-        expect(row.kind, SpaceKind.spreadsheet);
-        final deck = await SpaceReservation.db.insertRow(
-          session,
-          SpaceReservation(
-            userId: anna.id,
-            spaceUuid: UuidValue.fromString(
-              '0190a0e0-0000-7000-8000-0000000000d2',
-            ),
-            kind: SpaceKind.deck,
-            createdAt: DateTime.now().toUtc(),
-          ),
-        );
-        expect(
-          (await SpaceReservation.db.findById(session, deck.id!))!.kind,
-          SpaceKind.deck,
-        );
-      },
-    );
-
-    test(
       'when reading protocol info then the v2 limits are announced',
       () async {
         final info = await endpoints.meta.getInfo(anna.endpointSession);
         expect(info.limits.maxFileUploadBytes, 50 * 1024 * 1024);
         expect(info.limits.quotaBytesPerUser, 50 * 1024 * 1024);
-        expect(info.minClientVersion, '2.0.0');
+        // M13 (RevLog) raised it to 3.0.0 (specs/17 RD-17).
+        expect(info.minClientVersion, '3.0.0');
       },
     );
   });

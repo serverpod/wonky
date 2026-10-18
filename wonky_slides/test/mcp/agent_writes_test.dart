@@ -1,8 +1,7 @@
-import 'dart:convert';
-
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wonky_client/wonky_client.dart'
-    show ActorKind, DeckChangeLog, UuidValue;
+import 'package:wonky_client/wonky_client.dart' show ActorKind;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart' show RevOpMeta;
 import 'package:wonky_slides/mcp/agent_flash.dart';
 import 'package:wonky_slides/mcp/agent_writes.dart';
 
@@ -18,31 +17,32 @@ const _bo = '00000000-0000-4000-8000-0000000000b0';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late DeckHarness d;
-  late List<DeckChangeLog> rows;
+  late List<RevOpMeta> rows;
   late SlidesAgentWrites writes;
 
   SlidesAgentFlash flash() => SlidesAgentFlash.of(d.editor);
 
-  DeckChangeLog row({
+  var revision = 0;
+  RevOpMeta row({
     required ActorKind kind,
     String user = _bo,
     String session = 'server:mcp',
     List<String> slides = const [],
     List<String> elements = const [],
     DateTime? at,
-  }) => DeckChangeLog(
-    deckId: UuidValue.fromString(d.fixture.deckId),
-    userId: UuidValue.fromString(user),
-    actorKind: kind,
+  }) => RevOpMeta(
+    revision: ++revision,
+    authorUuid: user,
+    actorKind: kind.name,
     sessionId: session,
     label: 'MCP: set_text',
-    summaryJson: jsonEncode({
+    summary: {
       'v': 1,
       'kinds': ['text'],
       'slides': slides,
       'elements': elements,
-    }),
-    at: at ?? DateTime.now().toUtc(),
+    },
+    committedAt: at ?? clock.now().toUtc(),
   );
 
   String titleOf(int index) {
@@ -143,7 +143,7 @@ void main() {
           row(
             kind: ActorKind.mcp,
             elements: [titleOf(0)],
-            at: DateTime.now().toUtc().subtract(const Duration(minutes: 5)),
+            at: clock.now().toUtc().subtract(const Duration(minutes: 5)),
           ),
         );
 

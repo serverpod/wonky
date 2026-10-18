@@ -65,8 +65,16 @@ land on undo stacks as described in [08-commands-and-undo.md](08-commands-and-un
   `mcp_dart`'s server auth hooks are used so it can be added without changing tools.
 - Every tool call resolves the token → user → effective role on the target item; the tool is
   rejected with an MCP error (`isError: true`, code `forbidden`) if insufficient.
-- Rate limits: 600 tool calls/min per token (`wonky: mcp: rateLimitPerMinute`; counted in
-  Redis across instances, [13 §4](13-security-and-operations.md)); large reads paginated.
+- Rate limits: 600 requests/min per token for `tools/call`, `resources/read`,
+  `resources/list` and `prompts/get` together (`wonky: mcp: rateLimitPerMinute`; counted in
+  Redis across instances, [13 §4](13-security-and-operations.md)); over it, tool calls fail
+  with `rate_limited` and the other requests get HTTP 429 with `Retry-After`. Large reads are
+  paginated.
+- Request size: `McpRoute` answers from the headers alone — MCP disabled, `Host`/`Origin` not
+  allowed, no well-formed `Authorization: Bearer …` header, or a declared `Content-Length`
+  over 16 MB — before it reads the body, so refused requests never buffer one. Bodies are
+  capped at 16 MB while reading (a 10 MB inline `drive.upload_file` as base64 plus the
+  JSON-RPC envelope).
 - `tools/list` only lists the tools the token's scopes allow; `ToolExecutor` checks scopes
   again on every call. The web apps' auth cookie is never accepted on `/mcp`.
 
@@ -166,7 +174,9 @@ or `{slide, element}`, Slides 11), `comments.reply`,
 format)` (Write: markdown; Sheets: values JSON for a range), `versions.restore(uuid, version_id)`.
 
 ### changes.*
-`changes.revert(change_id)` — reverts a previous headless tool change (24 h window).
+`changes.revert(change_id)` — reverts a previous headless tool change (24 h window): only the
+token user's own changes, with Editor+ on the item, not reverted yet. Spreadsheets and decks
+revert the record's RevLog ops ([17](17-revlog-sync.md) part 5 §8.2).
 
 ### board.* (M12)
 Scope `board`; definitions in `wonky_core/lib/mcp/board_tools.dart`, handlers in
@@ -280,6 +290,12 @@ to windows with `app: slides` and implemented by Slides in SL-42.) `UiBridgeHell
   `[{pointer, message}]`).
 - Results include machine-readable JSON (`structuredContent`) plus a short human text summary.
 - Every mutating tool returns `change_id` and the new `revision`/`sync_version` where relevant.
+  For spreadsheets and decks `sync_version` is the file's RevLog head revision (as a string).
+  Their headless tools read through leased headless models (`HeadlessFileCache`) and write
+  through `RevLogService.submitServerChange` (`actorKind: mcp`, a recorded op group): the same
+  validation, protected-range check and fan-out as a client's ops, so open editors see the
+  change arrive live ([17](17-revlog-sync.md) part 5 §8–§9). A protected-range rejection is the
+  tool error `protected_range`.
 - Large outputs are paginated (`cursor`) and capped (default 50k chars) with a `truncated` flag.
 - Tool descriptions are written for LLMs: what it does, when to use it, units/addressing
   conventions (A1 notation for Sheets, 0-based Delta offsets vs. Markdown for Write), examples.

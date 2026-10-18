@@ -3,6 +3,7 @@ import '../formula/parser/formula_locale.dart';
 import '../formula/values/dates.dart';
 import '../formula/values/numeric.dart';
 import '../data_tools/sort/sort_keys.dart';
+import '../formula/values/collation.dart';
 import 'pivot_spec.dart';
 import 'source_table.dart';
 
@@ -95,7 +96,7 @@ final class PivotKey {
     if (a.rank != b.rank) {
       c = a.rank < b.rank ? -1 : 1;
     } else if (a.rank == SortKeys.text) {
-      c = SortKeys.compareText(a.text, b.text);
+      c = Collation.compare(a.text, b.text);
       if (c == 0) c = a.labelText.compareTo(b.labelText);
     } else {
       c = a.number.compareTo(b.number);

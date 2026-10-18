@@ -11,7 +11,7 @@ import 'package:wonky_charts_flutter/wonky_charts_flutter.dart'
 
 import '../features/charts/chart_insert.dart';
 import '../features/charts/view/chart_data_table_dialog.dart';
-import '../features/images/image_clipboard.dart';
+import 'package:wonky_app/platform.dart' show ImageClipboard;
 import '../features/images/image_io.dart';
 import '../features/images/image_service.dart';
 import '../features/objects/object_ops.dart';

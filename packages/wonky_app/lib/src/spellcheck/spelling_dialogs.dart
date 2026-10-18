@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../core/l10n_or_english.dart';
 import '../shell/form_dialog.dart';
@@ -321,6 +322,7 @@ class _SpellingDialogState extends State<SpellingDialog>
     final e = _current;
     return ShadDialog(
       key: k.dialog,
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.spellingTitle),
       constraints: const BoxConstraints(maxWidth: 440),
       actions: [
@@ -529,6 +531,7 @@ class _PersonalDictionaryDialogState extends State<_PersonalDictionaryDialog>
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     return ShadDialog(
       key: widget.keys.dictionary,
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.spellingPersonalDictionary),
       description: Text(l.spellingPersonalDictionaryHint),
       constraints: const BoxConstraints(maxWidth: 420),

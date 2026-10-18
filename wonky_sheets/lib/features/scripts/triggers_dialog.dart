@@ -10,6 +10,7 @@ import 'package:wonky_sheets_core/model.dart';
 import 'package:wonky_sheets_script/wonky_sheets_script.dart';
 import 'package:wonky_ui/wonky_ui.dart';
 
+import '../history/change_labels.dart';
 import '../../l10n/sheets_l10n.dart';
 import '../data_tools/mcp_dialog.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
@@ -152,7 +153,7 @@ String addTrigger(
       ctx,
       GenericRowWrite(SheetsTables.scriptTrigger, info.uid, {
         ScriptCols.optionsJson: jsonEncode(options),
-      }, label: 'Add trigger'),
+      }, label: SheetsChangeLabels.addTrigger),
     );
   }
   return info.uid;
@@ -180,7 +181,7 @@ String? updateTrigger(
       SheetsTables.scriptTrigger,
       id,
       columns,
-      label: 'Edit trigger',
+      label: SheetsChangeLabels.editTrigger,
     ),
   );
   return null;
@@ -440,6 +441,7 @@ class _TriggersDialogState extends State<TriggersDialog>
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.triggers'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.cmdScriptOpenTriggers),
         description: Text(l.triggersDescription),
         actions: [

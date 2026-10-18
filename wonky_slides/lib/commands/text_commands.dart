@@ -1139,7 +1139,9 @@ Future<CommandResult> _setElementLink(
   JsonArgs a,
 ) async {
   final ids = _linkable(ed);
-  if (ids.isEmpty) return const CommandResult.failed('Select an object');
+  if (ids.isEmpty) {
+    return CommandResult.failed(slidesL10nOf(ed.services).reasonSelectObject);
+  }
   final cur = ed.model.element(ids.first)?.linkJson;
   Map<String, Object?>? curMap;
   try {

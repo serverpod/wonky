@@ -12,7 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 /// A change made by a headless MCP/AI tool call, kept 24 h for
 /// `changes.revert` (Write 09 §1.4 step 5).
@@ -49,7 +49,7 @@ abstract class HeadlessChange
     String? metaBeforeJson,
     String? metaAfterJson,
     required int userId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     String? label,
     required String toolName,
     required DateTime createdAt,
@@ -71,7 +71,7 @@ abstract class HeadlessChange
       metaBeforeJson: jsonSerialization['metaBeforeJson'] as String?,
       metaAfterJson: jsonSerialization['metaAfterJson'] as String?,
       userId: jsonSerialization['userId'] as int,
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       label: jsonSerialization['label'] as String?,
@@ -117,7 +117,7 @@ abstract class HeadlessChange
 
   int userId;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   String? label;
 
@@ -145,7 +145,7 @@ abstract class HeadlessChange
     String? metaBeforeJson,
     String? metaAfterJson,
     int? userId,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     String? label,
     String? toolName,
     DateTime? createdAt,
@@ -222,7 +222,7 @@ class _HeadlessChangeImpl extends HeadlessChange {
     String? metaBeforeJson,
     String? metaAfterJson,
     required int userId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     String? label,
     required String toolName,
     required DateTime createdAt,
@@ -262,7 +262,7 @@ class _HeadlessChangeImpl extends HeadlessChange {
     Object? metaBeforeJson = _Undefined,
     Object? metaAfterJson = _Undefined,
     int? userId,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     Object? label = _Undefined,
     String? toolName,
     DateTime? createdAt,
@@ -351,8 +351,8 @@ class HeadlessChangeUpdateTable extends _is.UpdateTable<HeadlessChangeTable> {
     value,
   );
 
-  _is.ColumnValue<_i810rwvy.ActorKind, _i810rwvy.ActorKind> actorKind(
-    _i810rwvy.ActorKind value,
+  _is.ColumnValue<_ipbpecg8.ActorKind, _ipbpecg8.ActorKind> actorKind(
+    _ipbpecg8.ActorKind value,
   ) => _is.ColumnValue(
     table.actorKind,
     value,
@@ -475,7 +475,7 @@ class HeadlessChangeTable extends _is.Table<int?> {
 
   late final _is.ColumnInt userId;
 
-  late final _is.ColumnEnum<_i810rwvy.ActorKind> actorKind;
+  late final _is.ColumnEnum<_ipbpecg8.ActorKind> actorKind;
 
   late final _is.ColumnString label;
 

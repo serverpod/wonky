@@ -81,7 +81,7 @@ void main() {
       final out = data(r);
       expect(out['available'], isTrue);
       expect(out['dictionary'], 'en-US');
-      final issues = (out['issues']! as List).cast<Map>();
+      final issues = (out['issues']! as List).cast<Map<Object?, Object?>>();
       expect(
         [for (final i in issues) i['word']],
         ['Helo', 'wrold', 'teh', 'plna', 'helo', 'celll'],

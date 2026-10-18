@@ -1,13 +1,14 @@
-/// UUID ⇄ 22-character base-62 form used inside stored formula reference tokens (02 §2).
+import 'package:wonky_revlog/base62.dart' as codec;
+
+/// UUID ⇄ 22-character base-62 form used inside stored formula reference
+/// tokens (02 §2), with the token helpers of the formula engine.
 ///
-/// Alphabet `0-9A-Za-z` (same order as the fractional index), big-endian, left-padded with `0`.
-/// This mirrors `wonky_sync_models/lib/ids.dart`; it lives here so the formula engine has no
-/// dependency on the synced models.
+/// The codec itself is `wonky_revlog`'s (one base-62 codec in the suite,
+/// CQ-50); this adds the caches of the formula hot paths and [toToken] /
+/// [fromToken].
 abstract final class Base62Uuid {
-  static const String alphabet =
-      '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-  static const int length = 22;
-  static final BigInt _base62 = BigInt.from(62);
+  static const String alphabet = codec.base62Digits;
+  static const int length = codec.Base62Uuid.length;
   static final RegExp _uuid = RegExp(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
   );
@@ -17,51 +18,25 @@ abstract final class Base62Uuid {
   /// Whether [s] is a canonical (dashed) UUID string.
   static bool isUuid(String s) => s.length == 36 && _uuid.hasMatch(s);
 
-  /// Whether [s] is a 22-char base-62 string.
-  static bool isBase62(String s) {
-    if (s.length != length) return false;
-    for (var i = 0; i < s.length; i++) {
-      if (_digit(s.codeUnitAt(i)) < 0) return false;
-    }
-    return true;
-  }
-
-  static int _digit(int c) {
-    if (c >= 0x30 && c <= 0x39) return c - 0x30;
-    if (c >= 0x41 && c <= 0x5a) return c - 0x41 + 10;
-    if (c >= 0x61 && c <= 0x7a) return c - 0x61 + 36;
-    return -1;
-  }
+  /// Whether [s] is a well-formed 22-char base-62 id.
+  static bool isBase62(String s) => codec.Base62Uuid.isValid(s);
 
   /// Canonical UUID → 22-char base-62.
   static String encode(String uuid) {
     final cached = _encodeCache[uuid];
     if (cached != null) return cached;
-    var n = BigInt.parse(uuid.replaceAll('-', ''), radix: 16);
-    final codes = List<int>.filled(length, 0x30);
-    for (var i = length - 1; i >= 0 && n > BigInt.zero; i--) {
-      final rem = (n % _base62).toInt();
-      codes[i] = alphabet.codeUnitAt(rem);
-      n = n ~/ _base62;
-    }
-    final s = String.fromCharCodes(codes);
+    final s = codec.Base62Uuid.encode(uuid);
     if (_encodeCache.length > 200000) _encodeCache.clear();
     _encodeCache[uuid] = s;
     return s;
   }
 
-  /// 22-char base-62 → canonical lower-case UUID.
+  /// 22-char base-62 → canonical lower-case UUID. Throws [FormatException]
+  /// for malformed input.
   static String decode(String b62) {
     final cached = _decodeCache[b62];
     if (cached != null) return cached;
-    var n = BigInt.zero;
-    for (var i = 0; i < b62.length; i++) {
-      n = n * _base62 + BigInt.from(_digit(b62.codeUnitAt(i)));
-    }
-    final hex = n.toRadixString(16).padLeft(32, '0');
-    final s =
-        '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
-        '${hex.substring(16, 20)}-${hex.substring(20)}';
+    final s = codec.Base62Uuid.decode(b62);
     if (_decodeCache.length > 200000) _decodeCache.clear();
     _decodeCache[b62] = s;
     return s;

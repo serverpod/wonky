@@ -8,6 +8,7 @@ import '../../platform/cluster/cluster.dart';
 import '../../platform/cluster/cluster_bus.dart';
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
+import '../../platform/common/lru_map.dart';
 import '../../platform/common/models.dart';
 import '../../platform/common/time.dart';
 import '../../platform/sharing/access_service.dart';
@@ -47,6 +48,10 @@ abstract final class PresentationService {
   /// How long a presenter rejoin and [find] listen for answers.
   static Duration probeTimeout = const Duration(milliseconds: 400);
 
+  /// How often members receiving the presenter's state re-check their
+  /// access (10 §6.5). Variable for tests.
+  static Duration memberAccessRecheck = const Duration(seconds: 5);
+
   /// Remote commands per second and connection (10 §6.5).
   static const maxCommandsPerSecond = 20;
 
@@ -71,7 +76,7 @@ abstract final class PresentationService {
   /// guessable otherwise).
   static const maxResolvesPerWindow = 10;
   static const _resolveWindow = Duration(minutes: 1);
-  static final Map<int, List<int>> _resolves = {};
+  static final LruMap<int, List<int>> _resolves = LruMap(10000);
 
   /// Codes issued by presenters on this instance (avoids local repeats).
   static final Set<String> _localCodes = {};
@@ -100,12 +105,13 @@ abstract final class PresentationService {
     String code,
   ) async {
     final now = _now();
-    final tries = _resolves.putIfAbsent(actor.userId, () => [])
+    final tries = (_resolves.get(actor.userId) ?? <int>[])
       ..removeWhere((t) => now - t > _resolveWindow.inMilliseconds);
     if (tries.length >= maxResolvesPerWindow) {
       throw Errors.limit('Too many pairing codes. Try again in a minute.');
     }
     tries.add(now);
+    _resolves.put(actor.userId, tries);
     final digits = code.replaceAll(RegExp(r'\s'), '');
     if (!_codePattern.hasMatch(digits)) return null;
     final requestId = const Uuid().v4();
@@ -264,12 +270,14 @@ class _Connection {
   ) {
     out = StreamController<PresentationEvent>(
       onListen: () {
-        _start().catchError((Object e, StackTrace st) {
-          if (!out.isClosed) {
-            out.addError(e, st);
-            unawaited(_close());
-          }
-        });
+        unawaited(
+          _start().catchError((Object e, StackTrace st) {
+            if (!out.isClosed) {
+              out.addError(e, st);
+              unawaited(_close());
+            }
+          }),
+        );
       },
       onCancel: _leave,
     );
@@ -388,7 +396,7 @@ class _Connection {
     }
     if (_closed) return;
     _input = updates.listen(
-      (u) => unawaited(_handle(u).catchError((Object _) {})),
+      (u) => unawaited(_handle(u).catchError(_logFailure)),
       onDone: () => unawaited(_close()),
       onError: (Object _) => unawaited(_close()),
     );
@@ -563,7 +571,7 @@ class _Connection {
         session,
         PresentationService._findChannel(replyTo),
         _msg('found', replyTo: replyTo),
-      ).catchError((Object _) {}),
+      ).catchError(_logFailure),
     );
   }
 
@@ -687,11 +695,67 @@ class _Connection {
     }
   }
 
-  bool _fromPresenter(PresentationBusMessage m) =>
-      !isPresenter &&
-      verified &&
-      m.role == PresentationRole.presenter &&
-      m.userId == presenterUserId;
+  bool _fromPresenter(PresentationBusMessage m) {
+    final from =
+        !isPresenter &&
+        verified &&
+        m.role == PresentationRole.presenter &&
+        m.userId == presenterUserId;
+    if (from) _recheckAccess();
+    return from;
+  }
+
+  bool _accessChecking = false;
+
+  /// Members (audience, followers, remotes) receiving the presenter's
+  /// state re-check their access at most every 5 s, like commands (10
+  /// §6.5): a member who lost access is ended with `noAccess`. Runs in the
+  /// background; what arrives meanwhile is still relayed.
+  void _recheckAccess() {
+    final now = _now();
+    if (_accessChecking ||
+        _closed ||
+        now - _accessCheckedAt <=
+            PresentationService.memberAccessRecheck.inMilliseconds) {
+      return;
+    }
+    _accessChecking = true;
+    // Also throttles retries after a database error.
+    _accessCheckedAt = now;
+    unawaited(
+      AccessService.require(session, actor, deckUuid, Role.viewer)
+          .then((_) => _accessCheckedAt = _now())
+          .catchError((Object e, StackTrace st) async {
+            if (e is WonkyException &&
+                (e.code == WonkyErrorCode.notFound ||
+                    e.code == WonkyErrorCode.forbidden)) {
+              _emit(
+                PresentationEndedEvent(
+                  serverTimeMs: _now(),
+                  reason: 'noAccess',
+                ),
+              );
+              await _close();
+            } else {
+              _logFailure(e, st);
+            }
+            return 0;
+          })
+          .whenComplete(() => _accessChecking = false),
+    );
+  }
+
+  void _logFailure(Object e, StackTrace st) {
+    try {
+      session.log(
+        'presentation: relay failed: $e',
+        level: LogLevel.warning,
+        stackTrace: st,
+      );
+    } on Object {
+      // The session is closing.
+    }
+  }
 
   void _reply(PresentationBusMessage to, String type, {bool? admitted}) =>
       unawaited(
@@ -703,7 +767,7 @@ class _Connection {
             stateSentAtMs: lastStateSentAt,
             admitted: admitted,
           ),
-        ).catchError((Object _) {}),
+        ).catchError(_logFailure),
       );
 
   void _addToRoster(PresentationBusMessage m) {
@@ -874,7 +938,7 @@ class _Connection {
         session,
         PresentationService._findChannel(replyTo),
         _msg('resolved', replyTo: replyTo, pairingKey: key),
-      ).catchError((Object _) {}),
+      ).catchError(_logFailure),
     );
   }
 

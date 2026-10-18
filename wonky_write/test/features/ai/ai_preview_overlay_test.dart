@@ -12,13 +12,9 @@ import 'package:wonky_ui/wonky_ui.dart';
 import 'package:wonky_write/config/write_app_config.dart';
 import 'package:wonky_write/features/ai/write_ai_controller.dart';
 import 'package:wonky_write/features/document/write_document_session.dart';
-import 'package:wonky_write/features/editor/applier/delta_applier.dart'
-    show DeltaSelection;
 import 'package:wonky_write/features/screen/write_document_screen.dart';
-import 'package:wonky_write/features/sync/connection_keeper.dart';
 import 'package:wonky_write/features/themes/document_theme.dart';
-import 'package:wonky_write_core/wonky_write_core.dart'
-    hide DeltaSelection, ThemeCatalog;
+import 'package:wonky_write_core/wonky_write_core.dart' hide ThemeCatalog;
 
 import '../document/support/session_harness.dart';
 import '../sync/support/fake_document_server.dart';
@@ -44,24 +40,21 @@ void main() {
     await tester.pumpWidget(
       Provider<ShellServices>.value(
         value: h.services,
-        child: ActiveDocumentHostScope(
-          host: h.services,
-          child: ShadApp(
-            theme: dark ? WonkyTheme.dark() : WonkyTheme.light(),
-            localizationsDelegates: const [
-              WonkyAppLocalizations.delegate,
-              WonkyUiLocalizations.delegate,
-            ],
-            home: Material(
-              type: MaterialType.transparency,
-              child: WonkyThemeScope(
-                data: const WonkyThemeExtension(),
-                child: WriteDocumentScreen(
-                  services: h.services,
-                  itemUuid: itemUuid,
-                  themes: WriteThemeCatalog(),
-                  sessionFactory: (s, uuid) => session,
-                ),
+        child: ShadApp(
+          theme: dark ? WonkyTheme.dark() : WonkyTheme.light(),
+          localizationsDelegates: const [
+            WonkyAppLocalizations.delegate,
+            WonkyUiLocalizations.delegate,
+          ],
+          home: Material(
+            type: MaterialType.transparency,
+            child: WonkyThemeScope(
+              data: const WonkyThemeExtension(),
+              child: WriteDocumentScreen(
+                services: h.services,
+                itemUuid: itemUuid,
+                themes: WriteThemeCatalog(),
+                sessionFactory: (s, uuid) => session,
               ),
             ),
           ),

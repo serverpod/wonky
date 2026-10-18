@@ -1,3 +1,7 @@
+@Tags(['integration'])
+library;
+
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/activity/activity_service.dart';
@@ -116,7 +120,7 @@ void main() {
     test('when views happened on earlier days then the trend has one point '
         'per day', () async {
       final session = sessionBuilder.build();
-      final today = ActivityService.dayOf(DateTime.now().toUtc());
+      final today = ActivityService.dayOf(clock.now().toUtc());
       final item = (await DriveItem.db.findFirstRow(
         session,
         where: (t) => t.uuid.equals(doc.uuid),

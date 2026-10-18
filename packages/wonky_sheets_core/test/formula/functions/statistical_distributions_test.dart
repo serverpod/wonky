@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:test/test.dart';
 import 'package:wonky_sheets_core/formula.dart';
+import 'package:wonky_sheets_core/formula_testing.dart';
 
 /// Matches a number within [rel] relative tolerance, or an error literal (`#…`).
 Matcher _value(Object want, {double rel = 1e-9}) => switch (want) {

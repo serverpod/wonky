@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -104,6 +105,42 @@ void main() {
     expect(s.text('C1'), 'a');
     await s.undo();
     expect(s.text('A1'), 'a');
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  // CQ-41 (S-07): a cursor change rebuilds only the mouse region.
+  testWidgets('Given the grid when the pointer moves onto a column boundary '
+      'then the cursor changes and the paint passes are not rebuilt', (
+    tester,
+  ) async {
+    await pumpSheets(tester, s);
+    final pass = find.byKey(const ValueKey<String>('sheets.grid.content'));
+    final before = tester.widget(pass);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: cell(2, 2));
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+
+    // The boundary between B and C in the column header.
+    await mouse.moveTo(const Offset(48 + 200, 12));
+    await tester.pump();
+
+    final cursors = tester
+        .widgetList<MouseRegion>(find.byType(MouseRegion))
+        .map((m) => m.cursor);
+    expect(cursors, contains(SystemMouseCursors.resizeColumn));
+    expect(identical(tester.widget(pass), before), isTrue);
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  // CQ-41 (S-06): widgets built before the paint use this frame's geometry.
+  testWidgets('Given the grid when it scrolls then the geometry read before '
+      'the next paint is already scrolled', (tester) async {
+    await pumpSheets(tester, s);
+
+    s.editor.scroll.scrollBy(0, 210);
+
+    expect(s.editor.geometry?.scrollY, 210);
     await tester.pump(const Duration(seconds: 1));
   });
 }

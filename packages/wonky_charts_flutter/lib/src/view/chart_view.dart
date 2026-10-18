@@ -66,8 +66,10 @@ class ChartView extends StatefulWidget {
 
 class _ChartViewState extends State<ChartView> {
   String? _highlight;
-  SceneHit? _hover;
-  Offset? _hoverAt;
+
+  /// The tooltip's target and position: its own listenable, so pointer
+  /// moves rebuild only the tooltip, never the chart (CQ-47).
+  final ValueNotifier<(SceneHit, Offset)?> _hover = ValueNotifier(null);
   ChartScene? _scene;
   Object? _sceneKey;
 
@@ -80,6 +82,7 @@ class _ChartViewState extends State<ChartView> {
   @override
   void dispose() {
     Chart3DBackends.gpu.removeListener(_changed);
+    _hover.dispose();
     final k = widget.gpuKey;
     if (k != null) Chart3DBackends.gpu.value?.release(k);
     super.dispose();
@@ -91,7 +94,8 @@ class _ChartViewState extends State<ChartView> {
 
   ChartScene _layout(Size size) {
     final w = widget;
-    final key = Object.hash(
+    // Compared with ==, not by hash (a collision would show a stale scene).
+    final key = (
       w.spec,
       w.data,
       w.theme,
@@ -135,12 +139,7 @@ class _ChartViewState extends State<ChartView> {
       hit = scene.hitTest(p.dx, p.dy);
     }
     final next = chartTooltipApplies(hit?.tag) ? hit : null;
-    if (next?.tag != _hover?.tag || (next != null && _hoverAt != p)) {
-      setState(() {
-        _hover = next;
-        _hoverAt = p;
-      });
-    }
+    _hover.value = next == null ? null : (next, p);
   }
 
   void _onTap(Offset p, ChartScene scene) {
@@ -166,15 +165,18 @@ class _ChartViewState extends State<ChartView> {
       if (scene.threeD != null && widget.gpuKey != null) {
         Chart3DBackends.ensureStarted();
       }
-      Widget paint = CustomPaint(
-        size: size,
-        isComplex: true,
-        painter: ChartScenePainter(
-          scene,
-          text: widget.text,
-          gpu: widget.gpuKey == null ? null : Chart3DBackends.active,
-          gpuKey: widget.gpuKey,
-          devicePixelRatio: MediaQuery.maybeDevicePixelRatioOf(context) ?? 1,
+      // Own layer: the tooltip above repaints alone (CQ-47).
+      Widget paint = RepaintBoundary(
+        child: CustomPaint(
+          size: size,
+          isComplex: true,
+          painter: ChartScenePainter(
+            scene,
+            text: widget.text,
+            gpu: widget.gpuKey == null ? null : Chart3DBackends.active,
+            gpuKey: widget.gpuKey,
+            devicePixelRatio: MediaQuery.maybeDevicePixelRatioOf(context) ?? 1,
+          ),
         ),
       );
       if (widget.semanticLabel != null) {
@@ -185,13 +187,10 @@ class _ChartViewState extends State<ChartView> {
         );
       }
       if (!widget.tooltips && !widget.legendHighlight) return paint;
-      final hover = _hover;
       return MouseRegion(
         opaque: false,
         onHover: (e) => _onHover(e, scene),
-        onExit: (_) {
-          if (_hover != null) setState(() => _hover = null);
-        },
+        onExit: (_) => _hover.value = null,
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTapUp: (d) => _onTap(d.localPosition, scene),
@@ -201,17 +200,21 @@ class _ChartViewState extends State<ChartView> {
               clipBehavior: Clip.none,
               children: [
                 paint,
-                if (hover != null && _hoverAt != null)
-                  ChartTooltip(
-                    at: _hoverAt!,
-                    bounds: size,
-                    lines: chartTooltipLines(
-                      widget.data,
-                      widget.spec,
-                      hover.tag,
-                      locale: widget.locale,
-                    ),
-                  ),
+                ValueListenableBuilder<(SceneHit, Offset)?>(
+                  valueListenable: _hover,
+                  builder: (context, hover, _) => hover == null
+                      ? const SizedBox.shrink()
+                      : ChartTooltip(
+                          at: hover.$2,
+                          bounds: size,
+                          lines: chartTooltipLines(
+                            widget.data,
+                            widget.spec,
+                            hover.$1.tag,
+                            locale: widget.locale,
+                          ),
+                        ),
+                ),
               ],
             ),
           ),

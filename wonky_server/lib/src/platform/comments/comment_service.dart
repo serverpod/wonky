@@ -20,6 +20,7 @@ import '../cluster/cluster_bus.dart';
 abstract final class CommentService {
   static const maxBodyLength = 10000;
   static const maxQuotedText = 500;
+  static const maxMentions = 50;
 
   static String channel(UuidValue itemUuid) => 'comments:${itemUuid.uuid}';
 
@@ -191,15 +192,32 @@ abstract final class CommentService {
     return trimmed;
   }
 
+  /// The mentions that are kept: users with a role on [item], and users
+  /// related to [actor] (mention without sharing, specs/07 §3). Other ids
+  /// are dropped, so a comment can't reveal anyone's name and email.
   static Future<List<int>> _validMentions(
     Session session,
+    Actor actor,
     DriveItem item,
     List<int> mentions,
   ) async {
     if (mentions.isEmpty) return const [];
+    final ids = mentions.toSet();
+    if (ids.length > maxMentions) {
+      throw Errors.invalid(
+        'A comment can mention at most $maxMentions people.',
+      );
+    }
+    final allowed = await UserService.relatedIds(session, actor, ids);
+    for (final id in ids.difference(allowed)) {
+      if (await AccessService.effectiveRole(session, id, item) != null) {
+        allowed.add(id);
+      }
+    }
+    if (allowed.isEmpty) return const [];
     final profiles = await UserProfile.db.find(
       session,
-      where: (t) => t.id.inSet(mentions.toSet()),
+      where: (t) => t.id.inSet(allowed),
     );
     return [for (final p in profiles) p.id!];
   }
@@ -246,7 +264,7 @@ abstract final class CommentService {
     } on FormatException {
       throw Errors.invalid('The anchor is not valid JSON.');
     }
-    final validMentions = await _validMentions(session, item, mentions);
+    final validMentions = await _validMentions(session, actor, item, mentions);
     if (assigneeId != null && !validMentions.contains(assigneeId)) {
       throw Errors.invalid('The assignee must be mentioned in the comment.');
     }
@@ -328,7 +346,7 @@ abstract final class CommentService {
       }
     }
     final clean = _cleanBody(body);
-    final validMentions = await _validMentions(session, item, mentions);
+    final validMentions = await _validMentions(session, actor, item, mentions);
     if (assigneeId != null && !validMentions.contains(assigneeId)) {
       throw Errors.invalid('The assignee must be mentioned in the comment.');
     }
@@ -351,12 +369,15 @@ abstract final class CommentService {
         ),
         transaction: tx,
       );
+      // Only the touched columns: the thread row was read before, and a
+      // concurrent resolve must not be reverted.
       await CommentThread.db.updateRow(
         session,
         thread.copyWith(
           updatedAt: now,
           assigneeId: assigneeId ?? thread.assigneeId,
         ),
+        columns: (t) => [t.updatedAt, if (assigneeId != null) t.assigneeId],
         transaction: tx,
       );
       if (assigneeId != null && assigneeId != thread.assigneeId) {
@@ -490,7 +511,7 @@ abstract final class CommentService {
     final clean = _cleanBody(body);
     final validMentions = mentions == null
         ? comment.mentions
-        : await _validMentions(session, item, mentions);
+        : await _validMentions(session, actor, item, mentions);
     final updated = await Comment.db.updateRow(
       session,
       comment.copyWith(
@@ -498,6 +519,7 @@ abstract final class CommentService {
         mentions: validMentions,
         editedAt: nowUtc(),
       ),
+      columns: (t) => [t.body, t.mentions, t.editedAt],
     );
     final added = validMentions.where((m) => !comment.mentions.contains(m));
     await _notifyMentions(session, actor, item, thread, added.toList(), clean);
@@ -532,7 +554,11 @@ abstract final class CommentService {
       await deleteThread(session, actor, thread.uuid);
       return;
     }
-    await Comment.db.updateRow(session, comment.copyWith(deletedAt: nowUtc()));
+    await Comment.db.updateRow(
+      session,
+      comment.copyWith(deletedAt: nowUtc()),
+      columns: (t) => [t.deletedAt],
+    );
     await _signal(session, item, CommentEventKind.threadUpdated, thread.uuid);
   }
 
@@ -576,24 +602,13 @@ abstract final class CommentService {
     await session.db.transaction((tx) async {
       await CommentThread.db.updateRow(
         session,
-        CommentThread(
-          id: thread.id,
-          uuid: thread.uuid,
-          itemId: thread.itemId,
-          anchorKind: thread.anchorKind,
-          anchorJson: thread.anchorJson,
-          quotedText: thread.quotedText,
+        thread.copyWith(
           status: status,
-          createdById: thread.createdById,
-          createdAt: thread.createdAt,
           updatedAt: now,
           resolvedById: status == CommentStatus.resolved ? actor.userId : null,
           resolvedAt: status == CommentStatus.resolved ? now : null,
-          assigneeId: thread.assigneeId,
-          statusBeforeOrphan: thread.statusBeforeOrphan,
-          orphanReasonJson: thread.orphanReasonJson,
-          suggestionId: thread.suggestionId,
         ),
+        columns: (t) => [t.status, t.updatedAt, t.resolvedById, t.resolvedAt],
         transaction: tx,
       );
       await _system(
@@ -650,23 +665,35 @@ abstract final class CommentService {
     final (_, item, _) = await _thread(session, actor, thread.uuid);
     final e = emoji.trim();
     if (e.isEmpty || e.length > 16) throw Errors.invalid('Invalid reaction.');
-    final reactions = _reactions(comment.reactions);
-    final users = reactions[e] ?? <int>[];
-    if (users.contains(actor.userId)) {
-      users.remove(actor.userId);
-    } else {
-      users.add(actor.userId);
-    }
-    if (users.isEmpty) {
-      reactions.remove(e);
-    } else {
-      reactions[e] = users;
-    }
-    await Comment.db.updateRow(
-      session,
-      comment.copyWith(reactions: jsonEncode(reactions)),
-      columns: (t) => [t.reactions],
-    );
+    // Read-modify-write of the JSON under the row lock, so two people
+    // reacting at once don't drop each other's reaction.
+    await session.db.transaction((tx) async {
+      final locked = await Comment.db.findById(
+        session,
+        commentId,
+        transaction: tx,
+        lockMode: LockMode.forUpdate,
+      );
+      if (locked == null) throw Errors.notFound('Comment');
+      final reactions = _reactions(locked.reactions);
+      final users = reactions[e] ?? <int>[];
+      if (users.contains(actor.userId)) {
+        users.remove(actor.userId);
+      } else {
+        users.add(actor.userId);
+      }
+      if (users.isEmpty) {
+        reactions.remove(e);
+      } else {
+        reactions[e] = users;
+      }
+      await Comment.db.updateRow(
+        session,
+        locked.copyWith(reactions: jsonEncode(reactions)),
+        columns: (t) => [t.reactions],
+        transaction: tx,
+      );
+    });
     await _signal(session, item, CommentEventKind.threadUpdated, thread.uuid);
     final view = (await viewsOf(session, item, [thread])).single;
     return view.comments.firstWhere((c) => c.id == commentId);
@@ -693,26 +720,22 @@ abstract final class CommentService {
     final reopen = thread.status == CommentStatus.orphaned;
     await CommentThread.db.updateRow(
       session,
-      CommentThread(
-        id: thread.id,
-        uuid: thread.uuid,
-        itemId: thread.itemId,
+      thread.copyWith(
         anchorKind: anchorKind ?? thread.anchorKind,
         anchorJson: anchorJson,
-        quotedText: thread.quotedText,
         status: reopen
             ? (thread.statusBeforeOrphan ?? CommentStatus.open)
             : thread.status,
-        createdById: thread.createdById,
-        createdAt: thread.createdAt,
         updatedAt: nowUtc(),
-        resolvedById: thread.resolvedById,
-        resolvedAt: thread.resolvedAt,
-        assigneeId: thread.assigneeId,
-        statusBeforeOrphan: reopen ? null : thread.statusBeforeOrphan,
-        orphanReasonJson: reopen ? null : thread.orphanReasonJson,
-        suggestionId: thread.suggestionId,
+        statusBeforeOrphan: null,
+        orphanReasonJson: null,
       ),
+      columns: (t) => [
+        t.anchorKind,
+        t.anchorJson,
+        t.updatedAt,
+        if (reopen) ...[t.status, t.statusBeforeOrphan, t.orphanReasonJson],
+      ],
     );
     await _signal(
       session,
@@ -734,15 +757,19 @@ abstract final class CommentService {
     Map<String, Object?> reason = const {},
   }) async {
     if (thread.status != CommentStatus.open) return;
-    await CommentThread.db.updateRow(
+    // Conditional on the status still being open (the row was read before).
+    final updated = await CommentThread.db.updateWhere(
       session,
-      thread.copyWith(
-        status: CommentStatus.orphaned,
-        statusBeforeOrphan: thread.status,
-        orphanReasonJson: jsonEncode(reason),
-        updatedAt: nowUtc(),
-      ),
+      columnValues: (t) => [
+        t.status(CommentStatus.orphaned),
+        t.statusBeforeOrphan(CommentStatus.open),
+        t.orphanReasonJson(jsonEncode(reason)),
+        t.updatedAt(nowUtc()),
+      ],
+      where: (t) =>
+          t.id.equals(thread.id!) & t.status.equals(CommentStatus.open),
     );
+    if (updated.isEmpty) return;
     await _system(session, thread, null, CommentSystemEvent.orphaned, null);
     await _signal(session, item, CommentEventKind.statusChanged, thread.uuid);
   }
@@ -754,25 +781,19 @@ abstract final class CommentService {
     DriveItem item,
   ) async {
     if (thread.status != CommentStatus.orphaned) return;
-    await CommentThread.db.updateRow(
+    // Conditional on the thread still being orphaned.
+    final updated = await CommentThread.db.updateWhere(
       session,
-      CommentThread(
-        id: thread.id,
-        uuid: thread.uuid,
-        itemId: thread.itemId,
-        anchorKind: thread.anchorKind,
-        anchorJson: thread.anchorJson,
-        quotedText: thread.quotedText,
-        status: thread.statusBeforeOrphan ?? CommentStatus.open,
-        createdById: thread.createdById,
-        createdAt: thread.createdAt,
-        updatedAt: nowUtc(),
-        resolvedById: thread.resolvedById,
-        resolvedAt: thread.resolvedAt,
-        assigneeId: thread.assigneeId,
-        suggestionId: thread.suggestionId,
-      ),
+      columnValues: (t) => [
+        t.status(thread.statusBeforeOrphan ?? CommentStatus.open),
+        t.statusBeforeOrphan(null),
+        t.orphanReasonJson(null),
+        t.updatedAt(nowUtc()),
+      ],
+      where: (t) =>
+          t.id.equals(thread.id!) & t.status.equals(CommentStatus.orphaned),
     );
+    if (updated.isEmpty) return;
     await _system(session, thread, null, CommentSystemEvent.reopened, null);
     await _signal(session, item, CommentEventKind.statusChanged, thread.uuid);
   }
@@ -788,24 +809,19 @@ abstract final class CommentService {
     Actor? actor,
   }) async {
     final now = nowUtc();
-    await CommentThread.db.updateRow(
+    await CommentThread.db.updateWhere(
       session,
-      CommentThread(
-        id: thread.id,
-        uuid: thread.uuid,
-        itemId: thread.itemId,
-        anchorKind: thread.anchorKind,
-        anchorJson: thread.anchorJson,
-        quotedText: thread.quotedText,
-        status: status,
-        createdById: thread.createdById,
-        createdAt: thread.createdAt,
-        updatedAt: now,
-        resolvedById: status == CommentStatus.resolved ? actor?.userId : null,
-        resolvedAt: status == CommentStatus.resolved ? now : null,
-        assigneeId: thread.assigneeId,
-        suggestionId: thread.suggestionId,
-      ),
+      columnValues: (t) => [
+        t.status(status),
+        t.updatedAt(now),
+        t.resolvedById(
+          status == CommentStatus.resolved ? actor?.userId : null,
+        ),
+        t.resolvedAt(status == CommentStatus.resolved ? now : null),
+        t.statusBeforeOrphan(null),
+        t.orphanReasonJson(null),
+      ],
+      where: (t) => t.id.equals(thread.id!),
     );
     await _system(session, thread, actor, event, null);
     await _signal(session, item, CommentEventKind.statusChanged, thread.uuid);

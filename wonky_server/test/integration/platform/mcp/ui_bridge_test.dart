@@ -1,7 +1,11 @@
+@Tags(['integration'])
+library;
+
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:async/async.dart';
+import 'package:clock/clock.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/cluster/cluster.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
@@ -307,7 +311,7 @@ void main() {
       () async {
         // A window connected to "another instance", answering on the bus.
         final remote = anna.session;
-        final now = DateTime.now().toUtc().toIso8601String();
+        final now = clock.now().toUtc().toIso8601String();
         remote.messages.addListener(UiBridgeHub.userChannel(anna.id), (m) {
           if (m is! UiBridgeRequest) return;
           unawaited(

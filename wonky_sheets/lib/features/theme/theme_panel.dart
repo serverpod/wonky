@@ -12,7 +12,6 @@ import '../formatting/formatting_features.dart';
 import '../formatting/panel_widgets.dart';
 import '../formatting/sheets_colors.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
-import '../toolbar/command_ui.dart' show invoke;
 import 'theme_controller.dart';
 
 /// The *Themes* side panel (06 §13.3): preset cards (font, accents, mini
@@ -59,8 +58,7 @@ class _ThemePanelState extends State<ThemePanel> {
       _close();
       return;
     }
-    final r = await invoke(
-      widget.services,
+    final r = await widget.services.invokeWithToasts(
       'sheets.theme.set',
       args: {'themeJson': _draft.toJson()},
       context: context,

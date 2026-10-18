@@ -1,0 +1,34 @@
+### One version of a code element's source (Slides 02 §3.8, 07 §3.2). Every
+### state, including the first, is a row; a code element has at least one.
+class: CodeState
+table: code_state
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  ### The code element (kind code).
+  element: SlideElement?, relation(onDelete=Cascade, deferred)
+  sortKey: String
+  ### "Add caching".
+  label: String?
+  ### Full source of this state (whole-value LWW).
+  code: String
+  ### null = the element's language (07 A-07-2).
+  language: String?
+  ### null = the element's title.
+  title: String?
+  ### Line-highlight steps, e.g. "1-3 | 5" (07 §4.1).
+  highlight: String?
+  ### Per-step callouts (07 §4.4).
+  annotationsJson: String?
+  ### How this state is reached from the previous one (07 §5.3).
+  transitionJson: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  code_state_file_idx:
+    fields: fileId, id
+  code_state_element_idx:
+    fields: elementId, sortKey

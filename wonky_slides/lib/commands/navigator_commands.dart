@@ -196,7 +196,11 @@ List<Command<CommandArgs>> navigatorCommands(ShellServices s) => [
     checked: (ed, a) => _skipTargets(ed, a).$4,
     run: (ctx, ed, a) {
       final (groups, slides, enabled, allSkipped) = _skipTargets(ed, a);
-      if (!enabled) return const CommandResult.failed('Skipped with group');
+      if (!enabled) {
+        return CommandResult.failed(
+          slidesL10nOf(ed.services).reasonSkippedWithGroup,
+        );
+      }
       final v = a.boolean('skipped') ?? !allSkipped;
       if (groups.isNotEmpty) {
         ed.apply(ctx, SetGroupProps(groups, skipped: v));
@@ -281,7 +285,7 @@ List<Command<CommandArgs>> navigatorCommands(ShellServices s) => [
       final explicit = a.values.containsKey('slideIds');
       final ids = explicit ? a.strings('slideIds') : _selectedSlides(ed);
       if (ids.isEmpty && !explicit) {
-        return const CommandResult.failed('Select at least one slide');
+        return CommandResult.failed(slidesL10nOf(ed.services).errorSelectSlide);
       }
       final order = ed.order;
       SlideTarget? target;
@@ -743,7 +747,9 @@ List<Command<CommandArgs>> navigatorCommands(ShellServices s) => [
       if (payload == null ||
           (kind != SlidesClipboardCodec.kindSlides &&
               kind != SlidesClipboardCodec.kindGroups)) {
-        return const CommandResult.failed('The clipboard holds no slides');
+        return CommandResult.failed(
+          slidesL10nOf(ed.services).errorClipboardNoSlides,
+        );
       }
       final nav = navigatorOf(ed);
       final after = a.string('afterSlideId');
@@ -1063,10 +1069,12 @@ Future<CommandResult> _runMove(
   required bool groupsOnly,
 }) async {
   final m = _moveTarget(ed, a, groupsOnly: groupsOnly);
-  if (m == null) return const CommandResult.failed('Nothing to move there');
+  if (m == null) {
+    return CommandResult.failed(slidesL10nOf(ed.services).errorNothingToMove);
+  }
   final (sel, target) = m;
   if (target is InGroup && sel.hasGroups) {
-    return const CommandResult.failed('Groups can’t be nested');
+    return CommandResult.failed(slidesL10nOf(ed.services).reasonGroupsCantNest);
   }
   if (a.boolean('copy') ?? false) {
     // Alt-drop: a same-deck paste of the selection at the target.
@@ -1088,7 +1096,9 @@ Future<CommandResult> _runMove(
     return ok({'slideIds': slides, 'groupIds': groups});
   }
   final ops = _moveOps(ed, a, groupsOnly: groupsOnly);
-  if (ops == null) return const CommandResult.failed('Nothing to move there');
+  if (ops == null) {
+    return CommandResult.failed(slidesL10nOf(ed.services).errorNothingToMove);
+  }
   for (final op in ops) {
     ed.apply(ctx, op);
   }

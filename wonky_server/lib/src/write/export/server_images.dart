@@ -8,6 +8,7 @@ import 'package:wonky_write_core/wonky_write_core.dart' as core;
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
 import '../../platform/common/models.dart';
+import '../../platform/common/rate_limiter.dart';
 import '../../platform/files/file_service.dart';
 
 /// SSRF-safe fetching of remote images (Write 07 §4.4): https only on the
@@ -16,6 +17,23 @@ import '../../platform/files/file_service.dart';
 abstract final class SafeImageFetcher {
   static const maxBytes = 10 * 1024 * 1024;
   static const timeout = Duration(seconds: 10);
+
+  /// Remote fetches per user and minute through the image proxies (cache
+  /// misses only, CQ-14).
+  static const fetchesPerMinute = 60;
+
+  static final limiter = RateLimiter(
+    name: 'image-proxy',
+    limit: fetchesPerMinute,
+  );
+
+  /// Counts a remote fetch for [userId]; throws when over the limit.
+  static Future<void> checkLimit(int userId) async {
+    final retry = await limiter.check('user:$userId');
+    if (retry != null) {
+      throw Errors.limit('Too many images loaded at once. Try again shortly.');
+    }
+  }
 
   /// Fetches [src]; throws a `WonkyException` when it is not allowed or
   /// fails.

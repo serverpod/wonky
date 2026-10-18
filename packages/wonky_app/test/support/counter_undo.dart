@@ -41,20 +41,34 @@ class CounterEntry extends UndoEntry {
 }
 
 /// Applies [CounterEntry]s to [values]; keys in [conflicting] throw
-/// [UndoConflict].
+/// [UndoConflict], keys in [failing] throw a [StateError] (a network error),
+/// and every apply first awaits [gate] when set.
 class CounterHandler extends UndoHandler<UndoEntry> {
   CounterHandler(this.values);
 
   final Map<String, int> values;
   final Set<String> conflicting = {};
+  final Set<String> failing = {};
+  Future<void>? gate;
+
+  /// Keys in the order they were applied (undo and redo).
+  final List<String> applied = [];
 
   @override
   String get domain => CounterEntry.domainName;
 
+  Future<void> _check(CounterEntry e) async {
+    final g = gate;
+    if (g != null) await g;
+    if (conflicting.contains(e.key)) throw const UndoConflict('changed');
+    if (failing.contains(e.key)) throw StateError('offline');
+    applied.add(e.key);
+  }
+
   @override
   Future<UndoEntry> undo(UndoEntry entry) async {
     final e = entry as CounterEntry;
-    if (conflicting.contains(e.key)) throw const UndoConflict('changed');
+    await _check(e);
     values[e.key] = e.before;
     return e;
   }
@@ -62,7 +76,7 @@ class CounterHandler extends UndoHandler<UndoEntry> {
   @override
   Future<UndoEntry> redo(UndoEntry entry) async {
     final e = entry as CounterEntry;
-    if (conflicting.contains(e.key)) throw const UndoConflict('changed');
+    await _check(e);
     values[e.key] = e.after;
     return e;
   }

@@ -190,6 +190,15 @@ final class AnchorRange {
   String toString() => 'AnchorRange($start, $length)';
 }
 
+/// One run of a comment anchor: [length] characters from [start] carry
+/// `cmt_<threadUuid>`; [text] is their text (embeds as [embedChar]).
+typedef CommentPiece = ({
+  String threadUuid,
+  int start,
+  int length,
+  String text,
+});
+
 /// The anchor of a thread: overall extent and quote.
 final class CommentAnchor {
   /// Creates an anchor.
@@ -224,28 +233,61 @@ abstract final class CommentAnchors {
   static const maxQuote = 500;
 
   /// Anchors of all threads in [document].
-  static Map<String, CommentAnchor> anchors(Delta document) {
-    final doc = WonkyDocument(document);
-    final ranges = <String, List<AnchorRange>>{};
+  static Map<String, CommentAnchor> anchors(Delta document) =>
+      fromPieces(pieces(document));
+
+  /// The anchored runs of [document] in document order: one per insert and
+  /// thread, with the insert's text (embeds as [embedChar]). A document
+  /// can be split anywhere: the pieces of its parts, with their offsets
+  /// shifted, are the pieces of the whole (the Write editor keeps them per
+  /// block and rescans only changed blocks, Write 04 §36).
+  static List<CommentPiece> pieces(Delta document) {
+    final out = <CommentPiece>[];
     var offset = 0;
-    for (final op in doc.delta.operations) {
+    for (final op in document.operations) {
+      if (!op.isInsert) {
+        throw ArgumentError.value(document, 'document', 'not a document delta');
+      }
       final len = op.length!;
-      for (final id in Attributes.comments(op.attributes)) {
-        final list = ranges.putIfAbsent(id, () => []);
-        if (list.isNotEmpty && list.last.end == offset) {
-          list[list.length - 1] = AnchorRange(
-            list.last.start,
-            list.last.length + len,
-          );
-        } else {
-          list.add(AnchorRange(offset, len));
+      final ids = Attributes.comments(op.attributes);
+      if (ids.isNotEmpty) {
+        final data = op.data;
+        final text = data is String ? data : embedChar;
+        for (final id in ids) {
+          out.add((threadUuid: id, start: offset, length: len, text: text));
         }
       }
       offset += len;
     }
+    return out;
+  }
+
+  /// Anchors from [pieces] in document order: contiguous runs of a thread
+  /// form one range.
+  static Map<String, CommentAnchor> fromPieces(Iterable<CommentPiece> pieces) {
+    final ranges = <String, List<AnchorRange>>{};
+    final texts = <String, List<StringBuffer>>{};
+    for (final p in pieces) {
+      final list = ranges.putIfAbsent(p.threadUuid, () => []);
+      final text = texts.putIfAbsent(p.threadUuid, () => []);
+      if (list.isNotEmpty && list.last.end == p.start) {
+        list[list.length - 1] = AnchorRange(
+          list.last.start,
+          list.last.length + p.length,
+        );
+        text.last.write(p.text);
+      } else {
+        list.add(AnchorRange(p.start, p.length));
+        text.add(StringBuffer(p.text));
+      }
+    }
     return {
       for (final e in ranges.entries)
-        e.key: CommentAnchor(e.key, e.value, quoteOf(doc, e.value)),
+        e.key: CommentAnchor(
+          e.key,
+          e.value,
+          quoteOfTexts([for (final b in texts[e.key]!) b.toString()]),
+        ),
     };
   }
 
@@ -263,11 +305,17 @@ abstract final class CommentAnchors {
   }
 
   /// The quoted text of [ranges].
-  static String quoteOf(WonkyDocument doc, List<AnchorRange> ranges) {
+  static String quoteOf(WonkyDocument doc, List<AnchorRange> ranges) =>
+      quoteOfTexts([
+        for (final r in ranges) doc.text.substring(r.start, r.end),
+      ]);
+
+  /// The quoted text of ranges with the texts [rangeTexts].
+  static String quoteOfTexts(List<String> rangeTexts) {
     final b = StringBuffer();
-    for (final r in ranges) {
+    for (final t in rangeTexts) {
       if (b.isNotEmpty) b.write(' ');
-      b.write(doc.text.substring(r.start, r.end));
+      b.write(t);
     }
     var q = b
         .toString()

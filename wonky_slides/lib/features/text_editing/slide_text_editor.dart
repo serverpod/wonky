@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:wonky_app/wonky_app.dart' show UndoService;
-import 'package:wonky_sync_kit/rows.dart' show RowChange;
+import 'package:wonky_revlog/rows.dart' show RowChange;
 import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/scene.dart' show TextBody;

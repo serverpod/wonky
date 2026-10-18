@@ -9,6 +9,11 @@ import 'api.dart';
 abstract class UserRepository {
   Future<UserProfileView> getMe();
 
+  /// The profile [getMe] last returned on this device for the signed-in
+  /// user, without a network call (the shell renders from it first, CQ-45),
+  /// or null.
+  Future<UserProfileView?> cachedMe();
+
   Future<UserProfileView> updateProfile({
     String? displayName,
     String? locale,
@@ -57,6 +62,21 @@ class ServerUserRepository implements UserRepository {
       final id = api.client.auth.authInfo?.authUserId;
       return id == null ? null : 'profile.${id.uuid}';
     } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<UserProfileView?> cachedMe() async {
+    final key = _cacheKey;
+    if (key == null) return null;
+    try {
+      final cached = await _cache.read(key);
+      return cached is Map
+          ? UserProfileView.fromJson(cached.cast<String, dynamic>())
+          : null;
+    } catch (e) {
+      debugPrint('Reading the cached profile failed: $e');
       return null;
     }
   }

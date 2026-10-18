@@ -20,7 +20,7 @@ same code runs:
 
 | Host | Use |
 |------|-----|
-| Flutter client (web via dart2wasm/dart2js, desktop native AOT) | Interactive recalculation of the local replica, editor services (highlighting, autocomplete, signature help), filters/CF/DV custom formulas, pivots. |
+| Flutter client (web via dart2wasm/dart2js, desktop native AOT) | Interactive recalculation of the open spreadsheet, editor services (highlighting, autocomplete, signature help), filters/CF/DV custom formulas, pivots. |
 | Server (`wonky_server`, native AOT/JIT) | Headless evaluation for MCP (`sheets.evaluate`, `sheets.get_values`), server-side scripts/triggers, IMPORTRANGE sources, version snapshots and exports (cached values in XLSX), AI context building. |
 | Script runtime (`wonky_sheets_script`) | `Range.getValues()` on formula cells, `setFormula`, `setFormulaR1C1`. |
 
@@ -154,8 +154,8 @@ registry from core; this spec defines the data they show (§18).
 ```
 engine/
   headless_engine_service.dart    # LRU of HeadlessWorkbook+FormulaEngine per spreadsheet (max 20, idle 10 min)
-  workbook_loader.dart            # builds HeadlessWorkbook from the space's synced tables
-  changelog_patch.dart            # applies ChangeLog-driven deltas after onMergeSuccess
+  workbook_loader.dart            # builds HeadlessWorkbook from the file's tables (HeadlessFileCache, suite 17 part 5 §9)
+  changelog_patch.dart            # applies the applied changes of committed ops (the cache follows the file's ops)
 external/
   import_range_service.dart       # IMPORTRANGE grants + value fetch (§13.3)
   fetch_proxy_service.dart        # IMPORTDATA/HTML/XML/FEED fetch with SSRF guard (§13.4); shares the guard with 08's /files/proxy
@@ -555,7 +555,7 @@ underlining the offending token in the editor).
      02**, §24). If an endpoint id is missing at evaluation (a collaborator deleted the row while
      this formula was written offline), the endpoint is placed at the position the key `(K, id)` would
      occupy in the current axis order, i.e. the range covers exactly the surviving rows between
-     the endpoints. Since `K` is part of the synced text, all replicas agree. `K` may be stale if
+     the endpoints. Since `K` is part of the stored text, all clients agree. `K` may be stale if
      the row was *moved* before deletion; that only affects this rare fallback.
 - Whole sheet deleted → all tokens with that `S:` render/evaluate `#REF!` (undoing the delete
   revives the sheet with the same id and the formulas work again).
@@ -929,7 +929,11 @@ Implementation (v1):
 
 Open-ended and whole-column ranges are logically as long as the axis (up to 10M rows). Range
 iteration clamps to the sheet's **used extent** (max row/col index with content or overlay,
-maintained by `SheetView`), so `SUM(A:A)` costs O(non-empty cells). Spilled whole-column results
+maintained by `SheetView`; the model's `CellStore` keeps it incrementally from per-row and
+per-column content counts, O(1) per edit and recomputed after structural changes), so `SUM(A:A)`
+costs O(non-empty cells). Tall, narrow ranges (≥ 256 rows, ≤ 8 columns) are read through dense
+per-column caches of the cell inputs by row index (valid for the row order and the column's
+content version), not through per-cell id lookups. Spilled whole-column results
 (`=A:A`, `=ARRAYFORMULA(A:A*2)`) logically have the full axis length (Sheets parity: the spill
 area reaches the last row, so typing below the data blocks the spill), but `FArray` storage is a
 **sparse/lazy array** (`LazyArray` subclass of `FArray` with an element function over the used
@@ -1084,7 +1088,7 @@ Every job supports cancellation and progress callbacks.
 
 The server never runs a full recalc on load. `HeadlessEngineService` evaluates **on demand**
 (pull) only the cells requested by MCP/scripts/exports and their precedents; values stay cached
-while the workbook is in the LRU; ChangeLog-driven patches dirty affected nodes. Exports
+while the workbook is in the LRU; committed ops applied to the cached model dirty affected nodes. Exports
 (XLSX cached values, PDF) trigger a full recalc in a server isolate with a 60 s budget.
 
 ---
@@ -1098,8 +1102,8 @@ while the workbook is in the LRU; ChangeLog-driven patches dirty affected nodes.
   `{"n":42.5,"h":"date"}`, `{"s":"x"}`, `{"b":1}`, `{"e":"#N/A","m":"…"}`, spill host:
   `{"a":[[…],[…]],"h":[…]}` (arrays > 10k cells are not cached).
 - On open: cache rows with matching `engineVersion` and the spreadsheet's cached **data stamp**
-  (`ComputedValueCacheMeta.dataStamp` = id of the ChangeLog row with the greatest `(at, id)` plus
-  the count of ChangeLog rows, addition §24) are loaded as `stale: false` values → instant first paint. If the stamp differs, values load
+  (`ComputedValueCacheMeta.dataStamp` = the file revision the cache holds plus the number of
+  outbox ops, addition §24) are loaded as `stale: false` values → instant first paint. If the stamp differs, values load
   as `stale: true` (shown normally, recalculated in the background in viewport-first order).
 - Volatile nodes are always dirtied on open.
 
@@ -1113,6 +1117,7 @@ To avoid O(n²) patterns (`VLOOKUP` / `COUNTIF` filled down 100k rows):
 | `SortedIndex` | (column area) | sorted (value, index) array for approximate MATCH/VLOOKUP/XLOOKUP binary search | generation |
 | `CriteriaCount` | (range area, criteria string) | count/sum results for `COUNTIF/SUMIF/AVERAGEIF` single-criterion | generation of range + sum range |
 | `ParsedCriteria` | criteria string | compiled matcher (operator, value, wildcard regex) | never (LRU) |
+| Compiled rule formula (`EngineFormulaHooks`) | (stored formula, sheet, anchor) | `CompiledRelative`: template and slots of a CF/DV/filter formula, evaluated per cell with offsets | none needed: a changed rule has another text (512 entries, oldest dropped) |
 
 Built lazily on the second use within a drain (first use scans linearly). Total cache memory
 capped at 64 MB (LRU eviction).
@@ -1131,26 +1136,28 @@ capped at 64 MB (LRU eviction).
 
 ## 12. Determinism
 
-Same `engineVersion` + same synced state ⇒ identical values on every replica and on the server:
+Same `engineVersion` + same file state ⇒ identical values on every client and on the server:
 
 - No locale/platform-dependent APIs in evaluation: number parsing/formatting uses the
   spreadsheet locale tables bundled in core (not the OS); text case folding is
-  Unicode-table-based; sorting/collation in formulas is ordinal after folding.
+  Unicode-table-based; `SORT()`/`SORTN()` order text with the shared `Collation` of
+  [07](07-data-tools.md) §2.3 (the same order as Data › Sort).
 - `Math` functions: Dart's `dart:math` maps to platform libm on native and JS `Math` on web, which
   can differ in the last ulp for `sin`, `exp`, `pow`, `log`. Results are passed through
   `stabilize(x)` = round to 15 significant digits **only for transcendental functions** (`EXP`,
   `LN`, `LOG*`, `POWER` with non-integer exponent, trig/hyperbolic, distributions), which removes
   last-ulp differences while staying within Sheets' display precision.
-- **Clock**: `EngineClock.now()` = device time + server offset (measured by the sync client on
-  each sync session), truncated to whole seconds; time zone = `Spreadsheet.timeZone` (IANA, via
+- **Clock**: `EngineClock.now()` = device time + server offset (measured on each connection),
+  truncated to whole seconds; time zone = `Spreadsheet.timeZone` (IANA, via
   `timezone` package).
 - **Randomness**: `RAND()` in cell X = `splitmix64(hash(spreadsheetId, cellId, callIndex,
-  epoch))`, where `epoch = (id of the ChangeLog row with the greatest (at, id) present in the
-  replica, minute/hour bucket if a timer recalc mode is set)`. ChangeLog rows are synced, so all
-  replicas that have the same set of changes compute the same random numbers regardless of the
-  order in which they arrived; any edit produces a new epoch (fresh values), matching the
-  user-visible behavior of Sheets. Unsynced local edits use a provisional epoch (the local
-  ChangeLog row exists immediately, so the same rule applies).
+  epoch))`, where `epoch = (the file revision the client has applied, minute/hour bucket if a
+  timer recalc mode is set)`. Revisions are assigned by the server, so all clients at the same
+  revision compute the same random numbers; any edit produces a new revision (fresh values),
+  matching the user-visible behavior of Sheets. Unsent local edits use a provisional epoch (the
+  revision plus the number of outbox ops). **As built:** the client engine uses its own change
+  counter (`FormulaEngine.randomEpoch`; `setRandomEpoch` is not called), so `RAND` values agree
+  within one device only.
 - Iteration order everywhere (SCCs, spill collision, pivot output) is defined by (sheet order,
   row index, column index), never by hash-map order.
 - `engineVersion` (semver string constant in core) is stored with cached values; minor behavior
@@ -1211,7 +1218,7 @@ its URL (`https://<host>/sheets/d/<uuid>` or any route containing the item uuid)
   cells → `#REF!` "Result too large").
 - Refresh: on open, every 5 minutes while the destination is open and online, and immediately
   when the server signals source changes (`sheetsExternal` change channel driven by the source's
-  ChangeLog processing, debounced 30 s).
+  post-commit hooks, suite 17 part 5 §6, debounced 30 s).
 - Errors: source missing/trashed → `#REF!` "Spreadsheet not found."; access revoked from granter
   → grant invalidated, `#REF!` "You don't have permissions to access that sheet."
 
@@ -2091,7 +2098,7 @@ the highlighter returns colour **indices** only.
 Formula-related commands. Commands already defined by [03 §19](03-grid-and-editing.md) /
 [04 §3](04-screens-menus-toolbar.md) are listed for completeness with their owner; new ones are
 registered in `wonky_sheets/lib/commands/formula_commands.dart`. Undoable commands go
-through `SheetsWriter` (one step).
+through the session's write path (one step, [02 §7](02-data-model.md)).
 
 | Command id | Title | Default binding (scope) | Args | Undo | Owner / notes |
 |------------|-------|-------------------------|------|------|---------------|
@@ -2144,8 +2151,18 @@ clients running the same engine version (§12). Cells pending on custom function
 
 ## 21. Performance budgets
 
-Measured by `wonky_sheets_core/benchmark/` (native in CI on every PR; web wasm + js nightly in
-headless Chrome). Regressions > 10% fail the job.
+Measured by `packages/wonky_sheets_core/benchmark/`: `dart run benchmark/<name>.dart` for
+`recalc` (full recalc, chain edit, scaling series), `range_reads` (`SUM` over 200k/1M rows,
+open ranges after an edit, materializing, used range), `structural` (insert/delete/cut-paste
+rows in a 200k-row sheet with 220k formulas, the axis index), `rules` (CF/DV custom formulas,
+formulas using a named range) and `viewport` (one background-recalc slice). They run on the
+real `WorkbookModel` + `ModelEngineBinding` with UUID ids (not the test `MemoryWorkbook`) and
+print the median and minimum of each scenario next to its budget; current numbers and the
+budgets not met yet are in [STATUS.md](STATUS.md#benchmarks). Planned: native in CI on every PR
+(regressions > 10% fail the job), web wasm + js nightly in headless Chrome (not wired yet).
+Cheap scaling assertions that catch quadratic regressions run in the default test suite
+(`test/formula/recalc/recalc_drain_perf_test.dart`,
+`test/mutations/planner_structure_perf_test.dart`).
 
 | Scenario | Native (desktop AOT, M1/i7-class) | Web (wasm, same machine) |
 |----------|-----------------------------------|--------------------------|
@@ -2198,13 +2215,26 @@ headless Chrome). Regressions > 10% fail the job.
    `soffice --headless --convert-to csv`, compares with the engine (relative tolerance 1e-9; 1e-6
    for inverse distributions and iterative solvers). Runs nightly; disagreements are triaged:
    Sheets vector decides when Sheets and LibreOffice disagree.
+   > **As built (CQ-61).** Golden vectors: `wonky_sheets_core/test/formula/golden/<category>/core.yaml`
+   > (math, logical, lookup, text, date, statistical, financial, info, array; 162 vectors, format in
+   > `README.yaml`, run by `golden_vectors_test.dart`; an optional `tolerance` and `skip` per vector).
+   > They are `source: manual` — values from the behavior Sheets and Excel share, or Sheets' where
+   > they differ (CHOOSE out of range `#NUM!`, FILTER without matches `#N/A`) — until the capture
+   > tool exists. File corpus: `test/fixtures/compat/*.xlsx|*.ods` (generated by
+   > `tool/compat/gen_compat_fixtures.dart` in the layout Excel and LibreOffice write: shared
+   > strings and formulas, typed results, errors, dates, cross-sheet references; real saved files
+   > can be added); `test/io/compat/compat_corpus_test.dart` imports each file, recalculates and
+   > compares every formula with the cached result. The differential is the Dart tool
+   > `tool/compat/lo_diff.dart` (instead of `lo_diff.py`: 23 function templates, an ODS without cached
+   > results converted to CSV at full precision by `soffice --headless`), run by the nightly
+   > `lo-diff` job (`.github/workflows/nightly.yml`); `--dry-run` evaluates the engine side only.
 6. **Incremental vs full recalc oracle**: random edit sequences (cells, axis ops, names, sheets)
    on random workbooks — after each step, incremental results == full recompute results.
 7. **Determinism**: the same 50 workbooks evaluated on Dart VM, AOT, dart2js and dart2wasm must
    produce byte-identical `valueJson`.
-8. **Replica convergence**: two simulated replicas apply concurrent offline edits (inserts,
-   deletes, formula writes, renames) → after merge both engines produce identical values (uses
-   the sync test harness from [02](02-data-model.md)).
+8. **Client convergence**: two simulated clients apply concurrent offline edits (inserts,
+   deletes, formula writes, renames) → after sync both engines produce identical values (uses
+   the in-process RevLog server `FakeRevServer`, suite 17 As built 16).
 9. **Benchmarks** (§21).
 
 ---
@@ -2214,7 +2244,7 @@ headless Chrome). Regressions > 10% fail the job.
 - [ ] Typing `=sum(a1:a3)` commits `=SUM(A1:A3)`, shows the sum, and the stored content contains
       id tokens only (no A1 text).
 - [ ] Inserting a row between rows 1 and 3 makes the formula display `=SUM(A1:A4)` with the new row
-      included; no formula rows are written by the insert (verified via ChangeLog).
+      included; no formula rows are written by the insert (verified on the op's changes).
 - [ ] Deleting row 3 (the range end) shrinks the range to `A1:A2`; deleting a referenced single cell's
       row shows `#REF!`; undo restores the original formula display and value.
 - [ ] A collaborator inserting rows offline while another edits formulas offline: after sync both
@@ -2269,4 +2299,5 @@ Still open:
    and pivot text grouping).
 2. **Write-time range normalization on delete** (§5.4) rewrites formulas referencing deleted
    range endpoints; for sheets with very many such formulas this is a write burst. Alternative:
-   rely only on the `K:` fallback. Decide after measuring sync cost in the M3 perf suite.
+   rely only on the `K:` fallback. Decide after measuring the commit cost against the RevLog
+   performance gates (suite 17 part 7).

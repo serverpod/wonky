@@ -1,4 +1,5 @@
 import 'package:serverpod/serverpod.dart';
+import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_write_core/wonky_write_core.dart'
     show Delta, DeltaUtils, WonkyAttr;
 
@@ -8,6 +9,12 @@ import '../common/time.dart';
 /// Copies comment threads with "Make a copy › Copy comments" (Write 08 §1.1,
 /// Sheets 10 §5.4).
 abstract final class CommentCopier {
+  /// Whether a caller with [role] on [source] may copy its comments: the
+  /// same rule as reading them (viewers only when the owner lets viewers
+  /// see comments, specs/06 §2).
+  static bool mayCopy(DriveItem source, Role role) =>
+      role > Role.viewer || source.viewersSeeComments;
+
   /// New thread UUIDs for the copyable (non-suggestion) threads of [source].
   static Future<Map<String, String>> newThreadUuids(
     Session session,

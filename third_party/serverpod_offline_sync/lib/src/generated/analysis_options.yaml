@@ -1,8 +1,0 @@
-analyzer:
-  errors:
-    dead_code: ignore
-    duplicate_ignore: ignore
-    unnecessary_type_check: ignore
-
-formatter:
-  trailing_commas: preserve

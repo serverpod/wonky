@@ -1,0 +1,24 @@
+### A row entity with a stable id, ordered by sortKey (Sheets 02 §3.2).
+class: SheetRow
+table: sheet_row
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  sheet: Sheet?, relation(onDelete=Cascade, deferred)
+  sortKey: String
+  ### Null = default/auto-fit.
+  height: double?
+  ### User-hidden; filter-hidden is computed.
+  hidden: bool, default=false
+  ### Row default format.
+  formatJson: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  sheet_row_file_idx:
+    fields: fileId, id
+  sheet_row_order_idx:
+    fields: sheetId, sortKey

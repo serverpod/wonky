@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -422,7 +425,7 @@ void main() {
         expect(_item(done)['mime_type'], 'application/pdf');
         expect(_item(done)['file_category'], 'pdf');
         expect(_item(done)['upload_state'], 'ready');
-        expect(done['storage'], isA<Map>());
+        expect(done['storage'], isA<Map<Object?, Object?>>());
         expect(base64Decode(download['content_base64'] as String), bytes);
         await expectNoDrift(anna);
       });
@@ -540,7 +543,7 @@ void main() {
         expect(item['name'], 'meeting');
         expect(item['parent_uuid'], folder.uuid.uuid);
         expect(doc['content'], contains('Decide the plan'));
-        expect(r['storage'], isA<Map>());
+        expect(r['storage'], isA<Map<Object?, Object?>>());
         expect(
           (listing['items'] as List).map((i) => (i as Map)['kind']).toSet(),
           {'file', 'document'},
@@ -714,7 +717,7 @@ void main() {
           'alt': 'Dot',
         });
 
-        expect(r['storage'], isA<Map>());
+        expect(r['storage'], isA<Map<Object?, Object?>>());
         expect((r['storage'] as Map)['used_bytes'], isA<int>());
       });
     });
@@ -951,7 +954,7 @@ void main() {
             json['quota_bytes'],
             (await TestStorage.usage(anna)).quotaBytes,
           );
-          expect(json['by_kind'], isA<Map>());
+          expect(json['by_kind'], isA<Map<Object?, Object?>>());
         },
       );
     });
@@ -1023,7 +1026,7 @@ void main() {
           ]),
         );
         expect(uploaded.isError, isNot(true));
-        expect(json(uploaded)['storage'], isA<Map>());
+        expect(json(uploaded)['storage'], isA<Map<Object?, Object?>>());
         expect(json(storage)['used_bytes'], greaterThanOrEqualTo(20));
         expect(json(downloaded)['text'], '# Plan\n\nShip Drive.\n');
         expect((json(converted)['item'] as Map)['kind'], 'document');

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/wonky_app.dart';
@@ -247,6 +249,132 @@ void main() {
       expect(values['b'], 2);
       expect(undo.undoStepsOf(_doc).map((s) => s.label), ['First']);
       expect(undo.canRedo.value, isFalse);
+    });
+  });
+
+  group('Given a step whose handler fails (H-4)', () {
+    setUp(() {
+      final t = undo.beginTransaction('Both', stack: _doc);
+      t.record(const CounterEntry('a', 0, 1));
+      t.record(const CounterEntry('b', 0, 1));
+      values
+        ..['a'] = 1
+        ..['b'] = 1;
+      t.commit();
+    });
+
+    test('when nothing could be applied then the step stays on the undo '
+        'stack and the error surfaces', () async {
+      handler.failing.add('b');
+
+      await expectLater(undo.undo(), throwsStateError);
+
+      expect(undo.undoLabel.value, 'Both');
+      expect(undo.undoStepsOf(_doc).single.entries, hasLength(2));
+      expect(undo.canRedo.value, isFalse);
+      expect(undo.isApplying, isFalse);
+      handler.failing.clear();
+      await undo.undo();
+      expect(values, {'a': 0, 'b': 0});
+    });
+
+    test('when it fails half-way then the rest stays undoable and what was '
+        'applied is redoable', () async {
+      handler.failing.add('a');
+
+      await expectLater(undo.undo(), throwsStateError);
+
+      expect(values, {'a': 1, 'b': 0});
+      final rest = undo.undoStepsOf(_doc).single;
+      expect(rest.entries.cast<CounterEntry>().map((e) => e.key), ['a']);
+      expect(rest.partiallyRebased, isTrue);
+      final redone = undo.redoStepsOf(_doc).single;
+      expect(redone.entries.cast<CounterEntry>().map((e) => e.key), ['b']);
+      handler.failing.clear();
+      await undo.undo();
+      expect(values, {'a': 0, 'b': 0});
+    });
+  });
+
+  test('Given two steps when undo is invoked twice without waiting (a held '
+      '⌘Z) then the undos run one after the other', () async {
+    change('a', 1, label: 'First');
+    change('b', 1, label: 'Second');
+    final gate = Completer<void>();
+    handler.gate = gate.future;
+
+    final first = undo.undo();
+    final second = undo.undo();
+    await pumpEventQueue();
+    expect(undo.isApplying, isTrue);
+    expect(undo.undoStepsOf(_doc), hasLength(2));
+    gate.complete();
+    final outcomes = await Future.wait([first, second]);
+
+    expect([for (final o in outcomes) o?.step.label], ['Second', 'First']);
+    expect(handler.applied, ['b', 'a']);
+    expect(values, {'a': 0, 'b': 0});
+    expect(undo.isApplying, isFalse);
+    expect(undo.redoStepsOf(_doc), hasLength(2));
+  });
+
+  group('Given a scoped transaction running an async body', () {
+    late UndoTransaction t;
+    late Completer<void> gate;
+
+    setUp(() {
+      t = undo.beginTransaction('Scoped', stack: _doc, scoped: true);
+      gate = Completer<void>();
+    });
+
+    test('when code outside its call chain runs while it awaits then that '
+        'code sees no transaction', () async {
+      final seen = <String, UndoTransaction?>{};
+      final run = undo.runInTransaction(t, () async {
+        seen['before'] = undo.currentTransaction;
+        await gate.future;
+        seen['after'] = undo.currentTransaction;
+      });
+
+      seen['outside'] = undo.currentTransaction;
+      gate.complete();
+      await run;
+
+      expect(seen, {'before': t, 'outside': null, 'after': t});
+    });
+
+    test('when it synchronously notifies a sync stream listened to outside '
+        'then the listener records into it (Write typing)', () async {
+      final changes = StreamController<int>.broadcast(sync: true);
+      addTearDown(changes.close);
+      final recordedInto = <int, UndoTransaction?>{};
+      changes.stream.listen((v) => recordedInto[v] = undo.currentTransaction);
+
+      final run = undo.runInTransaction(t, () async {
+        await gate.future;
+        changes.add(1);
+      });
+      changes.add(2);
+      gate.complete();
+      await run;
+
+      expect(recordedInto, {1: t, 2: null});
+    });
+
+    test('when it is closed then later callbacks of its zone see no '
+        'transaction', () async {
+      UndoTransaction? afterClose;
+      await undo.runInTransaction(t, () {
+        unawaited(
+          gate.future.then((_) => afterClose = undo.currentTransaction),
+        );
+      });
+      t.commit();
+
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(afterClose, isNull);
     });
   });
 }

@@ -52,10 +52,10 @@ final sheetsMenuSpec = MenuSpec.root([
 | Route (suite 03 §2) | Screen | Class | Notes |
 |---------------------|--------|-------|-------|
 | `/` and drive routes | Home (v2: **only** spreadsheets and folders that contain them) | shell `DriveHomeScreen` with `SheetsAppConfig.homeScope = HomeScope.kind(spreadsheet)` | §12 |
-| `/new?folder=&template=`, `/import?file=<fileItemUuid>` (v2) | Create a spreadsheet (reserved space, offline-first) / import a Drive file with §11.15 | shell `NewItemRoutePage` (default `newItemRoute` → `SheetsAppConfig.createItem`), `ImportRoutePage` + `importDriveFileAsSpreadsheet` (`features/import/drive_file_import.dart`) | §12, Drive 02 §7.2 |
+| `/new?folder=&template=`, `/import?file=<fileItemUuid>` (v2) | Create a spreadsheet (client file UUID, offline-first) / import a Drive file with §11.15 | shell `NewItemRoutePage` (default `newItemRoute` → `SheetsAppConfig.createItem`), `ImportRoutePage` + `importDriveFileAsSpreadsheet` (`features/import/drive_file_import.dart`) | §12, Drive 02 §7.2 |
 | `/templates` | Template gallery (Sheets categories) | shell | §12 |
 | `/s/:uuid` (`?sheet=&range=&comment=`) | **Spreadsheet editor** | `SheetEditorScreen` | §2 |
-| `/s/:uuid` while downloading | "Downloading spreadsheet… 42 %" progress (suite 12 §2.3) | `SpreadsheetLoadingView` | Skeleton grid + `ShadProgress` |
+| `/s/:uuid` while opening | "Opening spreadsheet…" (no percentage; viewport-first, [03 §2.8](03-grid-and-editing.md)); offline and not on the device: "This spreadsheet isn’t available offline" | `SpreadsheetLoadingView` | Skeleton grid + indeterminate `ShadProgress` |
 | `/s/:uuid/history` | Version history (full-screen) | `SheetsVersionHistoryScreen` | [10](10-collaboration-history.md) |
 | `/s/:uuid/print` | Print / PDF preview | `SheetsPrintPreviewScreen` | [11](11-import-export-print.md) |
 | `/s/:uuid/script` | Script editor (full-screen) | `ScriptEditorScreen` | [09](09-scripting.md) |
@@ -148,7 +148,7 @@ lib/
 | — | | | | | |
 | Version history ▸ Name current version | `sheets.history.nameCurrentVersion` | — | — | edit | 10 |
 | Version history ▸ See version history | `sheets.history.open` | ⌥⇧⌘H | Ctrl+Alt+Shift+H | edit | 10 |
-| Make available offline ✓ | `shell.drive.toggleOffline` | — | — | view | suite 12 |
+| Make available offline ✓ | `shell.drive.toggleOffline` | — | — | view | suite 12, 17 part 6 §2.5 |
 | Details | `shell.drive.details` | — | — | view | shell 05 |
 | Settings | `sheets.file.settings` | — | — | edit (view: read-only) | §11.1 |
 | — | | | | | |
@@ -514,7 +514,7 @@ Specified in [03 §9](03-grid-and-editing.md#9-formula-bar). Hidden via View ›
 |------|-----------|---------|
 | Delete | `sheets.sheet.delete {sheetId}` → confirm dialog §11.14 | edit, > 1 visible sheet |
 | Duplicate | `sheets.sheet.duplicate {sheetId}` ("Copy of Sheet1", inserted after) | edit |
-| Copy to ▸ New spreadsheet | `sheets.sheet.copyToNew {sheetId}` (creates a spreadsheet in a reserved space; toast with *Open spreadsheet*) | canDownload |
+| Copy to ▸ New spreadsheet | `sheets.sheet.copyToNew {sheetId}` (creates a spreadsheet like *New*, [02 §4](02-data-model.md); toast with *Open spreadsheet*) | canDownload |
 | Copy to ▸ Existing spreadsheet… | `sheets.sheet.copyToExisting {sheetId, targetItemUuid}` (drive picker dialog; target must be available locally or is subscribed first) | canDownload |
 | Rename | `sheets.sheet.startRename` (inline field) | edit |
 | Change color ▸ | `WonkyColorPicker` (Reset = none) → `sheets.sheet.setColor {sheetId, color?}` | edit |
@@ -525,7 +525,7 @@ Specified in [03 §9](03-grid-and-editing.md#9-formula-bar). Hidden via View ›
 | Right-to-left ✓ (P2) | `sheets.sheet.setRightToLeft` | edit |
 
 All sheet commands are one undo step (delete restores the sheet with all rows, cells and rules by
-reviving tombstoned ids).
+re-inserting the same ids).
 
 ---
 
@@ -537,7 +537,12 @@ reviving tombstoned ids).
   listing **all** six with their values (click one to make it the shown one; persisted per user
   `sheetsDefaults.selectionStat`); values formatted with the active cell's number format when all
   numbers share it. Hidden when the selection is a single cell. Computation per 03 §6.4 (shows a
-  spinner for > 100k cells). Command: `sheets.stats.setShown {fn}` (—).
+  spinner for > 100k cells). *As built (CQ-41):* values and number formats are read from the
+  engine (never through the grid's render cache), comparing formats stops once they differ;
+  the button computes in steps of 50,000 cells (the first right after the 100 ms debounce, the
+  rest in later event-loop turns, aborted by any selection or content change) and keeps the
+  previous value until a large selection is done; Explore and MCP cap at 200,000 cells.
+  Command: `sheets.stats.setShown {fn}` (—).
 - **Explore** button (✨ Explore) toggles the Explore panel (`sheets.explore.toggle`): quick
   stats of the selection, suggested charts and pivot tables for the current data region (click to
   insert), and an "Ask a question about this data" box that hands off to the Assistant. Details in
@@ -863,7 +868,7 @@ Stored in `UserPreferences.sheetsDefaults` (suite 04). Built as the Sheets app's
 `SheetsUserDefaults` (06 §20). Custom fill lists are
 edited as one list per line, items separated by commas. Write shows only the shared toggles.
 The locale, time zone and default font/size also apply to spreadsheets the **server** creates
-(`drive.createSpreadsheet` without a reserved space, built-in templates, imports and MCP
+(`drive.createSpreadsheet` with `initialize: true`, built-in templates, imports and MCP
 `drive.create_spreadsheet`): `SheetsCreateDefaults.of(session, userId)` reads the creator's
 `sheetsDefaults`; explicit `locale`/`timeZone` arguments win. Copies of user templates keep the
 template's settings.
@@ -891,7 +896,8 @@ Drive picker dialog (shell `DrivePickerDialog`, filtered to spreadsheets where u
   Wonky Drive (*Open in Wonky Drive*). Search is filtered to spreadsheets ("Search all of Wonky
   Drive" row).
 - `SheetsAppConfig.homeScope = HomeScope.kind(spreadsheet)` (D-16); `+ New` = *Spreadsheet*
-  (works offline via reserved spaces, suite 12 §2.2), *From template…* and *Import file…*
+  (works offline: the file UUID is generated on the device and the drive create is queued,
+  [02 §4](02-data-model.md)), *From template…* and *Import file…*
   (`.xlsx .ods .csv .tsv .txt`). The empty home reads "Welcome to Wonky Sheets".
 - (v2, as built D-16) `/import?file=` loads the file's bytes (`drive.fileContentUrl`), shows
   the import dialog (§11.15) with only *Create new spreadsheet* enabled, and runs
@@ -916,8 +922,13 @@ Drive picker dialog (shell `DrivePickerDialog`, filtered to spreadsheets where u
   over cells count against the storage quota (Drive 03 §7.2): a refused import or image shows
   the *Out of storage* dialog; images queued offline stay placeholders "Not uploaded — out of
   storage" (08 §10).
-- Offline: spreadsheets in the active set (suite 12 §2.3) are marked available offline; others are
-  dimmed when offline.
+- Offline: spreadsheets fully in the device's cache (opened in the last 14 days, max 50, or
+  pinned; 17 part 6 §2.5) are marked available offline; others are dimmed when offline.
+- **Settings › Offline & storage** (suite 12) gets the Sheets numbers from `RevOfflineProvider`
+  (`wonky_revlog_flutter`): spreadsheets on the device, pinned, spreadsheets with pending
+  changes (outbox rows) and bytes used, plus the warning "Offline storage is limited in this
+  browser" without OPFS (200,000 cells kept offline). *Clear local data* empties the cache.
+  **As built:** it doesn't export unsent outboxes first (17 part 6 §8, As built 15).
 
 ---
 

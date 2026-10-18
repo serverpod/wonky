@@ -1,40 +1,34 @@
-import 'dart:convert';
-
 import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_client/wonky_client.dart'
-    show ActorKind, ChangeLog, RevertResult, RevertSkip, UuidValue;
+    show RevertResult, RevertSkip, UuidValue;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart' show RevOpMeta;
 import 'package:wonky_sheets/features/history/cell_history.dart';
 import 'package:wonky_sheets/features/history/server_change_undo.dart';
 
 import '../collab/support/collab_harness.dart';
 
 final _user = UuidValue.fromString('00000000-0000-4000-8000-000000000001');
-final _space = UuidValue.fromString('01923456-789a-7bcd-8ef0-123456789abd');
 int _ids = 1;
 
-ChangeLog log({
+RevOpMeta log({
   required DateTime at,
   String label = 'Typing',
   Map<String, Object?>? detail,
   Map<String, Object?>? summary,
-}) => ChangeLog(
-  id: UuidValue.fromString(
-    '00000000-0000-7000-8000-${(_ids++).toRadixString(16).padLeft(12, '0')}',
-  ),
-  spreadsheetId: _space,
-  userId: _user,
-  actorKind: ActorKind.user,
+}) => RevOpMeta(
+  revision: _ids++,
+  authorUuid: _user.uuid,
+  actorKind: 'user',
   sessionId: 's',
   label: label,
-  summaryJson: jsonEncode(
-    summary ??
-        {
-          'kinds': ['values'],
-        },
-  ),
-  detailJson: detail == null ? null : jsonEncode(detail),
-  at: at,
+  summary:
+      summary ??
+      {
+        'kinds': ['values'],
+      },
+  detail: detail,
+  committedAt: at,
 );
 
 void main() {

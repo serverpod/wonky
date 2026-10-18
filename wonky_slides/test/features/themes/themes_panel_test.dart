@@ -182,7 +182,10 @@ void main() {
     final dialog = r.services.openDialogs.last;
     final desc = dialog.describe();
     expect(
-      [for (final f in (desc['fields']! as List).cast<Map>()) f['id']],
+      [
+        for (final f in (desc['fields']! as List).cast<Map<Object?, Object?>>())
+          f['id'],
+      ],
       ['preset', 'width', 'height', 'unit', 'scaleContent'],
     );
     // An invalid custom size can't be applied.

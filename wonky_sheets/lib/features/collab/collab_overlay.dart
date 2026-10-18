@@ -51,7 +51,7 @@ class _CollabGridOverlayState extends State<CollabGridOverlay> {
   }
 
   void _onHover(PointerHoverEvent e) {
-    final g = c.lastGeometry;
+    final g = c.geometry;
     final col = collab;
     if (g == null || col == null) return;
     final p = e.localPosition;
@@ -182,7 +182,7 @@ class _CollabGridOverlayState extends State<CollabGridOverlay> {
   }
 
   Rect? _cellRect(int row, int col) {
-    final g = c.lastGeometry;
+    final g = c.geometry;
     if (g == null) return null;
     final sheet = c.activeSheet;
     final merge = sheet?.mergeAt(row, col);
@@ -379,7 +379,7 @@ class _CollabGridOverlayState extends State<CollabGridOverlay> {
     final theme = ShadTheme.of(context);
     final l = sheetsL10n(context);
     final color = theme.colorScheme.presence(cursor.colorIndex);
-    final g = c.lastGeometry;
+    final g = c.geometry;
     return Positioned(
       top: (g?.cellsRect.top ?? 24) + 8,
       right: 16,

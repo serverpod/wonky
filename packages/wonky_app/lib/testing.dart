@@ -13,6 +13,7 @@ export 'package:wonky_rich_editor/testing.dart'
         typeMarkdown;
 
 export 'src/assistant/fake_assistant_api.dart';
+export 'src/testing/command_sweep.dart';
 export 'src/testing/command_test_harness.dart';
 export 'src/testing/fake_board_repository.dart';
 export 'src/testing/fake_cross_app.dart';

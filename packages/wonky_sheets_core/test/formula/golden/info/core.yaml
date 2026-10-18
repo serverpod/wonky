@@ -1,0 +1,42 @@
+- id: na-function
+  formula: =NA()
+  expect: {value: "#N/A"}
+  source: manual
+- id: sum-propagates-na
+  setup: {A1: "#N/A", A2: 1}
+  formula: =SUM(A1:A2)
+  expect: {value: "#N/A"}
+  source: manual
+- id: iserror-division
+  formula: =ISERROR(1/0)
+  expect: {value: true}
+  source: manual
+- id: isnumber-numeric-text
+  formula: =ISNUMBER("1")
+  expect: {value: false}
+  source: manual
+- id: isblank-empty-cell
+  formula: =ISBLANK(A1)
+  expect: {value: true}
+  source: manual
+- id: isblank-empty-text-formula
+  setup: {A1: '=""'}
+  formula: =ISBLANK(A1)
+  expect: {value: false}
+  source: manual
+- id: n-of-text
+  formula: =N("a")
+  expect: {value: 0}
+  source: manual
+- id: error-type-division
+  formula: =ERROR.TYPE(1/0)
+  expect: {value: 2}
+  source: manual
+- id: type-of-text
+  formula: =TYPE("a")
+  expect: {value: 2}
+  source: manual
+- id: istext-number
+  formula: =ISTEXT(1)
+  expect: {value: false}
+  source: manual

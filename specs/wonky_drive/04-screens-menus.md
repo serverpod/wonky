@@ -24,7 +24,8 @@ Routes are relative to `/drive/` (suite 03 §2). "Shell" means `packages/wonky_a
 | `/invite/:token`, `/no-access` | Share-link landing, no access | shell | |
 
 There is no *Offline* view in Drive: on-device availability belongs to each app (its local
-replica); Drive shows the *Make available offline* pin badge and command (suite 05 §4).
+cache; for Sheets and Slides the RevLog client's `RevOfflineProvider`, [17](../17-revlog-sync.md)
+part 6 §7.1); Drive shows the *Make available offline* pin badge and command (suite 05 §4).
 
 ## 2. Left menu (`HomeSidebar`, shell — all homes)
 
@@ -263,9 +264,9 @@ Loading uses `LoadingShimmer` rows/cards (suite 02 §4.18).
 
 - **New** Wonky items from Drive navigate to the app's **`/new` route**
   (`/write/new?folder=<uuid>&template=<uuid>`, `/sheets/new?…`, `/slides/new?…`), which creates
-  the item in that app (offline-first where the app supports it: Write client ids, Sheets/Slides
-  reserved spaces) and replaces the route with the editor. Drive itself never holds a Sheets or
-  Slides replica.
+  the item in that app (offline-first where the app supports it: client ids, and for
+  Sheets/Slides the creation op in the RevLog outbox) and replaces the route with the editor.
+  Drive itself never holds a Sheets or Slides cache.
 - Back from an editor returns to the Drive location it was opened from (browser history).
 - Cross-app navigation sets the `wonky_last_app` cookie only when an app home or editor is
   opened (it is informational in v2, suite 01 §2.4).

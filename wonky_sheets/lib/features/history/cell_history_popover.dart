@@ -7,6 +7,7 @@ import 'package:shad/shad.dart';
 import 'package:wonky_sheets_core/model.dart';
 import 'package:wonky_ui/wonky_ui.dart';
 
+import 'change_labels.dart';
 import '../../l10n/sheets_l10n.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
 import 'cell_history.dart';
@@ -225,7 +226,10 @@ class CellHistoryPopover extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (e.bulk)
-          Text(l.cellHistoryBulk(e.label), style: theme.textTheme.small)
+          Text(
+            l.cellHistoryBulk(changeLabelText(l, e.label)),
+            style: theme.textTheme.small,
+          )
         else
           Text.rich(
             TextSpan(
@@ -247,7 +251,10 @@ class CellHistoryPopover extends StatelessWidget {
           ),
         if (!e.bulk && e.label.isNotEmpty && !_plainEdit(e.label)) ...[
           const SizedBox(height: 4),
-          Text(l.cellHistoryVia(e.label), style: theme.textTheme.muted),
+          Text(
+            l.cellHistoryVia(changeLabelText(l, e.label)),
+            style: theme.textTheme.muted,
+          ),
         ],
         const SizedBox(height: 10),
         Align(

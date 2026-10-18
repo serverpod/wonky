@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/wonky_app_localizations.dart';
 import '../../markdown/markdown_composer.dart';
@@ -81,6 +82,7 @@ class _EditPostDialogState extends State<_EditPostDialog> {
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.board.editPost'),
+        closeIcon: const WonkyDialogCloseButton(),
         constraints: const BoxConstraints(maxWidth: 700),
         title: Text(
           widget.moderator ? l.cmdBoardAdminEdit : l.cmdBoardEditPost,

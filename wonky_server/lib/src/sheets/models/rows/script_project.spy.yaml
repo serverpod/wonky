@@ -1,0 +1,17 @@
+### The bound script project of a spreadsheet (one per spreadsheet).
+class: ScriptProject
+table: script_project
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  spreadsheet: Spreadsheet?, relation(onDelete=Cascade, deferred)
+  name: String
+  settingsJson: String
+  createdAt: DateTime, defaultModel=now
+indexes:
+  script_project_file_idx:
+    fields: fileId, id

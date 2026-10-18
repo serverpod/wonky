@@ -118,6 +118,13 @@ command arguments).
 
 ### 3.2 Client pre-checks (before anything is sent)
 
+The pre-checks run on the sizes the file picker reports (`PlatformFile.length`), before any
+content is read: the picker returns `LazyImportFile`s and the queue gets `UploadFile.lazy`
+entries, so a refused file (too large, too many files, over quota) is never loaded into
+memory, and a file the queue accepts is read when it is enqueued (a file that can no longer
+be read becomes a failed row). Only where the platform reports no size is the file read
+first (DR-1).
+
 1. **Size**: a file larger than `maxFileUploadBytes` (from `meta.getInfo`, default 50 MB) is
    rejected in the panel: "photo.raw is too large — files can be at most 50 MB."
 2. **Quota**: the client sums the batch and compares it with `StorageUsage.availableBytes`
@@ -229,10 +236,18 @@ Drive app:
 - Progress: **spike S-D2** found that the web `http` client — and so Serverpod's
   `FileUploader` — buffers the request body and reports no upload progress; the web client
   therefore sends the upload description (binary or multipart) itself with an
-  `XMLHttpRequest` and `upload.onprogress`; desktop counts the `FileUploader` byte stream.
+  `XMLHttpRequest` and `upload.onprogress`; desktop sends it with `http` on a counted byte
+  stream (not `FileUploader`, which hangs when the connection fails before the body is read
+  and reports every failure as `false`): an unreachable storage is an `OfflineException`, an
+  error status an `UploadTransferException`, and the transfer ends on cancel or after 60 s
+  without progress or answer (DR-5).
   Throughput and time left are shown after 2 s of data.
-- *Cancel* calls `cancelFileUpload` (releases the reservation); *Retry* re-runs from
-  `createFileUpload` (idempotent).
+- *Cancel* calls `cancelFileUpload` (releases the reservation); a cancel while
+  `createFileUpload` is still in flight releases the reservation as soon as that call returns
+  (DR-2). A cancel while `completeFileUpload` is in flight doesn't race it: when the completion
+  succeeds the file is kept and the row shows it as uploaded; when it fails the reservation is
+  released. That release uses the ids the completion was called with: an undo and redo meanwhile
+  rotates the task's ids and reserves new ones. *Retry* re-runs from `createFileUpload` (idempotent).
 - Leaving the Drive app (navigating to Write, closing the tab) while uploads run asks
   "Uploads in progress — leave and continue later?" (web `beforeunload` prompt). **As built
   (D-13):** cross-app navigation is a full page load, so the browser's own `beforeunload`
@@ -268,7 +283,7 @@ rows show "Add the file again — it wasn't saved on this device." with *Choose 
 `wonky_app/lib/src/data/`: only Drive uploads files; Write keeps its image table), the file is
 `drive_<userUuid>.db` (the user's uuid, like Write's cache), and the table is
 `local_pending_upload` with the columns above plus `batch_id`, `parent_name`, `volatile`,
-`error_kind` and `result_json`. OPFS is detected like the Sheets replica does (secure context,
+`error_kind` and `result_json`. OPFS is detected like the Sheets cache does (secure context,
 `FileSystemFileHandle`, a working `navigator.storage.getDirectory()`). Finished rows are dropped
 at the next start; interrupted uploads (starting/uploading/verifying) are queued again with the
 same ids (idempotent).
@@ -347,7 +362,11 @@ under `drive/<ownerUuid>/<fileUuid>/`.
 - Bytes are loaded with `drive.fileContentUrl(uuid)` → signed URL (15 min; served as an
   `application/octet-stream` attachment, never inline) → `http` GET into
   memory (`Uint8List`), cached per `(fileUuid)` in an in-memory LRU (100 MB) for prev/next
-  browsing. Images use the server preview (§6.2) when the original is over 4 MB.
+  browsing. Images use the server preview (§6.2) when the original is over 4 MB. Text and CSV
+  previews request only the first 1 MB + 1 byte (`Range: bytes=0-1048576`; a storage host that
+  ignores it is read only that far, one whose CORS rules refuse it is asked again without it),
+  and only that is cached (DR-3). Stepping prev/next reuses the folder listing for 30 s while it
+  holds the file (DR-6).
 - States: loading (skeleton + spinner after 300 ms), *still uploading* ("This file is still
   uploading (42 %)" — the uploader sees live progress; others never reach it), error ("Couldn't
   load the preview. [Retry] [Download]"), offline ("Previews aren't available offline." — unless

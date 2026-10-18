@@ -41,6 +41,14 @@ class McpRoute extends Route {
     final headers = <String, String>{
       for (final e in request.headers.entries) e.key: e.value.join(', '),
     };
+    final method = request.method.name.toUpperCase();
+    // Header checks and the token first: a refused request never buffers
+    // its body (CQ-13).
+    final refused = await handler.preauthenticate(
+      session,
+      McpHttpRequest(method: method, headers: headers),
+    );
+    if (refused != null) return _response(refused);
     String body = '';
     if (request.method == Method.post) {
       try {
@@ -59,12 +67,12 @@ class McpRoute extends Route {
     }
     final r = await handler.handle(
       session,
-      McpHttpRequest(
-        method: request.method.name.toUpperCase(),
-        headers: headers,
-        body: body,
-      ),
+      McpHttpRequest(method: method, headers: headers, body: body),
     );
+    return _response(r);
+  }
+
+  static Response _response(McpHttpResponse r) {
     final responseHeaders = Headers.build((h) {
       for (final e in r.headers.entries) {
         h[e.key] = [e.value];

@@ -8,7 +8,7 @@ import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/schema.dart';
 import 'package:wonky_slides_core/testing.dart';
 import 'package:wonky_slides_core/themes.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 import 'package:wonky_sync_models/ids.dart' show Base62Uuid;
 
 /// A 2 × 2 red PNG.

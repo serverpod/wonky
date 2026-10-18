@@ -3,10 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/super_editor.dart'
     show DocumentChangeLog, MutableDocument;
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../../l10n/write_l10n.dart';
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
 import '../editor/commands/write_editor_commands.dart';
 import '../editor/controller/write_editor_controller.dart';
 import '../editor/view/editor_view_state.dart';

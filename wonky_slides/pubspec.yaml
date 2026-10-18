@@ -6,21 +6,19 @@ version: 2.0.0+1
 
 environment:
   sdk: '^3.12.2'
-  flutter: '^3.44.4'
+  flutter: '^3.47.0'
 
 resolution: workspace
 
 # Allowed dependencies: specs/01-architecture.md §2.1 (`wonky_slides`),
 # checked by tool/check_dependencies.dart. SL-1 is the skeleton; the
-# Slides packages (wonky_slides_core, wonky_sync_kit*, …) join with the
+# Slides packages (wonky_slides_core, wonky_revlog*, …) join with the
 # work packages that use them (Slides 12 §4).
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  # Icon font of CupertinoIcons used by shared widgets (shad, wonky_app).
-  cupertino_icons: ^1.0.8
   go_router: ^18.0.2
   intl: ^0.20.3
   shad: ^0.99.4
@@ -55,19 +53,13 @@ dependencies:
   super_editor: ^0.3.0-dev.52
   wonky_rich_text:
     path: ../packages/wonky_rich_text
-  wonky_sync_kit:
-    path: ../packages/wonky_sync_kit
-  # Shared offline-sync client (features/sync on top of it; Slides 12 §5.2,
-  # SL-9): replica, journal, writer, sync controller, session blocks.
-  wonky_sync_kit_flutter:
-    path: ../packages/wonky_sync_kit_flutter
-  # Offline-sync data layer (features/sync): sync client and ORM types of
-  # the replica `slides_<userId>.db` (Slides 02 §9).
-  serverpod_offline_sync_client: 0.0.9
-  serverpod_database: 4.1.0-beta.3
+  # RevLog sync (features/revlog; RevLog spec 08 §2): the shared core and
+  # the client (cache, transport, per-file connection).
+  wonky_revlog:
+    path: ../packages/wonky_revlog
+  wonky_revlog_flutter:
+    path: ../packages/wonky_revlog_flutter
   clock: ^1.1.3
-  # Saves the recovery export of a replica that can't be opened (suite 12
-  # §2.5).
   file_picker: ^13.1.0
   wonky_sync_models:
     path: ../packages/wonky_sync_models
@@ -90,7 +82,8 @@ dependencies:
 dev_dependencies:
   flutter_driver:
     sdk: flutter
-  flutter_lints: '>=3.0.0 <7.0.0'
+  wonky_lints:
+    path: ../packages/wonky_lints
   flutter_test_robots: ^0.0.24
   flutter_test:
     sdk: flutter

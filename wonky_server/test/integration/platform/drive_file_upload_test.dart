@@ -1,5 +1,9 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/errors.dart';
@@ -531,6 +535,27 @@ void main() {
       },
     );
 
+    test('when uploads start in parallel then the last free slot goes to '
+        'one of them only', () async {
+      WonkyConfig.current = WonkyConfig(maxPendingUploadsPerUser: 1);
+
+      final results = await Future.wait([
+        for (final n in ['a.txt', 'b.txt', 'c.txt'])
+          TestFiles.start(
+            endpoints,
+            anna,
+            name: n,
+            bytes: [1],
+          ).then<Object>((s) => s, onError: (Object e) => e),
+      ]);
+
+      expect(results.whereType<FileUploadStart>(), hasLength(1));
+      expect(
+        results.whereType<WonkyException>().map((e) => e.code),
+        everyElement(WonkyErrorCode.limitExceeded),
+      );
+    });
+
     test(
       'when the hourly upload rate is used up then it is limited, cancelled ones included',
       () async {
@@ -585,7 +610,7 @@ void main() {
 
         final count = await DriveFileService.expireUploads(
           anna.session,
-          now: DateTime.now().toUtc().add(const Duration(hours: 25)),
+          now: clock.now().toUtc().add(const Duration(hours: 25)),
         );
 
         expect(count, greaterThanOrEqualTo(1));

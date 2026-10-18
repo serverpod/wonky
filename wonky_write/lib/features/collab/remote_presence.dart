@@ -5,7 +5,7 @@ import 'package:wonky_client/wonky_client.dart';
 
 import '../../l10n/write_l10n.dart';
 import '../document/write_document_session.dart';
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart' show DeltaSelection;
 import '../editor/view/editor_view_state.dart' show RemoteCursor;
 import '../sync/document_sync_controller.dart';
 
@@ -142,7 +142,7 @@ class RemotePresenceController extends ChangeNotifier {
     if (sync == null || !sync.isConnected || sel == null) return;
     _lastSelection = sel;
     _lastFocused = focused;
-    sync.sendCursor(sel.base, sel.extent, focused: focused);
+    sync.sendCursor(sel.anchor, sel.head, focused: focused);
   }
 
   // ---------------------------------------------------------------------------
@@ -155,7 +155,7 @@ class RemotePresenceController extends ChangeNotifier {
   bool _revealCursor(String sessionId) {
     for (final c in session.editor.view.remoteCursors) {
       if (c.sessionId == sessionId) {
-        session.revealRange(c.selection.extent, c.selection.extent);
+        session.revealRange(c.selection.head, c.selection.head);
         return true;
       }
     }

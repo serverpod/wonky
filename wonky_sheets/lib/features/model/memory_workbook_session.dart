@@ -108,7 +108,10 @@ abstract class WorkbookSessionBase extends WorkbookSession {
   @override
   PlanContext planContext() => PlanContext(
     userId: userId,
-    now: clock.now().toUtc(),
+    now: DateTime.fromMillisecondsSinceEpoch(
+      clock.now().millisecondsSinceEpoch,
+      isUtc: true,
+    ),
     formulas: EngineFormulaHooks(
       model,
       engine: engine.engine,
@@ -126,6 +129,7 @@ abstract class WorkbookSessionBase extends WorkbookSession {
     final plan = _planner.plan(op, model, planContext());
     if (plan.isEmpty) return plan;
     checkPlan(op, plan);
+    beforeApply(plan.changes);
     model.applyPlan(plan);
     persist(plan.changes, plan: plan, label: plan.label, actorKind: actorKind);
     return plan;
@@ -138,6 +142,7 @@ abstract class WorkbookSessionBase extends WorkbookSession {
     String actorKind = 'user',
   }) {
     if (changes.isEmpty) return;
+    beforeApply(changes);
     model.applyChanges(changes);
     persist(changes, label: label, actorKind: actorKind);
   }
@@ -147,6 +152,12 @@ abstract class WorkbookSessionBase extends WorkbookSession {
   /// rows still streaming in).
   @protected
   void checkPlan(SheetsOperation op, MutationPlan plan) {}
+
+  /// Called with local [changes] right before they are applied to [model]
+  /// (the RevLog session remembers the server version of the rows they
+  /// touch, RevLog spec 03 §7).
+  @protected
+  void beforeApply(List<RowChange> changes) {}
 
   /// Stores [changes] (already applied to [model]). [plan] is set for
   /// planned operations (its summary/detail feed the `ChangeLog` row).
@@ -195,7 +206,13 @@ class MemoryWorkbookSession extends WorkbookSessionBase {
     final plan = const SheetsMutationPlanner().plan(
       CreateSpreadsheet(spreadsheetId: id.uuid, title: title),
       model,
-      PlanContext(userId: userId, now: clock.now().toUtc()),
+      PlanContext(
+        userId: userId,
+        now: DateTime.fromMillisecondsSinceEpoch(
+          clock.now().millisecondsSinceEpoch,
+          isUtc: true,
+        ),
+      ),
     );
     model.applyPlan(plan);
     return MemoryWorkbookSession(

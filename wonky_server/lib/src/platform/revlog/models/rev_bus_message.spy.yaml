@@ -1,0 +1,16 @@
+### Internal payload on `rev:<fileUuid>` (RevLog spec 05 §5).
+class: RevBusMessage
+serverOnly: true
+fields:
+  ### op, role, hello, here, beat, left, purged.
+  type: String
+  revision: int?
+  ### The RevOpView JSON when its payload is ≤ 64 KiB.
+  opJson: String?
+  originSessionId: String?
+  ### Role re-checks: the affected user (null = everyone).
+  userId: int?
+  participant: Participant?
+  ### `here`: the session the reply is for.
+  sessionId: String?
+  headRevision: int?

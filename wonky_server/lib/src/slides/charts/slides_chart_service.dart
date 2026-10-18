@@ -395,22 +395,17 @@ abstract final class SlidesChartService {
     }
   }
 
-  /// `<newest ChangeLog id>.<count>` of [space] (empty without rows).
+  /// The spreadsheet's head revision (RevLog), empty without a file: it
+  /// changes with every committed change of the spreadsheet.
   static Future<String> _changeLogMarker(
     Session session,
     UuidValue space,
   ) async {
-    final newest = await ChangeLog.db.findFirstRow(
+    final file = await RevFile.db.findFirstRow(
       session,
-      where: (t) => t.spreadsheetId.equals(space),
-      orderBy: (t) => t.at.desc(),
+      where: (t) => t.fileUuid.equals(space),
     );
-    if (newest == null) return '';
-    final count = await ChangeLog.db.count(
-      session,
-      where: (t) => t.spreadsheetId.equals(space),
-    );
-    return '${newest.id.uuid}.$count';
+    return file == null ? '' : 'r${file.headRevision}';
   }
 
   static String _token(String marker, ChartSpec spec, ChartData data) {

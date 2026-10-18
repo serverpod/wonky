@@ -6,6 +6,7 @@ import '../../values/compare.dart';
 import '../../values/errors.dart';
 import '../../values/format_hint.dart';
 import '../../values/fvalue.dart';
+import '../../values/numeric.dart';
 import '../criteria.dart';
 import '../helpers.dart';
 import '../registry.dart';
@@ -252,18 +253,32 @@ _Grid _grid(Args a, FValue src, int rows, int cols) {
   return g;
 }
 
-/// Per-range index: equality buckets and sorted numbers (05 §11.2 `CriteriaCount`).
+/// Per-range index: equality buckets (text, logical) and sorted numbers (05 §11.2
+/// `CriteriaCount`). It answers exactly what [Criterion.test] would: numbers compare with
+/// [Numeric.compare]'s tolerance, and positions come in grid order (as a scan visits them,
+/// so sums and format hints do not depend on whether the index exists).
 final class _Index {
   final Map<Object, List<int>> eq = {};
+
+  /// Text cells with surrounding blanks, by their trimmed folded text: a number criterion
+  /// matches text cells trimmed ("5" matches " 5 "), a text criterion does not.
+  final Map<String, List<int>> padded = {};
   final List<int> sortedPos = [];
   final List<double> sortedNum = [];
   _Index(_Grid g) {
     final n = g.rows * g.cols;
     for (var i = 0; i < n; i++) {
       final v = g.cells[i];
+      if (v is FNumber) {
+        sortedPos.add(i);
+        continue;
+      }
       final k = Compare.matchKey(v);
       if (k != null) (eq[k] ??= []).add(i);
-      if (v is FNumber) sortedPos.add(i);
+      if (v is FText) {
+        final t = v.v.trim();
+        if (t.length != v.v.length) (padded[Compare.fold(t)] ??= []).add(i);
+      }
     }
     sortedPos.sort(
       (x, y) => (g.cells[x] as FNumber).v.compareTo((g.cells[y] as FNumber).v),
@@ -280,12 +295,13 @@ final class _Index {
     switch (c.op) {
       case CriterionOp.eq:
         if (o is FNumber) {
-          final a = eq[o.v == 0 ? 0.0 : o.v] ?? const <int>[];
-          final tf = c.textForm;
-          if (tf == null) return a;
-          final b = eq['s:${Compare.fold(tf)}'] ?? const <int>[];
-          if (b.isEmpty) return a;
-          return ([...a, ...b]..sort());
+          // Text cells match the criterion's text form, trimmed (as Criterion.test).
+          final a = _numbers(o.v, c.op);
+          final tf = Compare.fold(c.textForm ?? Numeric.toText(o.v));
+          final b = eq['s:$tf'] ?? const <int>[];
+          final p = padded[tf] ?? const <int>[];
+          if (b.isEmpty && p.isEmpty) return a;
+          return ([...a, ...b, ...p]..sort());
         }
         if (o is FText && o.v.isNotEmpty) {
           return eq['s:${Compare.fold(o.v)}'] ?? const <int>[];
@@ -297,28 +313,67 @@ final class _Index {
       case CriterionOp.gt:
       case CriterionOp.ge:
         if (o is! FNumber) return null;
-        final x = o.v;
-        int lb(bool strict) {
-          var lo = 0, hi = sortedNum.length;
-          while (lo < hi) {
-            final m = (lo + hi) >> 1;
-            if (strict ? sortedNum[m] <= x : sortedNum[m] < x) {
-              lo = m + 1;
-            } else {
-              hi = m;
-            }
-          }
-          return lo;
-        }
-        return switch (c.op) {
-          CriterionOp.lt => sortedPos.sublist(0, lb(false)),
-          CriterionOp.le => sortedPos.sublist(0, lb(true)),
-          CriterionOp.gt => sortedPos.sublist(lb(true)),
-          _ => sortedPos.sublist(lb(false)),
-        };
+        return _numbers(o.v, c.op);
       default:
         return null;
     }
+  }
+
+  /// Positions (ascending) of the numbers `y` for which `Numeric.compare(y, x)` satisfies
+  /// [op]. Numbers outside `x ± 4ε|x|` compare as strictly less or greater (the tolerance
+  /// is at most `ε·max(|x|, |y|)`); only the ones inside are compared one by one.
+  List<int> _numbers(double x, CriterionOp op) {
+    final tol = 4 * Numeric.epsilon * x.abs();
+    final lo = _firstAtLeast(x - tol);
+    final hi = _firstAbove(x + tol);
+    final out = <int>[];
+    if (op == CriterionOp.lt || op == CriterionOp.le) {
+      out.addAll(sortedPos.getRange(0, lo));
+    }
+    for (var i = lo; i < hi; i++) {
+      final cmp = Numeric.compare(sortedNum[i], x);
+      final keep = switch (op) {
+        CriterionOp.eq => cmp == 0,
+        CriterionOp.lt => cmp < 0,
+        CriterionOp.le => cmp <= 0,
+        CriterionOp.gt => cmp > 0,
+        CriterionOp.ge => cmp >= 0,
+        _ => false,
+      };
+      if (keep) out.add(sortedPos[i]);
+    }
+    if (op == CriterionOp.gt || op == CriterionOp.ge) {
+      out.addAll(sortedPos.getRange(hi, sortedPos.length));
+    }
+    return out..sort();
+  }
+
+  /// Index of the first sorted number `>= v`.
+  int _firstAtLeast(double v) {
+    var lo = 0, hi = sortedNum.length;
+    while (lo < hi) {
+      final m = (lo + hi) >> 1;
+      if (sortedNum[m] < v) {
+        lo = m + 1;
+      } else {
+        hi = m;
+      }
+    }
+    return lo;
+  }
+
+  /// Index of the first sorted number `> v`.
+  int _firstAbove(double v) {
+    var lo = 0, hi = sortedNum.length;
+    while (lo < hi) {
+      final m = (lo + hi) >> 1;
+      if (sortedNum[m] <= v) {
+        lo = m + 1;
+      } else {
+        hi = m;
+      }
+    }
+    return lo;
   }
 }
 

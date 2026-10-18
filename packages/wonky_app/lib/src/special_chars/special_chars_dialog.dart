@@ -441,6 +441,7 @@ class _SpecialCharactersDialogState extends State<SpecialCharactersDialog>
       onKeyEvent: _onRootKey,
       child: ShadDialog(
         key: k.dialog,
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.specialCharsTitle),
         constraints: const BoxConstraints(maxWidth: 680),
         scrollable: false,

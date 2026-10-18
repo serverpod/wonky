@@ -12,7 +12,7 @@ import 'package:wonky_server/src/platform/ai/llm/ai_client.dart';
 import 'package:wonky_server/src/platform/ai/llm/fake_ai_client.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/slides/headless/deck_text_claims.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_server/src/slides/mcp/slides_writes.dart';
 import 'package:wonky_slides_core/ai.dart';
 
@@ -79,7 +79,7 @@ void main() {
     AiConfig.clientOverride = null;
     DeckAgentPresence.clear();
     DeckTextClaims.clear();
-    HeadlessDeckCache.clear();
+    HeadlessFileCache.clear();
   });
 
   withWonkyServerpod('Given the Slides AI features', (
@@ -268,7 +268,7 @@ void main() {
           anna.endpointSession,
           UuidValue.fromString(r.changeId!),
         );
-        HeadlessDeckCache.clear();
+        HeadlessFileCache.clear();
         expect(await titles(), ['Q3 Review', 'Highlights', 'Plans']);
       });
     });

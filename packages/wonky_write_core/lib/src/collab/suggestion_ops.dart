@@ -150,6 +150,19 @@ final class SuggestionPart {
   /// Current attributes of the group for format parts.
   final Map<String, dynamic>? after;
 
+  /// This part moved by [offset] characters.
+  SuggestionPart shifted(int offset) => offset == 0
+      ? this
+      : SuggestionPart(
+          kind,
+          start + offset,
+          length,
+          text,
+          before: before,
+          after: after,
+          embedType: embedType,
+        );
+
   /// JSON form.
   Map<String, dynamic> toJson() => {
     'kind': switch (kind) {
@@ -287,42 +300,29 @@ final class SuggestionInfo {
   };
 }
 
+/// One suggestion mark on one piece of a document (a text run, an embed or
+/// a line end): the input of [SuggestionIndex.fromPieces].
+typedef SuggestionPiece = ({
+  String id,
+  SuggestionMark mark,
+  SuggestionPart part,
+});
+
 /// Lists pending suggestions of a document.
 abstract final class SuggestionIndex {
   /// Suggestions in document order (by first part), optionally filtered by
   /// author.
-  static List<SuggestionInfo> list(Delta document, {String? authorUuid}) {
-    final doc = WonkyDocument(document);
-    final byId =
-        <
-          String,
-          ({String by, int at, String? via, List<SuggestionPart> parts})
-        >{};
-    void add(String id, SuggestionMark m, SuggestionPart part) {
-      final e = byId[id];
-      if (e == null) {
-        byId[id] = (by: m.by, at: m.at, via: m.via, parts: [part]);
-        return;
-      }
-      final last = e.parts.last;
-      if (last.kind == part.kind && last.start + last.length == part.start) {
-        e.parts[e.parts.length - 1] = SuggestionPart(
-          part.kind,
-          last.start,
-          last.length + part.length,
-          last.text + part.text,
-          before: last.before,
-          after: last.after,
-          embedType: last.embedType ?? part.embedType,
-        );
-      } else {
-        e.parts.add(part);
-      }
-      if (m.at < e.at) {
-        byId[id] = (by: e.by, at: m.at, via: e.via ?? m.via, parts: e.parts);
-      }
-    }
+  static List<SuggestionInfo> list(Delta document, {String? authorUuid}) =>
+      fromPieces(pieces(document), authorUuid: authorUuid);
 
+  /// The suggestion marks of [document] in document order. A document made
+  /// of whole lines can be split anywhere between lines: the pieces of the
+  /// parts (offsets shifted, [SuggestionPart.shifted]) are the pieces of the
+  /// whole (the Write editor keeps them per block and rescans only changed
+  /// blocks, Write 04 §36).
+  static List<SuggestionPiece> pieces(Delta document) {
+    final doc = WonkyDocument(document);
+    final out = <SuggestionPiece>[];
     for (final line in doc.lines) {
       final pieces = <(int, String, Map<String, dynamic>?, bool, String?)>[
         for (final s in line.segments)
@@ -350,10 +350,10 @@ abstract final class SuggestionIndex {
           final group = isNewline
               ? Attributes.block(attrs)
               : Attributes.inline(attrs);
-          add(
-            e.key,
-            m,
-            SuggestionPart(
+          out.add((
+            id: e.key,
+            mark: m,
+            part: SuggestionPart(
               kind,
               start,
               text.length,
@@ -362,8 +362,46 @@ abstract final class SuggestionIndex {
               after: m.kind == SuggestionKind.fmt ? group : null,
               embedType: embedType,
             ),
-          );
+          ));
         }
+      }
+    }
+    return out;
+  }
+
+  /// Groups [pieces] (in document order) into suggestions: adjacent parts
+  /// of the same kind merge; the earliest `at` wins.
+  static List<SuggestionInfo> fromPieces(
+    Iterable<SuggestionPiece> pieces, {
+    String? authorUuid,
+  }) {
+    final byId =
+        <
+          String,
+          ({String by, int at, String? via, List<SuggestionPart> parts})
+        >{};
+    for (final (:id, mark: m, :part) in pieces) {
+      final e = byId[id];
+      if (e == null) {
+        byId[id] = (by: m.by, at: m.at, via: m.via, parts: [part]);
+        continue;
+      }
+      final last = e.parts.last;
+      if (last.kind == part.kind && last.start + last.length == part.start) {
+        e.parts[e.parts.length - 1] = SuggestionPart(
+          part.kind,
+          last.start,
+          last.length + part.length,
+          last.text + part.text,
+          before: last.before,
+          after: last.after,
+          embedType: last.embedType ?? part.embedType,
+        );
+      } else {
+        e.parts.add(part);
+      }
+      if (m.at < e.at) {
+        byId[id] = (by: e.by, at: m.at, via: e.via ?? m.via, parts: e.parts);
       }
     }
     final result = [

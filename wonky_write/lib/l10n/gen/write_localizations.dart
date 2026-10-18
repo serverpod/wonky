@@ -7682,6 +7682,528 @@ abstract class WriteLocalizations {
   /// In en, this message translates to:
   /// **'Updating the preview'**
   String get printUpdatingPreview;
+
+  /// Undo step label of typed text (Undo history).
+  ///
+  /// In en, this message translates to:
+  /// **'Typing'**
+  String get undoTyping;
+
+  /// No description provided for @undoDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get undoDelete;
+
+  /// No description provided for @undoEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get undoEdit;
+
+  /// No description provided for @undoSlashCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Slash command'**
+  String get undoSlashCommand;
+
+  /// No description provided for @undoClearFormatting.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear formatting'**
+  String get undoClearFormatting;
+
+  /// No description provided for @undoIndent.
+  ///
+  /// In en, this message translates to:
+  /// **'Indent'**
+  String get undoIndent;
+
+  /// No description provided for @undoOutdent.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdent'**
+  String get undoOutdent;
+
+  /// No description provided for @undoCheckItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Check item'**
+  String get undoCheckItem;
+
+  /// No description provided for @undoUncheckItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncheck item'**
+  String get undoUncheckItem;
+
+  /// No description provided for @undoInsertLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert link'**
+  String get undoInsertLink;
+
+  /// No description provided for @undoEditLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit link'**
+  String get undoEditLink;
+
+  /// No description provided for @undoRemoveLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove link'**
+  String get undoRemoveLink;
+
+  /// No description provided for @undoInsertDivider.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert divider'**
+  String get undoInsertDivider;
+
+  /// No description provided for @undoInsertImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert image'**
+  String get undoInsertImage;
+
+  /// No description provided for @undoInsertTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert table'**
+  String get undoInsertTable;
+
+  /// No description provided for @undoInsertText.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert text'**
+  String get undoInsertText;
+
+  /// No description provided for @undoSetCodeLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Set code language'**
+  String get undoSetCodeLanguage;
+
+  /// No description provided for @undoExitCodeBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code block'**
+  String get undoExitCodeBlock;
+
+  /// No description provided for @undoMoveBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Move block'**
+  String get undoMoveBlock;
+
+  /// No description provided for @undoDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get undoDuplicate;
+
+  /// No description provided for @undoAltText.
+  ///
+  /// In en, this message translates to:
+  /// **'Alt text'**
+  String get undoAltText;
+
+  /// No description provided for @undoReplaceImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace image'**
+  String get undoReplaceImage;
+
+  /// No description provided for @undoEditTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit table'**
+  String get undoEditTable;
+
+  /// No description provided for @undoInsertRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert row'**
+  String get undoInsertRow;
+
+  /// No description provided for @undoInsertColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert column'**
+  String get undoInsertColumn;
+
+  /// No description provided for @undoDeleteRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete row'**
+  String get undoDeleteRow;
+
+  /// No description provided for @undoDeleteColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete column'**
+  String get undoDeleteColumn;
+
+  /// No description provided for @undoMoveRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Move row'**
+  String get undoMoveRow;
+
+  /// No description provided for @undoMoveColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Move column'**
+  String get undoMoveColumn;
+
+  /// No description provided for @undoColumnAlignment.
+  ///
+  /// In en, this message translates to:
+  /// **'Column alignment'**
+  String get undoColumnAlignment;
+
+  /// No description provided for @undoPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get undoPaste;
+
+  /// No description provided for @undoReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get undoReplace;
+
+  /// Screen-reader announcement after turning an inline format on (format: Bold, Italic…).
+  ///
+  /// In en, this message translates to:
+  /// **'{format} on'**
+  String announceFormatOn(String format);
+
+  /// Screen-reader announcement after turning an inline format off.
+  ///
+  /// In en, this message translates to:
+  /// **'{format} off'**
+  String announceFormatOff(String format);
+
+  /// Screen-reader announcement of a list item's nesting level after indenting.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}'**
+  String announceListLevel(int level);
+
+  /// Accessibility label of the editor when the document has no title.
+  ///
+  /// In en, this message translates to:
+  /// **'Document'**
+  String get editorDocumentTitle;
+
+  /// Placeholder of an empty document (editor default).
+  ///
+  /// In en, this message translates to:
+  /// **'Type / for commands, or just start writing'**
+  String get editorHint;
+
+  /// Accessibility label of an image without alt text.
+  ///
+  /// In en, this message translates to:
+  /// **'image, no description'**
+  String get editorImageNoDescription;
+
+  /// No description provided for @editorImageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Image unavailable'**
+  String get editorImageUnavailable;
+
+  /// No description provided for @editorImageWaitingForUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for upload'**
+  String get editorImageWaitingForUpload;
+
+  /// Placeholder of an image another collaborator is still uploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for upload from {name}'**
+  String editorImageWaitingForUploadFrom(String name);
+
+  /// No description provided for @editorCancelUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel upload'**
+  String get editorCancelUpload;
+
+  /// No description provided for @editorUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed'**
+  String get editorUploadFailed;
+
+  /// Accessibility label of a table.
+  ///
+  /// In en, this message translates to:
+  /// **'table, {columns} columns, {rows} rows'**
+  String editorTableLabel(int columns, int rows);
+
+  /// Tooltip of the table's edit button.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit table'**
+  String get editorEditTable;
+
+  /// Accessibility label of a quote block.
+  ///
+  /// In en, this message translates to:
+  /// **'quote'**
+  String get editorQuoteLabel;
+
+  /// Accessibility label of a code block.
+  ///
+  /// In en, this message translates to:
+  /// **'code block, {language}'**
+  String editorCodeBlockLabel(String language);
+
+  /// No description provided for @editorCodeLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Code language'**
+  String get editorCodeLanguage;
+
+  /// No description provided for @editorCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get editorCopyCode;
+
+  /// Accessibility label of a checklist item's checkbox.
+  ///
+  /// In en, this message translates to:
+  /// **'checkbox'**
+  String get editorCheckboxLabel;
+
+  /// Placeholder of an embed of an unknown type.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported content ({type})'**
+  String editorUnsupportedContent(String type);
+
+  /// Accessibility label of a horizontal line.
+  ///
+  /// In en, this message translates to:
+  /// **'separator'**
+  String get editorSeparatorLabel;
+
+  /// No description provided for @undoCut.
+  ///
+  /// In en, this message translates to:
+  /// **'Cut'**
+  String get undoCut;
+
+  /// No description provided for @undoEditCell.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit cell'**
+  String get undoEditCell;
+
+  /// No description provided for @undoCopyText.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy text'**
+  String get undoCopyText;
+
+  /// No description provided for @undoMoveText.
+  ///
+  /// In en, this message translates to:
+  /// **'Move text'**
+  String get undoMoveText;
+
+  /// No description provided for @editorPasteTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'This paste is too large'**
+  String get editorPasteTooLarge;
+
+  /// No description provided for @editorFormattingDropped.
+  ///
+  /// In en, this message translates to:
+  /// **'Some formatting wasn\'t kept — Markdown supports bold, italic, strikethrough, code and links'**
+  String get editorFormattingDropped;
+
+  /// No description provided for @editorUnderlineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Underline isn\'t available in Markdown — use italic or bold.'**
+  String get editorUnderlineHint;
+
+  /// No description provided for @editorUnderlineHintTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Underline isn\'t available in Markdown — use italic or bold, or change how emphasis looks in Format › Theme.'**
+  String get editorUnderlineHintTheme;
+
+  /// No description provided for @editorTableDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'This table was deleted'**
+  String get editorTableDeleted;
+
+  /// No description provided for @editorCellRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'This cell was removed while you were editing'**
+  String get editorCellRemoved;
+
+  /// No description provided for @editorNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get editorNoResults;
+
+  /// No description provided for @editorNoPeopleFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No people found'**
+  String get editorNoPeopleFound;
+
+  /// Title of a link card for a Wonky document whose name is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Wonky document'**
+  String get editorWonkyDocument;
+
+  /// No description provided for @editorLinkOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get editorLinkOpen;
+
+  /// No description provided for @editorLinkCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get editorLinkCopy;
+
+  /// No description provided for @editorLinkEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editorLinkEdit;
+
+  /// No description provided for @editorLinkRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get editorLinkRemove;
+
+  /// No description provided for @slashText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get slashText;
+
+  /// Slash menu item.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading {level}'**
+  String slashHeading(int level);
+
+  /// No description provided for @slashBulletedList.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulleted list'**
+  String get slashBulletedList;
+
+  /// No description provided for @slashNumberedList.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered list'**
+  String get slashNumberedList;
+
+  /// No description provided for @slashChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist'**
+  String get slashChecklist;
+
+  /// No description provided for @slashQuote.
+  ///
+  /// In en, this message translates to:
+  /// **'Quote'**
+  String get slashQuote;
+
+  /// No description provided for @slashCodeBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Code block'**
+  String get slashCodeBlock;
+
+  /// No description provided for @slashDivider.
+  ///
+  /// In en, this message translates to:
+  /// **'Divider'**
+  String get slashDivider;
+
+  /// No description provided for @slashImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get slashImage;
+
+  /// No description provided for @slashImageFromUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Image from URL'**
+  String get slashImageFromUrl;
+
+  /// No description provided for @slashTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get slashTable;
+
+  /// No description provided for @slashLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get slashLink;
+
+  /// No description provided for @slashMentionPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Mention person'**
+  String get slashMentionPerson;
+
+  /// No description provided for @slashComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment'**
+  String get slashComment;
+
+  /// No description provided for @slashEmoji.
+  ///
+  /// In en, this message translates to:
+  /// **'Emoji…'**
+  String get slashEmoji;
+
+  /// No description provided for @slashSpecialCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Special characters…'**
+  String get slashSpecialCharacters;
+
+  /// No description provided for @slashAskAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI…'**
+  String get slashAskAi;
+
+  /// No description provided for @slashContinueWriting.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue writing'**
+  String get slashContinueWriting;
 }
 
 class _WriteLocalizationsDelegate

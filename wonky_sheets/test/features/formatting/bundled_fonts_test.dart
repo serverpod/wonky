@@ -77,7 +77,7 @@ void main() {
 
     test('when loading the PDF faces then each is a real TTF asset', () async {
       for (final f in _pdfFiles()) {
-        final bytes = await rootBundle.load('assets/fonts/$f');
+        final bytes = await rootBundle.load('$fontAssetDir/$f');
         // sfnt version 1.0 (TrueType outlines).
         expect(bytes.getUint32(0), 0x00010000, reason: f);
       }
@@ -86,7 +86,7 @@ void main() {
     test('when comparing with the server copies then web/fonts holds the '
         'same files', () async {
       for (final f in _pdfFiles()) {
-        final app = await rootBundle.load('assets/fonts/$f');
+        final app = await rootBundle.load('$fontAssetDir/$f');
         final server = File('../wonky_server/web/fonts/$f').readAsBytesSync();
         expect(
           server,

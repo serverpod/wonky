@@ -150,7 +150,7 @@ class InCellOverlay extends StatelessWidget {
         ed.contentSignal,
       ]),
       builder: (context, _) {
-        final g = ed.lastGeometry;
+        final g = ed.geometry;
         if (g == null) return const SizedBox.shrink();
         final area = g.size;
         final children = <Widget>[];

@@ -3,7 +3,7 @@ import 'package:serverpod/serverpod.dart';
 
 import '../../platform/common/models.dart';
 import '../../platform/mcp/tool_support.dart';
-import '../sync/server_slides_writer.dart';
+import '../revlog/slides_server_writes.dart';
 
 /// `changes.revert` for presentation changes (Slides 11 §1.4, §3.12): the
 /// deck records share Sheets' `ServerChangeRecord` table (02 §8), so they
@@ -30,7 +30,7 @@ abstract final class SlidesChanges {
     final item = await DriveItem.db.findFirstRow(
       ctx.session,
       where: (t) =>
-          t.contentRef.equals(record.spreadsheetUuid) &
+          t.contentRef.equals(record.fileUuid) &
           t.kind.equals(DriveItemKind.presentation),
     );
     if (item == null) return null;
@@ -53,7 +53,7 @@ abstract final class SlidesChanges {
         'Changes can only be reverted within 24 hours.',
       );
     }
-    final r = await ServerSlidesWriter.revert(ctx.session, ctx.actor, id);
+    final r = await SlidesServerWrites.revert(ctx.session, ctx.actor, id);
     final skipped = [
       for (final s in r.skipped)
         {

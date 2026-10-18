@@ -24,8 +24,8 @@ formats in [06-formatting.md](06-formatting.md), formula semantics in
   F11) are never bound. Chords that browsers would otherwise handle but that we override
   (Mod+D, Mod+R, Mod+K, Mod+F, Mod+P, Mod+O) call `preventDefault` only while the grid or a
   Sheets surface has focus.
-- **Undo**: "1 step" means one `UndoStep` in domain `sheets.rows` produced by one `SheetsWriter`
-  transaction (possibly chunked; 02 §7). "—" means not undoable (view state).
+- **Undo**: "1 step" means one `UndoStep` in domain `sheets.rows` produced by one session write
+  (one plan, possibly chunked into an op group; 02 §7). "—" means not undoable (view state).
 - **Scopes** (suite 08 §1.2): `grid` (grid focused, not editing), `cellEditor` (cell editor or
   formula bar focused), `global`.
 - Indices are **0-based** in code; A1 notation is used in the UI and in MCP arguments.
@@ -58,7 +58,8 @@ All paths are in `wonky_sheets/lib/`. Each top-level folder under
 
 ```
 features/
-  model/                                   # owned by 02: WorkbookModel, AxisIndex, CellStore, RuleIndex, SheetsWriter
+  model/                                   # owned by 02: WorkbookSession (write path), LoadingGate, row loading; the model itself is core
+  revlog/                                  # owned by 02: LoggedWorkbookSession, SheetsRevLog (RevLog client, suite 17)
   sheet_editor/
     sheet_editor_screen.dart               # SheetEditorScreen: header, menubar, toolbar, formula bar, grid, tab bar, status bar
     sheet_editor_controller.dart           # SheetEditorController: active sheet, mode (edit/view), wires sub-controllers
@@ -110,7 +111,7 @@ features/
     cell_editor_controller.dart            # CellEditorController: modes, session lifecycle, commit/cancel
     cell_edit_session.dart                 # CellEditSession: target cell(s), FormulaTextEditingController, initial value
     cell_editor_overlay.dart               # CellEditorOverlay widget (positioned EditableText)
-    input_commit_service.dart              # InputCommitService: parse → DV → protection → SheetsWriter
+    input_commit_service.dart              # InputCommitService: parse → DV → protection → session write
     column_autocomplete.dart               # ColumnAutocomplete (P1)
     rich_text_editing.dart                 # RichTextEditingController (runs, P1)
     formula/
@@ -159,7 +160,7 @@ commands/
 ```dart
 class SheetEditorController extends ChangeNotifier {
   final WorkbookModel model;                 // 02 §6
-  final SheetsWriter writer;                 // 02 §7
+  final WorkbookSession session;             // 02 §7 (plans, outbox, undo)
   final FormulaEngine engine;                // 05
   final GridSelectionController selection;
   final CellEditorController editor;
@@ -178,7 +179,7 @@ class SheetEditorController extends ChangeNotifier {
 ```
 
 Commands receive the `SheetEditorController` through `CommandContext.documentController`. No
-widget calls `SheetsWriter` directly.
+widget writes to the session directly.
 
 ---
 
@@ -363,8 +364,26 @@ class CellRenderInfo {
 ### 2.7 Tile cache and frame budget
 
 > **As built.** No tile cache yet: both passes repaint the visible window on scroll, with
-> per-cell render data (`CellRenderCache`, dropped on model batches/recalcs) and laid-out
-> paragraphs (`TextLayoutCache`, LRU 20,000) cached. `test/features/grid/grid_performance_test.dart`
+> per-cell render data (`CellRenderCache`) and laid-out paragraphs (`TextLayoutCache`, LRU
+> 20,000) cached. **Render-cache invalidation (CQ-41):** a content or note edit
+> (`CellsChanged` without format keys) drops the changed cells and every cached cell without
+> a constant value (formulas, empty cells a spill or pivot may reach — the engine is
+> pull-based, so dependents are known only when they are read again); constant cells stay.
+> Sheets with conditional formatting, validation or pivots are dropped whole on any content
+> change (their display reads other cells, also across sheets); a CF draft being previewed
+> drops everything. An engine `RecalcBatch` (script drains, `recalcAll`) drops its cells and
+> spill rectangles (everything above 20,000). Format, structure, sheet, rule, name and
+> spreadsheet changes, theme/locale changes and streaming rows still drop everything. The
+> border fast path (`sheetHasBorders`, read on every content paint) is O(1): a per-sheet flag
+> kept from model batches (a cell format change can only turn it on; structure and sheet
+> changes rescan once). The rich-text paragraph cache keys on the theme its run colors were
+> resolved with. **Geometry (S-06):** `SheetEditorController.geometry` is the grid
+> viewport's geometry at the current scroll, zoom and model state, memoized until one of them
+> or a repaint signal changes (it also keeps the scroll limits). The overlay pass records the
+> viewport size during layout; nothing is written during paint, and overlays built before
+> the paint (scrollbars, chips, buttons, collaborator cards) use this frame's geometry. The
+> pointer cursor is its own `ValueNotifier`, so cursor changes rebuild only the
+> `MouseRegion`, not the passes. `test/features/grid/grid_performance_test.dart`
 > (tag `slow`) scrolls a 100k × 10 (1M cells) sheet: median 12.6 ms, p95 20 ms per frame for
 > both passes in the debug test VM (JIT; release builds are faster). Tiles remain the plan if
 > the release build misses the budget.
@@ -387,6 +406,12 @@ class CellRenderInfo {
   dominant cost: prefer cache hits; numbers formatted through a per-pattern cache.
 
 ### 2.8 Loading skeleton
+
+Until the session is ready (`WorkbookReady`) the editor shows the document shimmer with an
+"Opening spreadsheet…" card and an indeterminate progress bar; there is no download percentage,
+because a spreadsheet not on the device is ready after its structure and the viewport's cells
+(02 §6, 17 part 6 §5.1). A spreadsheet that isn't on the device can't open offline
+("This spreadsheet isn't available offline"; it reopens when the connection returns).
 
 `CellStore` streams rows in 10k-row chunks after the viewport-first load (02 §6). Rows whose
 chunk is not loaded paint `ShadSkeleton`-colored rounded bars (shimmer animated in the overlay
@@ -492,8 +517,9 @@ Undo restores the previous count.
 |-------|----------|
 | Mouse wheel | Vertical: 3 × default row height × zoom per notch (platform delta respected); Shift+wheel: horizontal |
 | Trackpad | Pixel-precise 2D scrolling with platform momentum (`diagonalDragBehavior.free`) |
-| Touch / pen | Drag scroll with fling physics (`ClampingScrollPhysics` on desktop/web) |
+| Touch | `GridTouchTracker` (`grid/grid_touch.dart`): a tap selects like a click (double-tap edits); one finger past the touch slop scrolls, with a `ClampingScrollSimulation` fling on release; a long press (500 ms) then drag runs the grid's pointer drag (range selection, fill handle, drag-move, header resize/move, freeze bars) instead of scrolling; two fingers pinch-zoom about their midpoint (50–200 %, 5 % steps) and pan. Mouse, pen and trackpad input are unchanged |
 | Mod+wheel / pinch (`PointerScaleEvent`, trackpad pinch on web) | Zoom about pointer (§2.3) |
+| Pointer cancel | A `PointerCancelEvent` (the OS or browser took the pointer, a second finger during a long-press drag) aborts the drag in progress: no fill, move, resize, freeze or paint format is committed |
 | Scrollbars | Thin auto-hide (`WonkyScrollArea` style); dragging the vertical thumb shows a tooltip "Row 12,345" |
 | Keyboard | Arrow navigation scrolls minimally to keep the active cell fully visible (with 1-cell margin); PageUp/PageDown scroll by one viewport height and move the active cell by the same number of visible rows; Alt+PageUp/PageDown scroll one viewport width left/right and move the active cell |
 | Mod+Backspace | `sheets.nav.scrollToActive` — scroll the active cell into view (center if far) |
@@ -772,11 +798,11 @@ class CellEditorController extends ChangeNotifier {
 5. **Pivot/spill guard**: editing a pivot output cell → toast "You can't edit a pivot table's
    output…"; typing into a cell covered by another formula's spill commits and the anchor
    becomes `#SPILL!` (Google behavior).
-6. **Write** via `SheetsWriter.setInputs(cells, contents, autoFormat?)` with `columnValues:
-   ['content']` (+ `numberFormat` when auto-detected and the cell's effective format is
+6. **Write** the `SetCellInputs` operation through the session; its changes name only `content`
+   (+ `numberFormat` when auto-detected and the cell's effective format is
    Automatic, 06 §5.9). One undo step labeled "Typing" (suite 08 coalescing does not apply
    across cells; each commit = 1 step).
-7. **Commit hint**: broadcast `CellCommitHint` over presence (suite 12 §2.4).
+7. **Commit hint**: stop the `typing` hint ([10 §2](10-collaboration-history.md)).
 8. **Move** the active cell per `CommitMove` (Enter/Tab rules §7.1).
 
 Commit target "toSelection" (Mod+Enter) writes translated content to every cell of every range
@@ -1150,7 +1176,7 @@ selection).
   (rules; restored by undo). Single-cell references to deleted cells become `#REF!` (Google
   behavior: `=A5` → `=#REF!`).
 - Deleting all rows of a sheet is refused ("A sheet must have at least one row").
-- Undo re-inserts the same ids (tombstone revival) and restores rewritten formulas/ranges.
+- Undo re-inserts the same ids (with the descendants the plan listed) and restores rewritten formulas/ranges.
 
 ### 13.3 Insert/delete cells with shift (P1)
 
@@ -1343,10 +1369,11 @@ styles, sheet-tab avatars, jump-to and follow mode). Grid contract:
 
 ### 15.2 Commit hints
 
-Owned by [10 §2](10-collaboration-history.md) (`CommitHintOverlay`). `CellRenderResolver` (§2.5)
-asks the overlay for a hinted value when painting a cell and paints it exactly like a real value;
-the overlay invalidates the affected tiles when hints arrive or expire. Hints never write to the
-database.
+Owned by [10 §2](10-collaboration-history.md) (`CommitHintOverlay`). Committed values reach
+other clients as RevLog ops in about one round trip, so hints carry no values: the overlay draws
+a collaborator's in-progress text over the cell (`typing`) and a shimmer over a range whose large
+change is still being saved (`pending`), and invalidates the affected tiles when hints arrive or
+expire. Hints never write to the database.
 
 ### 15.3 Toasts and indicators
 
@@ -1354,10 +1381,11 @@ database.
 |-----------|----|
 | Undo step partially skipped (columns changed remotely) | `ShadSonner` toast "Some changes couldn't be undone because they were edited by someone else." |
 | Undo step fully no-op | toast "Nothing to undo here — this was changed by someone else." and the step is dropped |
-| Edited cell changed remotely while you were editing it | on commit, your value wins (LWW, later HLC); no toast. Offline edits replaced by newer remote edits → review toast/dialog per [10 §9](10-collaboration-history.md) |
+| Edited cell changed remotely while you were editing it | on commit, your value wins (it arrives at the server last); no toast. Offline edits that replaced newer remote edits → review toast/dialog per [10 §9](10-collaboration-history.md) |
 | Row/column you are editing deleted remotely | editor closes, toast "The row you were editing was deleted by Bo." |
 | Offline | Shell offline banner; `SyncStatusIndicator` "Offline" (tooltip: "Offline — changes saved on this device"); remote cursors fade out after 30 s |
 | Sync error | Status "Sync error" (click → details & retry) |
+| Your change rejected by the server (protected range, limit, invalid change) | The change is rolled back, its undo step removed, and one toast names the change and the reason (17 part 6 §4.6; protected ranges §16) |
 
 ---
 
@@ -1368,7 +1396,8 @@ database.
   `prot: false`): diagonal stripes (45°, 1 px lines every 8 px,
   `protectedStripe` token) over protected cells the user **cannot** edit (or all protected cells
   for owners when "show all" is selected).
-- Before any write (`SheetsWriter` pre-check `ProtectionGuard.check(ranges, user)`):
+- Before any write (the client write gate: `SheetEditorController.apply` → `WriteIntents.of` →
+  `ProtectionGuard`, both in `wonky_sheets_core`):
   - **Not allowed** → `ShadDialog.alert` "Protected cell or object — You are trying to edit a
     protected cell or object. Please contact the spreadsheet owner to remove protection if you
     need to edit." [OK]. Nothing is written (the whole command aborts).
@@ -1380,6 +1409,13 @@ database.
     simply run again.
 - Commands from MCP/AI/scripts get the same check (tool error `protected_range` for not allowed;
   warning-only ranges are writable for MCP with a `warnings` entry in the result).
+- **The server enforces it too** ([07 §10.3](07-data-tools.md), 17 part 5 §3.5): an op that
+  writes a protected cell, structure, rule, object or sheet the author may not edit is rejected
+  whole. That catches what the gate couldn't know: an edit made offline before the protection
+  arrived, a changed editor list, a stale client. The grid rolls the change back, removes its
+  undo step and shows the toast "“{label}” wasn’t saved because it edits a protected cell or
+  object." **As built:** the toast doesn't offer *Save my changes as a copy* for offline edits
+  yet (17, As built 10).
 - Protection definitions & panel: [07](07-data-tools.md).
 
 ---
@@ -1514,7 +1550,7 @@ editor` if they mutate, `viewer` otherwise. MCP: all are invocable through
 | Rich-text run attribute `chip` (`{"kind":"person"\|"date"\|"file", …}`) | `r:` content run `f` map | Smart chips (P2, §14.3) |
 | `LocalViewState.json` keys: `zoom`, `showFormulas`, `showFormulaBar`, `showProtectedRanges`, `formulaBarExpanded`, per-sheet `{scrollTopRowId, scrollTopOffset, scrollLeftColId, scrollLeftOffset, selection}` | local-only table (02 §4) | View state persistence |
 | `UserPreferences.sheetsDefaults` keys: `enterStartsEditing`, `formulaAutocomplete`, `formulaHelp`, `customLists: [[…]]`, `autocomplete`, `showEditorMode` | suite 04 | Per-user editing preferences |
-| `CellCommitHint` gains `sessionId` | presence payload (suite 12 §2.4) | Attribute hints to a participant for the toast in §15.3 |
+| Commit hints carry the sender's `sessionId` | presence payload (`PresenceEvent.Hints`, [10 §2.1](10-collaboration-history.md)) | Attribute `typing`/`pending` hints to a participant |
 
 ## 21. Testing
 

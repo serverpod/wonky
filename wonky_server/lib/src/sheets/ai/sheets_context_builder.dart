@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:wonky_sheets_core/wonky_sheets_core.dart'
     hide ActorKind, CellInput;
 
+import '../../platform/ai/untrusted_text.dart';
 import '../headless/headless_workbook.dart';
 import '../mcp/sheets_read_model.dart';
 
@@ -53,9 +53,14 @@ abstract final class SheetsContextBuilder {
     return '${s.substring(0, max)}\n[… cut to fit the context budget]';
   }
 
+  /// [v] cut to [maxText] characters, with `<sheet_data>` tags in it
+  /// defused (cell text is untrusted, CQ-31).
   static String _short(Object? v) {
     final s = v == null ? '' : '$v';
-    return s.length <= maxText ? s : '${s.substring(0, maxText)}…';
+    return UntrustedText.escape(
+      s.length <= maxText ? s : '${s.substring(0, maxText)}…',
+      'sheet_data',
+    );
   }
 
   /// A stable 31-bit hash (FNV-1a) of [s].
@@ -105,7 +110,7 @@ abstract final class SheetsContextBuilder {
     for (final s in (info['sheets'] as List).cast<Map<String, Object?>>()) {
       final frozen = (s['frozen'] as Map)['rows'];
       b.writeln(
-        '- "${s['name']}"${s['hidden'] == true ? ' (hidden)' : ''}'
+        '- "${_short(s['name'])}"${s['hidden'] == true ? ' (hidden)' : ''}'
         '${s['kind'] == 'chart' ? ' (chart sheet)' : ''}: '
         'used range ${s['used_range'] ?? 'empty'}, grid '
         '${(s['grid'] as Map)['rows']}×${(s['grid'] as Map)['columns']}'
@@ -231,7 +236,9 @@ abstract final class SheetsContextBuilder {
     if (d != null) parts.add('${d['min']} … ${d['max']}');
     final t = c['text'] as Map?;
     if (t != null) {
-      final top = (t['top_values'] as List).cast<Map>().take(5);
+      final top = (t['top_values'] as List).cast<Map<Object?, Object?>>().take(
+        5,
+      );
       parts.add(
         'top: ${top.map((e) => '"${_short(e['value'])}" ×${e['count']}').join(', ')}',
       );
@@ -429,8 +436,4 @@ abstract final class SheetsContextBuilder {
       '<spreadsheet_changed>The spreadsheet changed since the context above '
       'was captured. Current state:\n${now.summary}\n\n${now.profiles}\n'
       '</spreadsheet_changed>';
-
-  /// JSON of the selection hints (persisted for diagnostics).
-  static String hintsJson(List<String>? ranges, String? activeCell) =>
-      jsonEncode({'selection': ranges, 'activeCell': activeCell});
 }

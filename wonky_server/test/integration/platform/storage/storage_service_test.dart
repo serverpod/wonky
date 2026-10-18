@@ -1,5 +1,9 @@
+@Tags(['integration'])
+library;
+
 import 'dart:math';
 
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
@@ -503,7 +507,7 @@ void main() {
                 await DriveItem.db.updateRow(
                   session,
                   item.copyWith(
-                    trashedAt: item.trashedAt == null ? DateTime.now() : null,
+                    trashedAt: item.trashedAt == null ? clock.now() : null,
                   ),
                   columns: (t) => [t.trashedAt],
                   transaction: tx,
@@ -590,7 +594,7 @@ void main() {
             mimeType: 'image/png',
             sizeBytes: 700,
             status: StoredFileStatus.ready,
-            createdAt: DateTime.now().toUtc(),
+            createdAt: clock.now().toUtc(),
           ),
         );
         // v1 state: plain-text sizes, no attachments, no counters.
@@ -658,7 +662,7 @@ void main() {
             mimeType: 'image/png',
             sizeBytes: 60 * _mb,
             status: StoredFileStatus.ready,
-            createdAt: DateTime.now().toUtc(),
+            createdAt: clock.now().toUtc(),
           ),
         );
         await makePending(anna);

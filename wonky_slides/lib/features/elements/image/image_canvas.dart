@@ -10,7 +10,7 @@ import '../../canvas/canvas_interactions.dart';
 import '../../editor_screen/deck_editor_controller.dart';
 import '../../selection/slide_elements.dart';
 import '../../uploads/slides_image_service.dart';
-import 'external_drop.dart';
+import 'package:wonky_app/platform.dart';
 import 'image_rules.dart';
 
 /// Image files dropped on the canvas, waiting for the

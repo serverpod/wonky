@@ -1,0 +1,22 @@
+# Analysis options of the pure-Dart packages and the server
+# (specs/11-quality-testing-accessibility.md §6; CQ-64e):
+#
+#   include: package:wonky_lints/dart.yaml
+#
+# A package may turn a mode or rule off only with a TODO naming the count of
+# issues it would report (see the packages' analysis_options.yaml).
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    # A Future that nobody awaits loses its errors (use `unawaited(…)` when
+    # fire-and-forget is meant).
+    unawaited_futures: true
+    # A sync function that calls async code and drops the Future (same fix).
+    discarded_futures: true

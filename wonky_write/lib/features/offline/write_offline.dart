@@ -32,7 +32,6 @@ import 'package:wonky_write_core/wonky_write_core.dart'
 
 import '../../l10n/write_l10n.dart';
 import '../document/write_document_api.dart';
-import '../sync/connection_keeper.dart';
 import '../sync/document_sync_controller.dart';
 import 'pending_uploads.dart';
 import 'sqlite_sync_persistence.dart';
@@ -380,7 +379,7 @@ class WriteOffline extends ChangeNotifier implements OfflineDataProvider {
       _stopping[id] = bg.dispose();
     }
     await _stopping[id];
-    _stopping.remove(id);
+    unawaited(_stopping.remove(id));
   }
 
   /// The session closed [documentUuid].

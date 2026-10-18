@@ -33,7 +33,8 @@ Consequences worth knowing before building:
   `wonky_numfmt` (Q27), `wonky_sync_kit` + `wonky_sync_kit_flutter`, `wonky_fonts`,
   `wonky_spellcheck` (Q23) — all extracted in M8 without behavior change (suite 01 §2.1).
 - The vendored offline-sync patch **OS-8** (space filter per sync endpoint, Q19) lands in M8,
-  before the first deck space exists.
+  before the first deck space exists. *Superseded by RevLog (M13), which has no sync
+  spaces.*
 - Write's exports switch to the shared TextMate tokenizer in M10 (Q17, Q25). Done in SL-35.
 
 ## Suite and Drive
@@ -63,11 +64,11 @@ Consequences worth knowing before building:
 | # | Question | Decision | Recorded in |
 |---|----------|----------|-------------|
 | 18 | Concurrent text edits in one text box | Recommendation accepted: soft lock + LWW per text body in v1; three-way merge on receive P2 | [02 §4.5](wonky_slides/02-data-model.md) |
-| 19 | Every replica downloads every space kind | Recommendation accepted: vendored offline-sync patch OS-8 (space filter per sync endpoint), in M8 | [02 §9.2](wonky_slides/02-data-model.md), [suite 12 §2.6](12-offline-and-sync.md) |
+| 19 | Every replica downloads every space kind | Recommendation accepted: vendored offline-sync patch OS-8 (space filter per sync endpoint), in M8. **Superseded by RevLog (M13)**: each client loads only the files it opens or keeps offline | [17](17-revlog-sync.md) part 1 (RD-9, RD-13) |
 | 20 | Text editor for text boxes | Recommendation accepted: super_editor overlay, confirmed by a week-1 spike of M9 (SL-4) | [03 §6.1](wonky_slides/03-editor-canvas-and-objects.md) |
 | 21 | Where the Animate UI lives | Resolved before the review: the inspector's Animate tab; `slides.panel.animate` is an alias | [04 §7.1](wonky_slides/04-screens-menus-toolbar.md) |
 | 22 | Nested slide groups | Recommendation accepted: one level in v1; `parentId` reserved | [04 §5.12](wonky_slides/04-screens-menus-toolbar.md) |
-| 23 | Shared package names | Recommendation accepted: `wonky_sync_kit` (+ `wonky_sync_kit_flutter`), `wonky_fonts`, `wonky_spellcheck` (engine; Flutter glue and emoji picker into `wonky_app`) | [01 §2.1](01-architecture.md), [12 §8](wonky_slides/12-implementation-plan.md) |
+| 23 | Shared package names | Recommendation accepted: `wonky_sync_kit` (+ `wonky_sync_kit_flutter`; replaced by `wonky_revlog` + `wonky_revlog_flutter` in M13), `wonky_fonts`, `wonky_spellcheck` (engine; Flutter glue and emoji picker into `wonky_app`) | [01 §2.1](01-architecture.md), [12 §8](wonky_slides/12-implementation-plan.md) |
 | 24 | What a printed/thumbnail slide shows when it has builds | Recommendation accepted: authored layout with all content; P1 option *Show final animation state* | [06 §9.6](wonky_slides/06-animations-and-transitions.md) |
 | 25 | Write exports switch to the shared TextMate tokenizer | Recommendation accepted: yes, in M10 with a golden diff review (only token colors change) | [07 §2.2](wonky_slides/07-code-blocks.md) |
 | 26 | TextMate engine: copy into `wonky_code` vs upstream split | Recommendation accepted: copy now (M8 extraction), propose the upstream split later | [07 §2.2](wonky_slides/07-code-blocks.md) |

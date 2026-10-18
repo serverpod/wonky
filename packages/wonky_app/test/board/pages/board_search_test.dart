@@ -1,5 +1,6 @@
 import 'dart:ui' show Tristate;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -356,7 +357,7 @@ void main() {
       b.tasks[1]!
         ..status = BoardTaskStatus.claimed
         ..claimedById = 2
-        ..claimExpiresAt = DateTime.now().add(const Duration(hours: 30));
+        ..claimExpiresAt = clock.now().add(const Duration(hours: 30));
       b.emitTask(1);
       await tester.pumpAndSettle();
 

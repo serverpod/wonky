@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:wonky_sheets_core/formula.dart'
-    show GridRect, ColumnLetters, FormulaHighlighter;
+    show GridRect, ColumnLetters, FormulaHighlighter, FormulaReferenceSpan;
 
 import '../../../sheet_editor/sheet_editor_controller.dart';
 import '../../selection/grid_selection.dart';
@@ -47,7 +47,7 @@ class ReferenceBoxLayer extends GridLayer {
     if (session == null || !editor.isFormula) return;
     final sheet = ctx.sheet;
     final editingHere = session.sheetId == sheet.id;
-    final List refs;
+    final List<FormulaReferenceSpan> refs;
     try {
       refs = FormulaHighlighter.references(
         editor.text.text,
@@ -67,14 +67,14 @@ class ReferenceBoxLayer extends GridLayer {
       if (!onThisSheet) continue;
       final GridRect rect;
       try {
-        rect = area.toRect(rowsN, colsN) as GridRect;
+        rect = area.toRect(rowsN, colsN);
       } catch (_) {
         continue;
       }
       if (rect.top < 0 || rect.left < 0) continue;
       final clipped = rect.intersection(GridRect(0, 0, rowsN - 1, colsN - 1));
       if (clipped == null) continue;
-      final color = ctx.tokens.reference(ref.colorIndex as int);
+      final color = ctx.tokens.reference(ref.colorIndex);
       ctx.forEachPane(canvas, (pane) {
         final r = pane.rangeRect(clipped);
         canvas.drawRect(r, Paint()..color = color.withValues(alpha: 0.1));

@@ -1,5 +1,5 @@
 name: wonky_sync_models
-description: "Serverpod shared package with the offline-synced models of Wonky Sheets and id helpers."
+description: "Pure-Dart id helpers of Wonky Sheets and Wonky Slides: deterministic UUIDv5 ids, id generators and fractional indexes."
 publish_to: none
 
 environment:
@@ -8,11 +8,11 @@ environment:
 resolution: workspace
 
 dependencies:
-  serverpod_database: 4.1.0-beta.3
-  serverpod_offline_sync: 0.0.9
-  serverpod_serialization: 4.1.0-beta.3
   uuid: ^4.6.0
+  wonky_revlog:
+    path: ../wonky_revlog
 
 dev_dependencies:
-  lints: '>=3.0.0 <7.0.0'
+  wonky_lints:
+    path: ../wonky_lints
   test: ^1.25.5

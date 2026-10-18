@@ -9,6 +9,7 @@ import 'package:wonky_charts_flutter/wonky_charts_flutter.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_slides_core/charts.dart';
 import 'package:wonky_slides_core/themes.dart' show ResolvedTheme;
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../../l10n/slides_l10n.dart';
 import '../../editor_screen/deck_editor_controller.dart';
@@ -132,6 +133,9 @@ class _ChartInsertDialogState extends State<ChartInsertDialog>
   ChartApiError? _error;
   bool _loadingCharts = false;
   final List<String> _selected = [];
+
+  /// Preview looks per chart, with the inputs they were made from.
+  final Map<String, (Object, SlideChartLook)> _looks = {};
   late bool _link = true;
   late bool _match = widget.useDeckTheme;
 
@@ -463,6 +467,7 @@ class _ChartInsertDialogState extends State<ChartInsertDialog>
     final step2 = _sheetUuid != null;
     return ShadDialog(
       key: ChartInsertKeys.dialog,
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(
         step2
             ? l.chartInsertFromTitle(_sheetTitle)
@@ -752,12 +757,21 @@ class _ChartInsertDialogState extends State<ChartInsertDialog>
     final deck = _deckLook();
     Widget picture;
     if (preview != null && deck != null && !t.unsupported) {
-      final look = SlideChartSpec.effective(
-        snapshot: preview,
-        element: ChartElementData(style: SlideChartStyle(useDeckTheme: _match)),
-        deckTheme: deck.$1,
-        slideBackground: deck.$2,
-      );
+      // Memoized: a new look (theme) per build would re-lay out every tile
+      // on each rebuild (CQ-47, CH-3).
+      final lookKey = (preview, _match, deck.$1, deck.$2);
+      final cached = _looks[t.chartObjectId];
+      final look = cached != null && cached.$1 == lookKey
+          ? cached.$2
+          : SlideChartSpec.effective(
+              snapshot: preview,
+              element: ChartElementData(
+                style: SlideChartStyle(useDeckTheme: _match),
+              ),
+              deckTheme: deck.$1,
+              slideBackground: deck.$2,
+            );
+      _looks[t.chartObjectId] = (lookKey, look);
       picture = ChartView(
         spec: look.spec,
         data: preview.data,

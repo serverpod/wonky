@@ -1,3 +1,4 @@
+import 'collation.dart';
 import 'fvalue.dart';
 import 'numeric.dart';
 
@@ -58,78 +59,6 @@ abstract final class Compare {
         _ => null,
       };
 
-  static String _collationKey(String s) {
-    final b = StringBuffer();
-    for (final r in s.toLowerCase().runes) {
-      b.write(_stripMark[r] ?? String.fromCharCode(r));
-    }
-    return b.toString();
-  }
-
-  static final Map<int, String> _stripMark = () {
-    const from = 'àáâãäåāăąçćčďèéêëēėęěìíîïīįłñńňòóôõöøōőŕřśšşťùúûüūůűųýÿźżžß';
-    const to = [
-      'a',
-      'a',
-      'a',
-      'a',
-      'a',
-      'a',
-      'a',
-      'a',
-      'a',
-      'c',
-      'c',
-      'c',
-      'd',
-      'e',
-      'e',
-      'e',
-      'e', //
-      'e',
-      'e',
-      'e',
-      'e',
-      'i',
-      'i',
-      'i',
-      'i',
-      'i',
-      'i',
-      'l',
-      'n',
-      'n',
-      'n',
-      'o',
-      'o',
-      'o', //
-      'o',
-      'o',
-      'o',
-      'o',
-      'o',
-      'r',
-      'r',
-      's',
-      's',
-      's',
-      't',
-      'u',
-      'u',
-      'u',
-      'u',
-      'u',
-      'u', //
-      'u', 'u', 'y', 'y', 'z', 'z', 'z', 'ss',
-    ];
-    final m = <int, String>{};
-    final runes = from.runes.toList();
-    for (var i = 0; i < runes.length; i++) {
-      m[runes[i]] = to[i];
-    }
-    return m;
-  }();
-
   static int _sortRank(FValue v) => switch (v) {
     FNumber() => 0,
     FText(:final v) => v.isEmpty ? 5 : 1,
@@ -140,8 +69,15 @@ abstract final class Compare {
   };
 
   /// SORT / sort-range ordering: numbers < text < booleans < errors; blanks (and `""`) always
-  /// last regardless of direction. Text compares by a collation key, then ordinal.
-  static int sortCompare(FValue a, FValue b, {bool ascending = true}) {
+  /// last regardless of direction. Text compares by the shared [Collation] (key, then
+  /// ordinal); [keyA]/[keyB] are the precomputed collation keys of text values, if any.
+  static int sortCompare(
+    FValue a,
+    FValue b, {
+    bool ascending = true,
+    String? keyA,
+    String? keyB,
+  }) {
     if (a is FRich) a = a.scalar;
     if (b is FRich) b = b.scalar;
     final ra = _sortRank(a);
@@ -159,8 +95,9 @@ abstract final class Compare {
           c = v.compareTo((b as FNumber).v);
         case FText(:final v):
           final w = (b as FText).v;
-          c = _collationKey(v).compareTo(_collationKey(w));
-          if (c == 0) c = v.compareTo(w);
+          c = keyA != null && keyB != null
+              ? Collation.compareKeyed(v, keyA, w, keyB)
+              : Collation.compare(v, w);
         case FBool(:final v):
           final w = (b as FBool).v;
           c = v == w ? 0 : (v ? 1 : -1);

@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 List<int> propertySeeds() {
   final env = Platform.environment['WONKY_SEED'];
   if (env == 'random') {
-    final seed = DateTime.now().microsecondsSinceEpoch & 0x7fffffff;
+    final seed = Random().nextInt(0x7fffffff);
     print('WONKY_SEED=$seed');
     return [seed];
   }

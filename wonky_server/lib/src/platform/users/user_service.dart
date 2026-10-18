@@ -11,6 +11,7 @@ import '../common/models.dart';
 import '../common/actor.dart';
 import '../common/errors.dart';
 import '../common/json.dart';
+import '../common/lru_map.dart';
 import '../common/time.dart';
 import '../../write/themes/builtin_theme_ids.dart';
 import '../storage/storage_counters.dart';
@@ -33,8 +34,12 @@ abstract final class UserService {
     '#AD7F58',
   ];
 
-  static final Map<String, int> _profileIdByAuthUser = {};
-  static final Map<String, String> _avatarUrlCache = {};
+  /// Profile ids by auth user (bounded, CQ-32: an id never changes, so
+  /// there is no expiry; account deletion forgets it everywhere).
+  static final LruMap<String, int> _profileIdByAuthUser = LruMap(100000);
+
+  /// Public avatar URLs by file (bounded; an avatar file is immutable).
+  static final LruMap<String, String> _avatarUrlCache = LruMap(20000);
 
   /// The stable presence color index of a user.
   static int colorIndexFor(UuidValue authUserId) {
@@ -63,7 +68,7 @@ abstract final class UserService {
 
   /// The UserProfile id of [authUserId], creating the profile if needed.
   static Future<int> profileIdFor(Session session, UuidValue authUserId) async {
-    final cached = _profileIdByAuthUser[authUserId.uuid];
+    final cached = _profileIdByAuthUser.get(authUserId.uuid);
     if (cached != null) return cached;
     final profile = await ensureProfile(session, authUserId);
     if (Cluster.distributed) {
@@ -72,7 +77,8 @@ abstract final class UserService {
         if (s.authUserId != null) forget(s.authUserId!);
       });
     }
-    return _profileIdByAuthUser[authUserId.uuid] = profile.id!;
+    _profileIdByAuthUser.put(authUserId.uuid, profile.id!);
+    return profile.id!;
   }
 
   /// Forgets cached ids on this instance (tests).
@@ -210,6 +216,10 @@ abstract final class UserService {
       session,
       where: (t) => t.id.inSet(ids),
     );
+    // Uncached avatars in one query (CQ-32), not one per profile.
+    await _loadAvatarUrls(session, {
+      for (final p in profiles) ?p.avatarFileId,
+    });
     final result = <int, UserSummary>{};
     for (final p in profiles) {
       result[p.id!] = await summaryOf(session, p);
@@ -237,21 +247,38 @@ abstract final class UserService {
 
   static Future<String?> avatarUrl(Session session, UuidValue? fileId) async {
     if (fileId == null) return null;
-    final cached = _avatarUrlCache[fileId.uuid];
+    final cached = _avatarUrlCache.get(fileId.uuid);
     if (cached != null) return cached;
-    final file = await StoredFile.db.findFirstRow(
+    await _loadAvatarUrls(session, {fileId});
+    return _avatarUrlCache.get(fileId.uuid);
+  }
+
+  /// Caches the public URLs of the ready avatar files among [fileIds] that
+  /// are not cached yet (one query).
+  static Future<void> _loadAvatarUrls(
+    Session session,
+    Set<UuidValue> fileIds,
+  ) async {
+    final missing = {
+      for (final id in fileIds)
+        if (!_avatarUrlCache.containsKey(id.uuid)) id,
+    };
+    if (missing.isEmpty) return;
+    final files = await StoredFile.db.find(
       session,
-      where: (t) => t.fileUuid.equals(fileId),
+      where: (t) =>
+          t.fileUuid.inSet(missing) & t.status.equals(StoredFileStatus.ready),
     );
-    if (file == null || file.status != StoredFileStatus.ready) return null;
-    try {
-      final url = await session.storage.publicDownloadUrl(
-        storageId: file.storageId,
-        path: file.path,
-      );
-      return _avatarUrlCache[fileId.uuid] = url.toString();
-    } on Exception {
-      return null;
+    for (final file in files) {
+      try {
+        final url = await session.storage.publicDownloadUrl(
+          storageId: file.storageId,
+          path: file.path,
+        );
+        _avatarUrlCache.put(file.fileUuid.uuid, url.toString());
+      } on Exception {
+        // Not available: the summary shows the initials.
+      }
     }
   }
 
@@ -427,21 +454,42 @@ abstract final class UserService {
     return BuiltinThemeIds.wonkyDefault;
   }
 
-  /// Notification channel setting of [userId] for [kind]: inApp, email or off.
-  static Future<String> notificationChannel(
-    Session session,
-    int userId,
-    String kind,
-  ) async {
-    final prefs = await UserPreferences.db.findFirstRow(
-      session,
-      where: (t) => t.userId.equals(userId),
-    );
-    final value = decodeObject(prefs?.notificationSettings)[kind];
-    return value is String ? value : 'inApp';
-  }
-
   // --------------------------------------------------------------- search
+
+  /// The users related to `@me`: the owners of and grantees on the items
+  /// `@me` owns or has a grant on (`related.uid`).
+  static const _relatedCte = r'''
+      WITH my_items AS (
+        SELECT d.id FROM drive_item d WHERE d."ownerId" = @me
+        UNION
+        SELECT p."itemId" FROM drive_item_permission p WHERE p."userId" = @me
+      ),
+      related AS (
+        SELECT d."ownerId" AS uid FROM drive_item d
+          WHERE d.id IN (SELECT id FROM my_items)
+        UNION
+        SELECT p."userId" FROM drive_item_permission p
+          WHERE p."itemId" IN (SELECT id FROM my_items) AND p."userId" IS NOT NULL
+      )''';
+
+  /// The ids among [userIds] that [actor] may look up: themself and the
+  /// users related to them (the [searchUsers] relation). Others' names and
+  /// emails are not revealed by id.
+  static Future<Set<int>> relatedIds(
+    Session session,
+    Actor actor,
+    Iterable<int> userIds,
+  ) async {
+    final ids = userIds.toSet();
+    final result = <int>{if (ids.remove(actor.userId)) actor.userId};
+    if (ids.isEmpty) return result;
+    final rows = await session.db.unsafeQuery(
+      '$_relatedCte SELECT uid FROM related '
+      'WHERE uid IN (${ids.join(',')})',
+      parameters: QueryParameters.named({'me': actor.userId}),
+    );
+    return {...result, for (final row in rows) row[0] as int};
+  }
 
   /// Users for the share dialog and @mentions: users who share at least one
   /// item with the caller, plus exact email matches (specs/04 §5).
@@ -456,19 +504,8 @@ abstract final class UserService {
     final cap = limit.clamp(1, 50);
     final like = '%${_escapeLike(q)}%';
     final result = await session.db.unsafeQuery(
-      r'''
-      WITH my_items AS (
-        SELECT d.id FROM drive_item d WHERE d."ownerId" = @me
-        UNION
-        SELECT p."itemId" FROM drive_item_permission p WHERE p."userId" = @me
-      ),
-      related AS (
-        SELECT d."ownerId" AS uid FROM drive_item d
-          WHERE d.id IN (SELECT id FROM my_items)
-        UNION
-        SELECT p."userId" FROM drive_item_permission p
-          WHERE p."itemId" IN (SELECT id FROM my_items) AND p."userId" IS NOT NULL
-      )
+      '''
+      $_relatedCte
       SELECT u.id FROM user_profile u
       WHERE u.id <> @me AND (
         u.email = @exact OR (

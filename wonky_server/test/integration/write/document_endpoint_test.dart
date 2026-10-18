@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
 import 'package:serverpod/serverpod.dart';
@@ -492,6 +495,7 @@ void main() {
           ]),
         );
         await c.next<DocAck>();
+        await c.sideEffectsDone();
         final threads = await endpoints.comment.listThreads(
           anna.endpointSession,
           item.uuid,

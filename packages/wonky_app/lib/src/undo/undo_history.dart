@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:shad/shad.dart';
 import 'package:wonky_core/wonky_core.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../l10n/wonky_app_localizations.dart';
 import '../shell/shell_services.dart';
@@ -13,6 +14,7 @@ Future<void> showUndoHistoryDialog(BuildContext context, ShellServices s) =>
       context: context,
       builder: (context) => ShadDialog(
         key: const ValueKey<String>('undoHistory'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(WonkyAppLocalizations.of(context).undoHistoryTitle),
         child: SizedBox(
           width: 380,

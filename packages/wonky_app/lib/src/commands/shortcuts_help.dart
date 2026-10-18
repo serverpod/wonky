@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../l10n/wonky_app_localizations.dart';
 import '../shell/form_dialog.dart';
@@ -13,6 +14,7 @@ Future<void> showShortcutsHelp(BuildContext context, ShellServices s) =>
       context: context,
       builder: (context) => ShadDialog(
         key: const ValueKey<String>('shortcutsHelp'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(WonkyAppLocalizations.of(context).shortcutsTitle),
         constraints: const BoxConstraints(maxWidth: 720),
         child: SizedBox(

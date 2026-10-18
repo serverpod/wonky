@@ -10,16 +10,15 @@ import 'package:wonky_slides_core/model.dart' show DeckModel;
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/planner.dart';
 import 'package:wonky_slides_core/schema.dart' show SlidesTables;
-import 'package:wonky_sync_kit/rows.dart' show composeRowChanges;
+import 'package:wonky_revlog/rows.dart' show composeRowChanges;
 
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
 import '../../platform/common/models.dart';
 import '../../platform/sharing/access_service.dart';
-import '../../platform/spaces/space_service.dart';
-import '../sync/server_slides_writer.dart';
+import '../revlog/slides_revlog.dart';
+import '../revlog/slides_server_writes.dart';
 import 'deck_text_claims.dart';
-import 'headless_deck_cache.dart';
 
 /// The server's request context of the headless contracts
 /// (`HeadlessDeckProvider<C>`, Slides 12 §5.7): the session and the acting
@@ -45,23 +44,23 @@ class HeadlessDeckWrite {
   /// `change_id` for `changes.revert` (24 h); null when nothing changed.
   final UuidValue? changeId;
 
-  /// `sync_version`: the last `DeckChangeLog` row id.
-  final UuidValue? syncVersion;
+  /// `sync_version`: the deck revision of the write (RevLog spec 08 §7).
+  final String? syncVersion;
 
   /// Whether a maintenance plan ("Repair presentation") ran first.
   final bool repaired;
 }
 
 /// A deck opened on the server for one caller (Slides 11 §2.1): reads come
-/// from the cached [DeckModel] ([HeadlessDeckCache]); writes plan with the
-/// shared `SlidesPlanner`, run the deck's maintenance first (02 §10, not
-/// recorded), refuse bodies other users are editing (`being_edited`)
-/// unless forced, and go through [ServerSlidesWriter.applyRecorded] (one
-/// transaction per ≤ 5,000 changes + `DeckChangeLog`, `ServerChangeRecord`
-/// for revert), written through to the cache. Mutations on one deck are
-/// serialized per instance.
+/// from the headless [DeckModel] (RevLog spec 05 §9: it follows the deck's
+/// ops); writes plan with the shared `SlidesPlanner`, run the deck's
+/// maintenance first (02 §10, not recorded), refuse bodies other users are
+/// editing (`being_edited`) unless forced, and are committed with
+/// [SlidesServerWrites.applyRecorded] (RevLog server change with a
+/// `ServerChangeRecord` for revert). Planning on one deck is serialized
+/// per instance.
 class ServerHeadlessDeck implements HeadlessDeck {
-  ServerHeadlessDeck(this.context, this.item, this.role, this._entry);
+  ServerHeadlessDeck(this.context, this.item, this.role, this._model);
 
   final HeadlessDeckContext context;
 
@@ -71,17 +70,17 @@ class ServerHeadlessDeck implements HeadlessDeck {
   /// The caller's role when opened.
   final Role role;
 
-  CachedDeck _entry;
+  DeckModel _model;
 
   /// A copy-on-write overlay (AI Suggest mode, 11 §6.3): reads see it and
   /// writes are recorded there instead of being written to the deck.
   DeckOverlay? overlay;
 
-  /// The deck space (= item uuid).
+  /// The deck's file (= item uuid).
   UuidValue get space => item.contentRef!;
 
   @override
-  DeckModel get model => overlay?.model ?? _entry.model;
+  DeckModel get model => overlay?.model ?? _model;
 
   @override
   Future<SlidesPlan> execute(
@@ -101,6 +100,7 @@ class ServerHeadlessDeck implements HeadlessDeck {
     actorKind: actorKind,
     force: force,
     label: label,
+    singleStep: true,
   );
 
   /// Plans several operations as **one** change (SL-40: one MCP call = one
@@ -108,12 +108,15 @@ class ServerHeadlessDeck implements HeadlessDeck {
   /// each planned against the state the previous ones left (a scratch copy
   /// of the model); their row changes are composed into one plan, checked
   /// for soft locks and written with one change record. A
-  /// `PlanException` thrown by [build] writes nothing.
+  /// `PlanException` thrown by [build] writes nothing. With [singleStep]
+  /// [build] runs one operation planned against the deck itself (no
+  /// scratch copy, CQ-35; [write] does this).
   Future<HeadlessDeckWrite> writeSteps(
     FutureOr<void> Function(DeckSteps steps) build, {
     String? actorKind,
     bool force = false,
     String? label,
+    bool singleStep = false,
   }) {
     final session = context.session;
     final actor = context.actor.copyWith(
@@ -121,29 +124,41 @@ class ServerHeadlessDeck implements HeadlessDeck {
     );
     final shadow = overlay;
     if (shadow != null) {
-      return _writeOverlay(shadow, build, actor: actor, label: label);
+      return _writeOverlay(
+        shadow,
+        build,
+        actor: actor,
+        label: label,
+        singleStep: singleStep,
+      );
     }
-    return HeadlessDeckCache.withWriteLock(space, () async {
+    return SlidesServerWrites.withWriteLock(space, () async {
       await AccessService.requireRole(session, actor, item, Role.editor);
-      _entry = await HeadlessDeckCache.open(session, space);
+      _model = await SlidesRevlog.model(session, space);
       var repaired = false;
       final repair = DeckMaintenance.repairOp(model);
       if (repair != null) {
         final fix = const SlidesPlanner().plan(repair, model, _context(actor));
         if (fix.changes.isNotEmpty) {
-          // Not part of the change record (11 §2.1).
-          await SpaceService.ensureWriter(session, actor, item);
-          await ServerSlidesWriter.apply(
+          // Not part of the change record (11 §2.1; 08 §4).
+          await SlidesServerWrites.apply(
             session,
             actor: actor.copyWith(kind: ActorKind.user),
-            deckSpace: space,
+            fileUuid: space,
             changes: fix.changes,
             label: DeckMaintenance.label,
+            summary: fix.summary,
+            repair: true,
           );
+          _model = await SlidesRevlog.model(session, space);
           repaired = true;
         }
       }
-      final steps = DeckSteps(model, _context(actor));
+      final steps = DeckSteps(
+        model,
+        _context(actor),
+        singleStep: singleStep,
+      );
       await build(steps);
       final plan = steps.plan(label: label);
       if (!force) {
@@ -163,14 +178,17 @@ class ServerHeadlessDeck implements HeadlessDeck {
           repaired: repaired,
         );
       }
-      final written = await ServerSlidesWriter.applyRecorded(
+      final written = await SlidesServerWrites.applyRecorded(
         session,
         actor: actor,
         item: item,
         changes: plan.changes,
         label: label ?? plan.label,
-        detailJson: plan.detailJson,
+        summary: plan.summary,
+        detail: plan.detail,
       );
+      // The live model follows the committed ops.
+      _model = await SlidesRevlog.model(session, space);
       return HeadlessDeckWrite(
         plan: plan,
         changeId: written.changeId,
@@ -188,6 +206,7 @@ class ServerHeadlessDeck implements HeadlessDeck {
     FutureOr<void> Function(DeckSteps steps) build, {
     required Actor actor,
     String? label,
+    bool singleStep = false,
   }) async {
     await AccessService.requireRole(
       context.session,
@@ -195,7 +214,11 @@ class ServerHeadlessDeck implements HeadlessDeck {
       item,
       Role.editor,
     );
-    final steps = DeckSteps(shadow.model, _context(actor));
+    final steps = DeckSteps(
+      shadow.model,
+      _context(actor),
+      singleStep: singleStep,
+    );
     await build(steps);
     final plan = steps.plan(label: label);
     if (plan.changes.isNotEmpty) {
@@ -269,16 +292,30 @@ abstract final class DeckOverlays {
 /// The operations of one composite write ([ServerHeadlessDeck.writeSteps]):
 /// each [run] plans against a scratch copy of the deck that holds the
 /// previous steps' changes, so later steps can address rows earlier ones
-/// created.
+/// created ([model] is that copy, the same object for the whole write).
+///
+/// A single-operation write ([ServerHeadlessDeck.write], [singleStep])
+/// plans directly against the deck and never copies it (CQ-35); it takes
+/// exactly one [run].
 class DeckSteps {
-  DeckSteps(DeckModel source, this.context)
-    : model = DeckModel.fromRows(source.deckId, [
+  DeckSteps(DeckModel source, this.context, {this.singleStep = false})
+    : model = singleStep ? source : _copy(source);
+
+  /// Whether this write has one step planned against the deck itself.
+  final bool singleStep;
+
+  /// The scratch model (the deck with the steps so far); the deck itself
+  /// for a [singleStep] write.
+  final DeckModel model;
+
+  /// Scratch copies made (tests).
+  int get copies => singleStep ? 0 : 1;
+
+  static DeckModel _copy(DeckModel source) =>
+      DeckModel.fromRows(source.deckId, [
         for (final t in SlidesTables.dependencyOrder)
           for (final r in source.records(t)) (t, r.toColumns()),
       ]);
-
-  /// The scratch model (the deck with the steps so far).
-  final DeckModel model;
 
   /// The planning context.
   final SlidesPlanContext context;
@@ -286,11 +323,15 @@ class DeckSteps {
   /// The plans of the steps so far.
   final List<SlidesPlan> plans = [];
 
-  /// Plans [op] against [model], applies it there and records it. Throws
-  /// `PlanException`.
+  /// Plans [op] against [model], applies it there (not for a [singleStep]
+  /// write: the deck itself follows the committed op) and records it.
+  /// Throws `PlanException`.
   SlidesPlan run(SlidesOperation op) {
+    if (singleStep && plans.isNotEmpty) {
+      throw StateError('A single-step write takes one operation.');
+    }
     final plan = const SlidesPlanner().plan(op, model, context);
-    if (plan.changes.isNotEmpty) model.applyPlan(plan);
+    if (!singleStep && plan.changes.isNotEmpty) model.applyPlan(plan);
     plans.add(plan);
     return plan;
   }
@@ -337,7 +378,7 @@ class SlidesHeadlessProvider
       item,
       Role.viewer,
     );
-    final entry = await HeadlessDeckCache.open(context.session, space);
-    return ServerHeadlessDeck(context, item, role, entry);
+    final model = await SlidesRevlog.model(context.session, space);
+    return ServerHeadlessDeck(context, item, role, model);
   }
 }

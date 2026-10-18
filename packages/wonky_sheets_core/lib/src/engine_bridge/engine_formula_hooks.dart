@@ -415,12 +415,27 @@ final class EngineFormulaHooks implements FormulaHooks {
   }) {
     final e = engine;
     if (e == null) return const FError(ErrorKind.calc, 'No formula engine');
-    return e
-        .compileRelative(
-          stored,
-          sheetId: sheetId,
-          anchor: CellPos(anchorRow, anchorCol),
-        )
-        .evaluate(row, col);
+    // Rule formulas are evaluated for every cell of their ranges: compile each
+    // (formula, anchor) once. The key is the stored text, so a changed rule
+    // compiles anew; the compiled form resolves its ids on every evaluation.
+    final key = (stored, sheetId, anchorRow, anchorCol);
+    var compiled = _relative[key];
+    if (compiled == null) {
+      compiled = e.compileRelative(
+        stored,
+        sheetId: sheetId,
+        anchor: CellPos(anchorRow, anchorCol),
+      );
+      if (_relative.length >= _relativeCapacity) {
+        _relative.remove(_relative.keys.first);
+      }
+      _relative[key] = compiled;
+    }
+    return compiled.evaluate(row, col);
   }
+
+  static const int _relativeCapacity = 512;
+
+  /// Compiled rule formulas, oldest first.
+  final Map<(String, String, int, int), CompiledRelative> _relative = {};
 }

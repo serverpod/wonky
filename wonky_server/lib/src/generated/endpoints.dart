@@ -15,8 +15,6 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
-    as _izehhkf5;
 import 'package:wonky_server/src/generated/future_calls.dart' as _iwslocjr;
 import 'package:wonky_server/src/generated/platform/ai/models/ai_provider.dart'
     as _i02m7u6n;
@@ -74,6 +72,10 @@ import 'package:wonky_server/src/generated/platform/mcp/ui_bridge/ui_bridge_mess
     as _is78z0de;
 import 'package:wonky_server/src/generated/platform/presence/presence_update.dart'
     as _ipd65of1;
+import 'package:wonky_server/src/generated/platform/revlog/messages/rev_client_message.dart'
+    as _iv4mnr49;
+import 'package:wonky_server/src/generated/platform/revlog/models/rev_page_request.dart'
+    as _iynxab9u;
 import 'package:wonky_server/src/generated/platform/sharing/item_sharing_settings.dart'
     as _i55sl7s1;
 import 'package:wonky_server/src/generated/platform/users/user_preferences_patch.dart'
@@ -120,15 +122,15 @@ import '../platform/users/google_idp_endpoint.dart' as _i3henulz;
 import '../platform/users/user_endpoint.dart' as _iwtyukq6;
 import '../platform/versions/version_endpoint.dart' as _im6cm90k;
 import '../sheets/ai/sheets_ai_endpoint.dart' as _i9apq23f;
+import '../sheets/endpoints/sheets_doc_endpoint.dart' as _izwcpcmx;
 import '../sheets/endpoints/sheets_endpoint.dart' as _izrkvdrt;
-import '../sheets/endpoints/sheets_sync_endpoint.dart' as _iijmdr93;
 import '../sheets/imports/sheets_import_endpoint.dart' as _ixh3mo4r;
 import '../sheets/scripts/script_endpoint.dart' as _in9oll5w;
 import '../sheets/versions/sheets_version_endpoint.dart' as _izzz2y3b;
 import '../slides/ai/slides_ai_endpoint.dart' as _iwzuobfk;
 import '../slides/charts/slides_charts_endpoint.dart' as _iusodta9;
+import '../slides/endpoints/slides_doc_endpoint.dart' as _ifxounnn;
 import '../slides/endpoints/slides_endpoint.dart' as _i90mpuoj;
-import '../slides/endpoints/slides_sync_endpoint.dart' as _i7tlujv0;
 import '../slides/exports/slides_export_endpoint.dart' as _ipawej08;
 import '../slides/present/presentation_endpoint.dart' as _irtlljai;
 import '../slides/themes/slides_themes_endpoint.dart' as _ivwqk6th;
@@ -263,16 +265,16 @@ class Endpoints extends _is.EndpointDispatch {
           'sheetsAi',
           null,
         ),
+      'sheetsDoc': _izwcpcmx.SheetsDocEndpoint()
+        ..initialize(
+          server,
+          'sheetsDoc',
+          null,
+        ),
       'sheets': _izrkvdrt.SheetsEndpoint()
         ..initialize(
           server,
           'sheets',
-          null,
-        ),
-      'sheetsSync': _iijmdr93.SheetsSyncEndpoint()
-        ..initialize(
-          server,
-          'sheetsSync',
           null,
         ),
       'sheetsImport': _ixh3mo4r.SheetsImportEndpoint()
@@ -305,16 +307,16 @@ class Endpoints extends _is.EndpointDispatch {
           'slidesCharts',
           null,
         ),
+      'slidesDoc': _ifxounnn.SlidesDocEndpoint()
+        ..initialize(
+          server,
+          'slidesDoc',
+          null,
+        ),
       'slides': _i90mpuoj.SlidesEndpoint()
         ..initialize(
           server,
           'slides',
-          null,
-        ),
-      'slidesSync': _i7tlujv0.SlidesSyncEndpoint()
-        ..initialize(
-          server,
-          'slidesSync',
           null,
         ),
       'slidesExport': _ipawej08.SlidesExportEndpoint()
@@ -3166,6 +3168,16 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<_is.UuidValue?>(),
               nullable: true,
             ),
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
+              type: _is.getType<_is.UuidValue?>(),
+              nullable: true,
+            ),
+            'initialize': _is.ParameterDescription(
+              name: 'initialize',
+              type: _is.getType<bool?>(),
+              nullable: true,
+            ),
           },
           call:
               (
@@ -3177,6 +3189,8 @@ class Endpoints extends _is.EndpointDispatch {
                     params['parentUuid'],
                     params['name'],
                     params['templateUuid'],
+                    fileUuid: params['fileUuid'],
+                    initialize: params['initialize'],
                   ),
         ),
         'createFileUpload': _is.MethodConnector(
@@ -5008,15 +5022,50 @@ class Endpoints extends _is.EndpointDispatch {
         ),
       },
     );
-    connectors['sheets'] = _is.EndpointConnector(
-      name: 'sheets',
-      endpoint: endpoints['sheets']!,
+    connectors['sheetsDoc'] = _is.EndpointConnector(
+      name: 'sheetsDoc',
+      endpoint: endpoints['sheetsDoc']!,
       methodConnectors: {
-        'reserveSpaces': _is.MethodConnector(
-          name: 'reserveSpaces',
+        'page': _is.MethodConnector(
+          name: 'page',
           params: {
-            'count': _is.ParameterDescription(
-              name: 'count',
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'request': _is.ParameterDescription(
+              name: 'request',
+              type: _is.getType<_iynxab9u.RevPageRequest>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['sheetsDoc'] as _izwcpcmx.SheetsDocEndpoint).page(
+                    session,
+                    params['fileUuid'],
+                    params['request'],
+                  ),
+        ),
+        'ops': _is.MethodConnector(
+          name: 'ops',
+          params: {
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'fromRevision': _is.ParameterDescription(
+              name: 'fromRevision',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'toRevision': _is.ParameterDescription(
+              name: 'toRevision',
               type: _is.getType<int>(),
               nullable: false,
             ),
@@ -5025,56 +5074,109 @@ class Endpoints extends _is.EndpointDispatch {
               (
                 _is.Session session,
                 Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['sheetsDoc'] as _izwcpcmx.SheetsDocEndpoint).ops(
+                    session,
+                    params['fileUuid'],
+                    params['fromRevision'],
+                    params['toRevision'],
+                  ),
+        ),
+        'info': _is.MethodConnector(
+          name: 'info',
+          params: {
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['sheetsDoc'] as _izwcpcmx.SheetsDocEndpoint).info(
+                    session,
+                    params['fileUuid'],
+                  ),
+        ),
+        'connect': _is.MethodStreamConnector(
+          name: 'connect',
+          params: {
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'knownRevision': _is.ParameterDescription(
+              name: 'knownRevision',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'tabId': _is.ParameterDescription(
+              name: 'tabId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          streamParams: {
+            'input': _is.StreamParameterDescription<_iv4mnr49.RevClientMessage>(
+              name: 'input',
+              nullable: false,
+            ),
+          },
+          returnType: _is.MethodStreamReturnType.streamType,
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+                Map<String, Stream> streamParams,
+              ) => (endpoints['sheetsDoc'] as _izwcpcmx.SheetsDocEndpoint)
+                  .connect(
+                    session,
+                    params['fileUuid'],
+                    params['knownRevision'],
+                    params['tabId'],
+                    streamParams['input']!.cast<_iv4mnr49.RevClientMessage>(),
+                  ),
+        ),
+      },
+    );
+    connectors['sheets'] = _is.EndpointConnector(
+      name: 'sheets',
+      endpoint: endpoints['sheets']!,
+      methodConnectors: {
+        'getUserProperties': _is.MethodConnector(
+          name: 'getUserProperties',
+          params: {
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
               ) async => (endpoints['sheets'] as _izrkvdrt.SheetsEndpoint)
-                  .reserveSpaces(
+                  .getUserProperties(
                     session,
-                    params['count'],
+                    params['fileUuid'],
                   ),
         ),
-        'subscribe': _is.MethodConnector(
-          name: 'subscribe',
+        'setUserProperties': _is.MethodConnector(
+          name: 'setUserProperties',
           params: {
-            'itemUuid': _is.ParameterDescription(
-              name: 'itemUuid',
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
               type: _is.getType<_is.UuidValue>(),
               nullable: false,
             ),
-          },
-          call:
-              (
-                _is.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['sheets'] as _izrkvdrt.SheetsEndpoint).subscribe(
-                    session,
-                    params['itemUuid'],
-                  ),
-        ),
-        'unsubscribe': _is.MethodConnector(
-          name: 'unsubscribe',
-          params: {
-            'itemUuid': _is.ParameterDescription(
-              name: 'itemUuid',
-              type: _is.getType<_is.UuidValue>(),
-              nullable: false,
-            ),
-          },
-          call:
-              (
-                _is.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['sheets'] as _izrkvdrt.SheetsEndpoint).unsubscribe(
-                    session,
-                    params['itemUuid'],
-                  ),
-        ),
-        'ensureSubscribed': _is.MethodConnector(
-          name: 'ensureSubscribed',
-          params: {
-            'spaces': _is.ParameterDescription(
-              name: 'spaces',
-              type: _is.getType<List<_is.UuidValue>>(),
+            'changes': _is.ParameterDescription(
+              name: 'changes',
+              type: _is.getType<Map<String, String?>>(),
               nullable: false,
             ),
           },
@@ -5083,28 +5185,10 @@ class Endpoints extends _is.EndpointDispatch {
                 _is.Session session,
                 Map<String, dynamic> params,
               ) async => (endpoints['sheets'] as _izrkvdrt.SheetsEndpoint)
-                  .ensureSubscribed(
+                  .setUserProperties(
                     session,
-                    params['spaces'],
-                  ),
-        ),
-        'spaceStats': _is.MethodConnector(
-          name: 'spaceStats',
-          params: {
-            'itemUuid': _is.ParameterDescription(
-              name: 'itemUuid',
-              type: _is.getType<_is.UuidValue>(),
-              nullable: false,
-            ),
-          },
-          call:
-              (
-                _is.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['sheets'] as _izrkvdrt.SheetsEndpoint).spaceStats(
-                    session,
-                    params['itemUuid'],
+                    params['fileUuid'],
+                    params['changes'],
                   ),
         ),
         'namedFunctions': _is.MethodConnector(
@@ -5274,44 +5358,6 @@ class Endpoints extends _is.EndpointDispatch {
                     session,
                     params['itemUuid'],
                     params['url'],
-                  ),
-        ),
-      },
-    );
-    connectors['sheetsSync'] = _is.EndpointConnector(
-      name: 'sheetsSync',
-      endpoint: endpoints['sheetsSync']!,
-      methodConnectors: {
-        'sync': _is.MethodStreamConnector(
-          name: 'sync',
-          params: {
-            'once': _is.ParameterDescription(
-              name: 'once',
-              type: _is.getType<bool>(),
-              nullable: false,
-            ),
-          },
-          streamParams: {
-            'changes':
-                _is.StreamParameterDescription<
-                  _izehhkf5.OfflineSyncStreamEvent
-                >(
-                  name: 'changes',
-                  nullable: false,
-                ),
-          },
-          returnType: _is.MethodStreamReturnType.streamType,
-          call:
-              (
-                _is.Session session,
-                Map<String, dynamic> params,
-                Map<String, Stream> streamParams,
-              ) => (endpoints['sheetsSync'] as _iijmdr93.SheetsSyncEndpoint)
-                  .sync(
-                    session,
-                    changes: streamParams['changes']!
-                        .cast<_izehhkf5.OfflineSyncStreamEvent>(),
-                    once: params['once'],
                   ),
         ),
       },
@@ -6217,15 +6263,50 @@ class Endpoints extends _is.EndpointDispatch {
         ),
       },
     );
-    connectors['slides'] = _is.EndpointConnector(
-      name: 'slides',
-      endpoint: endpoints['slides']!,
+    connectors['slidesDoc'] = _is.EndpointConnector(
+      name: 'slidesDoc',
+      endpoint: endpoints['slidesDoc']!,
       methodConnectors: {
-        'reserveSpaces': _is.MethodConnector(
-          name: 'reserveSpaces',
+        'page': _is.MethodConnector(
+          name: 'page',
           params: {
-            'count': _is.ParameterDescription(
-              name: 'count',
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'request': _is.ParameterDescription(
+              name: 'request',
+              type: _is.getType<_iynxab9u.RevPageRequest>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['slidesDoc'] as _ifxounnn.SlidesDocEndpoint).page(
+                    session,
+                    params['fileUuid'],
+                    params['request'],
+                  ),
+        ),
+        'ops': _is.MethodConnector(
+          name: 'ops',
+          params: {
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'fromRevision': _is.ParameterDescription(
+              name: 'fromRevision',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'toRevision': _is.ParameterDescription(
+              name: 'toRevision',
               type: _is.getType<int>(),
               nullable: false,
             ),
@@ -6234,17 +6315,19 @@ class Endpoints extends _is.EndpointDispatch {
               (
                 _is.Session session,
                 Map<String, dynamic> params,
-              ) async => (endpoints['slides'] as _i90mpuoj.SlidesEndpoint)
-                  .reserveSpaces(
+              ) async =>
+                  (endpoints['slidesDoc'] as _ifxounnn.SlidesDocEndpoint).ops(
                     session,
-                    params['count'],
+                    params['fileUuid'],
+                    params['fromRevision'],
+                    params['toRevision'],
                   ),
         ),
-        'subscribe': _is.MethodConnector(
-          name: 'subscribe',
+        'info': _is.MethodConnector(
+          name: 'info',
           params: {
-            'itemUuid': _is.ParameterDescription(
-              name: 'itemUuid',
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
               type: _is.getType<_is.UuidValue>(),
               nullable: false,
             ),
@@ -6254,68 +6337,57 @@ class Endpoints extends _is.EndpointDispatch {
                 _is.Session session,
                 Map<String, dynamic> params,
               ) async =>
-                  (endpoints['slides'] as _i90mpuoj.SlidesEndpoint).subscribe(
+                  (endpoints['slidesDoc'] as _ifxounnn.SlidesDocEndpoint).info(
                     session,
-                    params['itemUuid'],
+                    params['fileUuid'],
                   ),
         ),
-        'unsubscribe': _is.MethodConnector(
-          name: 'unsubscribe',
+        'connect': _is.MethodStreamConnector(
+          name: 'connect',
           params: {
-            'itemUuid': _is.ParameterDescription(
-              name: 'itemUuid',
+            'fileUuid': _is.ParameterDescription(
+              name: 'fileUuid',
               type: _is.getType<_is.UuidValue>(),
               nullable: false,
             ),
-          },
-          call:
-              (
-                _is.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['slides'] as _i90mpuoj.SlidesEndpoint).unsubscribe(
-                    session,
-                    params['itemUuid'],
-                  ),
-        ),
-        'ensureSubscribed': _is.MethodConnector(
-          name: 'ensureSubscribed',
-          params: {
-            'spaces': _is.ParameterDescription(
-              name: 'spaces',
-              type: _is.getType<List<_is.UuidValue>>(),
+            'knownRevision': _is.ParameterDescription(
+              name: 'knownRevision',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'tabId': _is.ParameterDescription(
+              name: 'tabId',
+              type: _is.getType<String>(),
               nullable: false,
             ),
           },
-          call:
-              (
-                _is.Session session,
-                Map<String, dynamic> params,
-              ) async => (endpoints['slides'] as _i90mpuoj.SlidesEndpoint)
-                  .ensureSubscribed(
-                    session,
-                    params['spaces'],
-                  ),
-        ),
-        'spaceStats': _is.MethodConnector(
-          name: 'spaceStats',
-          params: {
-            'itemUuid': _is.ParameterDescription(
-              name: 'itemUuid',
-              type: _is.getType<_is.UuidValue>(),
+          streamParams: {
+            'input': _is.StreamParameterDescription<_iv4mnr49.RevClientMessage>(
+              name: 'input',
               nullable: false,
             ),
           },
+          returnType: _is.MethodStreamReturnType.streamType,
           call:
               (
                 _is.Session session,
                 Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['slides'] as _i90mpuoj.SlidesEndpoint).spaceStats(
+                Map<String, Stream> streamParams,
+              ) => (endpoints['slidesDoc'] as _ifxounnn.SlidesDocEndpoint)
+                  .connect(
                     session,
-                    params['itemUuid'],
+                    params['fileUuid'],
+                    params['knownRevision'],
+                    params['tabId'],
+                    streamParams['input']!.cast<_iv4mnr49.RevClientMessage>(),
                   ),
         ),
+      },
+    );
+    connectors['slides'] = _is.EndpointConnector(
+      name: 'slides',
+      endpoint: endpoints['slides']!,
+      methodConnectors: {
         'revertChange': _is.MethodConnector(
           name: 'revertChange',
           params: {
@@ -6352,44 +6424,6 @@ class Endpoints extends _is.EndpointDispatch {
                   .reapplyChange(
                     session,
                     params['changeId'],
-                  ),
-        ),
-      },
-    );
-    connectors['slidesSync'] = _is.EndpointConnector(
-      name: 'slidesSync',
-      endpoint: endpoints['slidesSync']!,
-      methodConnectors: {
-        'sync': _is.MethodStreamConnector(
-          name: 'sync',
-          params: {
-            'once': _is.ParameterDescription(
-              name: 'once',
-              type: _is.getType<bool>(),
-              nullable: false,
-            ),
-          },
-          streamParams: {
-            'changes':
-                _is.StreamParameterDescription<
-                  _izehhkf5.OfflineSyncStreamEvent
-                >(
-                  name: 'changes',
-                  nullable: false,
-                ),
-          },
-          returnType: _is.MethodStreamReturnType.streamType,
-          call:
-              (
-                _is.Session session,
-                Map<String, dynamic> params,
-                Map<String, Stream> streamParams,
-              ) => (endpoints['slidesSync'] as _i7tlujv0.SlidesSyncEndpoint)
-                  .sync(
-                    session,
-                    changes: streamParams['changes']!
-                        .cast<_izehhkf5.OfflineSyncStreamEvent>(),
-                    once: params['once'],
                   ),
         ),
       },
@@ -7420,8 +7454,6 @@ class Endpoints extends _is.EndpointDispatch {
       },
     );
     modules['serverpod_auth_idp'] = _iais.Endpoints()
-      ..initializeEndpoints(server);
-    modules['serverpod_offline_sync'] = _izehhkf5.Endpoints()
       ..initializeEndpoints(server);
     modules['serverpod_auth_core'] = _iacs.Endpoints()
       ..initializeEndpoints(server);

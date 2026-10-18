@@ -1,0 +1,31 @@
+### A layout of a master (Slides 02 §3.2, 05 §4). Its content
+### (placeholders, decorations) are SlideElement rows owned by the layout.
+class: SlideLayout
+table: slide_layout
+serverOnly: true
+fields:
+  ### SlidesIds.themePartId for copied themes.
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  master: SlideMaster?, relation(onDelete=Cascade, deferred)
+  ### "Title and content".
+  name: String
+  ### Built-in layout key (05 §4): maps layouts between themes.
+  key: String?
+  ### Order among the layouts of the master.
+  sortKey: String
+  ### null = master background.
+  backgroundJson: String?
+  ### Don't draw the master's non-placeholder elements.
+  hideMasterElements: bool, default=false
+  ### Not offered in the layout picker.
+  hidden: bool, default=false
+  createdAt: DateTime, defaultModel=now
+indexes:
+  slide_layout_file_idx:
+    fields: fileId, id
+  slide_layout_master_idx:
+    fields: masterId

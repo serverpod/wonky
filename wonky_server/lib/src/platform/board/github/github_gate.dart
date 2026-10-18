@@ -448,6 +448,17 @@ abstract final class GithubGate {
         taskId: linked?.task.id ?? row.taskId,
         updatedAt: now,
       ),
+      columns: (t) => [
+        t.authorLogin,
+        t.headSha,
+        t.state,
+        t.gateState,
+        t.gateReason,
+        t.gateFirstFailedAt,
+        t.gateCommentId,
+        t.taskId,
+        t.updatedAt,
+      ],
     );
 
     if (decision.passed && row.taskId != null && !pr.draft) {
@@ -500,6 +511,7 @@ abstract final class GithubGate {
         session,
         task.copyWith(prAuthorLogin: pr.author),
         transaction: tx,
+        columns: (t) => [t.prAuthorLogin],
       );
       return (task: updated, isNew: false);
     }
@@ -513,6 +525,7 @@ abstract final class GithubGate {
         prAuthorLogin: pr.author,
       ),
       transaction: tx,
+      columns: (t) => [t.status, t.prNumber, t.pullRequestUrl, t.prAuthorLogin],
     );
     await BoardComments.systemRow(
       session,
@@ -664,10 +677,11 @@ Pull requests without a valid task are closed after $days days (this one on $dat
           await BoardPullRequest.db.updateRow(
             session,
             row.copyWith(state: 'closed', updatedAt: now),
+            columns: (t) => [t.state, t.updatedAt],
           );
         });
         count++;
-      } on Exception catch (e) {
+      } on Object catch (e) {
         session.log(
           'board.github: auto-close of #${row.prNumber} failed: $e',
           level: LogLevel.warning,

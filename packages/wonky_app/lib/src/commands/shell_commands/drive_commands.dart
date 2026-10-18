@@ -55,9 +55,13 @@ List<Command<CommandArgs>> driveCommands(ShellServices s) {
           name = await showNewFolderDialog(c, s);
           if (name == null) return const CommandResult.cancelled();
         }
+        // An explicit `parentUuid: null` is My Drive's root (the Move
+        // dialog); a missing one is the open folder.
         final parentArg = a.string('parentUuid');
         final parent = parentArg != null
             ? UuidValue.fromString(parentArg)
+            : a.values.containsKey('parentUuid')
+            ? null
             : s.currentFolder.value?.uuid;
         final v = await drive.createFolder(parentUuid: parent, name: name);
         ctx.record(
@@ -123,6 +127,48 @@ List<Command<CommandArgs>> driveCommands(ShellServices s) {
         );
         changed([v]);
         return CommandResult.ok({'uuid': v.uuid.uuid, 'name': v.name});
+      },
+    ),
+    shellCommand(
+      // The details panel's description field (suite 05 §3.1; CQ-54).
+      'shell.drive.setDescription',
+      title: (l) => l.cmdSetDescription,
+      icon: LucideIcons.notebookPen,
+      undoable: true,
+      undoTarget: UndoTarget.shell,
+      category: (l) => l.categoryDrive,
+      args: const JsonSchema.object(
+        properties: {
+          ...targetProps,
+          'description': JsonSchema.nullable(
+            JsonSchema.string(maxLength: 4000),
+          ),
+        },
+        required: ['description'],
+      ),
+      enabled: (ctx, a) =>
+          hasExplicitTargets(a) ||
+          (singleTarget(s, a)?.let((i) => i.canEdit && !i.isTrashed) ?? false),
+      run: (ctx, a) async {
+        final targets = await fetchTargets(s, a);
+        if (targets.length != 1) return const CommandResult.cancelled();
+        final item = targets.single;
+        final text = a.string('description')?.trim();
+        final description = text == null || text.isEmpty ? null : text;
+        if (description == item.description) {
+          return const CommandResult.cancelled();
+        }
+        final v = await drive.updateDescription(item.uuid, description);
+        ctx.record(
+          DriveUndoEntry(
+            op: DriveUndoOp.description,
+            items: [item.uuid.uuid],
+            before: {item.uuid.uuid: item.description},
+            after: {item.uuid.uuid: v.description},
+          ),
+        );
+        changed([v]);
+        return CommandResult.ok({'uuid': v.uuid.uuid});
       },
     ),
     shellCommand(

@@ -41,4 +41,14 @@ class FilePreviewHost {
   UuidValue? siblingsOf;
   List<DriveItemView> siblings = const [];
   String? siblingsFolderName;
+
+  /// When [siblings] were listed: stepping through a folder lists it at
+  /// most once per [siblingsMaxAge] (DR-6).
+  DateTime? siblingsListedAt;
+
+  /// How long a folder listing is reused while stepping.
+  static const siblingsMaxAge = Duration(seconds: 30);
+
+  /// The clock of [siblingsListedAt] (tests).
+  DateTime Function() now = DateTime.now;
 }

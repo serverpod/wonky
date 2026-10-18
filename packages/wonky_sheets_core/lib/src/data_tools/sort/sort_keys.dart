@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../content/cell_content.dart';
+import '../../formula/values/collation.dart';
 
 /// Sort ordering of Google Sheets (07 §2.3), stable when combined with the
 /// original index:
@@ -46,7 +47,7 @@ abstract final class SortKeys {
         case NumberValue(:final number):
           c = number.compareTo((b as NumberValue).number);
         case TextValue(text: final x):
-          c = compareText(x, (b as TextValue).text);
+          c = Collation.compare(x, (b as TextValue).text);
         case BoolValue(:final value):
           final w = (b as BoolValue).value;
           c = value == w ? 0 : (value ? 1 : -1);
@@ -58,108 +59,6 @@ abstract final class SortKeys {
     }
     return ascending ? c : -c;
   }
-
-  /// Text comparison: collation key, then ordinal.
-  static int compareText(String a, String b) {
-    if (identical(a, b) || a == b) return 0;
-    final c = collationKey(a).compareTo(collationKey(b));
-    return c != 0 ? c : a.compareTo(b);
-  }
-
-  static final Map<String, String> _keyCache = {};
-
-  /// The deterministic collation key of [s] (cached for repeated values).
-  static String collationKey(String s) {
-    final cached = _keyCache[s];
-    if (cached != null) return cached;
-    final k = _computeKey(s);
-    if (_keyCache.length > 50000) _keyCache.clear();
-    _keyCache[s] = k;
-    return k;
-  }
-
-  static String _computeKey(String s) {
-    var ascii = true;
-    for (var i = 0; i < s.length; i++) {
-      if (s.codeUnitAt(i) >= 0x80) {
-        ascii = false;
-        break;
-      }
-    }
-    if (ascii) return s.toLowerCase();
-    final b = StringBuffer();
-    for (final r in s.toLowerCase().runes) {
-      if (r >= 0x300 && r <= 0x36f) continue; // combining diacritical marks
-      if (r >= 0x1ab0 && r <= 0x1aff) continue;
-      if (r >= 0x1dc0 && r <= 0x1dff) continue;
-      if (r >= 0x20d0 && r <= 0x20ff) continue;
-      if (r >= 0xfe20 && r <= 0xfe2f) continue;
-      final m = _fold[r];
-      if (m != null) {
-        b.write(m);
-      } else if (r >= 0xff01 && r <= 0xff5e) {
-        b.writeCharCode(
-          r - 0xfee0,
-        ); // fullwidth ASCII (compatibility decomposition)
-      } else if (r == 0x3000) {
-        b.write(' ');
-      } else {
-        b.writeCharCode(r);
-      }
-    }
-    return b.toString();
-  }
-
-  static final Map<int, String> _fold = () {
-    final m = <int, String>{};
-    void add(String from, String to) {
-      final f = from.runes.toList();
-      for (var i = 0; i < f.length; i++) {
-        m[f[i]] = to;
-      }
-    }
-
-    add('àáâãäåāăąǎǟǡǻȁȃȧạảấầẩẫậắằẳẵặ', 'a');
-    add('æǣǽ', 'ae');
-    add('çćĉċč', 'c');
-    add('ďđ', 'd');
-    add('èéêëēĕėęěȅȇȩẹẻẽếềểễệ', 'e');
-    add('ĝğġģǧǵ', 'g');
-    add('ĥħ', 'h');
-    add('ìíîïĩīĭįıǐȉȋịỉ', 'i');
-    add('ĳ', 'ij');
-    add('ĵǰ', 'j');
-    add('ķǩ', 'k');
-    add('ĺļľŀł', 'l');
-    add('ñńņňŉǹ', 'n');
-    add('òóôõöøōŏőơǒǫǭǿȍȏȫȭȯȱọỏốồổỗộớờởỡợ', 'o');
-    add('œ', 'oe');
-    add('ŕŗřȑȓ', 'r');
-    add('śŝşšșſ', 's');
-    add('ß', 'ss');
-    add('ţťŧț', 't');
-    add('þ', 'th');
-    add('ùúûüũūŭůűųưǔǖǘǚǜȕȗụủứừửữự', 'u');
-    add('ŵẁẃẅ', 'w');
-    add('ýÿŷỳỵỷỹ', 'y');
-    add('źżžƶ', 'z');
-    add('ﬀ', 'ff');
-    add('ﬁ', 'fi');
-    add('ﬂ', 'fl');
-    add('ﬃ', 'ffi');
-    add('ﬄ', 'ffl');
-    add('ά', 'α');
-    add('έ', 'ε');
-    add('ή', 'η');
-    add('ίϊΐ', 'ι');
-    add('ό', 'ο');
-    add('ύϋΰ', 'υ');
-    add('ώ', 'ω');
-    add('ς', 'σ');
-    add('ё', 'е');
-    add('й', 'и');
-    return m;
-  }();
 }
 
 /// A typed snapshot of one sort key column (07 §2.7 step 1): per row the
@@ -186,7 +85,7 @@ final class SortKeyColumn {
         case TextValue(:final text):
           if (g == SortKeys.text) {
             texts[i] = text;
-            keys[i] = SortKeys.collationKey(text);
+            keys[i] = Collation.key(text);
           }
         case EmptyValue():
           break;

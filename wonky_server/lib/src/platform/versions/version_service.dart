@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 
@@ -16,12 +18,18 @@ class CapturedVersion {
     this.revision,
     this.snapshotFileId,
     this.sizeBytes = 0,
+    this.index,
   });
 
   final VersionStorage storageKind;
   final int? revision;
   final UuidValue? snapshotFileId;
   final int sizeBytes;
+
+  /// Provider data computed during the capture for
+  /// [VersionProvider.afterCapture] (e.g. per-sheet counts), so it never
+  /// re-reads what it just stored.
+  final Object? index;
 }
 
 /// Result of a provider restore.
@@ -34,6 +42,11 @@ class RestoredVersion {
 /// Per-app version support (specs/07 §5): capture, restore, discard.
 abstract interface class VersionProvider {
   DriveItemKind get kind;
+
+  /// Called before the capture state is read: writes edit bookkeeping that
+  /// is still pending (Write batches it), so the version's authors and the
+  /// dirty flag match what [capture] stores.
+  Future<void> beforeCapture(Session session, DriveItem item);
 
   /// Captures the current state of [item].
   Future<CapturedVersion> capture(Session session, DriveItem item);
@@ -49,11 +62,13 @@ abstract interface class VersionProvider {
   /// Called when a version is deleted by thinning (free storage).
   Future<void> discard(Session session, ItemVersion version);
 
-  /// Called after a version row was inserted (indexes, snapshots).
+  /// Called after a version row was inserted (indexes, snapshots), with
+  /// what [capture] returned.
   Future<void> afterCapture(
     Session session,
     DriveItem item,
     ItemVersion version,
+    CapturedVersion captured,
   );
 }
 
@@ -64,6 +79,13 @@ abstract final class VersionService {
 
   /// At most one auto version per this period of continuous editing.
   static const maxContinuous = Duration(minutes: 30);
+
+  /// A capture claim older than this is taken over (a crashed run); a
+  /// failed capture is retried after it.
+  static const claimTimeout = Duration(minutes: 10);
+
+  /// Captures per [captureDue] run.
+  static const maxCapturesPerRun = 200;
 
   static final Map<DriveItemKind, VersionProvider> _providers = {};
 
@@ -84,49 +106,61 @@ abstract final class VersionService {
     DriveItem item,
     int userId, {
     int? revision,
+  }) => recordEdits(session, item, {userId}, revision: revision);
+
+  /// Records edits by [userIds] for the capture policy in one atomic
+  /// upsert: concurrent recorders (instances, hooks, a capture clearing the
+  /// state) never lose an editor or revert the dirty flag.
+  static Future<void> recordEdits(
+    Session session,
+    DriveItem item,
+    Set<int> userIds, {
+    int? revision,
   }) async {
-    final now = nowUtc();
-    final state = await ItemVersionState.db.findFirstRow(
-      session,
-      where: (t) => t.itemId.equals(item.id!),
-    );
-    if (state == null) {
-      try {
-        await ItemVersionState.db.insertRow(
-          session,
-          ItemVersionState(
-            itemId: item.id!,
-            lastEditAt: now,
-            dirtySince: now,
-            editorsSinceLastVersion: [userId],
-            lastRevision: revision,
-          ),
-        );
-        return;
-      } on DatabaseException {
-        // Concurrent insert: fall through to update.
-      }
-    }
-    final current =
-        state ??
-        await ItemVersionState.db.findFirstRow(
-          session,
-          where: (t) => t.itemId.equals(item.id!),
-        );
-    if (current == null) return;
-    final editors = {...current.editorsSinceLastVersion, userId}.toList();
-    await ItemVersionState.db.updateRow(
-      session,
-      current.copyWith(
-        lastEditAt: now,
-        dirtySince: current.dirtySince ?? now,
-        editorsSinceLastVersion: editors,
-        lastRevision: revision ?? current.lastRevision,
-      ),
+    if (userIds.isEmpty) return;
+    await session.db.unsafeExecute(
+      r'''
+      INSERT INTO item_version_state
+        ("itemId", "lastEditAt", "dirtySince", "editorsSinceLastVersion",
+         "lastRevision")
+      VALUES (@item, @now, @now, @editors::json, @revision)
+      ON CONFLICT ("itemId") DO UPDATE SET
+        "lastEditAt" = GREATEST(item_version_state."lastEditAt",
+                                EXCLUDED."lastEditAt"),
+        "dirtySince" = COALESCE(item_version_state."dirtySince",
+                                EXCLUDED."dirtySince"),
+        "editorsSinceLastVersion" = (
+          SELECT COALESCE(json_agg(u.e ORDER BY u.o), '[]'::json) FROM (
+            SELECT x.e, min(x.o) AS o FROM (
+              SELECT a.v::bigint AS e, a.n AS o
+              FROM json_array_elements_text(
+                item_version_state."editorsSinceLastVersion")
+                WITH ORDINALITY AS a(v, n)
+              UNION ALL
+              SELECT b.v::bigint, 1000000 + b.n
+              FROM json_array_elements_text(
+                EXCLUDED."editorsSinceLastVersion")
+                WITH ORDINALITY AS b(v, n)
+            ) x GROUP BY x.e
+          ) u),
+        "lastRevision" = COALESCE(EXCLUDED."lastRevision",
+                                  item_version_state."lastRevision")
+      ''',
+      parameters: QueryParameters.named({
+        'item': item.id!,
+        'now': nowUtc(),
+        'editors': jsonEncode(userIds.toList()),
+        'revision': revision,
+      }),
     );
   }
 
   /// Captures a version of [item] now.
+  ///
+  /// The capture state is read before the provider captures, and the dirty
+  /// flag is cleared only when no edit was recorded meanwhile (`lastEditAt`
+  /// unchanged); otherwise the item stays dirty from the capture's start,
+  /// so those edits get their own version.
   static Future<ItemVersion> capture(
     Session session,
     DriveItem item, {
@@ -135,11 +169,13 @@ abstract final class VersionService {
     int? createdById,
   }) async {
     final provider = providerFor(item);
-    final captured = await provider.capture(session, item);
+    await provider.beforeCapture(session, item);
+    final started = nowUtc();
     final state = await ItemVersionState.db.findFirstRow(
       session,
       where: (t) => t.itemId.equals(item.id!),
     );
+    final captured = await provider.capture(session, item);
     final now = nowUtc();
     final version = await ItemVersion.db.insertRow(
       session,
@@ -157,30 +193,45 @@ abstract final class VersionService {
       ),
     );
     if (state != null) {
-      await ItemVersionState.db.updateRow(
+      final cleared = await ItemVersionState.db.updateWhere(
         session,
-        ItemVersionState(
-          id: state.id,
-          itemId: state.itemId,
-          lastEditAt: state.lastEditAt,
-          dirtySince: null,
-          lastVersionAt: now,
-          editorsSinceLastVersion: const [],
-          lastRevision: state.lastRevision,
-        ),
+        columnValues: (t) => [
+          t.dirtySince(null),
+          t.editorsSinceLastVersion(const []),
+          t.lastVersionAt(now),
+          t.capturingSince(null),
+        ],
+        where: (t) =>
+            t.id.equals(state.id!) & t.lastEditAt.equals(state.lastEditAt),
       );
+      if (cleared.isEmpty) {
+        // Edited during the capture: still dirty, counted from its start.
+        await ItemVersionState.db.updateWhere(
+          session,
+          columnValues: (t) => [
+            t.dirtySince(started),
+            t.lastVersionAt(now),
+            t.capturingSince(null),
+          ],
+          where: (t) => t.id.equals(state.id!),
+        );
+      }
     } else {
-      await ItemVersionState.db.insertRow(
-        session,
-        ItemVersionState(
-          itemId: item.id!,
-          lastEditAt: now,
-          lastVersionAt: now,
-          editorsSinceLastVersion: const [],
-        ),
-      );
+      try {
+        await ItemVersionState.db.insertRow(
+          session,
+          ItemVersionState(
+            itemId: item.id!,
+            lastEditAt: now,
+            lastVersionAt: now,
+            editorsSinceLastVersion: const [],
+          ),
+        );
+      } on DatabaseException {
+        // Edited meanwhile: the recorded edit keeps the item dirty.
+      }
     }
-    await provider.afterCapture(session, item, version);
+    await provider.afterCapture(session, item, version, captured);
     return version;
   }
 
@@ -304,23 +355,15 @@ abstract final class VersionService {
     final clean = name == null || name.trim().isEmpty ? null : _cleanName(name);
     final updated = await ItemVersion.db.updateRow(
       session,
-      ItemVersion(
-        id: version.id,
-        itemId: version.itemId,
+      version.copyWith(
         kind: clean == null
             ? (version.kind == VersionKind.named
                   ? VersionKind.auto
                   : version.kind)
             : VersionKind.named,
         name: clean,
-        createdAt: version.createdAt,
-        createdById: version.createdById,
-        authors: version.authors,
-        storageKind: version.storageKind,
-        revision: version.revision,
-        snapshotFileId: version.snapshotFileId,
-        sizeBytes: version.sizeBytes,
       ),
+      columns: (t) => [t.kind, t.name],
     );
     return (await viewsOf(session, item, [updated])).single;
   }
@@ -386,24 +429,36 @@ abstract final class VersionService {
   /// Capture policy job (every minute): an auto version after
   /// [idleBeforeCapture] of inactivity following edits, and at most every
   /// [maxContinuous] during continuous editing.
-  static Future<int> captureDue(Session session, {DateTime? now}) async {
+  ///
+  /// Items are claimed one at a time (`capturingSince`, `SKIP LOCKED`), so
+  /// overlapping runs (a run longer than a minute, several instances)
+  /// never capture the same item twice. The claim of a failed capture
+  /// expires after [claimTimeout], which is when it is retried.
+  static Future<int> captureDue(
+    Session session, {
+    DateTime? now,
+    Duration budget = const Duration(seconds: 50),
+  }) async {
     final at = now ?? nowUtc();
-    final due = await ItemVersionState.db.find(
-      session,
-      where: (t) =>
-          t.dirtySince.notEquals(null) &
-          ((t.lastEditAt <= at.subtract(idleBeforeCapture)) |
-              (t.dirtySince <= at.subtract(maxContinuous))),
-      limit: 200,
-    );
+    final watch = Stopwatch()..start();
     var captured = 0;
-    for (final state in due) {
-      final item = await DriveItem.db.findById(session, state.itemId);
-      if (item == null || !_providers.containsKey(item.kind)) continue;
+    for (var i = 0; i < maxCapturesPerRun && watch.elapsed < budget; i++) {
+      final itemId = await _claimDue(session, at);
+      if (itemId == null) break;
+      final item = await DriveItem.db.findById(session, itemId);
+      if (item == null || !_providers.containsKey(item.kind)) {
+        // Nothing to capture: clean, so it isn't claimed again.
+        await ItemVersionState.db.updateWhere(
+          session,
+          columnValues: (t) => [t.dirtySince(null), t.capturingSince(null)],
+          where: (t) => t.itemId.equals(itemId),
+        );
+        continue;
+      }
       try {
         await capture(session, item, kind: VersionKind.auto);
         captured++;
-      } on Exception catch (e, st) {
+      } on Object catch (e, st) {
         session.log(
           'Version capture of ${item.uuid} failed: $e',
           level: LogLevel.error,
@@ -414,35 +469,110 @@ abstract final class VersionService {
     return captured;
   }
 
+  /// Claims the item that is due longest, or null when none is.
+  static Future<int?> _claimDue(Session session, DateTime at) async {
+    final claimed = await session.db.unsafeQuery(
+      r'''
+      UPDATE item_version_state SET "capturingSince" = @at
+      WHERE id = (
+        SELECT id FROM item_version_state
+        WHERE "dirtySince" IS NOT NULL
+          AND ("lastEditAt" <= @idle OR "dirtySince" <= @continuous)
+          AND ("capturingSince" IS NULL OR "capturingSince" < @stale)
+        ORDER BY "dirtySince"
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED)
+      RETURNING "itemId"
+      ''',
+      parameters: QueryParameters.named({
+        'at': at,
+        'idle': at.subtract(idleBeforeCapture),
+        'continuous': at.subtract(maxContinuous),
+        'stale': at.subtract(claimTimeout),
+      }),
+    );
+    return claimed.isEmpty ? null : claimed.first[0]! as int;
+  }
+
+  /// Items whose versions [thin] looks at per round.
+  static const thinBatch = 100;
+
   /// Nightly thinning of auto versions and restore points: keep everything
   /// for 7 days, then one per hour up to 30 days, then one per day. Named
-  /// versions are never thinned.
-  static Future<int> thin(Session session, {DateTime? now}) async {
+  /// versions are never thinned. Works through the items in rounds of
+  /// [thinBatch] (keyset on the item id) until done or [budget] is spent.
+  static Future<int> thin(
+    Session session, {
+    DateTime? now,
+    Duration budget = const Duration(minutes: 5),
+  }) async {
     final at = now ?? nowUtc();
-    final candidates = await ItemVersion.db.find(
-      session,
-      where: (t) =>
-          t.kind.notEquals(VersionKind.named) &
-          (t.createdAt < at.subtract(const Duration(days: 7))),
-      orderBy: (t) => t.createdAt.desc(),
-    );
-    final keep = <String>{};
-    final remove = <ItemVersion>[];
-    for (final v in candidates) {
-      final age = at.difference(v.createdAt);
-      final bucket = age > const Duration(days: 30)
-          ? '${v.itemId}|d|${v.createdAt.year}-${v.createdAt.month}-${v.createdAt.day}'
-          : '${v.itemId}|h|${v.createdAt.year}-${v.createdAt.month}-${v.createdAt.day}-${v.createdAt.hour}';
-      if (keep.add(bucket)) continue; // newest of the bucket is kept
-      remove.add(v);
-    }
-    for (final v in remove) {
-      final item = await DriveItem.db.findById(session, v.itemId);
-      if (item != null && _providers[item.kind] != null) {
-        await _providers[item.kind]!.discard(session, v);
+    final cutoff = at.subtract(const Duration(days: 7));
+    final watch = Stopwatch()..start();
+    var afterItemId = 0;
+    var removed = 0;
+    while (watch.elapsed < budget) {
+      final rows = await session.db.unsafeQuery(
+        r'''
+        SELECT DISTINCT "itemId" FROM item_version
+        WHERE kind <> @named AND "createdAt" < @cutoff AND "itemId" > @after
+        ORDER BY "itemId"
+        LIMIT @limit
+        ''',
+        parameters: QueryParameters.named({
+          'named': VersionKind.named.name,
+          'cutoff': cutoff,
+          'after': afterItemId,
+          'limit': thinBatch,
+        }),
+      );
+      if (rows.isEmpty) break;
+      final itemIds = {for (final r in rows) r[0]! as int};
+      afterItemId = rows.last[0]! as int;
+      final candidates = await ItemVersion.db.find(
+        session,
+        where: (t) =>
+            t.itemId.inSet(itemIds) &
+            t.kind.notEquals(VersionKind.named) &
+            (t.createdAt < cutoff),
+        orderBy: (t) => t.createdAt.desc(),
+      );
+      final keep = <String>{};
+      final remove = <ItemVersion>[];
+      for (final v in candidates) {
+        final c = v.createdAt;
+        final age = at.difference(c);
+        final bucket = age > const Duration(days: 30)
+            ? '${v.itemId}|d|${c.year}-${c.month}-${c.day}'
+            : '${v.itemId}|h|${c.year}-${c.month}-${c.day}-${c.hour}';
+        if (keep.add(bucket)) continue; // newest of the bucket is kept
+        remove.add(v);
       }
-      await ItemVersion.db.deleteRow(session, v);
+      if (remove.isEmpty) continue;
+      final items = await DriveItem.db.find(
+        session,
+        where: (t) => t.id.inSet(<int>{for (final v in remove) v.itemId}),
+      );
+      final kindOf = {for (final i in items) i.id!: i.kind};
+      for (final v in remove) {
+        final provider = _providers[kindOf[v.itemId]];
+        if (provider == null) continue;
+        try {
+          await provider.discard(session, v);
+        } on Object catch (e, st) {
+          session.log(
+            'Discarding version ${v.id} failed: $e',
+            level: LogLevel.warning,
+            stackTrace: st,
+          );
+        }
+      }
+      await ItemVersion.db.deleteWhere(
+        session,
+        where: (t) => t.id.inSet(<int>{for (final v in remove) v.id!}),
+      );
+      removed += remove.length;
     }
-    return remove.length;
+    return removed;
   }
 }

@@ -1,83 +1,63 @@
 // Offline collaboration scenarios of Sheets 10 §10 with two users, each on
-// their own device (replica + sync controller) against an in-process sync
-// server. Both edit "offline" (no sync), then both reconnect.
-//
-// Each scenario syncs a 1,000 × 26 spreadsheet several times (15–25 s on an
-// idle machine), so the default 30 s test timeout is too tight under load.
-@Timeout(Duration(minutes: 3))
+// their own device (cache + RevLog client) against an in-process RevLog
+// server (RevLog spec 09 §1). Both edit offline, then Anna reconnects, then
+// Bo: the later arrival wins (RevLog spec 03 §5).
+@Timeout(Duration(minutes: 2))
 library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_client/wonky_client.dart' show UuidValue;
-import 'package:wonky_core/wonky_core.dart' show Role;
-import 'package:wonky_sheets/features/sync/sheets_sync_controller.dart';
-import 'package:wonky_sheets/features/sync/synced_workbook_session.dart';
+import 'package:wonky_sheets/features/revlog/logged_workbook_session.dart';
 import 'package:wonky_sheets_core/formula.dart' show GridRect;
 import 'package:wonky_sheets_core/model.dart';
 
-import '../../sync/support/sync_harness.dart';
+import '../../revlog/support/rev_harness.dart';
 
 final anna = UuidValue.fromString('0190a000-0000-7000-8000-0000000000a1');
 final bo = UuidValue.fromString('0190a000-0000-7000-8000-0000000000b2');
+final file = UuidValue.fromString('0190a000-0000-7000-8000-0000000000f1');
 
 void main() {
   group('Given Anna and Bo with the same spreadsheet on their devices', () {
-    late SheetsSyncController a;
-    late SheetsSyncController b;
-    late SyncedWorkbookSession sa;
-    late SyncedWorkbookSession sb;
+    late SheetsDevice a;
+    late SheetsDevice b;
+    late LoggedWorkbookSession sa;
+    late LoggedWorkbookSession sb;
     late String sheet;
 
     setUp(() async {
-      final server = await FakeSheetsServer.open();
-      a = SheetsSyncController(
-        replica: await openTestReplica(user: anna),
-        remote: FakeRemote(server, anna),
-        connectivity: FakeConnectivity(),
-      );
-      b = SheetsSyncController(
-        replica: await openTestReplica(user: bo),
-        remote: FakeRemote(server, bo),
-        connectivity: FakeConnectivity(),
-      );
-      addTearDown(a.stop);
-      addTearDown(b.stop);
-      await a.syncNow();
-      await a.refillReservations();
-      await a.syncNow();
-      final space = await a.createLocalSpreadsheet(title: 'Shared');
-      await a.syncNow();
-      await server.grant(bo, space);
-      await b.syncNow();
-      sa = a.openSession(itemUuid: space, spaceUuid: space, role: Role.owner);
-      sb = b.openSession(itemUuid: space, spaceUuid: space, role: Role.editor);
-      addTearDown(sa.dispose);
-      addTearDown(sb.dispose);
-      await sa.opened;
-      await sb.opened;
+      final hub = sheetsHub();
+      a = await SheetsDevice.start(hub, anna);
+      b = await SheetsDevice.start(hub, bo);
+      sa = await a.create(file, title: 'Shared', rows: 1000, columns: 26);
+      await sa.whenSynced(timeout: const Duration(seconds: 20));
+      sb = await b.openFile(file);
       sheet = sa.model.sheets.first.id;
       expect(sb.model.sheets.first.id, sheet);
+      // Both go offline.
+      a.online = false;
+      b.online = false;
     });
 
-    /// Both reconnect: sync both ways until both models are identical.
+    /// Anna reconnects, then Bo; waits until both models are identical.
     Future<void> reconnect() async {
-      await sa.flush();
-      await sb.flush();
-      for (var i = 0; i < 2; i++) {
-        await a.syncNow();
-        await b.syncNow();
-      }
+      a.online = true;
+      await sa.whenSynced(timeout: const Duration(seconds: 20));
+      b.online = true;
+      await sb.whenSynced(timeout: const Duration(seconds: 20));
       await eventually(
         () => _same(canonical(sa.model), canonical(sb.model)),
-        timeout: const Duration(seconds: 45),
+        timeout: const Duration(seconds: 30),
       );
+      a.online = false;
+      b.online = false;
     }
 
-    /// A later write (HLC order follows the wall clock).
+    /// A later write.
     Future<void> later() =>
         Future<void>.delayed(const Duration(milliseconds: 5));
 
-    MutationPlan type(SyncedWorkbookSession s, int row, int col, String v) =>
+    MutationPlan type(LoggedWorkbookSession s, int row, int col, String v) =>
         s.execute(
           SetCellInputs(
             sheetId: sheet,
@@ -89,7 +69,7 @@ void main() {
           ),
         );
 
-    String? content(SyncedWorkbookSession s, int row, int col) =>
+    String? content(LoggedWorkbookSession s, int row, int col) =>
         s.model.cellAt(sheet, row, col)?.content;
 
     test('#1 when both type into the same cell then the later value wins '
@@ -150,7 +130,7 @@ void main() {
       type(sb, 6, 2, 'Bo edit');
       await reconnect();
       expect(sa.model.sheet(sheet)!.rows.contains(rowId), isFalse);
-      bool visible(SyncedWorkbookSession s) =>
+      bool visible(LoggedWorkbookSession s) =>
           s.model.sheet(sheet)!.cells.all.any((c) => c.content == 's:Bo edit');
       expect(visible(sa), isFalse);
       expect(visible(sb), isFalse);

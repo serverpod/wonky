@@ -361,7 +361,8 @@ void main() {
         await insertChart();
 
         final r = await s.run('sheets.object.list');
-        final list = ((r.data! as Map)['objects']! as List).cast<Map>();
+        final list = ((r.data! as Map)['objects']! as List)
+            .cast<Map<Object?, Object?>>();
         expect(list.single['type'], 'column');
         expect(list.single['anchorCell'], 'D1');
         expect(list.single['ranges'], ['Sheet1!A1:C5']);

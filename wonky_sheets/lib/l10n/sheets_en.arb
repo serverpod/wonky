@@ -364,6 +364,29 @@
       }
     }
   },
+  "changeLabelTyping": "Typing",
+  "@changeLabelTyping": {
+    "description": "Name of a change in the cell history (\"via …\"): typing into a cell. The change logs store English codes; this is how they are shown."
+  },
+  "changeLabelInsertAiResult": "Insert AI result",
+  "changeLabelInsertImage": "Insert image",
+  "changeLabelRestoreVersion": "Restore version",
+  "changeLabelMakeCopy": "Make a copy",
+  "changeLabelMaintenance": "Maintenance",
+  "changeLabelCreateScriptProject": "Create script project",
+  "changeLabelDeleteScriptProject": "Delete script project",
+  "changeLabelCreateScriptFile": "Create script file",
+  "changeLabelRenameScriptFile": "Rename script file",
+  "changeLabelDeleteScriptFile": "Delete script file",
+  "changeLabelMoveScriptFile": "Move script file",
+  "changeLabelSaveScriptFile": "Save script file",
+  "changeLabelScriptSettings": "Script settings",
+  "changeLabelCreateMacro": "Create macro",
+  "changeLabelEditMacro": "Edit macro",
+  "changeLabelDeleteMacro": "Delete macro",
+  "changeLabelRecordMacro": "Record macro",
+  "changeLabelAddTrigger": "Add trigger",
+  "changeLabelEditTrigger": "Edit trigger",
   "cellHistoryRestore": "Restore this value",
   "actorViaMcp": "Claude via MCP ({name})",
   "@actorViaMcp": {
@@ -2131,15 +2154,6 @@
   "downloadTsv": "Tab-separated values (.tsv, current sheet)",
   "downloadJson": "JSON (.json, values and formulas)",
   "downloadXlsx": "Microsoft Excel (.xlsx)",
-  "downloadingSpreadsheet": "Downloading spreadsheet… {percent}%",
-  "@downloadingSpreadsheet": {
-    "placeholders": {
-      "percent": {
-        "type": "int",
-        "format": "decimalPattern"
-      }
-    }
-  },
   "errorSheetNameEmpty": "A sheet name can’t be empty",
   "formulaParseError": "{message}",
   "@formulaParseError": {
@@ -2307,6 +2321,7 @@
   "rotationUp": "Rotate up",
   "screenGoHome": "Go to home",
   "screenOfflineUnavailable": "This spreadsheet isn’t available offline",
+  "screenOfflineHint": "It isn’t on this device yet. Open it once while online to keep it available offline.",
   "screenOpenFailed": "The spreadsheet couldn’t be opened",
   "screenTryAgain": "Try again",
   "screenUnavailable": "This spreadsheet isn’t available",
@@ -2413,6 +2428,27 @@
     }
   },
   "toastUndoPartial": "Some changes couldn’t be undone because they were edited by someone else.",
+  "toastChangeNotSaved": "“{label}” couldn’t be saved: {reason}",
+  "@toastChangeNotSaved": {
+    "description": "A change the server rejected (RevLog 06 §4.6); it is undone on this device.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "toastChangeProtected": "“{label}” wasn’t saved because it edits a protected cell or object.",
+  "@toastChangeProtected": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "toastChangeNoAccess": "You can no longer edit this spreadsheet",
   "toolbarBorders": "Borders",
   "toolbarCurrency": "Format as currency",
   "toolbarFillColor": "Fill color",
@@ -2505,7 +2541,7 @@
     }
   },
   "protectCantEdit": "You can't edit this protection",
-  "protectAdvisory": "Protection prevents accidental edits by collaborators.",
+  "protectAdvisory": "Only the people you choose can edit protected ranges, also from other devices, scripts and agents. Warning-only ranges ask for a confirmation instead.",
   "protectEdit": "Edit protection",
   "protectRemove": "Remove protection",
   "protectYouCanEdit": "You can edit",

@@ -6,7 +6,7 @@ and in cells), **chart sheets**, **slicer objects** (rendering only), **drawings
 the shared **object layer**: selection, move/resize, z-order, clipboard, undo, concurrency.
 
 Read first:
-- [02-data-model.md](02-data-model.md): `EmbeddedObject`, `Sheet.kind`, `GridRange`, `SheetsWriter`.
+- [02-data-model.md](02-data-model.md): `EmbeddedObject`, `Sheet.kind`, `GridRange`, writes (§7).
 - Suite [02-design-system.md](../02-design-system.md): `WonkySplitView`, `WonkyColorPicker`.
 - Suite [08-commands-and-undo.md](../08-commands-and-undo.md): commands, undo transactions.
 - Related Sheets specs: [03-grid-and-editing.md](03-grid-and-editing.md) (grid layers, selection),
@@ -741,7 +741,7 @@ with `flutter_svg`; the SVG's size is the natural size; the original SVG is not 
 
 Default size: natural size scaled down to fit in 600×400 px, keeping the aspect ratio.
 *Reset size* restores natural size (capped to 4000 px). Images are **not** stored in the
-space. Only the file reference is, so they need the server to download the first time.
+spreadsheet. Only the file reference is, so they need the server to download the first time.
 
 **Offline**: the upload is queued in the Sheets pending-upload queue (`SheetsPendingUploads`,
 `sheets_uploads_<userId>.db`, durable, retried with backoff); the `fileUuid` is a
@@ -846,7 +846,7 @@ Image caching: decoded images are cached by `fileUuid` in memory (LRU 100 MB) an
 ## 15. Undo and concurrency
 
 ### 15.1 Undo
-All object mutations go through `SheetsWriter` (one transaction, one `ChangeLog` row with
+All object mutations go through the session (one plan, one op with
 `kinds: ["objects"]`, one undo step):
 
 | Operation | Rows/columns written | Undo label |
@@ -861,14 +861,14 @@ All object mutations go through `SheetsWriter` (one transaction, one `ChangeLog`
 | Move to own sheet / back | insert/delete `Sheet` + `sheet`, `anchorJson` of object | "Move chart to own sheet" |
 | Image in cell | `Cell.content` (+ object delete when converting) | "Insert image" |
 
-### 15.2 Concurrency (field-level LWW)
+### 15.2 Concurrency (last arrival wins per column)
 
 | Concurrent edits (A ∥ B) | Outcome |
 |--------------------------|---------|
 | A moves, B edits chart spec | Both survive (`anchorJson` vs `specJson` are different columns). |
 | A moves, B resizes | Last writer wins on `anchorJson` (both write the whole anchor). The loser's undo becomes a no-op with the standard partial-undo toast. |
-| A and B edit different spec fields (title vs series color) | **Last writer wins on the whole `specJson`**: one change is lost. Mitigation: before writing, the editor re-reads `specJson` and applies its patch to the **latest** local value (read-modify-write within the transaction), so the loss only happens for offline/concurrent writes within one sync cycle (~2 s). Documented in help. A per-field split (separate columns) was rejected because the spec is large and schema changes are lock-step. |
-| A deletes, B edits | Delete wins (tombstone). B's edit revives nothing: updates to tombstoned rows are discarded by the engine. B's undo is a no-op. |
+| A and B edit different spec fields (title vs series color) | **Last writer wins on the whole `specJson`**: one change is lost. Mitigation: before writing, the editor re-reads `specJson` and applies its patch to the **latest** local value (read-modify-write on the current model), so the loss only happens for offline writes or writes within one round trip. Documented in help. A per-field split (separate columns) was rejected because the spec is large. |
+| A deletes, B edits | Delete wins: the server drops updates to deleted rows (B's outcome `dropped`). B's undo is a no-op. |
 | A deletes the anchor row, B moves the object | B's anchor (if it was written later) may point to the deleted row → maintenance re-anchors (§1.2). |
 | A changes data cells, B edits chart | Independent. The chart re-resolves. |
 | A deletes a source column | Series whose `ref` no longer resolves disappear from the chart, and the editor lists them as "Missing series (column deleted)" with *Remove*. |
@@ -985,12 +985,12 @@ New widgets (Sheets-local unless stated):
 
 | # | Change | Reason |
 |---|--------|--------|
-| A-08-1 | `EmbeddedObjectKind` gains `drawing` (reserved, P2). Enum value added now to avoid a later lock-step schema change. | §18 |
+| A-08-1 | `EmbeddedObjectKind` gains `drawing` (reserved, P2). Enum value added now to avoid a later breaking schema change (suite 17 part 2 §4.3). | §18 |
 | A-08-2 | `anchorJson` gains `v` and `lockAspect`; `{"ownSheet": true}` documented as the chart-sheet anchor. | §1.2, §11 |
 | A-08-3 | `specJson` always carries `v`; `ChartSpec`, `ImageSpec` schemas as in §3 and §10.1. | §1.3 |
 | A-08-4 | Maintenance invariant: objects whose anchor row/column is deleted are re-anchored deterministically to the next surviving row/column (`dx = dy = 0`). | §1.2 |
 | A-08-5 | Local-only table `local_blob_cache(file_uuid, mime, bytes, size, created_at, used_at)` in `sheets_images_<userId>.db` (Sheets-local; 200 MB LRU) for offline and reloaded images; pending uploads stay in `sheets_uploads_<userId>.db`. | §10.1 |
-| A-08-6 | `ChangeLog.summaryJson.kinds` uses the value `objects` for object operations. | §15 |
+| A-08-6 | The op summary (`summaryJson.kinds`) uses the value `objects` for object operations. | §15 |
 
 ---
 
@@ -1038,8 +1038,8 @@ New widgets (Sheets-local unless stated):
 - **Scene goldens** (pure Dart): `ChartScene` JSON snapshots per fixture, shared by all renderers.
 - **Widget tests**: select/move/resize/nudge/z-order/delete/copy-paste flows; editor field →
   command dispatch; undo coalescing.
-- **Concurrency**: two simulated clients (§15.2 table) using the multi-client sync harness
-  from [13-implementation-plan.md](13-implementation-plan.md) §7.
+- **Concurrency**: two simulated clients (§15.2 table) against the in-process RevLog server
+  (`FakeRevServer`, suite 17 As built 16).
 - **Performance**: 1M-point line; 50 charts/sheet scroll benchmark.
 
 ## 23. 3D charts
@@ -1052,7 +1052,7 @@ switching a chart between flat and 3D keeps everything else. The one exception i
 **surface** type (`ChartType.surface`, P1, `only3D`): a height field over the grid of categories ×
 series that is always drawn in 3D (`threeD.enabled` is implied).
 
-### 23.1 Spec (`threeD`, in `specJson`, no synced schema change)
+### 23.1 Spec (`threeD`, in `specJson`, no schema change)
 
 ```jsonc
 "threeD": {

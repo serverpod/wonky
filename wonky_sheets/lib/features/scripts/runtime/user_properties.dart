@@ -1,68 +1,99 @@
 import 'dart:async';
 
-import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
-import 'package:wonky_client/wonky_client.dart' show UuidValue;
+import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_client/wonky_client.dart' show Client, UuidValue;
 import 'package:wonky_sheets_script/wonky_sheets_script.dart';
-import 'package:wonky_sync_models/wonky_sync_models.dart'
-    show ScriptUserProperty;
 
 import '../../model/workbook_session.dart';
-import '../../sync/sheets_replica.dart';
-import '../../sync/synced_workbook_session.dart';
+import '../../revlog/logged_workbook_session.dart';
 
 /// `PropertiesService.userProperties` on the client (09 §6.9, A-09-4).
 ///
-/// Decision: user properties are `ScriptUserProperty` rows in the user's
-/// **personal space** (space UUID = auth user id) of the local replica. The
-/// sync engine syncs that space for every signed-in client, so the values
+/// User properties live on the server (`script_user_property`, read and
+/// written with `sheets.getUserProperties` / `setUserProperties`), so they
 /// follow the user to other devices and to server runs
-/// (`ServerUserProperties`), and work offline. Scripts read synchronously:
-/// the rows of the spreadsheet are loaded once ([load]) and kept in memory;
-/// writes update the memory at once and are written to the replica in the
-/// background (one transaction per change, then a sync is requested).
-class ReplicaUserProperties implements PropertyStore {
-  ReplicaUserProperties._(this._replica, this._kick, this.spreadsheetId);
+/// (`ServerUserProperties`). Scripts read synchronously: the values are
+/// loaded once ([load]) and kept in memory. A copy and the unsent changes
+/// are kept in the user's local store (`sheets.userProps.<fileUuid>`), so
+/// they work offline; unsent changes are sent with the next write or load
+/// (RevLog spec 06 §7.1).
+class RemoteUserProperties implements PropertyStore {
+  RemoteUserProperties._(this._client, this._store, this.fileUuid);
 
   /// The store of [session]'s user for its spreadsheet; a memory store for
-  /// sessions without a replica (tests, previews).
-  static Future<PropertyStore> forSession(WorkbookSession session) async {
-    if (session is! SyncedWorkbookSession) return MemoryPropertyStore();
-    final store = ReplicaUserProperties._(
-      session.host.replica,
-      session.host.kick,
+  /// sessions without a server (tests, previews).
+  static Future<PropertyStore> forSession(
+    ShellServices services,
+    WorkbookSession session,
+  ) async {
+    final client = services.client;
+    if (session is! LoggedWorkbookSession || client == null) {
+      return MemoryPropertyStore();
+    }
+    final store = RemoteUserProperties._(
+      client,
+      services.userStore,
       UuidValue.fromString(session.spreadsheetId),
     );
     await store.load();
     return store;
   }
 
-  final SheetsReplica _replica;
-  final VoidCallback _kick;
+  final Client _client;
+  final LocalStore _store;
 
-  /// The spreadsheet (space uuid).
-  final UuidValue spreadsheetId;
+  /// The spreadsheet's file.
+  final UuidValue fileUuid;
 
-  final Map<String, ScriptUserProperty> _rows = {};
   final Map<String, String> _values = {};
+
+  /// Changes not yet confirmed by the server (null = delete).
+  final Map<String, String?> _pending = {};
   Future<void> _writes = Future.value();
 
-  /// Reads the rows of [spreadsheetId] from the replica.
+  String get _key => 'sheets.userProps.${fileUuid.uuid}';
+
+  /// Reads the cached values, then the server's (when reachable) with the
+  /// unsent changes on top.
   Future<void> load() async {
-    final rows = await ScriptUserProperty.db.find(
-      _replica.session,
-      where: (t) => t.spreadsheetId.equals(spreadsheetId),
-      orderBy: (t) => t.createdAt,
-    );
-    _rows.clear();
-    _values.clear();
-    for (final r in rows) {
-      _rows[r.key] = r;
-      _values[r.key] = r.value;
+    try {
+      final raw = await _store.read(_key);
+      if (raw is Map) {
+        _read(raw['values'], (k, v) => _values[k] = v!);
+        _read(raw['pending'], (k, v) => _pending[k] = v);
+      }
+    } catch (e) {
+      debugPrint('Reading cached user properties failed: $e');
+    }
+    try {
+      final server = await _client.sheets.getUserProperties(fileUuid);
+      _values
+        ..clear()
+        ..addAll(server);
+      for (final e in _pending.entries) {
+        if (e.value == null) {
+          _values.remove(e.key);
+        } else {
+          _values[e.key] = e.value!;
+        }
+      }
+      await _save();
+    } catch (e) {
+      if (!isOfflineError(e)) rethrow;
+    }
+    if (_pending.isNotEmpty) _enqueue();
+  }
+
+  static void _read(Object? m, void Function(String, String?) put) {
+    if (m is! Map) return;
+    for (final e in m.entries) {
+      final v = e.value;
+      if (v == null || v is String) put('${e.key}', v as String?);
     }
   }
 
-  /// Completes when the queued writes are stored.
+  /// Completes when the queued writes are sent (or failed offline).
   Future<void> flush() => _writes;
 
   @override
@@ -72,51 +103,43 @@ class ReplicaUserProperties implements PropertyStore {
   void set(String key, String value) {
     if (_values[key] == value) return;
     _values[key] = value;
-    _enqueue(key);
+    _pending[key] = value;
+    _enqueue();
   }
 
   @override
   void delete(String key) {
-    if (_values.remove(key) != null) _enqueue(key);
+    if (_values.remove(key) == null) return;
+    _pending[key] = null;
+    _enqueue();
   }
 
-  void _enqueue(String key) {
-    _writes = _writes.then((_) => _write(key)).catchError((Object e) {
-      debugPrint('Storing user property "$key" failed: $e');
+  void _enqueue() {
+    _writes = _writes.then((_) => _send()).catchError((Object e) {
+      debugPrint('Storing user properties failed: $e');
     });
   }
 
-  Future<void> _write(String key) async {
-    final user = _replica.userUuid;
-    final s = _replica.session;
-    final value = _values[key];
-    await _replica.db.transactionForUser(user, (tx) async {
-      final row = _rows[key];
-      if (value == null) {
-        if (row != null) {
-          await ScriptUserProperty.db.deleteRow(s, row, transaction: tx);
-        }
-        _rows.remove(key);
-      } else if (row == null) {
-        _rows[key] = await ScriptUserProperty.db.insertRow(
-          s,
-          ScriptUserProperty(
-            spreadsheetId: spreadsheetId,
-            key: key,
-            value: value,
-            createdAt: clock.now().toUtc(),
-          ),
-          transaction: tx,
-        );
-      } else {
-        _rows[key] = await ScriptUserProperty.db.updateRow(
-          s,
-          row.copyWith(value: value),
-          columns: (t) => [t.value],
-          transaction: tx,
-        );
+  Future<void> _send() async {
+    if (_pending.isEmpty) return;
+    final sent = Map.of(_pending);
+    await _save();
+    try {
+      await _client.sheets.setUserProperties(fileUuid, sent);
+    } catch (e) {
+      // Offline: kept in the local store and sent with the next write or
+      // load.
+      if (isOfflineError(e)) return;
+      rethrow;
+    }
+    for (final e in sent.entries) {
+      if (_pending.containsKey(e.key) && _pending[e.key] == e.value) {
+        _pending.remove(e.key);
       }
-    }, spaceId: user);
-    _kick();
+    }
+    await _save();
   }
+
+  Future<void> _save() =>
+      _store.write(_key, {'values': _values, 'pending': _pending});
 }

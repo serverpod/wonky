@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -50,9 +51,11 @@ abstract final class Chart3DBackends {
     final s = starter;
     if (_started || s == null) return;
     _started = true;
-    s().catchError((Object e) {
-      debugPrint('3D charts: GPU backend failed to start: $e');
-    });
+    unawaited(
+      s().catchError((Object e) {
+        debugPrint('3D charts: GPU backend failed to start: $e');
+      }),
+    );
   }
 
   /// Installs [renderer] (null uninstalls it).

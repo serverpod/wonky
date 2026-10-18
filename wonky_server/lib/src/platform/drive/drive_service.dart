@@ -1,19 +1,19 @@
 import 'dart:convert';
 
 import 'package:serverpod/serverpod.dart';
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_write_core/wonky_write_core.dart' show Delta, DeltaUtils;
 
 import '../../sheets/spaces/space_copier.dart';
-import '../../slides/spaces/deck_copies.dart';
-import '../../slides/spaces/slides_decks.dart';
-import '../../slides/templates/slides_template_decks.dart';
-import '../spaces/space_service.dart';
+import '../../slides/decks/slides_decks.dart';
 import '../../sheets/spaces/spreadsheet_factory.dart';
 import '../../sheets/spaces/sheets_create_defaults.dart';
-import '../../sheets/sync/sheets_sync_service.dart';
-import '../../sheets/sync/sync_db.dart';
+import 'package:wonky_sheets_core/model.dart' show RowChange, SheetsTables;
+
+import '../../sheets/revlog/sheets_rev_binding.dart';
+import '../../sheets/revlog/sheets_server_writes.dart';
+import '../revlog/rev_hooks.dart';
+import '../revlog/rev_log_service.dart';
 import '../../write/content/write_content.dart';
 import '../../write/ot/document_bus.dart';
 import '../../write/ot/document_store.dart';
@@ -23,9 +23,7 @@ import '../common/actor.dart';
 import '../common/errors.dart';
 import '../common/models.dart';
 import '../common/names.dart';
-import '../common/roles.dart';
 import '../common/time.dart';
-import '../comments/comment_copier.dart';
 import '../files/file_service.dart';
 import '../sharing/access_service.dart';
 import '../sharing/acl_events.dart';
@@ -33,21 +31,14 @@ import '../storage/content_sizes.dart';
 import '../storage/storage_hooks.dart';
 import '../storage/storage_service.dart';
 import 'drive_events.dart';
-import 'drive_file_service.dart';
 import 'drive_file_filters.dart';
+import 'drive_listing.dart';
 import 'drive_views.dart';
 import 'kind_masks.dart';
 import 'templates/builtin_templates.dart';
-import '../cluster/cluster_bus.dart';
 
 /// Wonky Drive (specs/05 §2).
 abstract final class DriveService {
-  /// Trashed items are deleted after this period (`drive.purgeTrash`).
-  static const trashRetention = Duration(days: 30);
-
-  /// Upper bound of candidates loaded for in-memory filtering and sorting.
-  static const _maxCandidates = 5000;
-
   // ------------------------------------------------------------------ read
 
   static Future<DriveItemView> get(
@@ -98,6 +89,8 @@ abstract final class DriveService {
     return views.reversed.toList();
   }
 
+  /// One page of a `drive.list` view ([DriveListing.list], in SQL with a
+  /// keyset cursor).
   static Future<DriveListPage> list(
     Session session,
     Actor actor, {
@@ -106,245 +99,17 @@ abstract final class DriveService {
     required DriveSort sort,
     String? cursor,
     int limit = 100,
-  }) async {
-    final me = actor.userId;
-    var candidates = <DriveItem>[];
-    Map<int, DriveItemUserState> states = {};
+  }) => DriveListing.list(
+    session,
+    actor,
+    folderUuid: folderUuid,
+    filter: filter,
+    sort: sort,
+    cursor: cursor,
+    limit: limit,
+  );
 
-    Future<void> loadStates(
-      Expression<dynamic> Function(DriveItemUserStateTable t) where,
-    ) async {
-      final rows = await DriveItemUserState.db.find(
-        session,
-        where: (t) => t.userId.equals(me) & where(t),
-        limit: _maxCandidates,
-      );
-      states = {for (final s in rows) s.itemId: s};
-      if (states.isEmpty) return;
-      candidates = await DriveItem.db.find(
-        session,
-        where: (t) =>
-            t.id.inSet(states.keys.toSet()) & t.trashedAt.equals(null),
-      );
-    }
-
-    switch (filter.view) {
-      case DriveView.folder:
-        if (folderUuid == null) {
-          candidates = await DriveItem.db.find(
-            session,
-            where: (t) =>
-                t.ownerId.equals(me) &
-                t.parentId.equals(null) &
-                t.trashedAt.equals(null),
-            limit: _maxCandidates,
-          );
-          final shortcuts = await DriveItemUserState.db.find(
-            session,
-            where: (t) => t.userId.equals(me) & t.shortcutParentId.equals(0),
-          );
-          if (shortcuts.isNotEmpty) {
-            candidates.addAll(
-              await DriveItem.db.find(
-                session,
-                where: (t) =>
-                    t.id.inSet({for (final s in shortcuts) s.itemId}) &
-                    t.trashedAt.equals(null),
-              ),
-            );
-          }
-        } else {
-          final (folder, _) = await AccessService.require(
-            session,
-            actor,
-            folderUuid,
-            Role.viewer,
-          );
-          if (folder.kind != DriveItemKind.folder) {
-            throw Errors.invalid('The item is not a folder.');
-          }
-          candidates = await DriveItem.db.find(
-            session,
-            where: (t) =>
-                t.parentId.equals(folder.id!) & t.trashedAt.equals(null),
-            limit: _maxCandidates,
-          );
-          final shortcuts = await DriveItemUserState.db.find(
-            session,
-            where: (t) =>
-                t.userId.equals(me) & t.shortcutParentId.equals(folder.id!),
-          );
-          if (shortcuts.isNotEmpty) {
-            candidates.addAll(
-              await DriveItem.db.find(
-                session,
-                where: (t) =>
-                    t.id.inSet({for (final s in shortcuts) s.itemId}) &
-                    t.trashedAt.equals(null),
-              ),
-            );
-          }
-        }
-      case DriveView.sharedWithMe:
-        final grants = await DriveItemPermission.db.find(
-          session,
-          where: (t) => t.userId.equals(me) & t.inheritedFromId.equals(null),
-          limit: _maxCandidates,
-        );
-        final linkStates = await DriveItemUserState.db.find(
-          session,
-          where: (t) => t.userId.equals(me) & t.viaLink.equals(true),
-          limit: _maxCandidates,
-        );
-        final ids = {
-          for (final g in grants) g.itemId,
-          for (final s in linkStates) s.itemId,
-        };
-        if (ids.isNotEmpty) {
-          candidates = await DriveItem.db.find(
-            session,
-            where: (t) =>
-                t.id.inSet(ids) &
-                t.ownerId.notEquals(me) &
-                t.trashedAt.equals(null),
-          );
-        }
-      case DriveView.starred:
-        await loadStates((t) => t.starred.equals(true));
-      case DriveView.recent:
-        await loadStates((t) => t.lastOpenedAt.notEquals(null));
-      case DriveView.offline:
-        await loadStates((t) => t.pinnedOffline.equals(true));
-      case DriveView.trash:
-        final trashed = await DriveItem.db.find(
-          session,
-          where: (t) => t.ownerId.equals(me) & t.trashedAt.notEquals(null),
-          limit: _maxCandidates,
-        );
-        final byId = {for (final i in trashed) i.id!: i};
-        // Only the top of each trashed subtree.
-        final parentIds = {for (final i in trashed) ?i.parentId};
-        final parents = parentIds.isEmpty
-            ? <DriveItem>[]
-            : await DriveItem.db.find(
-                session,
-                where: (t) => t.id.inSet(parentIds),
-              );
-        final parentById = {for (final p in parents) p.id!: p};
-        candidates = [
-          for (final i in trashed)
-            if (i.parentId == null ||
-                byId[i.parentId] == null &&
-                    parentById[i.parentId]?.trashedAt != i.trashedAt ||
-                byId[i.parentId] != null &&
-                    byId[i.parentId]!.trashedAt != i.trashedAt)
-              i,
-        ];
-    }
-
-    candidates = _applyFilters(candidates, filter.kinds, filter.owner, me);
-    candidates = DriveFileFilters.apply(
-      candidates,
-      me,
-      categories: filter.fileCategories,
-      foldersContaining: filter.foldersContaining,
-    );
-    final roles = await AccessService.rolesFor(session, me, candidates);
-    candidates = [
-      for (final c in candidates)
-        if (roles[c.id!] != null) c,
-    ];
-    if (states.isEmpty && candidates.isNotEmpty) {
-      final rows = await DriveItemUserState.db.find(
-        session,
-        where: (t) =>
-            t.userId.equals(me) &
-            t.itemId.inSet({for (final c in candidates) c.id!}),
-      );
-      states = {for (final s in rows) s.itemId: s};
-    }
-    final effectiveSort = filter.view == DriveView.recent
-        ? DriveSort(
-            field: DriveSortField.lastOpenedByMe,
-            descending: true,
-            foldersFirst: false,
-          )
-        : sort;
-    _sort(candidates, effectiveSort, states);
-    final offset = int.tryParse(cursor ?? '') ?? 0;
-    final pageSize = limit.clamp(1, 500);
-    final page = candidates.skip(offset).take(pageSize).toList();
-    final views = await DriveViews.build(session, me, page, roles: roles);
-    final next = offset + page.length;
-    return DriveListPage(
-      items: views,
-      nextCursor: next < candidates.length ? '$next' : null,
-    );
-  }
-
-  static List<DriveItem> _applyFilters(
-    List<DriveItem> items,
-    List<DriveItemKind>? kinds,
-    DriveOwnerFilter owner,
-    int me,
-  ) {
-    final seen = <int>{};
-    return [
-      for (final i in items)
-        if (seen.add(i.id!) &&
-            (kinds == null || kinds.isEmpty || kinds.contains(i.kind)) &&
-            switch (owner) {
-              DriveOwnerFilter.anyone => true,
-              DriveOwnerFilter.me => i.ownerId == me,
-              DriveOwnerFilter.notMe => i.ownerId != me,
-            })
-          i,
-    ];
-  }
-
-  static void _sort(
-    List<DriveItem> items,
-    DriveSort sort,
-    Map<int, DriveItemUserState> states,
-  ) {
-    int compare(DriveItem a, DriveItem b) {
-      if (sort.foldersFirst) {
-        final fa = a.kind == DriveItemKind.folder ? 0 : 1;
-        final fb = b.kind == DriveItemKind.folder ? 0 : 1;
-        if (fa != fb) return fa - fb;
-      }
-      int c;
-      switch (sort.field) {
-        case DriveSortField.name:
-          c = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-        case DriveSortField.modifiedAt:
-          c = a.modifiedAt.compareTo(b.modifiedAt);
-        case DriveSortField.createdAt:
-          c = a.createdAt.compareTo(b.createdAt);
-        case DriveSortField.size:
-          c = a.sizeBytes.compareTo(b.sizeBytes);
-        case DriveSortField.lastOpenedByMe:
-          c = _cmpDate(states[a.id]?.lastOpenedAt, states[b.id]?.lastOpenedAt);
-        case DriveSortField.lastModifiedByMe:
-          c = _cmpDate(states[a.id]?.lastEditedAt, states[b.id]?.lastEditedAt);
-      }
-      if (sort.descending) c = -c;
-      return c != 0 ? c : a.id!.compareTo(b.id!);
-    }
-
-    items.sort(compare);
-  }
-
-  static int _cmpDate(DateTime? a, DateTime? b) {
-    if (a == null && b == null) return 0;
-    if (a == null) return -1;
-    if (b == null) return 1;
-    return a.compareTo(b);
-  }
-
-  /// Full-text search over name, description and extracted content of the
-  /// items the caller can access (Postgres `simple` text search with prefix
-  /// matching, plus substring matching on names).
+  /// Full-text search ([DriveListing.search]).
   static Future<DriveListPage> search(
     Session session,
     Actor actor,
@@ -352,99 +117,19 @@ abstract final class DriveService {
     required DriveSearchFilters filters,
     String? cursor,
     int limit = 50,
-  }) async {
-    final terms = RegExp(
-      r'[\p{L}\p{N}]+',
-      unicode: true,
-    ).allMatches(query.toLowerCase()).map((m) => m[0]!).take(8).toList();
-    if (terms.isEmpty) return DriveListPage(items: const []);
-    final tsQuery = terms.map((t) => '$t:*').join(' & ');
-    final like =
-        '%${query.trim().replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
-    final offset = int.tryParse(cursor ?? '') ?? 0;
-    final pageSize = limit.clamp(1, 200);
-    const doc =
-        "to_tsvector('simple', coalesce(d.name, '') || ' ' || coalesce(d.description, '') || ' ' || coalesce(d.\"searchText\", ''))";
-    final result = await session.db.unsafeQuery(
-      '''
-      SELECT d.id FROM drive_item d
-      WHERE d."trashedAt" IS NULL AND (
-        d."ownerId" = @me
-        OR EXISTS (SELECT 1 FROM drive_item_permission p
-                   WHERE p."itemId" = d.id AND p."userId" = @me
-                   AND (p."expiresAt" IS NULL OR p."expiresAt" > now()))
-        OR EXISTS (SELECT 1 FROM drive_item_user_state s
-                   JOIN share_link l ON l."itemId" = s."itemId"
-                   WHERE s."itemId" = d.id AND s."userId" = @me AND l.role IS NOT NULL)
-      ) AND (
-        $doc @@ to_tsquery('simple', @q) OR d.name ILIKE @like
-      )
-      ORDER BY ts_rank($doc, to_tsquery('simple', @q)) DESC, d."modifiedAt" DESC
-      LIMIT @limit OFFSET @offset
-      ''',
-      parameters: QueryParameters.named({
-        'me': actor.userId,
-        'q': tsQuery,
-        'like': like,
-        'limit': _maxCandidates,
-        'offset': 0,
-      }),
-    );
-    final ids = [for (final row in result) row[0] as int];
-    if (ids.isEmpty) return DriveListPage(items: const []);
-    final items = await DriveItem.db.find(
-      session,
-      where: (t) => t.id.inSet(ids.toSet()),
-    );
-    final byId = {for (final i in items) i.id!: i};
-    var ordered = [
-      for (final id in ids)
-        if (byId[id] != null) byId[id]!,
-    ];
-    ordered =
-        DriveFileFilters.apply(
-              _applyFilters(
-                ordered,
-                filters.kinds,
-                filters.owner,
-                actor.userId,
-              ),
-              actor.userId,
-              categories: filters.fileCategories,
-              search: true,
-            )
-            .where(
-              (i) =>
-                  (filters.modifiedAfter == null ||
-                      i.modifiedAt.isAfter(filters.modifiedAfter!)) &&
-                  (filters.modifiedBefore == null ||
-                      i.modifiedAt.isBefore(filters.modifiedBefore!)),
-            )
-            .toList();
-    final roles = await AccessService.rolesFor(session, actor.userId, ordered);
-    var views = await DriveViews.build(
-      session,
-      actor.userId,
-      ordered,
-      roles: roles,
-    );
-    if (filters.sharedOnly) {
-      views = views
-          .where((v) => v.shared || v.owner.id != actor.userId)
-          .toList();
-    }
-    final page = views.skip(offset).take(pageSize).toList();
-    final next = offset + page.length;
-    return DriveListPage(
-      items: page,
-      nextCursor: next < views.length ? '$next' : null,
-    );
-  }
+  }) => DriveListing.search(
+    session,
+    actor,
+    query,
+    filters: filters,
+    cursor: cursor,
+    limit: limit,
+  );
 
   // ---------------------------------------------------------------- create
 
   /// Resolves the parent folder for a new item. Null = the caller's root.
-  static Future<DriveItem?> _parentFor(
+  static Future<DriveItem?> parentFor(
     Session session,
     Actor actor,
     UuidValue? parentUuid, {
@@ -467,7 +152,9 @@ abstract final class DriveService {
     return parent;
   }
 
-  static Future<DriveItem> _insertItem(
+  /// Inserts a drive item (also for the other drive services: files,
+  /// presentations).
+  static Future<DriveItem> insertItem(
     Session session,
     Actor actor, {
     required DriveItemKind kind,
@@ -541,46 +228,8 @@ abstract final class DriveService {
     return item;
   }
 
-  /// [_insertItem] for the other drive services (files, presentations).
-  static Future<DriveItem> insertItem(
-    Session session,
-    Actor actor, {
-    required DriveItemKind kind,
-    required String name,
-    DriveItem? parent,
-    UuidValue? uuid,
-    UuidValue? contentRef,
-    String? description,
-    Transaction? transaction,
-    String? mimeType,
-    FileCategory? fileCategory,
-    FileUploadState? uploadState,
-    String? fileMetaJson,
-  }) => _insertItem(
-    session,
-    actor,
-    kind: kind,
-    name: name,
-    parent: parent,
-    uuid: uuid,
-    contentRef: contentRef,
-    description: description,
-    transaction: transaction,
-    mimeType: mimeType,
-    fileCategory: fileCategory,
-    uploadState: uploadState,
-    fileMetaJson: fileMetaJson,
-  );
-
-  /// [_parentFor] for the other drive services.
-  static Future<DriveItem?> parentFor(
-    Session session,
-    Actor actor,
-    UuidValue? parentUuid, {
-    Transaction? transaction,
-  }) => _parentFor(session, actor, parentUuid, transaction: transaction);
-
-  /// [_afterCreate] for the other drive services.
+  /// Logs the creation of [item] and notifies its watchers (also for the
+  /// other drive services).
   static Future<void> afterCreate(
     Session session,
     Actor actor,
@@ -592,22 +241,6 @@ abstract final class DriveService {
     await DriveEvents.notify(session, item, DriveChangeKind.created);
   }
 
-  static Future<void> _afterCreate(
-    Session session,
-    Actor actor,
-    DriveItem item, {
-    Map<String, Object?> summary = const {},
-  }) async {
-    await ActivityService.log(
-      session,
-      item.id!,
-      actor,
-      ActivityType.created,
-      summary: summary,
-    );
-    await DriveEvents.notify(session, item, DriveChangeKind.created);
-  }
-
   static Future<DriveItemView> createFolder(
     Session session,
     Actor actor, {
@@ -615,13 +248,13 @@ abstract final class DriveService {
     required String name,
   }) async {
     final item = await session.db.transaction((tx) async {
-      final parent = await _parentFor(
+      final parent = await parentFor(
         session,
         actor,
         parentUuid,
         transaction: tx,
       );
-      return _insertItem(
+      return insertItem(
         session,
         actor,
         kind: DriveItemKind.folder,
@@ -630,7 +263,7 @@ abstract final class DriveService {
         transaction: tx,
       );
     });
-    await _afterCreate(session, actor, item);
+    await afterCreate(session, actor, item);
     return DriveViews.one(session, actor.userId, item, role: Role.owner);
   }
 
@@ -708,13 +341,13 @@ abstract final class DriveService {
     }
     final docUuid = documentUuid ?? const Uuid().v7obj();
     final item = await session.db.transaction((tx) async {
-      final parent = await _parentFor(
+      final parent = await parentFor(
         session,
         actor,
         parentUuid,
         transaction: tx,
       );
-      final item = await _insertItem(
+      final item = await insertItem(
         session,
         actor,
         kind: DriveItemKind.document,
@@ -753,12 +386,13 @@ abstract final class DriveService {
       }
       return item;
     });
-    await _afterCreate(session, actor, item, summary: activitySummary);
+    await afterCreate(session, actor, item, summary: activitySummary);
     return DriveViews.one(session, actor.userId, item, role: Role.owner);
   }
 
-  /// Registers a spreadsheet created locally in a reserved space
-  /// (idempotent, works for queued offline creations).
+  /// Registers a spreadsheet created on a device (idempotent; queued
+  /// offline creations): `createSpreadsheet(fileUuid, initialize: false)`,
+  /// whose first client op creates the rows (RevLog spec 04 §5).
   static Future<DriveItemView> registerSpreadsheet(
     Session session,
     Actor actor, {
@@ -766,59 +400,33 @@ abstract final class DriveService {
     UuidValue? parentUuid,
     required String name,
   }) async {
-    final existing = await DriveItem.db.findFirstRow(
-      session,
-      where: (t) =>
-          t.contentRef.equals(spaceUuid) &
-          t.kind.equals(DriveItemKind.spreadsheet),
-    );
-    if (existing != null) return get(session, actor, existing.uuid);
-    final reserved = await SpaceService.useReservation(
-      session,
-      actor,
-      spaceUuid,
-    );
-    if (!reserved) {
-      final role = await session.offlineSync.spaces.roleOf(
-        user: actor.authUserId,
-        space: spaceUuid,
-      );
-      if (role != OfflineSyncSpaceRole.readWrite) {
-        throw Errors.forbidden('This space is not reserved for you.');
-      }
-    }
-    final item = await session.db.transaction((tx) async {
-      DriveItem? parent;
-      try {
-        parent = await _parentFor(session, actor, parentUuid, transaction: tx);
-      } on WonkyException {
-        // The folder was deleted or unshared while offline: use the root.
-        parent = null;
-      }
-      final item = await _insertItem(
+    try {
+      return await createSpreadsheet(
         session,
         actor,
-        kind: DriveItemKind.spreadsheet,
+        parentUuid: parentUuid,
         name: name,
-        parent: parent,
-        contentRef: spaceUuid,
-        transaction: tx,
+        fileUuid: spaceUuid,
+        initialize: false,
       );
-      await SpaceService.touchSubscription(
+    } on WonkyException catch (e) {
+      // The folder was deleted or unshared while offline: use the root.
+      if (parentUuid == null || e.code == WonkyErrorCode.forbidden) rethrow;
+      return createSpreadsheet(
         session,
-        actor.userId,
-        item,
-        transaction: tx,
+        actor,
+        name: name,
+        fileUuid: spaceUuid,
+        initialize: false,
       );
-      return item;
-    });
-    await _afterCreate(session, actor, item);
-    // Change log rows that synced before the registration.
-    await SheetsSyncService.afterRegistration(session, spaceUuid);
-    return DriveViews.one(session, actor.userId, item, role: Role.owner);
+    }
   }
 
-  /// Creates a spreadsheet server-side (online; MCP, templates, welcome).
+  /// Creates a spreadsheet (RevLog spec 04 §5). With [fileUuid] the call is
+  /// idempotent (a retry returns the item and finishes its initialization).
+  /// [initialize] false: the file stays at revision 0 and the client's
+  /// first op creates the rows (offline creation, version copies, imports
+  /// the app does itself).
   static Future<DriveItemView> createSpreadsheet(
     Session session,
     Actor actor, {
@@ -827,7 +435,27 @@ abstract final class DriveService {
     UuidValue? templateUuid,
     String? locale,
     String? timeZone,
+    UuidValue? fileUuid,
+    bool initialize = true,
   }) async {
+    if (fileUuid != null) {
+      // Any item using the id (CQ-2): a retry of our own creation is fine;
+      // another kind or another item is refused before it reaches the
+      // unique file index.
+      final existing = await DriveItem.db.findFirstRow(
+        session,
+        where: (t) => t.contentRef.equals(fileUuid) | t.uuid.equals(fileUuid),
+      );
+      if (existing != null) {
+        if (existing.kind != DriveItemKind.spreadsheet) {
+          throw Errors.conflict('This id belongs to another item.');
+        }
+        if (existing.ownerId != actor.userId) {
+          throw Errors.forbidden('This file belongs to someone else.');
+        }
+        return get(session, actor, existing.uuid);
+      }
+    }
     final cleanName = normalizeItemName(name);
     BuiltinTemplate? builtin;
     DriveItem? templateItem;
@@ -847,7 +475,7 @@ abstract final class DriveService {
       }
     }
     // Validate the parent before creating a space.
-    await _parentFor(session, actor, parentUuid);
+    await parentFor(session, actor, parentUuid);
     // (v2) Quota of a template copy (Drive 03 §7.2); blank: always allowed.
     if (templateItem != null || (builtin?.sheets.isNotEmpty ?? false)) {
       await StorageHooks.checkCaller(
@@ -859,24 +487,24 @@ abstract final class DriveService {
         QuotaReason.template,
       );
     }
-    final UuidValue space;
-    if (templateItem != null) {
-      space = await session.offlineSync.spaces.createFor(actor.authUserId);
-      await SpaceCopier.copy(
+    final space = fileUuid ?? const Uuid().v7obj();
+    final List<RowChange> initial;
+    if (!initialize) {
+      initial = const [];
+    } else if (templateItem != null) {
+      (initial, _) = await SpaceCopier.changes(
         session,
-        fromSpace: templateItem.contentRef!,
-        toSpace: space,
+        fromFile: templateItem.contentRef!,
+        toFile: space,
         authorUuid: actor.authUserId,
         title: cleanName,
       );
     } else {
-      space = await session.offlineSync.spaces.createFor(actor.authUserId);
       // Settings › Sheets defaults of the creator (04 §11.24); explicit
       // arguments win.
       final d = await SheetsCreateDefaults.of(session, actor.userId);
-      await SpreadsheetFactory.write(
-        session,
-        spaceUuid: space,
+      initial = SpreadsheetFactory.changes(
+        fileUuid: space,
         authorUuid: actor.authUserId,
         title: cleanName,
         locale: locale ?? d.locale ?? 'en_US',
@@ -886,32 +514,16 @@ abstract final class DriveService {
         sheets: builtin?.sheets ?? const [],
       );
     }
-    final item = await session.db.transaction((tx) async {
-      final parent = await _parentFor(
-        session,
-        actor,
-        parentUuid,
-        transaction: tx,
-      );
-      final item = await _insertItem(
-        session,
-        actor,
-        kind: DriveItemKind.spreadsheet,
-        name: cleanName,
-        parent: parent,
-        contentRef: space,
-        transaction: tx,
-      );
-      await SpaceService.touchSubscription(
-        session,
-        actor.userId,
-        item,
-        transaction: tx,
-      );
-      return item;
-    });
+    final item = await createSheetsFile(
+      session,
+      actor,
+      parentUuid: parentUuid,
+      name: cleanName,
+      fileUuid: space,
+      initialChanges: initial,
+    );
     await ContentSizes.refresh(session, item);
-    await _afterCreate(
+    await afterCreate(
       session,
       actor,
       item,
@@ -921,6 +533,55 @@ abstract final class DriveService {
       },
     );
     return DriveViews.one(session, actor.userId, item, role: Role.owner);
+  }
+
+  /// Inserts the drive item of a new spreadsheet with its `rev_file` and
+  /// commits [initialChanges] as revision 1… in one transaction (RevLog
+  /// spec 05 §8.3).
+  static Future<DriveItem> createSheetsFile(
+    Session session,
+    Actor actor, {
+    required UuidValue? parentUuid,
+    required String name,
+    required UuidValue fileUuid,
+    required List<RowChange> initialChanges,
+    String? description,
+  }) async {
+    final binding = SheetsRevBinding.instance;
+    final submitter = RevSubmitter.of(actor);
+    final (item, file) = await session.db.transaction<(DriveItem, RevFile)>((
+      tx,
+    ) async {
+      final parent = await parentFor(
+        session,
+        actor,
+        parentUuid,
+        transaction: tx,
+      );
+      final item = await insertItem(
+        session,
+        actor,
+        kind: DriveItemKind.spreadsheet,
+        name: name,
+        parent: parent,
+        contentRef: fileUuid,
+        description: description,
+        transaction: tx,
+      );
+      final file = await RevLogService.createFile(
+        session,
+        binding: binding,
+        item: item,
+        submitter: submitter,
+        initialChanges: initialChanges,
+        transaction: tx,
+      );
+      return (item, file);
+    });
+    if (initialChanges.isNotEmpty) {
+      RevHooks.kick(session.serverpod, binding, file.id!);
+    }
+    return item;
   }
 
   /// Creates a spreadsheet from [sheets] (imports).
@@ -933,52 +594,34 @@ abstract final class DriveService {
     Map<String, Object?> summary = const {},
   }) async {
     final cleanName = normalizeItemName(name);
-    await _parentFor(session, actor, parentUuid);
+    await parentFor(session, actor, parentUuid);
     await StorageHooks.checkCaller(
       session,
       actor,
       StorageHooks.sheetsEstimate(sheets),
       QuotaReason.import,
     );
-    final space = await session.offlineSync.spaces.createFor(actor.authUserId);
+    final space = const Uuid().v7obj();
     final d = await SheetsCreateDefaults.of(session, actor.userId);
-    await SpreadsheetFactory.write(
+    final item = await createSheetsFile(
       session,
-      spaceUuid: space,
-      authorUuid: actor.authUserId,
-      title: cleanName,
-      locale: d.locale ?? 'en_US',
-      timeZone: d.timeZone ?? 'UTC',
-      fontFamily: d.fontFamily,
-      fontSize: d.fontSize,
-      sheets: sheets,
+      actor,
+      parentUuid: parentUuid,
+      name: cleanName,
+      fileUuid: space,
+      initialChanges: SpreadsheetFactory.changes(
+        fileUuid: space,
+        authorUuid: actor.authUserId,
+        title: cleanName,
+        locale: d.locale ?? 'en_US',
+        timeZone: d.timeZone ?? 'UTC',
+        fontFamily: d.fontFamily,
+        fontSize: d.fontSize,
+        sheets: sheets,
+      ),
     );
-    final item = await session.db.transaction((tx) async {
-      final parent = await _parentFor(
-        session,
-        actor,
-        parentUuid,
-        transaction: tx,
-      );
-      final item = await _insertItem(
-        session,
-        actor,
-        kind: DriveItemKind.spreadsheet,
-        name: cleanName,
-        parent: parent,
-        contentRef: space,
-        transaction: tx,
-      );
-      await SpaceService.touchSubscription(
-        session,
-        actor.userId,
-        item,
-        transaction: tx,
-      );
-      return item;
-    });
     await ContentSizes.refresh(session, item);
-    await _afterCreate(session, actor, item, summary: summary);
+    await afterCreate(session, actor, item, summary: summary);
     return DriveViews.one(session, actor.userId, item, role: Role.owner);
   }
 
@@ -1033,32 +676,30 @@ abstract final class DriveService {
     return DriveViews.one(session, actor.userId, updated, role: role);
   }
 
-  /// Writes a drive rename into the synced Spreadsheet.title (best effort:
-  /// needs write membership, which editors get on demand).
+  /// Writes a drive rename into `spreadsheet.title` as a system op (RevLog
+  /// spec 05 §8.3), when the root row exists; otherwise the creation op
+  /// picks up the name (04 §5).
   static Future<void> _mirrorTitleToSpreadsheet(
     Session session,
     Actor actor,
     DriveItem item,
   ) async {
     try {
-      final db = syncSessionOf(session);
-      final sheet = await Spreadsheet.db.findById(db, item.contentRef!);
-      if (sheet == null || sheet.title == item.name) return;
-      await SpaceService.ensureWriter(
+      final current = await Spreadsheet.db.findById(session, item.contentRef!);
+      if (current == null || current.title == item.name) return;
+      await SheetsServerWrites.apply(
         session,
-        actor,
-        item,
-        reason: SubscriptionReason.recent,
-      );
-      await db.offlineSyncDb.transactionForUser(
-        actor.authUserId,
-        (tx) => Spreadsheet.db.updateById(
-          db,
-          item.contentRef!,
-          columnValues: (t) => [t.title(item.name)],
-          transaction: tx,
-        ),
-        spaceId: item.contentRef!,
+        actor: actor.copyWith(kind: ActorKind.system),
+        fileUuid: item.contentRef!,
+        changes: [
+          RowChange.update(
+            SheetsTables.spreadsheet,
+            item.contentRef!.uuid,
+            {'title': current.title},
+            {'title': item.name},
+          ),
+        ],
+        label: 'Rename',
       );
     } on Exception catch (e) {
       session.log(
@@ -1118,12 +759,15 @@ abstract final class DriveService {
 
   /// Moves items into [newParentUuid] (null = the caller's root, owners
   /// only). Requires Editor on the items and the target; cycles are refused.
+  /// Non-owners move an item only within its folder tree or into a folder
+  /// of its owner.
   static Future<List<DriveItemView>> move(
     Session session,
     Actor actor,
     List<UuidValue> uuids,
     UuidValue? newParentUuid,
   ) async {
+    final selected = bulkUuids(uuids);
     DriveItem? target;
     if (newParentUuid != null) {
       final (t, _) = await AccessService.require(
@@ -1141,7 +785,7 @@ abstract final class DriveService {
       target = t;
     }
     final moved = <DriveItem>[];
-    for (final uuid in uuids.toSet()) {
+    for (final uuid in selected) {
       final (item, _) = await AccessService.require(
         session,
         actor,
@@ -1167,9 +811,24 @@ abstract final class DriveService {
             message: 'A folder cannot be moved into one of its subfolders.',
           );
         }
+        // Someone else's item may only move within the folder tree it is
+        // in, or into a folder of its owner: moving it into a folder of a
+        // third person would give that person (and whoever they share the
+        // folder with) access the owner never granted.
+        if (item.ownerId != actor.userId && target.ownerId != item.ownerId) {
+          final itemChain = await AccessService.ancestors(session, item);
+          final itemTop = itemChain.isEmpty ? item : itemChain.last;
+          final targetTop = chain.isEmpty ? target : chain.last;
+          if (itemTop.id != targetTop.id) {
+            throw Errors.forbidden(
+              'Only the owner can move this item into a folder owned by '
+              'someone else.',
+            );
+          }
+        }
       }
       if (item.parentId == target?.id) continue;
-      final before = await _subtreeUsers(session, item);
+      final before = await subtreeUsers(session, item);
       final updated = await session.db.transaction((tx) async {
         final row = DriveItem.db.updateRow(
           session,
@@ -1202,12 +861,26 @@ abstract final class DriveService {
     return DriveViews.build(session, actor.userId, moved);
   }
 
-  static Future<Set<int>> _subtreeUsers(Session session, DriveItem item) async {
-    final users = <int>{};
-    for (final node in await AccessService.subtree(session, item)) {
-      users.addAll(await AccessService.interestedUsers(session, node));
+  /// The interested users of [item]'s subtree (batched, CQ-26).
+  static Future<Set<int>> subtreeUsers(Session session, DriveItem item) async {
+    final nodes = await AccessService.subtree(session, item);
+    final byItem = await AccessService.interestedUsersOf(session, nodes);
+    return {for (final users in byItem.values) ...users};
+  }
+
+  /// Most items one move, trash, restore or delete call takes (CQ-26).
+  static const maxBulkItems = 500;
+
+  /// The distinct [uuids] of one bulk call; `limitExceeded` past
+  /// [maxBulkItems].
+  static Set<UuidValue> bulkUuids(List<UuidValue> uuids) {
+    final set = uuids.toSet();
+    if (set.length > maxBulkItems) {
+      throw Errors.limit(
+        'Select at most $maxBulkItems items at a time.',
+      );
     }
-    return users;
+    return set;
   }
 
   static DriveItem _withParent(DriveItem item, int? parentId) => DriveItem(
@@ -1235,198 +908,6 @@ abstract final class DriveService {
     searchText: item.searchText,
   );
 
-  /// Copies a document or spreadsheet ("Make a copy").
-  static Future<DriveItemView> copy(
-    Session session,
-    Actor actor,
-    UuidValue uuid, {
-    required String newName,
-    UuidValue? parentUuid,
-    bool copyComments = false,
-    bool copySharing = false,
-  }) async {
-    final (source, role) = await AccessService.require(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    if (role < Role.editor && !source.nonEditorsCanExport) {
-      throw Errors.forbidden('The owner has disabled copying for viewers.');
-    }
-    final DriveItemView copyView;
-    switch (source.kind) {
-      case DriveItemKind.folder:
-        throw Errors.invalid('Folders cannot be copied.');
-      case DriveItemKind.presentation:
-        // (v2, SL-8) Deck copies (Slides 02 §9.3): `DeckCopier` rows in a
-        // new deck space, images re-homed; the copier pays.
-        final copied = await DeckCopies.copy(
-          session,
-          actor,
-          source,
-          name: newName,
-          parentUuid:
-              parentUuid ?? await _defaultCopyParent(session, actor, source),
-          description: source.description,
-        );
-        if (copyComments) {
-          await CommentCopier.copyThreads(
-            session,
-            from: source,
-            to: copied.item,
-            anchorIdMap: copied.ids,
-          );
-        }
-        copyView = await _finishCopy(
-          session,
-          actor,
-          source,
-          copied.item,
-          copySharing,
-        );
-      case DriveItemKind.file:
-        // (v2) Server-side copy of the stored bytes (Drive 02 §10).
-        final item = await DriveFileService.copyFile(
-          session,
-          actor,
-          source,
-          newName: newName,
-          parentUuid:
-              parentUuid ?? await _defaultCopyParent(session, actor, source),
-        );
-        copyView = await _finishCopy(session, actor, source, item, copySharing);
-      case DriveItemKind.document:
-        // (v2) The copier pays for the copy (Drive 03 §7.2).
-        await StorageHooks.checkCaller(
-          session,
-          actor,
-          source.sizeBytes + source.attachmentBytes,
-          QuotaReason.copy,
-        );
-        final sourceDoc = await DocumentStore.requireByItem(
-          session,
-          source.id!,
-        );
-        var content = await DocumentStore.head(session, sourceDoc);
-        final threadMap = copyComments
-            ? await CommentCopier.newThreadUuids(session, source)
-            : <String, String>{};
-        content = copyComments
-            ? CommentCopier.rewriteAnchors(content, threadMap)
-            : DeltaUtils.stripComments(content);
-        final docUuid = const Uuid().v7obj();
-        final item = await session.db.transaction((tx) async {
-          final parent = await _parentFor(
-            session,
-            actor,
-            parentUuid ?? await _defaultCopyParent(session, actor, source),
-            transaction: tx,
-          );
-          final item = await _insertItem(
-            session,
-            actor,
-            kind: DriveItemKind.document,
-            name: newName,
-            parent: parent,
-            contentRef: docUuid,
-            description: source.description,
-            transaction: tx,
-          );
-          await DocumentStore.create(
-            session,
-            item: item,
-            documentUuid: docUuid,
-            actor: actor,
-            initial: content,
-            kind: DocumentOpKind.content,
-            themeId: sourceDoc.themeId,
-            pageSetupJson: sourceDoc.pageSetupJson,
-            language: sourceDoc.language,
-            frontMatter: sourceDoc.frontMatter,
-            transaction: tx,
-          );
-          await DriveItem.db.updateRow(
-            session,
-            item.copyWith(searchText: source.searchText),
-            columns: (t) => [t.searchText],
-            transaction: tx,
-          );
-          await StorageService.instance.setItemSize(
-            session,
-            item,
-            DocumentSize.of(content),
-            transaction: tx,
-          );
-          if (copyComments) {
-            await CommentCopier.copyThreads(
-              session,
-              from: source,
-              to: item,
-              threadMap: threadMap,
-              transaction: tx,
-            );
-          }
-          return item;
-        });
-        copyView = await _finishCopy(session, actor, source, item, copySharing);
-      case DriveItemKind.spreadsheet:
-        await StorageHooks.checkCaller(
-          session,
-          actor,
-          source.sizeBytes + source.attachmentBytes,
-          QuotaReason.copy,
-        );
-        final space = await session.offlineSync.spaces.createFor(
-          actor.authUserId,
-        );
-        final idMap = await SpaceCopier.copy(
-          session,
-          fromSpace: source.contentRef!,
-          toSpace: space,
-          authorUuid: actor.authUserId,
-          title: normalizeItemName(newName),
-        );
-        final item = await session.db.transaction((tx) async {
-          final parent = await _parentFor(
-            session,
-            actor,
-            parentUuid ?? await _defaultCopyParent(session, actor, source),
-            transaction: tx,
-          );
-          final item = await _insertItem(
-            session,
-            actor,
-            kind: DriveItemKind.spreadsheet,
-            name: newName,
-            parent: parent,
-            contentRef: space,
-            description: source.description,
-            transaction: tx,
-          );
-          await SpaceService.touchSubscription(
-            session,
-            actor.userId,
-            item,
-            transaction: tx,
-          );
-          if (copyComments) {
-            await CommentCopier.copyThreads(
-              session,
-              from: source,
-              to: item,
-              anchorIdMap: idMap,
-              transaction: tx,
-            );
-          }
-          return item;
-        });
-        await ContentSizes.refresh(session, item);
-        copyView = await _finishCopy(session, actor, source, item, copySharing);
-    }
-    return copyView;
-  }
-
   /// Creates a document with [content] (version copies, imports), taking
   /// theme and page setup from [source] when given.
   static Future<DriveItemView> createDocumentFromContent(
@@ -1451,13 +932,13 @@ abstract final class DriveService {
     }
     final docUuid = const Uuid().v7obj();
     final item = await session.db.transaction((tx) async {
-      final parent = await _parentFor(
+      final parent = await parentFor(
         session,
         actor,
         parentUuid,
         transaction: tx,
       );
-      final item = await _insertItem(
+      final item = await insertItem(
         session,
         actor,
         kind: DriveItemKind.document,
@@ -1493,607 +974,11 @@ abstract final class DriveService {
       );
       return item;
     });
-    await _afterCreate(session, actor, item, summary: activitySummary);
+    await afterCreate(session, actor, item, summary: activitySummary);
     return DriveViews.one(session, actor.userId, item, role: Role.owner);
   }
 
-  /// Where a copy of [source] goes by default (its folder when [actor] can
-  /// edit it, else My Drive) and the end of a copy (sharing, activity,
-  /// view): used by copies made outside [copy] (Slides version copies,
-  /// SL-39).
-  static Future<UuidValue?> defaultCopyParent(
-    Session session,
-    Actor actor,
-    DriveItem source,
-  ) => _defaultCopyParent(session, actor, source);
-
-  /// See [defaultCopyParent].
-  static Future<DriveItemView> finishCopy(
-    Session session,
-    Actor actor,
-    DriveItem source,
-    DriveItem copy,
-    bool copySharing,
-  ) => _finishCopy(session, actor, source, copy, copySharing);
-
-  static Future<UuidValue?> _defaultCopyParent(
-    Session session,
-    Actor actor,
-    DriveItem source,
-  ) async {
-    if (source.parentId == null) return null;
-    final parent = await DriveItem.db.findById(session, source.parentId!);
-    if (parent == null) return null;
-    final role = await AccessService.effectiveRole(
-      session,
-      actor.userId,
-      parent,
-    );
-    return role != null && role >= Role.editor ? parent.uuid : null;
-  }
-
-  /// *Share with the same people* of a copy: the direct grants of
-  /// [source] (and its owner as editor) on [copy].
-  static Future<void> copyGrants(
-    Session session,
-    Actor actor,
-    DriveItem source,
-    DriveItem copy,
-  ) async {
-    final grants = await DriveItemPermission.db.find(
-      session,
-      where: (t) =>
-          t.itemId.equals(source.id!) & t.inheritedFromId.equals(null),
-    );
-    final now = nowUtc();
-    final rows = [
-      for (final g in grants)
-        if (g.userId != actor.userId)
-          DriveItemPermission(
-            itemId: copy.id!,
-            userId: g.userId,
-            invitedEmail: g.invitedEmail,
-            role: g.role,
-            grantedById: actor.userId,
-            grantedAt: now,
-            expiresAt: g.expiresAt,
-          ),
-      if (source.ownerId != actor.userId &&
-          !grants.any((g) => g.userId == source.ownerId))
-        DriveItemPermission(
-          itemId: copy.id!,
-          userId: source.ownerId,
-          role: AccessRole.editor,
-          grantedById: actor.userId,
-          grantedAt: now,
-        ),
-    ];
-    if (rows.isNotEmpty) {
-      await DriveItemPermission.db.insert(session, rows);
-    }
-    await AclEvents.changed(session, copy);
-  }
-
-  static Future<DriveItemView> _finishCopy(
-    Session session,
-    Actor actor,
-    DriveItem source,
-    DriveItem copy,
-    bool copySharing,
-  ) async {
-    if (copySharing) await copyGrants(session, actor, source, copy);
-    await _afterCreate(
-      session,
-      actor,
-      copy,
-      summary: {'copiedFrom': source.uuid.uuid, 'copiedFromName': source.name},
-    );
-    return DriveViews.one(session, actor.userId, copy, role: Role.owner);
-  }
-
-  // ------------------------------------------------------------ user state
-
-  static Future<DriveItemUserState> _state(
-    Session session,
-    int userId,
-    DriveItem item,
-  ) async {
-    final existing = await DriveItemUserState.db.findFirstRow(
-      session,
-      where: (t) => t.itemId.equals(item.id!) & t.userId.equals(userId),
-    );
-    if (existing != null) return existing;
-    try {
-      return await DriveItemUserState.db.insertRow(
-        session,
-        DriveItemUserState(itemId: item.id!, userId: userId),
-      );
-    } on DatabaseException {
-      return (await DriveItemUserState.db.findFirstRow(
-        session,
-        where: (t) => t.itemId.equals(item.id!) & t.userId.equals(userId),
-      ))!;
-    }
-  }
-
-  static Future<DriveItemView> setStarred(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-    bool starred,
-  ) async {
-    final (item, role) = await AccessService.require(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    final state = await _state(session, actor.userId, item);
-    await DriveItemUserState.db.updateRow(
-      session,
-      state.copyWith(starred: starred),
-      columns: (t) => [t.starred],
-    );
-    await ClusterBus.post(
-      session,
-      DriveEvents.channel(actor.userId),
-      DriveChangeSignal(kind: DriveChangeKind.updated, itemUuid: item.uuid),
-    );
-    return DriveViews.one(session, actor.userId, item, role: role);
-  }
-
-  static Future<DriveItemView> setPinnedOffline(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-    bool pinned,
-  ) async {
-    final (item, role) = await AccessService.require(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    final state = await _state(session, actor.userId, item);
-    await DriveItemUserState.db.updateRow(
-      session,
-      state.copyWith(pinnedOffline: pinned),
-      columns: (t) => [t.pinnedOffline],
-    );
-    await SpaceService.setPinned(session, actor, item, pinned);
-    await ClusterBus.post(
-      session,
-      DriveEvents.channel(actor.userId),
-      DriveChangeSignal(kind: DriveChangeKind.updated, itemUuid: item.uuid),
-    );
-    return DriveViews.one(session, actor.userId, item, role: role);
-  }
-
-  /// Records that the caller opened [uuid]. A first open through link
-  /// sharing adds the item to "Shared with me" (specs/06 §2.2).
-  static Future<DriveItemView> markOpened(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-  ) async {
-    final (item, role) = await AccessService.require(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    await recordOpen(session, actor, item, role);
-    return DriveViews.one(session, actor.userId, item, role: role);
-  }
-
-  static Future<void> recordOpen(
-    Session session,
-    Actor actor,
-    DriveItem item,
-    Role role,
-  ) async {
-    final state = await _state(session, actor.userId, item);
-    var viaLink = state.viaLink;
-    if (!viaLink && item.ownerId != actor.userId) {
-      final grant = await DriveItemPermission.db.findFirstRow(
-        session,
-        where: (t) => t.itemId.equals(item.id!) & t.userId.equals(actor.userId),
-      );
-      viaLink = grant == null;
-    }
-    await DriveItemUserState.db.updateRow(
-      session,
-      state.copyWith(lastOpenedAt: nowUtc(), viaLink: viaLink),
-      columns: (t) => [t.lastOpenedAt, t.viaLink],
-    );
-    // Activity dashboard view counts (specs/07 §6).
-    await ActivityService.recordView(session, item.id!, actor.userId);
-  }
-
-  /// Records that the caller edited [item] (for "Last modified by me").
-  static Future<void> recordEdit(
-    Session session,
-    int userId,
-    DriveItem item,
-  ) async {
-    final state = await _state(session, userId, item);
-    await DriveItemUserState.db.updateRow(
-      session,
-      state.copyWith(lastEditedAt: nowUtc()),
-      columns: (t) => [t.lastEditedAt],
-    );
-  }
-
-  /// "Add shortcut to My Drive": shows a shared item in [parentUuid] (null =
-  /// the caller's root) without moving it.
-  static Future<DriveItemView> addShortcut(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-    UuidValue? parentUuid,
-  ) async {
-    final (item, role) = await AccessService.require(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    var parentId = 0;
-    if (parentUuid != null) {
-      final (parent, _) = await AccessService.require(
-        session,
-        actor,
-        parentUuid,
-        Role.editor,
-      );
-      if (parent.kind != DriveItemKind.folder) {
-        throw Errors.invalid('Shortcuts can only be added to folders.');
-      }
-      parentId = parent.id!;
-    }
-    final state = await _state(session, actor.userId, item);
-    await DriveItemUserState.db.updateRow(
-      session,
-      state.copyWith(shortcutParentId: parentId),
-      columns: (t) => [t.shortcutParentId],
-    );
-    await ClusterBus.post(
-      session,
-      DriveEvents.channel(actor.userId),
-      DriveChangeSignal(kind: DriveChangeKind.updated, itemUuid: item.uuid),
-    );
-    return DriveViews.one(session, actor.userId, item, role: role);
-  }
-
-  static Future<void> removeShortcut(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-  ) async {
-    final item = await AccessService.findItem(session, uuid);
-    if (item == null) throw Errors.notFound();
-    await DriveItemUserState.db.updateWhere(
-      session,
-      columnValues: (t) => [t.shortcutParentId(null)],
-      where: (t) => t.itemId.equals(item.id!) & t.userId.equals(actor.userId),
-    );
-    await ClusterBus.post(
-      session,
-      DriveEvents.channel(actor.userId),
-      DriveChangeSignal(kind: DriveChangeKind.updated, itemUuid: item.uuid),
-    );
-  }
-
-  // ------------------------------------------------------------------ trash
-
-  static Future<void> trash(
-    Session session,
-    Actor actor,
-    List<UuidValue> uuids,
-  ) async {
-    final now = nowUtc();
-    for (final uuid in uuids.toSet()) {
-      final (item, _) = await AccessService.require(
-        session,
-        actor,
-        uuid,
-        Role.editor,
-      );
-      if (item.trashedAt != null) continue;
-      // (v2) Trashing an upload in progress cancels it (Drive 02 §2).
-      if (item.uploadState == FileUploadState.uploading) {
-        await DriveFileService.cancelUpload(session, actor, item.uuid);
-        continue;
-      }
-      final nodes = await AccessService.subtree(session, item);
-      final ids = {for (final n in nodes) n.id!};
-      await session.db.transaction((tx) async {
-        await DriveItem.db.updateWhere(
-          session,
-          columnValues: (t) => [t.trashedAt(now), t.trashedById(actor.userId)],
-          where: (t) => t.id.inSet(ids) & t.trashedAt.equals(null),
-          transaction: tx,
-        );
-        await KindMasks.refreshChain(session, item.parentId, transaction: tx);
-        // (v2) Bytes move to the owners' trash (Drive 03 §7.4).
-        await StorageService.instance.onTrash(session, nodes, transaction: tx);
-      });
-      await ActivityService.log(session, item.id!, actor, ActivityType.trashed);
-      final updated = (await DriveItem.db.findById(session, item.id!))!;
-      await AclEvents.changed(session, updated, kind: DriveChangeKind.trashed);
-    }
-  }
-
-  static Future<void> restore(
-    Session session,
-    Actor actor,
-    List<UuidValue> uuids,
-  ) async {
-    for (final uuid in uuids.toSet()) {
-      final (item, _) = await AccessService.require(
-        session,
-        actor,
-        uuid,
-        Role.editor,
-      );
-      final trashedAt = item.trashedAt;
-      if (trashedAt == null) continue;
-      final nodes = await AccessService.subtree(session, item);
-      final ids = {
-        for (final n in nodes)
-          if (n.trashedAt == trashedAt) n.id!,
-      };
-      // Restoring into a trashed or missing folder moves the item to the
-      // owner's root.
-      int? parentId = item.parentId;
-      if (parentId != null) {
-        final parent = await DriveItem.db.findById(session, parentId);
-        if (parent == null || parent.trashedAt != null) parentId = null;
-      }
-      await session.db.transaction((tx) async {
-        await DriveItem.db.updateWhere(
-          session,
-          columnValues: (t) => [t.trashedAt(null), t.trashedById(null)],
-          where: (t) => t.id.inSet(ids),
-          transaction: tx,
-        );
-        // (v2) Never refused: trashed bytes already count (Q16).
-        await StorageService.instance.onRestore(
-          session,
-          [
-            for (final n in nodes)
-              if (ids.contains(n.id)) n,
-          ],
-          transaction: tx,
-        );
-      });
-      if (parentId != item.parentId) {
-        await DriveItem.db.updateWhere(
-          session,
-          columnValues: (t) => [t.parentId(null)],
-          where: (t) => t.id.equals(item.id!),
-        );
-      }
-      final updated = (await DriveItem.db.findById(session, item.id!))!;
-      if (parentId != item.parentId) {
-        await AccessService.rebuildInherited(session, updated);
-      }
-      await KindMasks.refreshSubtree(session, updated);
-      await ActivityService.log(
-        session,
-        item.id!,
-        actor,
-        ActivityType.restored,
-      );
-      await AclEvents.changed(session, updated, kind: DriveChangeKind.restored);
-    }
-  }
-
-  /// Deletes trashed items forever (owners only).
-  static Future<void> deletePermanently(
-    Session session,
-    Actor actor,
-    List<UuidValue> uuids,
-  ) async {
-    for (final uuid in uuids.toSet()) {
-      final (item, role) = await AccessService.require(
-        session,
-        actor,
-        uuid,
-        Role.viewer,
-      );
-      if (role != Role.owner) {
-        throw Errors.forbidden('Only the owner can delete an item forever.');
-      }
-      if (item.trashedAt == null) {
-        throw Errors.invalid('Move the item to the trash first.');
-      }
-      await purge(session, item);
-    }
-  }
-
-  static Future<int> emptyTrash(Session session, Actor actor) async {
-    final page = await list(
-      session,
-      actor,
-      filter: DriveListFilter(view: DriveView.trash),
-      sort: DriveSort(),
-      limit: 500,
-    );
-    var count = 0;
-    for (final view in page.items) {
-      final item = await AccessService.findItem(session, view.uuid);
-      if (item == null || item.ownerId != actor.userId) continue;
-      await purge(session, item);
-      count++;
-    }
-    return count;
-  }
-
-  /// Physically deletes [item] and its subtree: documents (cascade),
-  /// spreadsheet spaces, stored files.
-  static Future<void> purge(Session session, DriveItem item) async {
-    final nodes = await AccessService.subtree(session, item);
-    final users = <int>{};
-    for (final n in nodes) {
-      users.addAll(await AccessService.interestedUsers(session, n));
-    }
-    final ids = {for (final n in nodes) n.id!};
-    await FileService.deleteFilesOfItems(session, ids);
-    for (final n in nodes.reversed) {
-      if ((n.kind == DriveItemKind.spreadsheet ||
-              n.kind == DriveItemKind.presentation) &&
-          n.contentRef != null) {
-        await session.db.transaction(
-          (tx) => OfflineSyncSpace.db.deleteWhere(
-            session,
-            where: (t) => t.uuidSpaceId.equals(n.contentRef!),
-            transaction: tx,
-          ),
-        );
-        await SpaceReservation.db.deleteWhere(
-          session,
-          where: (t) => t.spaceUuid.equals(n.contentRef!),
-        );
-      }
-    }
-    await session.db.transaction((tx) async {
-      await DriveItem.db.deleteWhere(
-        session,
-        where: (t) => t.id.inSet(ids),
-        transaction: tx,
-      );
-      // (v2) Frees the owners' bytes (Drive 03 §7.4).
-      await StorageService.instance.onDelete(session, nodes, transaction: tx);
-      if (item.parentId != null && !ids.contains(item.parentId)) {
-        await KindMasks.refreshChain(session, item.parentId, transaction: tx);
-      }
-    });
-    for (final n in nodes) {
-      final signal = DriveChangeSignal(
-        kind: DriveChangeKind.removed,
-        itemUuid: n.uuid,
-      );
-      for (final u in users) {
-        await ClusterBus.post(session, DriveEvents.channel(u), signal);
-      }
-    }
-  }
-
-  /// Daily job: deletes items trashed longer than [trashRetention].
-  static Future<int> purgeExpiredTrash(Session session, {DateTime? now}) async {
-    final cutoff = (now ?? nowUtc()).subtract(trashRetention);
-    final expired = await DriveItem.db.find(
-      session,
-      where: (t) => t.trashedAt < cutoff,
-      limit: 1000,
-    );
-    final purged = <int>{};
-    for (final item in expired) {
-      if (purged.contains(item.id)) continue;
-      final current = await DriveItem.db.findById(session, item.id!);
-      if (current == null) continue;
-      final nodes = await AccessService.subtree(session, current);
-      await purge(session, current);
-      purged.addAll(nodes.map((n) => n.id!));
-    }
-    return purged.length;
-  }
-
   // ---------------------------------------------------------------- misc
-
-  static Future<List<TemplateView>> listTemplates(
-    Session session,
-    Actor actor,
-    DriveItemKind? kind,
-  ) async {
-    final result = <TemplateView>[
-      for (final t in BuiltinTemplates.all)
-        if (t.inGallery && (kind == null || t.kind == kind))
-          TemplateView(
-            uuid: t.uuid,
-            key: t.key,
-            kind: t.kind,
-            name: t.name,
-            description: t.description,
-            category: t.category,
-            builtin: true,
-            previewText: t.previewText,
-            themeKey: t.themeKey,
-            previewStyle: t.previewStyle,
-            sizeBytes: _builtinSize(t),
-          ),
-    ];
-    final published = await DriveItem.db.find(
-      session,
-      where: (t) =>
-          t.templateOf.notEquals(null) &
-          t.trashedAt.equals(null) &
-          (kind == null ? Constant.bool(true) : t.kind.equals(kind)),
-      limit: 500,
-    );
-    final roles = await AccessService.rolesFor(
-      session,
-      actor.userId,
-      published,
-    );
-    for (final item in published) {
-      if (roles[item.id!] == null) continue;
-      result.add(
-        TemplateView(
-          uuid: item.uuid,
-          kind: item.kind,
-          name: item.name,
-          description: item.description ?? '',
-          category: item.templateOf!,
-          builtin: false,
-          previewText: (item.searchText ?? '').length > 140
-              ? '${item.searchText!.substring(0, 140)}…'
-              : item.searchText ?? '',
-          thumbnailFileId: item.thumbnailFileId,
-          sizeBytes: item.sizeBytes + item.attachmentBytes,
-        ),
-      );
-    }
-    return result;
-  }
-
-  static final Map<String, int> _builtinSizes = {};
-
-  /// (v2) The pre-check size of an item made from a built-in template
-  /// (`TemplateView.sizeBytes`, Drive 03 §6.5).
-  static int _builtinSize(BuiltinTemplate t) =>
-      _builtinSizes[t.key] ??= t.slides != null
-      ? SlidesTemplateDecks.estimate(t.slides!)
-      : t.markdown != null
-      ? DocumentSize.of(WriteContent.fromMarkdown(t.markdown!).delta)
-      : StorageHooks.sheetsEstimate(t.sheets);
-
-  /// Publishes (or unpublishes with null) an owned item as a template.
-  static Future<DriveItemView> setTemplate(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-    TemplateCategory? category,
-  ) async {
-    final (item, role) = await AccessService.require(
-      session,
-      actor,
-      uuid,
-      Role.owner,
-    );
-    if (item.kind == DriveItemKind.folder) {
-      throw Errors.invalid('Folders cannot be templates.');
-    }
-    await DriveItem.db.updateWhere(
-      session,
-      columnValues: (t) => [t.templateOf(category)],
-      where: (t) => t.id.equals(item.id!),
-    );
-    final updated = (await DriveItem.db.findById(session, item.id!))!;
-    await DriveEvents.notify(session, updated, DriveChangeKind.updated);
-    return DriveViews.one(session, actor.userId, updated, role: role);
-  }
 
   /// The caller's storage (Drive 03 §3), from [StorageService].
   static Future<StorageUsage> storageUsage(Session session, Actor actor) =>
@@ -2179,7 +1064,4 @@ abstract final class DriveService {
       await DriveEvents.notify(session, updated, DriveChangeKind.modified);
     }
   }
-
-  /// Role of the caller as protocol enum (helper for endpoints).
-  static AccessRole accessRole(Role role) => role.access;
 }

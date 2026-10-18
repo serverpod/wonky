@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -41,6 +42,25 @@ void main() {
         expect(String.fromCharCodes(a.bytes.take(5)), '%PDF-');
         expect(a.pageCount, 1);
         expect(a.warnings.where((w) => w.code == 'font_fallback'), isEmpty);
+      },
+    );
+
+    test(
+      'when Cancel is pressed during a long PDF export then it stops '
+      '(the export gives the event loop turns, W-07)',
+      testOn: 'vm',
+      () async {
+        final long = source(
+          List.generate(400, (i) => 'Paragraph $i with text.').join('\n\n'),
+        );
+        final cancel = CancellationToken();
+        // Runs only when the export gives the event loop a turn.
+        Timer(const Duration(milliseconds: 20), cancel.cancel);
+
+        await expectLater(
+          exporter.export(long, WriteDownloadFormat.pdf, cancel: cancel),
+          throwsA(isA<ExportCancelledException>()),
+        );
       },
     );
 

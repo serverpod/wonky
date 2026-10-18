@@ -2,9 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_revlog/apply.dart' show RevRejectReason;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart'
+    show RevGroupRejection;
+import 'package:wonky_slides_core/session.dart' show SlidesRowsUndoEntry;
 
 import '../editor_screen/deck_editor_controller.dart';
+import '../../l10n/slides_l10n.dart';
 import '../present/active_presentation.dart';
+import '../revlog/logged_deck_session.dart';
 import '../text_editing/text_editing_host.dart';
 import 'slides_hints.dart';
 import 'slides_presence_controller.dart';
@@ -26,6 +32,41 @@ class SlidesCollab {
     _host = textEditingOf(editor)..locks = locks;
     activePresentation.addListener(_onPresentation);
     _onPresentation();
+    final session = editor.session;
+    if (session is LoggedDeckSession) {
+      _rejections = session.groupRejected.listen(onGroupRejected);
+    }
+  }
+
+  StreamSubscription<RevGroupRejection>? _rejections;
+
+  /// The server rejected a group (RevLog spec 06 §4.6): the model is
+  /// already rolled back; the plan's undo step is removed when it is the
+  /// top one (a buried step's undo finds nothing to revert and is skipped
+  /// by the per-column rule), and one toast says why.
+  @visibleForTesting
+  void onGroupRejected(RevGroupRejection r) {
+    if (_disposed) return;
+    final services = editor.services;
+    final stack = UndoStackKey(editor.session.itemUuid.uuid);
+    final steps = services.undo.undoStepsOf(stack);
+    if (steps.isNotEmpty) {
+      final top = steps.last;
+      final hit = top.entries.any(
+        (e) => e is SlidesRowsUndoEntry && e.groupId == r.groupId,
+      );
+      if (hit) services.undo.discardTop(top.id, stack: stack);
+    }
+    debugPrint(
+      'Change rejected (${r.rejection.reason.name}, group ${r.groupId}): '
+      '${r.rejection.message}',
+    );
+    final l = slidesL10nOf(services);
+    services.toasts.show(switch (r.rejection.reason) {
+      RevRejectReason.forbiddenForRole ||
+      RevRejectReason.forbidden => l.toastChangeNoAccess,
+      _ => l.toastChangeNotSaved(r.ops.first.label, r.rejection.message),
+    });
   }
 
   static final Expando<SlidesCollab> _of = Expando('slidesCollab');
@@ -167,6 +208,7 @@ class SlidesCollab {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    unawaited(_rejections?.cancel());
     activePresentation.removeListener(_onPresentation);
     (_bound as Listenable?)?.removeListener(_onPosition);
     _poll?.cancel();

@@ -142,6 +142,27 @@ final class SlideOrder {
 
   static const _slideTable = 'slide';
 
+  /// This order with the rows of [slides] replaced, for changes of columns
+  /// the order doesn't depend on (not `sortKey`, `groupId` or `skipped`).
+  /// Slides that aren't in the order are ignored.
+  SlideOrder withSlides(Iterable<SlideRec> slides) {
+    final list = [...entries];
+    final byId = {..._byId};
+    for (final s in slides) {
+      final e = byId[s.id];
+      if (e == null) continue;
+      list[e.index] = byId[s.id] = SlideOrderEntry(
+        slide: s,
+        index: e.index,
+        groupId: e.groupId,
+        skipped: e.skipped,
+        number: e.number,
+        orphan: e.orphan,
+      );
+    }
+    return SlideOrder._(List.unmodifiable(list), groups, topLevel, byId);
+  }
+
   /// Every slide in presentation order.
   final List<SlideOrderEntry> entries;
 

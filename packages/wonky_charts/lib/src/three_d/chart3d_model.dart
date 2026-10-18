@@ -550,11 +550,18 @@ final class Chart3DModel {
 
   /// A hash of everything the meshes depend on (not the view), so GPU backends rebuild their
   /// buffers only when it changes.
-  int get contentHash => Object.hashAll([
+  ///
+  /// The model is immutable: computed once per instance (it is read on every
+  /// GPU frame, CQ-47).
+  int get contentHash => _contentHashes[this] ??= Object.hashAll([
     kind,
     lighting,
     for (final i in items) Object.hashAll(i.toJson().values.map(_hashable)),
   ]);
+
+  static final Expando<int> _contentHashes = Expando(
+    'Chart3DModel.contentHash',
+  );
 
   static Object? _hashable(Object? v) =>
       v is List ? Object.hashAll(v.map(_hashable)) : v;

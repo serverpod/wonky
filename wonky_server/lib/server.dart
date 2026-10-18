@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:clock/clock.dart';
@@ -13,6 +14,8 @@ import 'src/platform/board/ai/jev_gemini_board_ai.dart';
 import 'src/platform/board/board_config.dart';
 import 'src/platform/cluster/cluster.dart';
 import 'src/platform/cluster/cluster_bus.dart';
+import 'src/platform/common/guarded.dart';
+import 'src/platform/common/search_indexes.dart';
 import 'src/platform/config/wonky_config.dart';
 import 'src/platform/files/file_routes.dart';
 import 'src/platform/mcp/mcp_route.dart';
@@ -30,14 +33,12 @@ import 'src/web/routes/root_redirect_route.dart';
 import 'src/web/web_apps.dart';
 import 'src/write/themes/theme_service.dart';
 import 'src/write/versions/write_version_provider.dart';
-import 'src/sheets/changelog/change_log_consumer.dart';
-import 'src/sheets/scripts/script_triggers.dart';
-import 'src/slides/slides_server.dart';
+import 'src/sheets/revlog/sheets_revlog.dart';
+import 'src/slides/revlog/slides_revlog.dart';
 
 /// The starting point of the Wonky Work server.
 void run(List<String> args) async {
-  // The generated Serverpod is wired with the protocol, the endpoints and
-  // the offline-sync engine for the `database: sync` tables.
+  // The generated Serverpod is wired with the protocol and the endpoints.
   final pod = Serverpod(args);
 
   // One sign-in for both apps: email/password with JWTs (specs/04).
@@ -89,6 +90,23 @@ void run(List<String> args) async {
   }
   await scheduleMaintenanceJobs(pod);
   await scheduleStorageBackfill(pod);
+  // Search indexes the models cannot declare (specs/13 §3), built in the
+  // background without blocking writes.
+  unawaited(ensureSearchIndexes(pod));
+}
+
+/// Creates the missing search indexes ([SearchIndexes]).
+Future<void> ensureSearchIndexes(sp.Serverpod pod) async {
+  final session = await pod.createSession(enableLogging: false);
+  try {
+    await runGuarded(
+      session,
+      'wonky.searchIndexes',
+      () => SearchIndexes.ensure(session),
+    );
+  } finally {
+    await session.close();
+  }
 }
 
 /// (v2) The storage backfill (Drive 03 §9): once per server start, a few
@@ -110,17 +128,14 @@ Future<void> scheduleStorageBackfill(sp.Serverpod pod) async {
   }
 }
 
-/// Sheets scripts: compile-after-sync and installable triggers run from
-/// change-log processing (Sheets 09 §8.7.3, §9.1).
-void registerScriptHooks() {
-  if (!ChangeLogConsumer.plugins.any((p) => p is ScriptChangeLogPlugin)) {
-    ChangeLogConsumer.plugins.add(ScriptChangeLogPlugin());
-  }
-}
+/// RevLog bindings (RevLog spec 05 §1): spreadsheets, with the protected
+/// file warm-up of their connections (05 §3.5). Sheets scripts run from the
+/// binding's `scripts` hook (Sheets 09 §8.7.3, §9.1).
+void registerScriptHooks() => SheetsRevlog.register();
 
-/// Wonky Slides: the deck size estimator and the deck change-log plugins
-/// (Slides 12 §5.7).
-void registerSlidesHooks() => SlidesServer.ensureRegistered();
+/// RevLog binding of decks (RevLog spec 05 §1, 08) with the deck size
+/// estimator and the comment notification extras.
+void registerSlidesHooks() => SlidesRevlog.register();
 
 /// Registers the per-app version providers (specs/07 §5).
 void registerVersionProviders() {
@@ -207,22 +222,74 @@ Future<void> scheduleMaintenanceJobs(sp.Serverpod pod) async {
   }
 }
 
+/// Schedules one recurring job: `calls.callRecurring(identifier: id)
+/// .cron(cron)` followed by the job's future call (typed, so a renamed
+/// future call fails to compile, not at start; CQ-33).
+typedef RecurringJob =
+    Future<void> Function(FutureCalls calls, String id, String cron);
+
+/// The identifiers of the recurring jobs (tests check that each is scheduled).
+Iterable<String> get recurringJobIds => _jobs.keys;
+
 /// The recurring jobs by identifier: cron and how to schedule them.
-final _jobs = <String, (String, Future<void> Function(dynamic recurring))>{
+final _jobs = <String, (String, RecurringJob)>{
   'wonky.captureVersions': (
     '* * * * *',
-    (r) => r.maintenance.captureVersions(),
+    (c, id, cron) => c
+        .callRecurring(identifier: id)
+        .cron(cron)
+        .maintenance
+        .captureVersions(),
   ),
-  'wonky.sendDigests': ('*/15 * * * *', (r) => r.maintenance.sendDigests()),
-  'wonky.cleanupFiles': ('7 * * * *', (r) => r.maintenance.cleanupFiles()),
-  'wonky.daily': ('17 3 * * *', (r) => r.maintenance.daily()),
+  'wonky.sendDigests': (
+    '*/15 * * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).maintenance.sendDigests(),
+  ),
+  'wonky.cleanupFiles': (
+    '7 * * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).maintenance.cleanupFiles(),
+  ),
+  // Expired grants end access within the hour (specs/06 §2).
+  'wonky.expireGrants': (
+    '27 * * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).maintenance.expireGrants(),
+  ),
+  // RevLog post-commit hooks that lag or wait for a retry (RevLog 05 §10).
+  'wonky.revlogSweep': (
+    '*/5 * * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).maintenance.revlogSweep(),
+  ),
+  'wonky.daily': (
+    '17 3 * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).maintenance.daily(),
+  ),
   // (v2) Storage counters from the sources (Drive 03 §4.3).
-  'wonky.storageReconcile': ('47 3 * * *', (r) => r.storage.reconcile()),
+  'wonky.storageReconcile': (
+    '47 3 * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).storage.reconcile(),
+  ),
   // Sheets scripts (Sheets 09 §8.7.3, §13.1).
-  'wonky.scriptsTick': ('* * * * *', (r) => r.scriptScheduler.tick()),
-  'wonky.scriptsPrune': ('37 3 * * *', (r) => r.scriptScheduler.prune()),
+  'wonky.scriptsTick': (
+    '* * * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).scriptScheduler.tick(),
+  ),
+  'wonky.scriptsPrune': (
+    '37 3 * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).scriptScheduler.prune(),
+  ),
   // Bugs & improvements: claims, unchecked posts, retention (specs/16 §8.2).
-  'wonky.boardSweep': ('*/10 * * * *', (r) => r.board.sweep()),
+  'wonky.boardSweep': (
+    '*/10 * * * *',
+    (c, id, cron) => c.callRecurring(identifier: id).cron(cron).board.sweep(),
+  ),
 };
 
 /// Brings the scheduled recurring jobs in line with [_jobs] (see
@@ -249,7 +316,7 @@ Future<List<String>> scheduleRecurringJobs(
     final upcoming = entries.where((e) => e.time.isAfter(now)).length;
     if (entries.isNotEmpty && sameCron && upcoming <= 1) continue;
     await futureCalls.cancel(id);
-    await schedule(futureCalls.callRecurring(identifier: id).cron(cron));
+    await schedule(futureCalls, id, cron);
     scheduled.add(id);
   }
   return scheduled;

@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:math';
 
 import 'package:serverpod/serverpod.dart';

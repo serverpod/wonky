@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:serverpod/serverpod.dart';
 
 import '../../ai/llm/ai_client.dart';
+import '../../ai/untrusted_text.dart';
 import '../../common/models.dart';
 import 'board_ai.dart';
 import 'board_ai_ledger.dart';
@@ -266,14 +267,8 @@ class BoardGemini {
   // ------------------------------------------------------------- plumbing
 
   /// [s] inside `<board_data>` with closing tags in it defused.
-  static String wrap(String s) {
-    const tag = BoardGeminiPrompts.dataTag;
-    final escaped = s.replaceAllMapped(
-      RegExp('<\\s*/?\\s*$tag\\s*>', caseSensitive: false),
-      (_) => '<\\/$tag>',
-    );
-    return '<$tag>\n$escaped\n</$tag>';
-  }
+  static String wrap(String s) =>
+      UntrustedText.wrap(BoardGeminiPrompts.dataTag, s);
 
   Future<Map<String, Object?>> _callTool(
     Session session, {

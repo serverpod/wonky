@@ -1,5 +1,4 @@
 import 'package:attributed_text/attributed_text.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:super_editor/src/core/document_selection.dart';
@@ -72,40 +71,59 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
   SingleColumnLayoutViewModel style(Document document, SingleColumnLayoutViewModel viewModel) {
     editorStyleLog.info("(Re)calculating selection view model for document layout");
     editorStyleLog.fine("Applying selection to components: ${_selection.value}");
+    // WONKY PATCH SE-9: the selected nodes are computed once per pass, not once
+    // per component (O(n²) for a selection over the whole document).
+    final selectedNodes = _selectedNodes();
+    final selectedIds = {for (final node in selectedNodes) node.id};
     return SingleColumnLayoutViewModel(
       padding: viewModel.padding,
       componentViewModels: [
         for (final previousViewModel in viewModel.componentViewModels) //
-          _applySelection(previousViewModel.copy()),
+          _applySelection(previousViewModel.copy(), selectedNodes, selectedIds),
       ],
     );
   }
 
-  SingleColumnLayoutComponentViewModel _applySelection(SingleColumnLayoutComponentViewModel viewModel) {
+  // WONKY PATCH SE-9
+  List<DocumentNode> _selectedNodes() {
+    final documentSelection = _selection.value;
+    if (documentSelection == null) {
+      return const [];
+    }
+    try {
+      return _document.getNodesInside(
+        documentSelection.base,
+        documentSelection.extent,
+      );
+    } catch (exception) {
+      // This situation can happen in the moment between a document change and
+      // a corresponding selection change. For example: deleting an image and
+      // replacing it with an empty paragraph. Between the doc change and the
+      // selection change, the old image selection is applied to the new paragraph.
+      // This results in an exception.
+      //
+      // TODO: introduce a unified event ledger that combines related behaviors
+      //       into atomic transactions (#423)
+      return const [];
+    }
+  }
+
+  SingleColumnLayoutComponentViewModel _applySelection(
+    SingleColumnLayoutComponentViewModel viewModel,
+    List<DocumentNode> selectedNodes,
+    Set<String> selectedIds,
+  ) {
     final documentSelection = _selection.value;
     final node = _document.getNodeById(viewModel.nodeId)!;
 
     DocumentNodeSelection? nodeSelection;
     if (documentSelection != null) {
-      late List<DocumentNode> selectedNodes;
-      try {
-        selectedNodes = _document.getNodesInside(
-          documentSelection.base,
-          documentSelection.extent,
-        );
-      } catch (exception) {
-        // This situation can happen in the moment between a document change and
-        // a corresponding selection change. For example: deleting an image and
-        // replacing it with an empty paragraph. Between the doc change and the
-        // selection change, the old image selection is applied to the new paragraph.
-        // This results in an exception.
-        //
-        // TODO: introduce a unified event ledger that combines related behaviors
-        //       into atomic transactions (#423)
-        selectedNodes = [];
-      }
-      nodeSelection =
-          _computeNodeSelection(documentSelection: documentSelection, selectedNodes: selectedNodes, node: node);
+      nodeSelection = _computeNodeSelection(
+        documentSelection: documentSelection,
+        selectedNodes: selectedNodes,
+        selectedIds: selectedIds,
+        node: node,
+      );
     }
 
     editorStyleLog.fine("Node selection (${node.id}): $nodeSelection");
@@ -172,6 +190,7 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
   DocumentNodeSelection? _computeNodeSelection({
     required DocumentSelection? documentSelection,
     required List<DocumentNode> selectedNodes,
+    required Set<String> selectedIds,
     required DocumentNode node,
   }) {
     if (documentSelection == null) {
@@ -217,12 +236,16 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
       );
     } else {
       // Log all the selected nodes.
-      editorStyleLog.finer(' - selection contains multiple nodes:');
-      for (final node in selectedNodes) {
-        editorStyleLog.finer('   - ${node.id}');
+      // WONKY PATCH SE-9: only when logged (the loop ran for every component).
+      if (editorStyleLog.isLoggable(Level.FINER)) {
+        editorStyleLog.finer(' - selection contains multiple nodes:');
+        for (final node in selectedNodes) {
+          editorStyleLog.finer('   - ${node.id}');
+        }
       }
 
-      if (selectedNodes.firstWhereOrNull((selectedNode) => selectedNode.id == node.id) == null) {
+      // WONKY PATCH SE-9: a set lookup instead of a linear search.
+      if (!selectedIds.contains(node.id)) {
         // The document selection does not contain the node we're interested in. Return.
         editorStyleLog.finer(' - this node is not in the selection');
         return null;

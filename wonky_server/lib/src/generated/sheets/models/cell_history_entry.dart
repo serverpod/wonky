@@ -12,13 +12,13 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:wonky_server/src/generated/protocol.dart' as _il4umwa0;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 import '../../platform/users/user_summary.dart' as _itg9e9ms;
 
 abstract class CellHistoryEntry
     implements _is.SerializableModel, _is.ProtocolSerialization {
   CellHistoryEntry._({
-    required this.changeLogId,
+    required this.revision,
     this.user,
     required this.actorKind,
     required this.label,
@@ -28,9 +28,9 @@ abstract class CellHistoryEntry
   });
 
   factory CellHistoryEntry({
-    required _is.UuidValue changeLogId,
+    required int revision,
     _itg9e9ms.UserSummary? user,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required String label,
     required DateTime at,
     String? before,
@@ -39,15 +39,13 @@ abstract class CellHistoryEntry
 
   factory CellHistoryEntry.fromJson(Map<String, dynamic> jsonSerialization) {
     return CellHistoryEntry(
-      changeLogId: _is.UuidValueJsonExtension.fromJson(
-        jsonSerialization['changeLogId'],
-      ),
+      revision: jsonSerialization['revision'] as int,
       user: jsonSerialization['user'] == null
           ? null
           : _il4umwa0.Protocol().deserialize<_itg9e9ms.UserSummary>(
               jsonSerialization['user'],
             ),
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       label: jsonSerialization['label'] as String,
@@ -57,11 +55,12 @@ abstract class CellHistoryEntry
     );
   }
 
-  _is.UuidValue changeLogId;
+  /// The op (file revision) that wrote the value.
+  int revision;
 
   _itg9e9ms.UserSummary? user;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   String label;
 
@@ -75,9 +74,9 @@ abstract class CellHistoryEntry
   /// with some or all fields replaced by the given arguments.
   @_is.useResult
   CellHistoryEntry copyWith({
-    _is.UuidValue? changeLogId,
+    int? revision,
     _itg9e9ms.UserSummary? user = const _UndefinedCellHistoryEntry$user(),
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     String? label,
     DateTime? at,
     String? before,
@@ -87,7 +86,7 @@ abstract class CellHistoryEntry
   Map<String, dynamic> toJson() {
     return {
       '__className__': 'CellHistoryEntry',
-      'changeLogId': changeLogId.toJson(),
+      'revision': revision,
       if (user != null) 'user': user?.toJson(),
       'actorKind': actorKind.toJson(),
       'label': label,
@@ -101,7 +100,7 @@ abstract class CellHistoryEntry
   Map<String, dynamic> toJsonForProtocol() {
     return {
       '__className__': 'CellHistoryEntry',
-      'changeLogId': changeLogId.toJson(),
+      'revision': revision,
       if (user != null) 'user': user?.toJsonForProtocol(),
       'actorKind': actorKind.toJson(),
       'label': label,
@@ -126,15 +125,15 @@ class _UndefinedCellHistoryEntry$user extends _is.UndefinedSentinel
 
 class _CellHistoryEntryImpl extends CellHistoryEntry {
   _CellHistoryEntryImpl({
-    required _is.UuidValue changeLogId,
+    required int revision,
     _itg9e9ms.UserSummary? user,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required String label,
     required DateTime at,
     String? before,
     String? after,
   }) : super._(
-         changeLogId: changeLogId,
+         revision: revision,
          user: user,
          actorKind: actorKind,
          label: label,
@@ -148,16 +147,16 @@ class _CellHistoryEntryImpl extends CellHistoryEntry {
   @_is.useResult
   @override
   CellHistoryEntry copyWith({
-    _is.UuidValue? changeLogId,
+    int? revision,
     _itg9e9ms.UserSummary? user = const _UndefinedCellHistoryEntry$user(),
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     String? label,
     DateTime? at,
     Object? before = _Undefined,
     Object? after = _Undefined,
   }) {
     return CellHistoryEntry(
-      changeLogId: changeLogId ?? this.changeLogId,
+      revision: revision ?? this.revision,
       user: user is _is.UndefinedSentinel ? this.user?.copyWith() : user,
       actorKind: actorKind ?? this.actorKind,
       label: label ?? this.label,

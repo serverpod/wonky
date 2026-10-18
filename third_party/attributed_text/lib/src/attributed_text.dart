@@ -5,6 +5,7 @@ import 'attribution.dart';
 import 'logging.dart';
 import 'span_range.dart';
 
+// WONKY PATCH AT-2: log messages are closures (evaluated only when logged).
 final _log = attributionsLog;
 
 /// Text with attributions applied to desired spans of text.
@@ -420,7 +421,7 @@ class AttributedText {
   /// Copies all text, attributions, and placeholders from [startOffset] to
   /// [endOffset], exclusive, and returns them as a new [AttributedText].
   AttributedText copyText(int startOffset, [int? endOffset]) {
-    _log.fine('start: $startOffset, end: $endOffset');
+    _log.fine(() => 'start: $startOffset, end: $endOffset');
 
     final placeholdersBeforeStartOffset = placeholders.entries.where((entry) => entry.key < startOffset);
     final textStartCopyOffset = startOffset - placeholdersBeforeStartOffset.length;
@@ -446,7 +447,7 @@ class AttributedText {
     } else {
       endCopyOffset = textWithPlaceholders.length - 1;
     }
-    _log.fine('offsets, start: $startCopyOffset, end: $endCopyOffset');
+    _log.fine(() => 'offsets, start: $startCopyOffset, end: $endCopyOffset');
 
     // Create placeholders for the copied region. The indices of the placeholders
     // need to be reduced based on the text/placeholders cut out from the
@@ -493,11 +494,11 @@ class AttributedText {
   /// Returns a copy of this [AttributedText] with the [other] text
   /// and attributions appended to the end.
   AttributedText copyAndAppend(AttributedText other) {
-    _log.fine('our attributions before pushing them:');
-    _log.fine(spans.toString());
+    _log.fine(() => 'our attributions before pushing them:');
+    _log.fine(() => spans.toString());
 
     if (other.isEmpty) {
-      _log.fine('`other` has no text. Returning a direct copy of ourselves.');
+      _log.fine(() => '`other` has no text. Returning a direct copy of ourselves.');
       return AttributedText(
         _text,
         spans.copy(),
@@ -506,7 +507,7 @@ class AttributedText {
     }
 
     if (isEmpty) {
-      _log.fine('our `text` is empty. Returning a direct copy of the `other` text.');
+      _log.fine(() => 'our `text` is empty. Returning a direct copy of the `other` text.');
       return AttributedText(
         other._text,
         other.spans.copy(),
@@ -547,25 +548,25 @@ class AttributedText {
     required int startOffset,
     Set<Attribution> applyAttributions = const {},
   }) {
-    _log.fine('text: "$textToInsert", start: $startOffset, attributions: $applyAttributions');
+    _log.fine(() => 'text: "$textToInsert", start: $startOffset, attributions: $applyAttributions');
 
-    _log.fine('copying text to the left');
+    _log.fine(() => 'copying text to the left');
     final startText = copyText(0, startOffset);
-    _log.fine('startText: $startText');
+    _log.fine(() => 'startText: $startText');
 
-    _log.fine('copying text to the right');
+    _log.fine(() => 'copying text to the right');
     final endText = copyText(startOffset);
-    _log.fine('endText: $endText');
+    _log.fine(() => 'endText: $endText');
 
-    _log.fine('creating new attributed text for insertion');
+    _log.fine(() => 'creating new attributed text for insertion');
     final insertedText = AttributedText(textToInsert);
     final insertTextRange = SpanRange(0, textToInsert.length - 1);
     for (dynamic attribution in applyAttributions) {
       insertedText.addAttribution(attribution, insertTextRange);
     }
-    _log.fine('insertedText: $insertedText');
+    _log.fine(() => 'insertedText: $insertedText');
 
-    _log.fine('combining left text, insertion text, and right text');
+    _log.fine(() => 'combining left text, insertion text, and right text');
     return startText.copyAndAppend(insertedText).copyAndAppend(endText);
   }
 
@@ -596,9 +597,9 @@ class AttributedText {
     required int startOffset,
     required int endOffset,
   }) {
-    _log.fine('Removing text region from $startOffset to $endOffset');
-    _log.fine('initial attributions:');
-    _log.fine(spans.toString());
+    _log.fine(() => 'Removing text region from $startOffset to $endOffset');
+    _log.fine(() => 'initial attributions:');
+    _log.fine(() => spans.toString());
     final reducedText = substring(0, startOffset) + substring(endOffset, length);
 
     AttributedSpans contractedAttributions = spans.copy()
@@ -606,9 +607,9 @@ class AttributedText {
         startOffset: startOffset,
         count: endOffset - startOffset,
       );
-    _log.fine('reduced text length: ${reducedText.length}');
-    _log.fine('remaining attributions:');
-    _log.fine(contractedAttributions.toString());
+    _log.fine(() => 'reduced text length: ${reducedText.length}');
+    _log.fine(() => 'remaining attributions:');
+    _log.fine(() => contractedAttributions.toString());
 
     return AttributedText(
       reducedText,

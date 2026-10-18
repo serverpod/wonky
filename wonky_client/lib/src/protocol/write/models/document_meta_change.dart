@@ -11,7 +11,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 /// LWW metadata change (Write 03 §6). The title lives on DriveItem.
 abstract class DocumentMetaChange
@@ -36,7 +36,7 @@ abstract class DocumentMetaChange
     required String beforeJson,
     required String afterJson,
     int? authorId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required DateTime createdAt,
   }) = _DocumentMetaChangeImpl;
 
@@ -53,7 +53,7 @@ abstract class DocumentMetaChange
       beforeJson: jsonSerialization['beforeJson'] as String,
       afterJson: jsonSerialization['afterJson'] as String,
       authorId: jsonSerialization['authorId'] as int?,
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       createdAt: _isc.DateTimeJsonExtension.fromJson(
@@ -80,7 +80,7 @@ abstract class DocumentMetaChange
 
   int? authorId;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   DateTime createdAt;
 
@@ -95,7 +95,7 @@ abstract class DocumentMetaChange
     String? beforeJson,
     String? afterJson,
     int? authorId,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     DateTime? createdAt,
   });
   @override
@@ -147,7 +147,7 @@ class _DocumentMetaChangeImpl extends DocumentMetaChange {
     required String beforeJson,
     required String afterJson,
     int? authorId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required DateTime createdAt,
   }) : super._(
          id: id,
@@ -173,7 +173,7 @@ class _DocumentMetaChangeImpl extends DocumentMetaChange {
     String? beforeJson,
     String? afterJson,
     Object? authorId = _Undefined,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     DateTime? createdAt,
   }) {
     return DocumentMetaChange(

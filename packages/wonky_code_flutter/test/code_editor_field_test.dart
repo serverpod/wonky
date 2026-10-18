@@ -33,6 +33,7 @@ CodeEditorFieldState _state(WidgetTester tester) =>
     tester.state<CodeEditorFieldState>(find.byType(CodeEditorField));
 
 void main() {
+  _longTextTests();
   for (final brightness in Brightness.values) {
     final palette = brightness == Brightness.dark
         ? BuiltInPalettes.wonkyDark
@@ -126,6 +127,72 @@ void main() {
       expect(CodeEditorField.commentPrefixOf('python'), '#');
       expect(CodeEditorField.commentPrefixOf('sql'), '--');
       expect(CodeEditorField.commentPrefixOf(''), isNull);
+    });
+  });
+}
+
+/// Counts tokenizations (CD-2).
+class _CountingTokenizer implements CodeTokenizer {
+  int calls = 0;
+
+  @override
+  bool supports(String language) => true;
+
+  @override
+  List<CodeToken> tokenize(String code, String language) {
+    calls++;
+    return [CodeToken(0, code.indexOf(' '), SyntaxToken.keyword)];
+  }
+}
+
+void _longTextTests() {
+  group('Given a long code text (CD-2)', () {
+    final long = List.filled(200, 'void f() { return; }').join('\n');
+
+    testWidgets('when typing then it is not tokenized per keystroke but once '
+        'typing pauses', (tester) async {
+      final tk = _CountingTokenizer();
+      await _pump(
+        tester,
+        CodeEditorField(
+          text: long,
+          language: 'dart',
+          palette: BuiltInPalettes.wonkyLight,
+          tokenizer: tk,
+          syncTokenizeLength: 1000,
+        ),
+      );
+      final s = _state(tester);
+      final first = s.debugTokenizations;
+      expect(first, 1);
+
+      for (var i = 0; i < 5; i++) {
+        s.typeAt(100, 0, 'x');
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      expect(s.debugTokenizations, first);
+
+      await tester.pump(CodeEditorField.retokenizeDelay);
+      await tester.pump();
+      expect(s.debugTokenizations, first + 1);
+      expect(tester.takeException(), isNull);
+      await _done(tester);
+    });
+
+    test('when shifting tokens past an edit then tokens before stay, tokens '
+        'after move and tokens overlapping it go', () {
+      const before = 'aaa bbb ccc';
+      const after = 'aaa bXXbb ccc';
+      final tokens = [
+        const CodeToken(0, 3, SyntaxToken.keyword),
+        const CodeToken(4, 7, SyntaxToken.string),
+        const CodeToken(8, 11, SyntaxToken.number),
+      ];
+
+      expect(CodeEditorFieldState.shiftTokens(tokens, before, after), [
+        const CodeToken(0, 3, SyntaxToken.keyword),
+        const CodeToken(10, 13, SyntaxToken.number),
+      ]);
     });
   });
 }

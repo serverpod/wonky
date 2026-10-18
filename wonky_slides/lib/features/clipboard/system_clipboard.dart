@@ -1,8 +1,5 @@
 import 'package:flutter/foundation.dart';
-
-import 'system_clipboard_io.dart'
-    if (dart.library.js_interop) 'system_clipboard_web.dart'
-    as platform;
+import 'package:wonky_app/platform.dart';
 
 /// What the system clipboard holds (Slides 03 §12.1): plain text, HTML
 /// and the first image.
@@ -38,7 +35,9 @@ abstract class SlidesSystemClipboard {
   const SlidesSystemClipboard();
 
   /// The platform clipboard (replaceable in tests).
-  static SlidesSystemClipboard instance = platform.createSlidesClipboard();
+  static SlidesSystemClipboard instance = _PlatformClipboard(
+    WonkyClipboard.platform(),
+  );
 
   Future<void> write(SlidesClipboardData data);
 
@@ -70,4 +69,37 @@ class MemorySlidesClipboard extends SlidesSystemClipboard {
 
   @override
   Future<SlidesClipboardData?> read() async => readBlocked ? null : data;
+}
+
+/// [SlidesClipboardData] over the shell clipboard ([WonkyClipboard]: text,
+/// HTML with the embedded Slides payload, and images).
+class _PlatformClipboard extends SlidesSystemClipboard {
+  _PlatformClipboard(this.clipboard);
+
+  final WonkyClipboard clipboard;
+
+  @override
+  bool get readBlocked => clipboard.readBlocked;
+
+  @override
+  Future<void> write(SlidesClipboardData data) => clipboard.write(
+    WonkyClipboardData(
+      plainText: data.plainText,
+      html: data.html,
+      image: data.image,
+      imageType: data.imageType,
+    ),
+  );
+
+  @override
+  Future<SlidesClipboardData?> read() async {
+    final d = await clipboard.read();
+    if (d == null) return null;
+    return SlidesClipboardData(
+      plainText: d.plainText,
+      html: d.html,
+      image: d.image,
+      imageType: d.imageType,
+    );
+  }
 }

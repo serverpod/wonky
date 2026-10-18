@@ -21,7 +21,7 @@ abstract class ProtocolInfo
   ProtocolInfo._({
     required this.serverVersion,
     required this.minClientVersion,
-    required this.syncTablesHash,
+    required this.revSchemaHash,
     required this.runMode,
     required this.features,
     required this.limits,
@@ -34,7 +34,7 @@ abstract class ProtocolInfo
   factory ProtocolInfo({
     required String serverVersion,
     required String minClientVersion,
-    required String syncTablesHash,
+    required String revSchemaHash,
     required String runMode,
     required _iebgpwu8.FeatureFlags features,
     required _ii93uvig.ServerLimits limits,
@@ -47,7 +47,7 @@ abstract class ProtocolInfo
     return ProtocolInfo(
       serverVersion: jsonSerialization['serverVersion'] as String,
       minClientVersion: jsonSerialization['minClientVersion'] as String,
-      syncTablesHash: jsonSerialization['syncTablesHash'] as String,
+      revSchemaHash: jsonSerialization['revSchemaHash'] as String,
       runMode: jsonSerialization['runMode'] as String,
       features: _il4umwa0.Protocol().deserialize<_iebgpwu8.FeatureFlags>(
         jsonSerialization['features'],
@@ -71,8 +71,10 @@ abstract class ProtocolInfo
 
   String minClientVersion;
 
-  /// Offline-sync schema hash; clients with a different hash must update.
-  String syncTablesHash;
+  /// RevSchema hashes of the synced apps (`sheets:<hash>,slides:<hash>`,
+  /// RevLog spec 02 §4.3). A file stream also announces the hashes it
+  /// accepts (`RevInit.acceptedHashes`).
+  String revSchemaHash;
 
   String runMode;
 
@@ -94,7 +96,7 @@ abstract class ProtocolInfo
   ProtocolInfo copyWith({
     String? serverVersion,
     String? minClientVersion,
-    String? syncTablesHash,
+    String? revSchemaHash,
     String? runMode,
     _iebgpwu8.FeatureFlags? features,
     _ii93uvig.ServerLimits? limits,
@@ -108,7 +110,7 @@ abstract class ProtocolInfo
       '__className__': 'ProtocolInfo',
       'serverVersion': serverVersion,
       'minClientVersion': minClientVersion,
-      'syncTablesHash': syncTablesHash,
+      'revSchemaHash': revSchemaHash,
       'runMode': runMode,
       'features': features.toJson(),
       'limits': limits.toJson(),
@@ -124,7 +126,7 @@ abstract class ProtocolInfo
       '__className__': 'ProtocolInfo',
       'serverVersion': serverVersion,
       'minClientVersion': minClientVersion,
-      'syncTablesHash': syncTablesHash,
+      'revSchemaHash': revSchemaHash,
       'runMode': runMode,
       'features': features.toJsonForProtocol(),
       'limits': limits.toJsonForProtocol(),
@@ -144,7 +146,7 @@ class _ProtocolInfoImpl extends ProtocolInfo {
   _ProtocolInfoImpl({
     required String serverVersion,
     required String minClientVersion,
-    required String syncTablesHash,
+    required String revSchemaHash,
     required String runMode,
     required _iebgpwu8.FeatureFlags features,
     required _ii93uvig.ServerLimits limits,
@@ -154,7 +156,7 @@ class _ProtocolInfoImpl extends ProtocolInfo {
   }) : super._(
          serverVersion: serverVersion,
          minClientVersion: minClientVersion,
-         syncTablesHash: syncTablesHash,
+         revSchemaHash: revSchemaHash,
          runMode: runMode,
          features: features,
          limits: limits,
@@ -170,7 +172,7 @@ class _ProtocolInfoImpl extends ProtocolInfo {
   ProtocolInfo copyWith({
     String? serverVersion,
     String? minClientVersion,
-    String? syncTablesHash,
+    String? revSchemaHash,
     String? runMode,
     _iebgpwu8.FeatureFlags? features,
     _ii93uvig.ServerLimits? limits,
@@ -181,7 +183,7 @@ class _ProtocolInfoImpl extends ProtocolInfo {
     return ProtocolInfo(
       serverVersion: serverVersion ?? this.serverVersion,
       minClientVersion: minClientVersion ?? this.minClientVersion,
-      syncTablesHash: syncTablesHash ?? this.syncTablesHash,
+      revSchemaHash: revSchemaHash ?? this.revSchemaHash,
       runMode: runMode ?? this.runMode,
       features: features ?? this.features.copyWith(),
       limits: limits ?? this.limits.copyWith(),

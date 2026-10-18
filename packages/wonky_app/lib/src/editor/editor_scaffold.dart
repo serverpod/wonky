@@ -226,6 +226,9 @@ class _EditorScaffoldState extends State<EditorScaffold> {
   Future<void> _load() async {
     try {
       final v = await s.drive.markOpened(_uuid);
+      // Left before the item loaded: starting presence/comments now would
+      // leave zombie streams (and could replace a reopened editor's ones).
+      if (!mounted) return;
       _setItem(v);
       widget.onItemLoaded?.call(v);
       unawaited(_comments.start());
@@ -365,9 +368,12 @@ class _EditorScaffoldState extends State<EditorScaffold> {
           _presence.activity();
           return KeyEventResult.ignored;
         },
-        child: ListenableBuilder(
-          listenable: s.registry,
-          builder: (context, _) {
+        // Not rebuilt from command-state signals (CQ-39): only the menubar
+        // (an open menu shows enabled/checked states) listens to the
+        // registry; the toolbar, panels and status widgets listen to what
+        // they show, and the document body never rebuilds from the shell.
+        child: Builder(
+          builder: (context) {
             if (mobile) return _mobileLayout(context, item);
             final statusLeft = widget.statusLeft?.call(context) ?? const [];
             final statusRight = widget.statusRight?.call(context) ?? const [];
@@ -410,12 +416,15 @@ class _EditorScaffoldState extends State<EditorScaffold> {
                     focusNode: _menubarFocus,
                     child: Padding(
                       padding: const EdgeInsets.only(left: 52),
-                      child: WonkyMenubar(
-                        controller: _menubar,
-                        menus: MenuResolver(
-                          s,
-                          custom: _customItems(),
-                        ).menubar(context, s.menuRoot(context)),
+                      child: ListenableBuilder(
+                        listenable: s.registry,
+                        builder: (context, _) => WonkyMenubar(
+                          controller: _menubar,
+                          menus: MenuResolver(
+                            s,
+                            custom: _customItems(),
+                          ).menubar(context, s.menuRoot(context)),
+                        ),
                       ),
                     ),
                   ),

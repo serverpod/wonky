@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_slides_core/history.dart';
+import 'package:wonky_slides_core/model.dart' show DeckModel;
 import 'package:wonky_slides_core/schema.dart' show SlidesTables;
 
 import '../../platform/common/actor.dart';
@@ -9,30 +10,75 @@ import '../../platform/common/errors.dart';
 import '../../platform/common/models.dart';
 import '../../platform/common/time.dart';
 import '../../platform/files/file_service.dart';
+import '../../platform/revlog/rev_sql.dart';
 import '../../platform/presence/presence_service.dart';
 import '../../platform/users/user_service.dart';
 import '../../platform/versions/version_service.dart';
-import '../../sheets/sync/sync_db.dart';
-import '../headless/headless_deck_cache.dart';
-import '../sync/server_slides_writer.dart';
+import '../revlog/slides_rev_binding.dart';
+import '../revlog/slides_server_writes.dart';
 
 /// Slides versions (Slides 09 §4.1, §4.4): a gzip NDJSON snapshot of every
-/// synced deck row in cloud storage (`snapshot.wsd.gz`, not counted toward
-/// the quota) with a `SlidesSnapshotIndex` (slide list, who changed what);
-/// a restore applies the row diff as normal forward writes recorded as a
-/// `ServerChangeRecord` (`slides.serverChange` undo).
+/// deck row in cloud storage (`snapshot.wsd.gz`, not counted toward the
+/// quota), taken at a file revision (`ItemVersion.revision`), with a
+/// `SlidesSnapshotIndex` (slide list, who changed what: the summaries of
+/// the RevLog ops between two captures); a restore applies the row diff as
+/// a RevLog server change recorded as a `ServerChangeRecord`
+/// (`slides.serverChange` undo; RevLog spec 08 §7).
 class SlidesVersionProvider implements VersionProvider {
   const SlidesVersionProvider();
 
-  /// Max change-log rows read for one version's attribution.
+  /// Max ops read for one version's attribution.
   static const maxLogRows = 20000;
 
   @override
   DriveItemKind get kind => DriveItemKind.presentation;
 
-  /// Every visible row of [space] (admin read) by table and id.
-  static Future<DeckRowsByTable> readSpace(Session session, UuidValue space) =>
-      HeadlessDeckCache.readSpace(session, space);
+  /// Every row of the deck [space] (admin read) by table and id.
+  static Future<DeckRowsByTable> readSpace(
+    Session session,
+    UuidValue space,
+  ) async => (await readAt(session, space)).$2;
+
+  /// The rows of [space] as [readSpace] with the file revision they show:
+  /// one repeatable-read transaction, so rows and revision agree while ops
+  /// commit. Revision 0 and no rows when the file is missing.
+  static Future<(int, DeckRowsByTable)> readAt(
+    Session session,
+    UuidValue space,
+  ) async {
+    final file = await RevFile.db.findFirstRow(
+      session,
+      where: (t) => t.fileUuid.equals(space),
+    );
+    final result = <String, Map<String, Map<String, Object?>>>{};
+    if (file == null) return (0, result);
+    final sql = RevSql(SlidesRevBinding.instance.schema);
+    final (revision, rows) = await session.db.transaction(
+      (tx) async {
+        final head = await session.db.unsafeQuery(
+          'SELECT "headRevision" FROM rev_file WHERE id = @f',
+          parameters: QueryParameters.named({'f': file.id}),
+          transaction: tx,
+        );
+        final list = await sql
+            .allRows(
+              session,
+              file.id!,
+              scopes: () async => const {},
+              transaction: tx,
+            )
+            .toList();
+        return (head.first[0]! as int, list);
+      },
+      settings: TransactionSettings(
+        isolationLevel: IsolationLevel.repeatableRead,
+      ),
+    );
+    for (final (table, row) in rows) {
+      (result[table] ??= {})[row['id']! as String] = row;
+    }
+    return (revision, result);
+  }
 
   /// The rows of [rows] as `(table, columns)` in dependency order.
   static List<(String, Map<String, Object?>)> listOf(DeckRowsByTable rows) => [
@@ -43,7 +89,7 @@ class SlidesVersionProvider implements VersionProvider {
   @override
   Future<CapturedVersion> capture(Session session, DriveItem item) async {
     final space = item.contentRef!;
-    final rows = await readSpace(session, space);
+    final (revision, rows) = await readAt(session, space);
     if (rows[SlidesTables.deck]?.isEmpty ?? true) {
       throw Errors.notFound('Presentation');
     }
@@ -63,10 +109,19 @@ class SlidesVersionProvider implements VersionProvider {
     );
     return CapturedVersion(
       storageKind: VersionStorage.snapshotFile,
+      revision: revision,
       snapshotFileId: file.fileUuid,
       sizeBytes: bytes.length,
+      // The slide list of the index, from the rows in memory: afterCapture
+      // never downloads and decodes the snapshot it just stored.
+      index: SnapshotSlideEntry.encodeList(
+        DeckModel.fromRows(space.uuid, listOf(rows)),
+      ),
     );
   }
+
+  @override
+  Future<void> beforeCapture(Session session, DriveItem item) async {}
 
   /// The decoded snapshot of [version].
   static Future<SlidesSnapshot> snapshotOf(
@@ -92,72 +147,75 @@ class SlidesVersionProvider implements VersionProvider {
     Session session,
     DriveItem item,
     ItemVersion version,
+    CapturedVersion captured,
   ) async {
-    final snapshot = await snapshotOf(session, version);
+    final slides =
+        captured.index as String? ??
+        SnapshotSlideEntry.encodeList(
+          (await snapshotOf(session, version)).toModel(),
+        );
     final changes = await changesOf(session, item, version);
     await SlidesSnapshotIndex.db.insertRow(
       session,
       SlidesSnapshotIndex(
         itemVersionId: version.id!,
-        slidesJson: SnapshotSlideEntry.encodeList(snapshot.toModel()),
+        slidesJson: slides,
         changesJson: changes.encode(),
         authorIds: version.authors,
       ),
     );
   }
 
-  /// The capture window of [version]: from the previous version of its
-  /// item (exclusive) to its own capture.
-  static Future<(DateTime?, DateTime)> windowOf(
-    Session session,
-    ItemVersion version,
-  ) async {
-    final prev = await ItemVersion.db.findFirstRow(
-      session,
-      where: (t) => t.itemId.equals(version.itemId) & (t.id < version.id!),
-      orderBy: (t) => t.id.desc(),
-    );
-    return (prev?.createdAt, version.createdAt);
-  }
-
-  /// Who changed what in [version]'s window: the deck change-log rows
-  /// consumed (their receipts' `processedAt`) after the previous capture,
-  /// oldest first (offline edits that synced later belong to the version
-  /// that consumed them; 09 §4.1). Empty on errors.
+  /// Who changed what in [version]'s window: the ops committed after the
+  /// previous capture's revision up to this capture's (by commit time for
+  /// versions without a revision), oldest first; offline edits that synced
+  /// later belong to the version whose window contains their commit (09
+  /// §4.1). Empty on errors.
   static Future<SlidesVersionChanges> changesOf(
     Session session,
     DriveItem item,
     ItemVersion version,
   ) async {
     try {
-      final (from, to) = await windowOf(session, version);
-      final receipts = await DeckChangeLogReceipt.db.find(
+      final file = await RevFile.db.findFirstRow(
         session,
-        where: (t) =>
-            t.deckUuid.equals(item.contentRef!) &
-            (from == null ? Constant.bool(true) : t.processedAt > from) &
-            (t.processedAt <= to),
-        orderBy: (t) => t.processedAt,
-        limit: maxLogRows,
+        where: (t) => t.fileUuid.equals(item.contentRef!),
       );
       final builder = SlidesVersionChangesBuilder();
-      if (receipts.length >= maxLogRows) builder.markApprox();
-      if (receipts.isEmpty) return builder.build();
-      final logs = await DeckChangeLog.db.find(
-        syncSessionOf(session),
-        where: (t) => t.id.inSet({for (final r in receipts) r.changeLogId}),
-        orderBy: (t) => t.at,
-      );
-      if (logs.length < receipts.length) builder.markApprox(); // pruned
-      final profiles = await UserProfile.db.find(
+      if (file == null) return builder.build();
+      final prev = await ItemVersion.db.findFirstRow(
         session,
-        where: (t) => t.authUserId.inSet({for (final l in logs) l.userId}),
+        where: (t) => t.itemId.equals(version.itemId) & (t.id < version.id!),
+        orderBy: (t) => t.id.desc(),
       );
-      final byAuth = {for (final p in profiles) p.authUserId.uuid: p.id!};
-      for (final l in logs) {
-        final user = byAuth[l.userId.uuid];
+      final to = version.revision;
+      final from = prev?.revision;
+      final byRevision = to != null && (prev == null || from != null);
+      final ops = await RevOp.db.find(
+        session,
+        where: (t) => byRevision
+            ? t.fileId.equals(file.id!) &
+                  (from == null ? Constant.bool(true) : t.revision > from) &
+                  (t.revision <= to)
+            : t.fileId.equals(file.id!) &
+                  (prev == null
+                      ? Constant.bool(true)
+                      : t.committedAt > prev.createdAt) &
+                  (t.committedAt <= version.createdAt),
+        orderBy: (t) => t.revision,
+        limit: maxLogRows,
+      );
+      if (ops.length >= maxLogRows) builder.markApprox();
+      for (final o in ops) {
+        final user = o.authorId;
+        final summary = o.summaryJson;
         if (user == null) continue;
-        builder.add(l.summaryJson, user, actorKind: l.actorKind.name);
+        if (summary == null) {
+          // Pruned (older than the op retention).
+          builder.markApprox();
+          continue;
+        }
+        builder.add(summary, user, actorKind: o.actorKind.name);
       }
       return builder.build();
     } on Exception catch (e) {
@@ -178,15 +236,18 @@ class SlidesVersionProvider implements VersionProvider {
     final changes = SlidesRestoreChanges.between(current, target);
     final label =
         'Restore version "${version.name ?? version.createdAt.toIso8601String()}"';
-    final write = await ServerSlidesWriter.applyRecorded(
-      session,
-      actor: actor,
-      item: item,
-      changes: changes,
-      label: label,
-      // Slides and elements deleted since the version come back.
-      revives: true,
-      lifetime: const Duration(days: 7),
+    final write = await SlidesServerWrites.withWriteLock(
+      item.contentRef!,
+      () => SlidesServerWrites.applyRecorded(
+        session,
+        actor: actor,
+        item: item,
+        changes: changes,
+        label: label,
+        // Slides and elements deleted since the version come back.
+        revives: true,
+        lifetime: const Duration(days: 7),
+      ),
     );
     try {
       final profile = await UserService.requireProfile(session, actor.userId);

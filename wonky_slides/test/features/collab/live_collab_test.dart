@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -91,7 +92,7 @@ void main() {
           find.descendant(of: find.byKey(key), matching: find.text('Anna')),
           findsOneWidget,
         );
-        expect(r.collab.presence.pointersOn(r.f.slide, DateTime.now()), [
+        expect(r.collab.presence.pointersOn(r.f.slide, clock.now()), [
           isA<Object>(),
         ]);
 

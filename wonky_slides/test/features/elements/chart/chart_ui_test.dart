@@ -178,7 +178,8 @@ void main() {
     // Step 2: tiles with previews; the newer chart is not offered.
     expect(find.byKey(ChartInsertKeys.tile(chartId)), findsOneWidget);
     expect(find.byKey(ChartInsertKeys.tile('newer')), findsOneWidget);
-    final fields = (dialog.describe()['fields']! as List).cast<Map>();
+    final fields = (dialog.describe()['fields']! as List)
+        .cast<Map<Object?, Object?>>();
     final chart = fields.firstWhere((f) => f['id'] == 'chart');
     expect(chart['options'], [chartId, chart3dId]);
     expect(tester.takeException(), isNull);

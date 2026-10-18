@@ -1,9 +1,64 @@
 /// Import size limits and import errors (07 §3.1).
 library;
 
+import 'package:archive/archive.dart';
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import '../delta/delta_utils.dart';
+
+/// Limits on the decompressed content of a ZIP package (DOCX, ODT,
+/// Markdown zip) against zip bombs (W-06): [ImportLimits.checkInput] only
+/// limits the compressed size.
+///
+/// [check] runs on the archive's directory, before any part is inflated.
+/// The `archive` package never inflates a part past the size its
+/// directory declares (it fails instead), and it caches what it inflated,
+/// so the declared total bounds what reading the parts can allocate.
+final class ArchiveLimits {
+  /// Creates custom limits.
+  const ArchiveLimits({
+    this.maxUnpackedBytes = defaultMaxUnpackedBytes,
+    this.maxEntries = defaultMaxEntries,
+  });
+
+  /// Default of [maxUnpackedBytes]: 200 MB.
+  static const defaultMaxUnpackedBytes = 200 * 1024 * 1024;
+
+  /// Default of [maxEntries].
+  static const defaultMaxEntries = 10000;
+
+  /// The limits every importer applies.
+  static const standard = ArchiveLimits();
+
+  /// Most bytes the parts may declare in total.
+  final int maxUnpackedBytes;
+
+  /// Most entries (files and folders) the package may have.
+  final int maxEntries;
+
+  /// Throws [ImportTooLargeException] when [archive] has too many entries
+  /// or its files declare more than [maxUnpackedBytes] in total.
+  void check(Archive archive) {
+    if (archive.files.length > maxEntries) {
+      throw ImportTooLargeException(
+        ImportLimitKind.archiveEntries,
+        actual: archive.files.length,
+        limit: maxEntries,
+      );
+    }
+    var total = 0;
+    for (final f in archive.files) {
+      if (f.isFile) total += f.size;
+    }
+    if (total > maxUnpackedBytes) {
+      throw ImportTooLargeException(
+        ImportLimitKind.unpackedBytes,
+        actual: total,
+        limit: maxUnpackedBytes,
+      );
+    }
+  }
+}
 
 /// Size limits applied by [WonkyImporters] (07 §3.1).
 ///
@@ -88,6 +143,12 @@ enum ImportLimitKind {
 
   /// The resulting document is too long.
   resultChars,
+
+  /// The parts of a ZIP package unpack to too many bytes (zip bomb).
+  unpackedBytes,
+
+  /// A ZIP package has too many entries.
+  archiveEntries,
 }
 
 /// The input or the resulting document exceeds the [ImportLimits]
@@ -118,6 +179,12 @@ final class ImportTooLargeException implements Exception {
     ImportLimitKind.resultChars =>
       'The imported document is too long ($actual characters, limit '
           '$limit). Try splitting it into smaller files.',
+    ImportLimitKind.unpackedBytes =>
+      'The file is too large to import: it unpacks to $actual bytes '
+          '(limit $limit). Try splitting it into smaller files.',
+    ImportLimitKind.archiveEntries =>
+      'The file is too large to import: it contains $actual files '
+          '(limit $limit).',
   };
 
   @override

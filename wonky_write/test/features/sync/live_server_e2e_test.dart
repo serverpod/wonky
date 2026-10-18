@@ -13,7 +13,7 @@ import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
         ClientAuthSessionManagerExtension,
         ClientAuthSuccessStorage;
 import 'package:wonky_client/wonky_client.dart';
-import 'package:wonky_write/features/sync/connection_keeper.dart';
+import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_write/features/sync/document_sync_controller.dart';
 import 'package:wonky_write/features/sync/sync_transport.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';

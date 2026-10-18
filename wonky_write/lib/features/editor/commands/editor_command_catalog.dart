@@ -303,9 +303,9 @@ List<EditorCommandSpec> editorCommandCatalog() {
       bindings: const [KeyBinding('U', mod: _mod)],
       run: (t, a) {
         t.controller.notify(
-          const EditorNotice(
+          EditorNotice(
             EditorNoticeKind.markdownHint,
-            "Underline isn't available in Markdown — use italic or bold, or change how emphasis looks in Format › Theme.",
+            t.controller.strings().editorUnderlineHintTheme,
           ),
         );
         return const CommandResult.ok();
@@ -511,7 +511,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
       run: (t, a) => _result(
         t.commands.insertText(
           a.requireString('char'),
-          label: 'Insert special character',
+          label: t.controller.strings().undoInsertSpecialCharacter,
         ),
       ),
     ),
@@ -720,7 +720,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
             a.integer('index')! + (a.string('position') == 'above' ? 0 : 1),
           ),
           nodeId: a.string('nodeId'),
-          label: 'Insert row',
+          label: t.controller.strings().undoInsertRow,
         ),
       ),
     ),
@@ -743,7 +743,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
             a.integer('index')! + (a.string('position') == 'left' ? 0 : 1),
           ),
           nodeId: a.string('nodeId'),
-          label: 'Insert column',
+          label: t.controller.strings().undoInsertColumn,
         ),
       ),
     ),
@@ -763,7 +763,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
         t.commands.editTable(
           (table) => table.deleteRow(a.integer('index')!),
           nodeId: a.string('nodeId'),
-          label: 'Delete row',
+          label: t.controller.strings().undoDeleteRow,
         ),
       ),
     ),
@@ -783,7 +783,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
         t.commands.editTable(
           (table) => table.deleteColumn(a.integer('index')!),
           nodeId: a.string('nodeId'),
-          label: 'Delete column',
+          label: t.controller.strings().undoDeleteColumn,
         ),
       ),
     ),
@@ -804,7 +804,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
         t.commands.editTable(
           (table) => table.moveRow(a.integer('from')!, a.integer('to')!),
           nodeId: a.string('nodeId'),
-          label: 'Move row',
+          label: t.controller.strings().undoMoveRow,
         ),
       ),
     ),
@@ -825,7 +825,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
         t.commands.editTable(
           (table) => table.moveColumn(a.integer('from')!, a.integer('to')!),
           nodeId: a.string('nodeId'),
-          label: 'Move column',
+          label: t.controller.strings().undoMoveColumn,
         ),
       ),
     ),
@@ -851,7 +851,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
             TableAlign.parse(a.string('align')),
           ),
           nodeId: a.string('nodeId'),
-          label: 'Column alignment',
+          label: t.controller.strings().undoColumnAlignment,
         ),
       ),
     ),
@@ -877,7 +877,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
             a.requireString('markdown'),
           ),
           nodeId: a.string('nodeId'),
-          label: 'Edit table',
+          label: t.controller.strings().undoEditTable,
         ),
       ),
     ),

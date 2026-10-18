@@ -26,12 +26,22 @@ final class SlidesChanged extends DeckChangeEvent {
     Set<String>? slideIds,
     Set<String>? added,
     Set<String>? removed,
+    Map<String, Set<String>>? columns,
   }) : slideIds = slideIds ?? {},
        added = added ?? {},
-       removed = removed ?? {};
+       removed = removed ?? {},
+       columns = columns ?? {};
 
   /// Every affected slide (incl. [added] and [removed]).
   final Set<String> slideIds;
+
+  /// Changed column names per slide (all columns for added and removed
+  /// slides; a slide missing here counts as entirely changed).
+  final Map<String, Set<String>> columns;
+
+  /// Whether [column] may have changed on slide [slideId].
+  bool changed(String slideId, String column) =>
+      columns[slideId]?.contains(column) ?? true;
 
   /// Slides that appeared.
   final Set<String> added;

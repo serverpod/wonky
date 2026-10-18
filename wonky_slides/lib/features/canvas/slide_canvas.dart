@@ -9,6 +9,8 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart' show ShadTheme;
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_slides_core/model.dart';
+import 'package:wonky_slides_core/motion.dart'
+    show ElementVisualState, SlideFrame;
 import 'package:wonky_slides_core/scene.dart';
 import 'package:wonky_slides_core/snapping.dart';
 import 'package:wonky_slides_core/themes.dart' show SuRect;
@@ -20,6 +22,7 @@ import '../selection/slide_elements.dart';
 import '../selection/transform_session.dart';
 import '../settings/slides_user_defaults.dart';
 import '../stage/slide_renderer.dart';
+import '../motion/render/frame_diff.dart';
 import '../stage/slide_stage.dart';
 import '../text_editing/text_edit_geometry.dart' show sceneWithoutText;
 import '../text_editing/text_editing_host.dart';
@@ -132,6 +135,7 @@ class _SlideCanvasState extends State<SlideCanvas> {
   @override
   void dispose() {
     c.selection.removeListener(_announceSelection);
+    _live.dispose();
     super.dispose();
   }
 
@@ -162,8 +166,19 @@ class _SlideCanvasState extends State<SlideCanvas> {
 
   bool get _snapGuides => _prefs.flag(SlidesUserDefaults.keySnapGuides);
 
-  List<UserGuide> get _userGuides =>
-      UserGuides.decode(ed.model.deck?.guidesJson);
+  /// The deck's guides, decoded once per `guidesJson` (the overlay
+  /// painter compares the list by identity).
+  List<UserGuide> get _userGuides {
+    final json = ed.model.deck?.guidesJson;
+    if (json != _guidesJson || _guides == null) {
+      _guidesJson = json;
+      _guides = UserGuides.decode(json);
+    }
+    return _guides!;
+  }
+
+  String? _guidesJson;
+  List<UserGuide>? _guides;
 
   double get _threshold => SnapEngine.thresholdFor(c.viewport.scale);
 
@@ -1048,17 +1063,11 @@ class _SlideCanvasState extends State<SlideCanvas> {
               Positioned(
                 left: o.dx,
                 top: o.dy,
-                child: SlideStage(
-                  key: ValueKey<String>('slides.canvas.slide.${scene.slideId}'),
-                  scene: _stageScene(scene, editing),
-                  scale: s,
-                  frame: c.previewFrame(),
-                  images: widget.renderer.images,
-                  clipToSlide: false,
-                  offSlideOpacity: 0.4,
-                  drawPrompts: !ed.viewMode,
-                  placeholderBorder: tokens.placeholderBorder,
-                  semanticLabel: ed.editsMasters
+                child: _stage(
+                  _stageScene(scene, editing),
+                  s,
+                  tokens,
+                  ed.editsMasters
                       ? _surfaceLabel(l)
                       : entry == null
                       ? null
@@ -1100,7 +1109,7 @@ class _SlideCanvasState extends State<SlideCanvas> {
                 ),
               ),
               for (final i in _modes) ...i.overlays(context),
-              ..._semantics(l),
+              ..._semanticsOf(l),
               ..._scrollbars(tokens),
               if (ed.rulers) ..._rulers(context),
             ],
@@ -1108,6 +1117,103 @@ class _SlideCanvasState extends State<SlideCanvas> {
         ),
       ),
     );
+  }
+
+  final SlideLiveTransforms _live = SlideLiveTransforms();
+  SlideStage? _stageWidget;
+  List<Object?> _stageInputs = const [];
+
+  /// The slide stage, reused while its inputs are the same: a pointer move
+  /// of a drag only updates the live transforms of the moving layers
+  /// (composited, not repainted, 03 §2.4); elements that are nested in
+  /// groups or cross the slide edge move through the frame (repainted).
+  Widget _stage(
+    SlideScene scene,
+    double s,
+    CanvasTokens tokens,
+    String? label,
+  ) {
+    final (frame, live) = _preview(scene);
+    _live.set(live);
+    final inputs = <Object?>[
+      scene,
+      s,
+      frame,
+      live.keys.join(','),
+      widget.renderer.images,
+      ed.viewMode,
+      tokens.placeholderBorder,
+      label,
+    ];
+    final cached = _stageWidget;
+    if (cached != null && _sameInputs(inputs, _stageInputs)) return cached;
+    _stageInputs = inputs;
+    return _stageWidget = SlideStage(
+      key: ValueKey<String>('slides.canvas.slide.${scene.slideId}'),
+      scene: scene,
+      scale: s,
+      frame: frame,
+      live: live.isEmpty ? null : _live,
+      images: widget.renderer.images,
+      clipToSlide: false,
+      offSlideOpacity: 0.4,
+      drawPrompts: !ed.viewMode,
+      placeholderBorder: tokens.placeholderBorder,
+      semanticLabel: label,
+    );
+  }
+
+  static bool _sameInputs(List<Object?> a, List<Object?> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final x = a[i], y = b[i];
+      if (identical(x, y)) continue;
+      if (x is SlideScene || x is SlideFrame || x != y) return false;
+    }
+    return true;
+  }
+
+  /// The drag preview split into the frame the stage paints (nested
+  /// elements, elements crossing the slide edge) and live transforms of
+  /// top-level layers that only move and stay inside the slide.
+  (SlideFrame, Map<String, Matrix4>) _preview(SlideScene scene) {
+    final frame = c.previewFrame();
+    if (frame.elements.isEmpty) return (SlideFrame.edit, const {});
+    final top = <String, SceneNode>{
+      for (final n in scene.nodes) ?n.elementId: n,
+    };
+    final slide = Rect.fromLTWH(0, 0, scene.width, scene.height);
+    bool inside(Rect r) =>
+        r.left >= slide.left &&
+        r.top >= slide.top &&
+        r.right <= slide.right &&
+        r.bottom <= slide.bottom;
+    final live = <String, Matrix4>{};
+    final rest = <String, ElementVisualState>{};
+    for (final MapEntry(:key, :value) in frame.elements.entries) {
+      final node = top[key];
+      final transformOnly = FrameDiff.same(
+        value,
+        ElementVisualState(transform: value.transform),
+      );
+      // Only moves: a resized or rotated cached layer would look soft.
+      final m = value.transform.storage;
+      final translation =
+          (m[0] - 1).abs() < 1e-9 &&
+          m[1].abs() < 1e-9 &&
+          m[4].abs() < 1e-9 &&
+          (m[5] - 1).abs() < 1e-9;
+      if (node != null && transformOnly && translation) {
+        final b = visualBounds(node);
+        if (inside(b) &&
+            inside(MatrixUtils.transformRect(value.transform, b))) {
+          live[key] = value.transform;
+          continue;
+        }
+      }
+      rest[key] = value;
+    }
+    return (rest.isEmpty ? SlideFrame.edit : SlideFrame(rest), live);
   }
 
   /// The scene the stage draws: without the text being edited (SL-13)
@@ -1145,6 +1251,34 @@ class _SlideCanvasState extends State<SlideCanvas> {
       }
     }
     return '';
+  }
+
+  List<Widget> _semanticsWidgets = const [];
+  List<Object?> _semanticsInputs = const [];
+
+  /// [_semantics], rebuilt only when the slide, scene, selection or
+  /// viewport changed (not per pointer move).
+  List<Widget> _semanticsOf(SlidesLocalizations l) {
+    final v = c.viewport;
+    final inputs = <Object?>[
+      c.slide,
+      c.scene,
+      ed.selectedElementIds.join(','),
+      c.selection.enteredGroupId,
+      v.scale,
+      v.origin,
+      l,
+    ];
+    var same = inputs.length == _semanticsInputs.length;
+    for (var i = 0; same && i < inputs.length; i++) {
+      final a = inputs[i], b = _semanticsInputs[i];
+      same =
+          identical(a, b) ||
+          (a is! SlideScene && a is! ResolvedSlide && a == b);
+    }
+    if (same) return _semanticsWidgets;
+    _semanticsInputs = inputs;
+    return _semanticsWidgets = _semantics(l);
   }
 
   /// One semantics node per element of the selection scope, in reading

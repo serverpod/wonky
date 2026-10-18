@@ -239,7 +239,7 @@ class RenderGridSemantics extends RenderBox {
     SemanticsConfiguration config,
     Iterable<SemanticsNode> children,
   ) {
-    final g = _controller.lastGeometry;
+    final g = _controller.geometry;
     final sheet = _controller.activeSheet;
     if (g == null || sheet == null) {
       node.updateWith(config: config, childrenInInversePaintOrder: const []);

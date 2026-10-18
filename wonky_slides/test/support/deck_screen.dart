@@ -145,14 +145,11 @@ Future<DeckScreenRig> pumpDeckScreen(
           WonkyAppLocalizations.delegate,
           ...h.services.config.localizationsDelegates,
         ],
-        child: ActiveDocumentHostScope(
-          host: h.services,
-          child: DeckEditorScreen(
-            services: h.services,
-            itemUuid: uuid.uuid,
-            initialSlideId: initialSlideId,
-            sessionFactory: factory ?? (services, item) async => session,
-          ),
+        child: DeckEditorScreen(
+          services: h.services,
+          itemUuid: uuid.uuid,
+          initialSlideId: initialSlideId,
+          sessionFactory: factory ?? (services, item) async => session,
         ),
       ),
     ),

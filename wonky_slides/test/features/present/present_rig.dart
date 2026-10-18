@@ -138,30 +138,27 @@ Future<PresentRig> pumpPresent(
           WonkyAppLocalizations.delegate,
           ...h.services.config.localizationsDelegates,
         ],
-        child: ActiveDocumentHostScope(
-          host: h.services,
-          child: Stack(
-            children: [
-              Offstage(
-                child: DeckEditorScreen(
-                  services: h.services,
-                  itemUuid: uuid.uuid,
-                  sessionFactory: (services, item) async => session,
-                ),
+        child: Stack(
+          children: [
+            Offstage(
+              child: DeckEditorScreen(
+                services: h.services,
+                itemUuid: uuid.uuid,
+                sessionFactory: (services, item) async => session,
               ),
-              Positioned.fill(
-                child: PresentScreen(
-                  services: h.services,
-                  itemUuid: uuid.uuid,
-                  view: view,
-                  startSlideId: startSlideId,
-                  sessionId: sessionId,
-                  kiosk: kiosk,
-                  nowMs: () => clock[0],
-                ),
+            ),
+            Positioned.fill(
+              child: PresentScreen(
+                services: h.services,
+                itemUuid: uuid.uuid,
+                view: view,
+                startSlideId: startSlideId,
+                sessionId: sessionId,
+                kiosk: kiosk,
+                nowMs: () => clock[0],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     ),

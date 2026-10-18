@@ -226,7 +226,12 @@ fields:
 
 - Snapshots every 500 ops and at each `ItemVersion` capture. Ops older than 30 days are deleted
   except those needed between retained snapshots for version diffs (the version provider keeps
-  snapshots at each version revision, so older ops can always be deleted).
+  snapshots at each version revision, so older ops can always be deleted). The daily prune
+  (`DocumentService.pruneOps`, batches of 100 documents under a 5-minute budget) first writes a
+  snapshot at the newest pruned revision, then deletes the snapshots below it except those at
+  an `ItemVersion` revision. When version thinning deletes a version, its snapshot goes too
+  (`WriteVersionProvider.discard`) unless another version shows that revision, it is the newest
+  snapshot, or it is the base the oldest kept op is applied to.
 - `WriteTheme` model: see themes spec.
 - Images: uploaded via the platform `files` service (`StoredFile`, private cloud storage,
   owner = document item; access checked through document access), referenced as

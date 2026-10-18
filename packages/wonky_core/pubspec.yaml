@@ -9,10 +9,9 @@ resolution: workspace
 
 dependencies:
   clock: ^1.1.3
-  collection: ^1.19.1
-  meta: ^1.19.0
   uuid: ^4.6.0
 
 dev_dependencies:
-  lints: '>=3.0.0 <7.0.0'
+  wonky_lints:
+    path: ../wonky_lints
   test: ^1.25.5

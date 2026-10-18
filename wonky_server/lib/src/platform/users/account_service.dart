@@ -4,8 +4,6 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_auth_idp_server/core.dart' as auth;
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
-    hide Protocol;
 
 import '../common/actor.dart';
 import '../common/errors.dart';
@@ -13,6 +11,7 @@ import '../common/models.dart';
 import '../board/board_sweep.dart';
 import '../common/time.dart';
 import '../drive/drive_service.dart';
+import '../drive/drive_trash.dart';
 import '../drive/templates/builtin_templates.dart';
 import 'user_service.dart';
 
@@ -102,55 +101,42 @@ abstract final class AccountService {
     if (confirmation.trim().toLowerCase() != profile.email) {
       throw Errors.invalid('Type your email address to confirm.');
     }
-    final owned = await DriveItem.db.find(
-      session,
-      where: (t) => t.ownerId.equals(actor.userId),
-    );
-    final ownedIds = {for (final i in owned) i.id!};
-    // Purge the top of each owned subtree (purge handles descendants).
-    for (final item in owned) {
-      if (item.parentId != null && ownedIds.contains(item.parentId)) continue;
-      final current = await DriveItem.db.findById(session, item.id!);
-      if (current == null) continue;
-      // Items of other people inside our folders move to their roots first.
-      final others = await DriveItem.db.find(
-        session,
-        where: (t) =>
-            t.parentId.equals(current.id!) & t.ownerId.notEquals(actor.userId),
-      );
-      for (final o in others) {
-        await DriveItem.db.updateWhere(
-          session,
-          columnValues: (t) => [t.parentId(null)],
-          where: (t) => t.id.equals(o.id!),
-        );
-      }
-      await DriveService.purge(session, current);
-    }
-    // Remaining owned items (nested below other people's items).
-    final rest = await DriveItem.db.find(
-      session,
-      where: (t) => t.ownerId.equals(actor.userId),
-    );
-    for (final item in rest) {
-      await DriveService.purge(session, item);
-    }
+    await _purgeOwnedItems(session, actor.userId);
     // Bugs & improvements (specs/16 §11): posts outside tasks, screenshots
     // and votes go; comments and posts in tasks stay as "Deleted user".
     await BoardSweep.deleteUserData(session, actor.userId);
-    await OfflineSyncSpaceMember.db.deleteWhere(
-      session,
-      where: (t) => t.userUuid.equals(actor.authUserId),
-    );
-    await OfflineSyncSpace.db.deleteWhere(
-      session,
-      where: (t) => t.uuidSpaceId.equals(actor.authUserId),
-    );
+    // The steps above are restartable (a failed deletion can be retried);
+    // the account itself goes last.
     await auth.AuthUser.db.deleteWhere(
       session,
       where: (t) => t.id.equals(actor.authUserId),
     );
     await UserService.forgetEverywhere(session, actor.authUserId);
+  }
+
+  /// Deletes every item [userId] owns, from the top of each owned subtree.
+  /// `DriveService.purge` never deletes other people's items: those inside
+  /// the user's folders (at any depth) move to their owners' roots with
+  /// their inherited grants rebuilt, and the user's items below them are
+  /// purged in a later round.
+  static Future<void> _purgeOwnedItems(Session session, int userId) async {
+    for (var round = 0; round < 50; round++) {
+      final owned = await DriveItem.db.find(
+        session,
+        where: (t) => t.ownerId.equals(userId),
+      );
+      if (owned.isEmpty) return;
+      final ownedIds = {for (final i in owned) i.id!};
+      for (final item in owned) {
+        if (item.parentId != null && ownedIds.contains(item.parentId)) {
+          continue;
+        }
+        final current = await DriveItem.db.findById(session, item.id!);
+        if (current == null || current.ownerId != userId) continue;
+        await DriveTrash.purge(session, current);
+      }
+    }
+    throw StateError('The items of user $userId could not all be deleted.');
   }
 
   // ---------------------------------------------------------------- tokens

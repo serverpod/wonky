@@ -208,6 +208,32 @@ final class CancellationToken {
   }
 }
 
+/// Gives the event loop a turn during a long export on the UI isolate (web,
+/// 07 §4.3): exporters call [maybeYield] between blocks and pages; once
+/// [slice] has passed since the last turn it awaits a zero-delay timer, so
+/// the progress dialog paints and *Cancel* is handled. Server and isolate
+/// runs pass none and stay synchronous.
+final class ExportYielder {
+  /// Creates a yielder.
+  ExportYielder({this.slice = const Duration(milliseconds: 12)});
+
+  /// Longest stretch of work between two turns.
+  final Duration slice;
+
+  final _since = Stopwatch()..start();
+
+  /// Number of turns given so far (tests).
+  int turns = 0;
+
+  /// Awaits a zero-delay timer when [slice] has passed since the last turn.
+  Future<void> maybeYield() async {
+    if (_since.elapsed < slice) return;
+    await Future<void>.delayed(Duration.zero);
+    turns++;
+    _since.reset();
+  }
+}
+
 /// Everything an exporter needs (07 §2.2).
 final class ExportInput {
   /// Creates an input.
@@ -225,6 +251,7 @@ final class ExportInput {
     required this.now,
     this.progress,
     this.cancel,
+    this.yielder,
   });
 
   /// Canonical document delta at [revision].
@@ -265,6 +292,9 @@ final class ExportInput {
 
   /// Cancellation.
   final CancellationToken? cancel;
+
+  /// Turns for the event loop between blocks and pages (web; null: none).
+  final ExportYielder? yielder;
 }
 
 /// A non-fatal export problem (missing image, dropped content).

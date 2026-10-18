@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_sheets/features/in_cell/cell_features.dart';
 import 'package:wonky_sheets/features/protection/protection_controller.dart';
-import 'package:wonky_sheets/features/protection/write_intents.dart';
 import 'package:wonky_sheets_core/model.dart';
 
 import '../../support/sheets_harness.dart';

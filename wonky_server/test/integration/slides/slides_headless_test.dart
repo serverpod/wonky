@@ -1,4 +1,3 @@
-// Devices run in their own isolates and sync over HTTP.
 @Tags(['integration'])
 @Timeout(Duration(minutes: 3))
 library;
@@ -11,18 +10,17 @@ import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/files/file_service.dart';
-import 'package:wonky_server/src/sheets/sync/sync_db.dart';
-import 'package:wonky_server/src/slides/changelog/deck_drive_mirror.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_server/src/slides/headless/deck_text_claims.dart';
 import 'package:wonky_server/src/slides/headless/headless_deck.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
-import 'package:wonky_server/src/slides/sync/server_slides_writer.dart';
+import 'package:wonky_server/src/slides/revlog/slides_server_writes.dart';
 import 'package:wonky_slides_core/model.dart' show ElementKind, SlidesText;
 import 'package:wonky_slides_core/ops.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
-import '../../support/sheets_device.dart' show installDeviceAuthentication;
-import '../../support/slides_device.dart';
+import '../../support/slides_rev_device.dart';
+import '../../support/slides_rev_hooks.dart';
+import '../../support/test_presence.dart';
 import '../../support/test_drive.dart';
 import '../../support/test_storage.dart';
 import '../../support/test_users.dart';
@@ -45,17 +43,28 @@ void main() {
   withWonkyServerpod('Given decks on the server', (sessionBuilder, endpoints) {
     late Session server;
 
+    SlidesRevHooks.install();
     setUpAll(() {
       server = sessionBuilder.build();
-      installDeviceAuthentication(server);
       DeckTextClaims.probeWait = const Duration(milliseconds: 300);
     });
 
     tearDown(() {
-      DeckDriveMirror.reset();
       DeckTextClaims.clear();
-      HeadlessDeckCache.clear();
+      HeadlessFileCache.clear();
     });
+
+    /// The op of [file] at [revision].
+    Future<RevOp> opAt(UuidValue file, int revision) async {
+      final rev = await RevFile.db.findFirstRow(
+        server,
+        where: (t) => t.fileUuid.equals(file),
+      );
+      return (await RevOp.db.findFirstRow(
+        server,
+        where: (t) => t.fileId.equals(rev!.id!) & t.revision.equals(revision),
+      ))!;
+    }
 
     Future<DriveItemView> create(TestUser u, String name) =>
         endpoints.drive.createPresentation(u.endpointSession, null, name, null);
@@ -67,12 +76,12 @@ void main() {
         );
 
     Future<List<Slide>> slidesOf(UuidValue deck) => Slide.db.find(
-      syncSessionOf(server),
+      server,
       where: (t) => t.deckId.equals(deck),
     );
 
     Future<SlideElement> element(UuidValue id) async =>
-        (await SlideElement.db.findById(syncSessionOf(server), id))!;
+        (await SlideElement.db.findById(server, id))!;
 
     /// A deck with a text box; returns (item, element id).
     Future<(DriveItemView, String)> deckWithBox(TestUser u) async {
@@ -94,6 +103,33 @@ void main() {
       return (item, (w.plan.result['elementIds']! as List).single as String);
     }
 
+    test('when a write has one step then the deck is not copied; with two '
+        'steps the second sees the first through one copy', () async {
+      final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
+      final item = await create(anna, 'Steps');
+      final deck = await open(anna, item.uuid);
+      final first = deck.model.slides.single.id;
+      late DeckSteps single;
+      late DeckSteps two;
+
+      await deck.writeSteps((s) {
+        single = s;
+        s.run(AddSlides(afterSlideId: first, count: 1));
+      }, singleStep: true);
+      await deck.writeSteps((s) {
+        two = s;
+        s.run(AddSlides(afterSlideId: first, count: 1));
+        final added = s.model.slides[1].id;
+        s.run(SetSlideProps([added], skipped: true));
+      });
+
+      expect(single.copies, 0);
+      expect(two.copies, 1);
+      final slides = (await open(anna, item.uuid)).model.slides;
+      expect(slides, hasLength(3));
+      expect(slides.where((x) => x.skipped), hasLength(1));
+    });
+
     test(
       'when a deck is created, opened headless and edited, then the '
       'writes are recorded, logged and visible in the cached model',
@@ -108,7 +144,7 @@ void main() {
           deck.model.layout(deck.model.slides.single.layoutId!)!.key,
           'title',
         );
-        final loads = HeadlessDeckCache.loads;
+        final loads = HeadlessFileCache.coldLoads;
 
         final w = await deck.write(
           AddSlides(afterSlideId: deck.model.slides.single.id, count: 2),
@@ -118,19 +154,17 @@ void main() {
         expect(w.syncVersion, isNotNull);
         expect(await slidesOf(item.uuid), hasLength(3));
         final again = await open(anna, item.uuid);
-        expect(again.model.slides, hasLength(3), reason: 'written through');
-        expect(HeadlessDeckCache.loads, loads, reason: 'no reload');
-        final log = await DeckChangeLog.db.findById(
-          syncSessionOf(server),
-          w.syncVersion!,
-        );
-        expect(log!.actorKind, ActorKind.mcp);
+        expect(again.model.slides, hasLength(3), reason: 'follows the ops');
+        expect(HeadlessFileCache.coldLoads, loads, reason: 'no reload');
+        final log = await opAt(item.uuid, int.parse(w.syncVersion!));
+        expect(log.actorKind, ActorKind.mcp);
+        expect(log.recordId, isNotNull);
         expect(log.label, w.plan.label);
         final record = await ServerChangeRecord.db.findFirstRow(
           server,
           where: (t) => t.changeId.equals(w.changeId!),
         );
-        expect(record!.spreadsheetUuid, item.uuid);
+        expect(record!.fileUuid, item.uuid);
       },
     );
 
@@ -206,7 +240,7 @@ void main() {
 
       expect(copy.kind, DriveItemKind.presentation);
       expect(copy.uuid, isNot(item.uuid));
-      final db = syncSessionOf(server);
+      final db = server;
       expect((await Deck.db.findById(db, copy.uuid))!.title, 'Pitch (copy)');
       final a = await slidesOf(item.uuid), b = await slidesOf(copy.uuid);
       expect(b, hasLength(a.length));
@@ -231,6 +265,7 @@ void main() {
         server,
         UuidValue.withValidation(src2.substring('wonky-file://'.length)),
       );
+      await SlidesRevHooks.drain(server, copy.uuid);
       final copyItem = (await DriveItem.db.findFirstRow(
         server,
         where: (t) => t.uuid.equals(copy.uuid),
@@ -238,11 +273,7 @@ void main() {
       expect(newFile!.itemId, copyItem.id);
       expect(copyItem.attachmentBytes, _png.length);
       expect(copyItem.sizeBytes, greaterThan(0));
-      final logs = await DeckChangeLog.db.find(
-        db,
-        where: (t) => t.deckId.equals(copy.uuid),
-      );
-      expect(logs.single.label, 'Copy presentation');
+      expect((await opAt(copy.uuid, 1)).label, 'Copy presentation');
       expect(copyItem.searchText, contains('Hello'));
     });
 
@@ -292,7 +323,7 @@ void main() {
         );
 
         expect(mine.owner.id, bo.id);
-        final db = syncSessionOf(server);
+        final db = server;
         final deck = await Deck.db.findById(db, mine.uuid);
         expect(deck!.title, 'My talk');
         expect(deck.createdBy, bo.authUserId);
@@ -383,10 +414,10 @@ void main() {
         SetText(ElementText(box), _text('Bo')),
       );
       // Bo nudges only x (a raw write): y belongs to the same group (P4).
-      await ServerSlidesWriter.apply(
+      await SlidesServerWrites.apply(
         server,
         actor: bo.actor,
-        deckSpace: item.uuid,
+        fileUuid: item.uuid,
         changes: [
           RowChange.update('slide_element', box, {'x': 300.0}, {'x': 310.0}),
         ],
@@ -442,16 +473,14 @@ void main() {
         await TestDrive.share(endpoints, item, anna, bo, AccessRole.editor);
         final slide = (await open(anna, item.uuid)).model.slides.single.id;
 
-        final updates = StreamController<PresenceUpdate>();
-        final events = endpoints.presence
-            .join(bo.endpointSession, item.uuid, updates.stream)
-            .listen((_) {});
+        final editor = await TestPresence.join(endpoints, bo, item.uuid);
+        final watcher = await TestPresence.join(endpoints, anna, item.uuid);
         addTearDown(() async {
-          await updates.close();
-          await events.cancel();
+          await editor.close();
+          await watcher.close();
         });
-        await Future<void>.delayed(const Duration(milliseconds: 200));
-        updates.add(
+        await editor.send(
+          watcher: watcher,
           PresenceUpdate(
             state: PresenceState.active,
             cursorJson: jsonEncode({
@@ -467,7 +496,6 @@ void main() {
             }),
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 200));
 
         final deck = await open(anna, item.uuid);
         await expectLater(
@@ -498,13 +526,13 @@ void main() {
         expect(forced.changeId, isNotNull);
 
         // The claim ends: writes pass again.
-        updates.add(
+        await editor.send(
+          watcher: watcher,
           PresenceUpdate(
             state: PresenceState.active,
             cursorJson: jsonEncode({'route': 'editor', 'editing': null}),
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 200));
         final after = await deck.write(
           SetText(ElementText(box), _text('Again')),
         );
@@ -517,10 +545,10 @@ void main() {
       final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
       final item = await create(anna, 'Pitch');
       final slide = (await slidesOf(item.uuid)).single;
-      await ServerSlidesWriter.apply(
+      await SlidesServerWrites.apply(
         server,
         actor: anna.actor,
-        deckSpace: item.uuid,
+        fileUuid: item.uuid,
         changes: [
           RowChange.update(
             'slide',
@@ -550,31 +578,21 @@ void main() {
       expect(record.cellsAffected, 1, reason: 'only the deck row');
     });
 
-    test('when a device merges a change, then the cached deck is marked '
-        'stale and patched on the next open', () async {
+    test('when a device commits a change, then the headless deck follows it '
+        'without a reload', () async {
       final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
-      final a = await SlidesDevice.open(server, anna.authUserId);
-      final space = (await a.reserveSpaces(1)).single;
-      await a.sync();
-      await a.createDeck(space, 'Draft');
-      await a.registerPresentation(space, 'Draft');
-      await a.sync();
-      final deck = await open(anna, space);
+      final item = await create(anna, 'Draft');
+      final deck = await open(anna, item.uuid);
       expect(deck.model.deck!.title, 'Draft');
-      final loads = HeadlessDeckCache.loads;
+      final loads = HeadlessFileCache.coldLoads;
 
-      await a.rename(space, 'Renamed');
-      await a.sync();
-      for (var i = 0; i < 50; i++) {
-        if (HeadlessDeckCache.peek(space)?.stale ?? false) break;
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-      }
-      expect(HeadlessDeckCache.peek(space)!.stale, isTrue);
+      final a = await SlidesRevDevice.open(anna, item.uuid);
+      addTearDown(a.close);
+      await a.rename('Renamed');
 
-      final again = await open(anna, space);
+      final again = await open(anna, item.uuid);
       expect(again.model.deck!.title, 'Renamed');
-      expect(HeadlessDeckCache.loads, loads);
-      expect(HeadlessDeckCache.peek(space)!.patches, greaterThanOrEqualTo(1));
+      expect(HeadlessFileCache.coldLoads, loads);
     });
 
     test(

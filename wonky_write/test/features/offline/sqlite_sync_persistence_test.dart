@@ -6,7 +6,6 @@ import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_write/features/offline/sqlite_sync_persistence.dart';
 import 'package:wonky_write/features/offline/write_local_store.dart';
-import 'package:wonky_write/features/sync/connection_keeper.dart';
 import 'package:wonky_write/features/sync/document_sync_controller.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -73,11 +74,13 @@ void main() {
   testWidgets('Given Slides\' keys when the three dialogs open then they '
       'carry the slides.* keys and the shell strings', (tester) async {
     final ctx = await pump(tester);
-    showSpecialCharactersDialog(
-      ctx,
-      onInsert: (_) {},
-      catalog: _chars,
-      keys: SpecialCharsKeys.slides,
+    unawaited(
+      showSpecialCharactersDialog(
+        ctx,
+        onInsert: (_) {},
+        catalog: _chars,
+        keys: SpecialCharsKeys.slides,
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.byKey(SpecialCharsKeys.slides.dialog), findsOneWidget);
@@ -88,11 +91,13 @@ void main() {
     await tester.tap(find.byKey(SpecialCharsKeys.slides.close));
     await tester.pumpAndSettle();
 
-    showEmojiPickerDialog(
-      ctx,
-      onSelected: (_) {},
-      catalog: emojiFixture(),
-      keys: EmojiPickerKeys.slides,
+    unawaited(
+      showEmojiPickerDialog(
+        ctx,
+        onSelected: (_) {},
+        catalog: emojiFixture(),
+        keys: EmojiPickerKeys.slides,
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.byKey(EmojiPickerKeys.slides.dialog), findsOneWidget);
@@ -101,7 +106,9 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
 
-    showSpellingDialog(ctx, session: _NoIssues(), keys: SpellingKeys.slides);
+    unawaited(
+      showSpellingDialog(ctx, session: _NoIssues(), keys: SpellingKeys.slides),
+    );
     await tester.pumpAndSettle();
     expect(find.byKey(SpellingKeys.slides.dialog), findsOneWidget);
     expect(find.text('No spelling errors found.'), findsOneWidget);

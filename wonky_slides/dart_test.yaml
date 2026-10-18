@@ -4,3 +4,5 @@ tags:
   golden: {}
   slow: {}
   e2e: {}
+  perf:
+    skip: "Slides perf suite (CQ-38): run with flutter test -t perf --run-skipped test/perf"

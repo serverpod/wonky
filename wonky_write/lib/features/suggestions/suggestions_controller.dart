@@ -2,7 +2,7 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show SuggestionIndex, SuggestionInfo, SuggestionOps;
+    show SuggestionInfo, SuggestionOps;
 
 import '../../l10n/write_l10n.dart';
 import '../document/write_document_session.dart';
@@ -28,7 +28,7 @@ class WriteSuggestionsController extends ChangeNotifier {
 
   /// Pending suggestions in document order.
   List<SuggestionInfo> get pending => _pending ??= session.isLoaded
-      ? SuggestionIndex.list(session.editor.delta)
+      ? session.editor.overlays.suggestions()
       : const [];
 
   /// The active (highlighted, expanded) suggestion.
@@ -176,7 +176,7 @@ class WriteSuggestionsController extends ChangeNotifier {
     final list = pending;
     if (list.isEmpty) return false;
     final active = _active == null ? null : byId(_active!);
-    final from = active?.start ?? session.editor.selection?.base ?? 0;
+    final from = active?.start ?? session.editor.selection?.anchor ?? 0;
     SuggestionInfo? target;
     if (previous) {
       for (final s in list.reversed) {

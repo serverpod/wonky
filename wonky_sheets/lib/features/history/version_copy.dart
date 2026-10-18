@@ -1,44 +1,39 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart' show UuidValue;
+import 'package:wonky_revlog/codec.dart' show ChangeSet;
 import 'package:wonky_sheets_core/model.dart';
 import 'package:wonky_sync_models/ids.dart' show UuidV7IdGenerator;
 
-import '../sync/sheets_sessions.dart';
+import 'change_labels.dart';
+import '../revlog/sheets_rev_log.dart';
 import 'version_snapshots.dart';
 
 /// *Make a copy* of a version (Sheets 10 §5.4): the snapshot's rows get new
 /// ids through the core `SpaceCopier` (formulas, ranges, objects remapped)
-/// and are written into a reserved space of the local replica, which is
-/// then registered with the drive — like a new spreadsheet, so it works
-/// with the offline-first data layer. Returns the new item uuid and the
-/// ids of its sheets, rows and columns by the version's ids (for comment
-/// anchors, see [copyVersionExtras]).
+/// and become the creation ops of a new spreadsheet created on this device
+/// (RevLog spec 06 §7.1: `initialize: false`), which works offline too.
+/// Returns the new item uuid and the ids of its sheets, rows and columns by
+/// the version's ids (for comment anchors, see [copyVersionExtras]).
 Future<(UuidValue, Map<String, String>)?> copyVersionToNewSpreadsheet(
   ShellServices services, {
   required SnapshotRows rows,
   required String sourceSpaceId,
   required String name,
 }) async {
-  final controller = await SheetsData.ready(services);
-  if (controller == null) throw StateError('Sheets data is not ready.');
-  final usable = await controller.replica.usableReservations();
-  if (usable.isEmpty) {
-    await controller.refillReservations();
-    await controller.syncNow();
-  }
-  final spaces = await controller.replica.usableReservations();
-  if (spaces.isEmpty) throw StateError('No space for a new spreadsheet.');
-  final space = spaces.first;
+  final client = await SheetsRevLog.ready(services);
+  if (client == null) throw StateError('Sheets data is not ready.');
+  final file = UuidValue.fromString(const UuidV7IdGenerator().newId());
   final copy = SpaceCopier.copy(
     rows,
     sourceSpaceId: sourceSpaceId,
-    targetSpaceId: space.uuid,
+    targetSpaceId: file.uuid,
     ids: const UuidV7IdGenerator(),
-    userId: controller.replica.userUuid.uuid,
+    userId: services.me?.uuid.uuid ?? '',
     now: clock.now().toUtc(),
     title: name,
   );
@@ -46,22 +41,25 @@ Future<(UuidValue, Map<String, String>)?> copyVersionToNewSpreadsheet(
     for (final (t, c) in copy.rows)
       RowChange.insert(t, c[Cols.id].toString(), c),
   ];
-  await controller.writer.write(
-    spaceId: space,
-    changes: changes,
-    label: 'Make a copy',
-    actorKind: 'user',
-    sessionId: controller.sessionId,
+  await client.createLocal(
+    file.uuid,
+    ChangeSet(
+      clientOpId: const UuidV7IdGenerator().newId(),
+      baseRevision: 0,
+      changes: changes,
+      label: SheetsChangeLabels.makeCopy,
+      offline: !services.connectivity.online,
+    ),
   );
-  await controller.replica.removeReservation(space);
-  controller.kick();
   try {
-    await services.drive.registerSpreadsheet(spaceUuid: space, name: name);
+    await services.drive.registerSpreadsheet(spaceUuid: file, name: name);
   } catch (e) {
-    debugPrint('Registering copy $space failed: $e');
+    debugPrint('Creating copy $file failed: $e');
     if (!isOfflineError(e)) rethrow;
   }
   services.refreshDrive();
+  unawaited(client.syncOutboxes());
+  final space = file;
   const anchorTables = {
     SheetsTables.sheet,
     SheetsTables.sheetRow,

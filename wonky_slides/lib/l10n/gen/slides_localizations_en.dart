@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'slides_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1912,6 +1913,14 @@ class SlidesLocalizationsEn extends SlidesLocalizations {
   @override
   String get toastUndoPartial =>
       'Some changes weren’t undone because a collaborator changed them since';
+
+  @override
+  String toastChangeNotSaved(String label, String reason) {
+    return '“$label” couldn’t be saved: $reason';
+  }
+
+  @override
+  String get toastChangeNoAccess => 'You can no longer edit this presentation';
 
   @override
   String get cmdSelectElements => 'Select objects';
@@ -7876,6 +7885,61 @@ class SlidesLocalizationsEn extends SlidesLocalizations {
   String pointerOnSlide(String name) {
     return '$name\'s pointer';
   }
+
+  @override
+  String get errorObjectLocked => 'This object is locked.';
+
+  @override
+  String get errorTooManyGuides => 'There are too many guides';
+
+  @override
+  String get errorSelectTextBox => 'Select a text box';
+
+  @override
+  String get errorCopyFailed => 'The copy couldn’t be made';
+
+  @override
+  String get errorNothingToRestore => 'Nothing to restore';
+
+  @override
+  String get errorCropRemovesImage => 'The crop removes the whole image';
+
+  @override
+  String get errorSelectSlide => 'Select at least one slide';
+
+  @override
+  String get errorClipboardNoSlides => 'The clipboard holds no slides';
+
+  @override
+  String get errorNothingToMove => 'Nothing to move there';
+
+  @override
+  String get errorOneEmoji => 'One emoji is expected';
+
+  @override
+  String get errorTextChanged => 'The text has changed';
+
+  @override
+  String get errorOneWord => 'One word is expected';
+
+  @override
+  String get errorNoSlidesSelected => 'No slides selected';
+
+  @override
+  String get errorNothingToFix => 'Nothing to fix';
+
+  @override
+  String get errorNothingToPaste => 'Nothing to paste';
+
+  @override
+  String get errorLineNotOnSlide => 'The line is not on the current slide';
+
+  @override
+  String get errorRouteHandlesInGroups =>
+      'Route handles are not available inside groups';
+
+  @override
+  String get errorStraightLineWaypoints => 'Straight lines have no waypoints';
 }
 
 /// The translations for English (`en_XA`).
@@ -9810,6 +9874,15 @@ class SlidesLocalizationsEnXa extends SlidesLocalizationsEn {
   @override
   String get toastUndoPartial =>
       '[Šöɱé çĥåñĝéš ŵéŕéñ’ţ ûñðöñé ƀéçåûšé å çöļļåƀöŕåţöŕ çĥåñĝéð ţĥéɱ šîñçé one two three four fi]';
+
+  @override
+  String toastChangeNotSaved(String label, String reason) {
+    return '[“$label” çöûļðñ’ţ ƀé šåṽéð: $reason one two]';
+  }
+
+  @override
+  String get toastChangeNoAccess =>
+      '[Ýöû çåñ ñö ļöñĝéŕ éðîţ ţĥîš þŕéšéñţåţîöñ one two thre]';
 
   @override
   String get cmdSelectElements => '[Šéļéçţ öƀĵéçţš one t]';
@@ -15865,4 +15938,63 @@ class SlidesLocalizationsEnXa extends SlidesLocalizationsEn {
   String pointerOnSlide(String name) {
     return '[$name\'š þöîñţéŕ one]';
   }
+
+  @override
+  String get errorObjectLocked => '[Ţĥîš öƀĵéçţ îš ļöçķéð. one two]';
+
+  @override
+  String get errorTooManyGuides => '[Ţĥéŕé åŕé ţöö ɱåñý ĝûîðéš one two]';
+
+  @override
+  String get errorSelectTextBox => '[Šéļéçţ å ţéẋţ ƀöẋ one t]';
+
+  @override
+  String get errorCopyFailed => '[Ţĥé çöþý çöûļðñ’ţ ƀé ɱåðé one two]';
+
+  @override
+  String get errorNothingToRestore => '[Ñöţĥîñĝ ţö ŕéšţöŕé one tw]';
+
+  @override
+  String get errorCropRemovesImage =>
+      '[Ţĥé çŕöþ ŕéɱöṽéš ţĥé ŵĥöļé îɱåĝé one two th]';
+
+  @override
+  String get errorSelectSlide => '[Šéļéçţ åţ ļéåšţ öñé šļîðé one two]';
+
+  @override
+  String get errorClipboardNoSlides =>
+      '[Ţĥé çļîþƀöåŕð ĥöļðš ñö šļîðéš one two t]';
+
+  @override
+  String get errorNothingToMove => '[Ñöţĥîñĝ ţö ɱöṽé ţĥéŕé one two]';
+
+  @override
+  String get errorOneEmoji => '[Öñé éɱöĵî îš éẋþéçţéð one two]';
+
+  @override
+  String get errorTextChanged => '[Ţĥé ţéẋţ ĥåš çĥåñĝéð one tw]';
+
+  @override
+  String get errorOneWord => '[Öñé ŵöŕð îš éẋþéçţéð one tw]';
+
+  @override
+  String get errorNoSlidesSelected => '[Ñö šļîðéš šéļéçţéð one tw]';
+
+  @override
+  String get errorNothingToFix => '[Ñöţĥîñĝ ţö ƒîẋ one t]';
+
+  @override
+  String get errorNothingToPaste => '[Ñöţĥîñĝ ţö þåšţé one t]';
+
+  @override
+  String get errorLineNotOnSlide =>
+      '[Ţĥé ļîñé îš ñöţ öñ ţĥé çûŕŕéñţ šļîðé one two thr]';
+
+  @override
+  String get errorRouteHandlesInGroups =>
+      '[Ŕöûţé ĥåñðļéš åŕé ñöţ åṽåîļåƀļé îñšîðé ĝŕöûþš one two three]';
+
+  @override
+  String get errorStraightLineWaypoints =>
+      '[Šţŕåîĝĥţ ļîñéš ĥåṽé ñö ŵåýþöîñţš one two th]';
 }

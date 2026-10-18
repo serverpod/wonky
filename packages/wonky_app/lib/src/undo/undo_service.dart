@@ -56,6 +56,10 @@ class UndoTransaction {
   final String? coalesceKey;
   final List<UndoEntry> _entries = [];
   bool _closed = false;
+  int _seq = 0;
+
+  /// Whether the transaction was committed or rolled back.
+  bool get isClosed => _closed;
 
   List<UndoEntry> get entries => List.unmodifiable(_entries);
 
@@ -133,10 +137,28 @@ class UndoService extends ChangeNotifier {
   final Map<String, UndoHandler<UndoEntry>> _handlers = {};
   final Map<UndoStackKey, _Stack> _stacks = {UndoStackKey.shell: _Stack()};
   final _outcomes = StreamController<UndoOutcome>.broadcast();
-  final List<UndoTransaction> _open = [];
   final Map<UndoStackKey, Timer> _saveTimers = {};
   UndoStackKey? _activeDocument;
-  bool _applying = false;
+
+  /// Transactions from [beginTransaction] without `scoped`: current for
+  /// every caller until they close (hold them only synchronously).
+  final List<UndoTransaction> _open = [];
+  int _seqs = 0;
+
+  /// The scoped transaction whose zone is executing right now. Code that
+  /// zone calls synchronously sees it too, also when it is bound to another
+  /// zone (sync stream listeners), see [runInTransaction].
+  UndoTransaction? _running;
+
+  /// Zone value key of [runInTransaction].
+  final Object _zoneKey = Object();
+
+  /// Nesting depth of handlers applying an undo/redo.
+  int _applying = 0;
+
+  /// Tail of the undo/redo queue (they run one at a time, in order); null
+  /// while none is running.
+  Future<void>? _queue;
 
   /// Labels and availability for the active context (Edit menu, toolbar).
   final ValueNotifier<bool> canUndo = ValueNotifier(false);
@@ -149,10 +171,26 @@ class UndoService extends ChangeNotifier {
 
   /// True while an undo/redo applies changes. Apps must not record those
   /// changes as new steps.
-  bool get isApplying => _applying;
+  bool get isApplying => _applying > 0;
 
-  /// The open transaction, if any (nested commands join it).
-  UndoTransaction? get currentTransaction => _open.isEmpty ? null : _open.last;
+  /// The open transaction of the running code, if any (nested commands and
+  /// app-level recording join it).
+  ///
+  /// A scoped transaction ([runInTransaction], used by the command
+  /// dispatcher) is current only inside its own async call chain: a command
+  /// or keystroke that runs while another command awaits does not see it,
+  /// so it records its own step and the other command's rollback cannot
+  /// revert it. An unscoped [beginTransaction] is current everywhere until
+  /// it closes; the newer of the two wins.
+  UndoTransaction? get currentTransaction {
+    final zoned = Zone.current[_zoneKey];
+    var scoped = zoned is UndoTransaction ? zoned : _running;
+    if (scoped != null && scoped._closed) scoped = null;
+    final global = _open.isEmpty ? null : _open.last;
+    if (global == null) return scoped;
+    if (scoped == null) return global;
+    return global._seq > scoped._seq ? global : scoped;
+  }
 
   UndoStackKey? get activeDocumentStack => _activeDocument;
 
@@ -230,12 +268,17 @@ class UndoService extends ChangeNotifier {
   // ---- Recording ----
 
   /// Opens a transaction. Nested commands share the outermost transaction.
+  ///
+  /// Unless [scoped], it is [currentTransaction] for every caller until it
+  /// closes, so close it before the next await. A [scoped] transaction is
+  /// current only inside [runInTransaction].
   UndoTransaction beginTransaction(
     String label, {
     UndoStackKey? stack,
     InvocationSource source = InvocationSource.ui,
     SelectionSnapshot? selectionBefore,
     String? coalesceKey,
+    bool scoped = false,
   }) {
     final t = UndoTransaction._(
       this,
@@ -244,9 +287,42 @@ class UndoService extends ChangeNotifier {
       source,
       selectionBefore,
       coalesceKey,
-    );
-    _open.add(t);
+    ).._seq = ++_seqs;
+    if (!scoped) _open.add(t);
     return t;
+  }
+
+  /// Runs [body] with [t] as the [currentTransaction] of its async call
+  /// chain (a forked zone): every callback of that zone, and whatever it
+  /// calls synchronously, sees [t]; code that runs while [body] awaits
+  /// (input, other commands) does not.
+  Future<R> runInTransaction<R>(
+    UndoTransaction t,
+    FutureOr<R> Function() body,
+  ) {
+    T enter<T>(Zone zone, T Function() f) {
+      final prev = _running;
+      final v = zone[_zoneKey];
+      _running = v is UndoTransaction ? v : null;
+      try {
+        return f();
+      } finally {
+        _running = prev;
+      }
+    }
+
+    final zone = Zone.current.fork(
+      zoneValues: {_zoneKey: t},
+      specification: ZoneSpecification(
+        run: <T>(self, parent, zone, f) =>
+            enter(zone, () => parent.run(zone, f)),
+        runUnary: <T, A>(self, parent, zone, f, A a) =>
+            enter(zone, () => parent.runUnary(zone, f, a)),
+        runBinary: <T, A, B>(self, parent, zone, f, A a, B b) =>
+            enter(zone, () => parent.runBinary(zone, f, a, b)),
+      ),
+    );
+    return zone.run(() async => body());
   }
 
   void _closeTransaction(UndoTransaction t) => _open.remove(t);
@@ -372,29 +448,45 @@ class UndoService extends ChangeNotifier {
       List.unmodifiable(_stacks[stack]?.redo ?? const []);
 
   /// Undoes the most recent step of the active context.
-  Future<UndoOutcome?> undo() async {
+  ///
+  /// Undo, redo and [undoTo] are queued: each starts after the previous one
+  /// finished (a held ⌘Z) and picks the top step only then.
+  Future<UndoOutcome?> undo() => _serial(() async {
     final top = _top(redo: false);
     if (top == null) return null;
-    return _apply(top.$1, isRedo: false);
-  }
+    return _apply(top.$1, top.$2, isRedo: false);
+  });
 
-  /// Redoes the most recently undone step.
-  Future<UndoOutcome?> redo() async {
+  /// Redoes the most recently undone step (queued like [undo]).
+  Future<UndoOutcome?> redo() => _serial(() async {
     final top = _top(redo: true);
     if (top == null) return null;
-    return _apply(top.$1, isRedo: true);
-  }
+    return _apply(top.$1, top.$2, isRedo: true);
+  });
 
   /// Undoes every step above and including [stepId] (one undo per step, in
-  /// order) — the undo-history popover.
-  Future<void> undoTo(String stepId) async {
+  /// order) — the undo-history popover. Queued like [undo].
+  Future<void> undoTo(String stepId) => _serial(() async {
     if (!history().any((h) => h.step.id == stepId)) return;
     for (var guard = 0; guard < maxSteps * 2; guard++) {
       final top = _top(redo: false);
       if (top == null) return;
-      await _apply(top.$1, isRedo: false);
+      await _apply(top.$1, top.$2, isRedo: false);
       if (top.$2.id == stepId) return;
     }
+  });
+
+  /// Runs [run] after the queued undo/redo operations; at once (synchronously
+  /// up to its first await, as a direct call would) when none is running.
+  Future<T> _serial<T>(Future<T> Function() run) {
+    final prev = _queue;
+    final result = prev == null ? run() : prev.then((_) => run());
+    late final Future<void> tail;
+    tail = result.then<void>((_) {}, onError: (Object _) {}).whenComplete(() {
+      if (identical(_queue, tail)) _queue = null;
+    });
+    _queue = tail;
+    return result;
   }
 
   /// The last [limit] undoable steps of the active context, newest first.
@@ -407,16 +499,24 @@ class UndoService extends ChangeNotifier {
     return all.take(limit).toList();
   }
 
-  Future<UndoOutcome> _apply(UndoStackKey key, {required bool isRedo}) async {
-    final s = _stacks[key]!;
-    final from = isRedo ? s.redo : s.undo;
-    final to = isRedo ? s.undo : s.redo;
-    final step = from.removeLast();
+  /// Applies [step], the top of [key]'s undo (or redo) list. The step stays
+  /// on its list until its handlers ran. When a handler throws (other than
+  /// [UndoConflict]), the entries not applied yet stay on that list, the
+  /// inverse of those applied goes to the opposite list (both marked
+  /// partial), and the error is rethrown.
+  Future<UndoOutcome> _apply(
+    UndoStackKey key,
+    UndoStep step, {
+    required bool isRedo,
+  }) async {
     var partial = step.partiallyRebased;
     final inverse = <UndoEntry>[];
-    _applying = true;
+    final ordered = isRedo ? step.entries : step.entries.reversed.toList();
+    var applied = 0;
+    Object? failure;
+    StackTrace? failureTrace;
+    _applying++;
     try {
-      final ordered = isRedo ? step.entries : step.entries.reversed;
       for (final e in ordered) {
         try {
           final h = _handlerFor(e);
@@ -424,24 +524,56 @@ class UndoService extends ChangeNotifier {
         } on UndoConflict {
           partial = true;
         }
+        applied++;
       }
+    } catch (e, st) {
+      failure = e;
+      failureTrace = st;
     } finally {
-      _applying = false;
+      _applying--;
     }
-    final entries = isRedo ? inverse : inverse.reversed.toList();
-    if (entries.isNotEmpty) {
-      to.add(step.copyWith(entries: entries, partiallyRebased: false));
+    if (failure != null && applied == 0) {
+      Error.throwWithStackTrace(failure, failureTrace!);
     }
-    final sel = isRedo ? step.selectionAfter : step.selectionBefore;
-    if (sel != null) s.restoreSelection?.call(sel);
-    _changed(key);
+    // Look the step up again: a remote change may have rebased it, and the
+    // stack may have been closed meanwhile.
+    final s = _stacks[key];
+    if (s != null) {
+      final from = isRedo ? s.redo : s.undo;
+      final to = isRedo ? s.undo : s.redo;
+      final at = from.lastIndexWhere((x) => x.id == step.id);
+      if (failure == null) {
+        if (at >= 0) from.removeAt(at);
+      } else if (at >= 0) {
+        final now = from[at];
+        final base = now.entries.length == step.entries.length
+            ? now.entries
+            : step.entries;
+        final rest = isRedo
+            ? base.sublist(applied)
+            : base.sublist(0, base.length - applied);
+        from[at] = now.copyWith(entries: rest, partiallyRebased: true);
+      }
+      final entries = isRedo ? inverse : inverse.reversed.toList();
+      if (entries.isNotEmpty) {
+        to.add(
+          step.copyWith(entries: entries, partiallyRebased: failure != null),
+        );
+      }
+      if (failure == null) {
+        final sel = isRedo ? step.selectionAfter : step.selectionBefore;
+        if (sel != null) s.restoreSelection?.call(sel);
+      }
+      _changed(key);
+    }
+    if (failure != null) Error.throwWithStackTrace(failure, failureTrace!);
     final outcome = UndoOutcome(
       step: step,
       stack: key,
       isRedo: isRedo,
       partial: partial,
     );
-    _outcomes.add(outcome);
+    if (!_outcomes.isClosed) _outcomes.add(outcome);
     return outcome;
   }
 

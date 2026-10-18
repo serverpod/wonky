@@ -11,3 +11,5 @@ values:
   - tooLarge
   ### The base revision is ahead of the server head.
   - unknownBase
+  ### Unexpected server error: retry with the same clientOpId.
+  - internal

@@ -47,6 +47,7 @@ class _TableSizeDialogState extends State<TableSizeDialog> {
     final theme = ShadTheme.of(context);
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.tableSize'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.tableEditorInsertTitle),
       constraints: const BoxConstraints(maxWidth: 380),
       actions: [
@@ -131,6 +132,10 @@ class _TableEditorDialogState extends State<TableEditorDialog> {
   late int _col = widget.column.clamp(0, widget.table.columnCount - 1);
   final Map<(int, int), TextEditingController> _text = {};
   final Map<(int, int), FocusNode> _focus = {};
+
+  /// The cell whose keystrokes extend the current undo step; reset by every
+  /// structural change, undo and redo (the next edit starts a new step).
+  (int, int)? _typingIn;
   final _hScroll = ScrollController();
   final _vScroll = ScrollController();
 
@@ -163,8 +168,9 @@ class _TableEditorDialogState extends State<TableEditorDialog> {
               c < _draft.columnCount &&
               _draft.rows[r][c] != t.text) {
             final next = _draft.setCell(r, c, t.text);
-            if (_undo.isEmpty || _undo.last.rows[r][c] == _draft.rows[r][c]) {
+            if (_typingIn != (r, c)) {
               _pushUndo();
+              _typingIn = (r, c);
             }
             setState(() => _draft = next);
           }
@@ -207,6 +213,7 @@ class _TableEditorDialogState extends State<TableEditorDialog> {
     }
     _text.clear();
     _focus.clear();
+    _typingIn = null;
     setState(() {
       _draft = next;
       _row = (row ?? _row).clamp(0, next.rowCount - 1);
@@ -435,7 +442,8 @@ class _TableEditorDialogState extends State<TableEditorDialog> {
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.tableEditor'),
       title: Text(l.tableEditorTitle),
-      closeIconData: null,
+      // The X asks before discarding edits, like Cancel and Esc.
+      closeIcon: WonkyDialogCloseButton(onPressed: _cancel),
       constraints: BoxConstraints(
         maxWidth: narrow ? size.width : (size.width * 0.9).clamp(480, 1100),
         maxHeight: narrow ? size.height : size.height * 0.85,

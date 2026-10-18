@@ -1,6 +1,6 @@
 import 'package:uuid/uuid.dart';
 
-import 'base62.dart';
+import 'package:wonky_revlog/base62.dart';
 import 'sheets_ids.dart' show IdGenerator;
 import 'uuid5.dart';
 

@@ -11,8 +11,8 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
 import '../../platform/common/access_role.dart' as _iv7g6vuy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 import '../../platform/presence/presence_state.dart' as _ia3e8v5g;
 
 /// A connected session on an item.
@@ -41,7 +41,7 @@ abstract class Participant
     String? avatarUrl,
     required int colorIndex,
     required _iv7g6vuy.AccessRole role,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required _ia3e8v5g.PresenceState state,
     String? mode,
     String? cursorJson,
@@ -61,7 +61,7 @@ abstract class Participant
       role: _iv7g6vuy.AccessRole.fromJson(
         (jsonSerialization['role'] as String),
       ),
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       state: _ia3e8v5g.PresenceState.fromJson(
@@ -89,7 +89,7 @@ abstract class Participant
 
   _iv7g6vuy.AccessRole role;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   _ia3e8v5g.PresenceState state;
 
@@ -110,7 +110,7 @@ abstract class Participant
     String? avatarUrl,
     int? colorIndex,
     _iv7g6vuy.AccessRole? role,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     _ia3e8v5g.PresenceState? state,
     String? mode,
     String? cursorJson,
@@ -171,7 +171,7 @@ class _ParticipantImpl extends Participant {
     String? avatarUrl,
     required int colorIndex,
     required _iv7g6vuy.AccessRole role,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required _ia3e8v5g.PresenceState state,
     String? mode,
     String? cursorJson,
@@ -203,7 +203,7 @@ class _ParticipantImpl extends Participant {
     Object? avatarUrl = _Undefined,
     int? colorIndex,
     _iv7g6vuy.AccessRole? role,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     _ia3e8v5g.PresenceState? state,
     Object? mode = _Undefined,
     Object? cursorJson = _Undefined,

@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -55,6 +58,7 @@ void main() {
     tearDown(() {
       SheetsImportJobs.beforeChunk = null;
       SheetsImportJobs.chunkSize = 5000;
+      SheetsImportJobs.leaseDuration = const Duration(minutes: 2);
       HeadlessWorkbookProvider.clear();
     });
 
@@ -155,6 +159,76 @@ void main() {
         expect(await SheetsFixtures.read(mcp, ss, 'Data!A1'), [
           ['Existing'],
         ]);
+      },
+    );
+
+    test(
+      'when a big import is written in chunks then its ops share one record '
+      'and reverting it undoes every chunk',
+      () async {
+        SheetsImportJobs.chunkSize = 20;
+        final upload = await _upload(anna, 'big.csv', _rows(60));
+
+        final job = await endpoints.sheetsImport.importInto(
+          anna.endpointSession,
+          UuidValue.fromString(ss),
+          upload,
+          jsonEncode({'location': 'replaceSheet'}),
+          null,
+        );
+        final last = (await watch(job)).last;
+
+        expect(last.status, SheetsImportStatus.done, reason: '${last.error}');
+        final record = (await ServerChangeRecord.db.findFirstRow(
+          anna.session,
+          where: (t) => t.changeId.equals(last.changeId!),
+        ))!;
+        final ops = await RevOp.db.find(
+          anna.session,
+          where: (t) => t.recordId.equals(record.recordId!),
+        );
+        expect(ops.length, greaterThan(3));
+        expect(record.cellsAffected, greaterThanOrEqualTo(120));
+        expect(await SheetsFixtures.read(mcp, ss, 'Data!A61'), [
+          ['60'],
+        ]);
+
+        await endpoints.sheets.revertChange(
+          anna.endpointSession,
+          last.changeId!,
+        );
+        expect(await SheetsFixtures.read(mcp, ss, 'Data!A1'), [
+          ['Existing'],
+        ]);
+      },
+    );
+
+    test(
+      'when a phase takes longer than the lease then the lease is renewed '
+      'and the job is not marked interrupted (CQ-9)',
+      () async {
+        SheetsImportJobs.leaseDuration = const Duration(milliseconds: 600);
+        SheetsImportJobs.beforeChunk = (chunk, chunks) async {
+          if (chunk == 0) {
+            await Future<void>.delayed(const Duration(milliseconds: 1500));
+          }
+        };
+        final upload = await _upload(anna, 'slow.csv', _rows(3));
+
+        final job = await endpoints.sheetsImport.importInto(
+          anna.endpointSession,
+          UuidValue.fromString(ss),
+          upload,
+          jsonEncode({'location': 'insertSheets'}),
+          null,
+        );
+        final events = await watch(job);
+
+        expect(events.last.status, SheetsImportStatus.done);
+        expect(
+          events.map((e) => e.status),
+          isNot(contains(SheetsImportStatus.failed)),
+        );
       },
     );
 

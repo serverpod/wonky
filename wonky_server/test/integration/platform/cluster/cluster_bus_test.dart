@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:async';
 
 import 'package:serverpod/serverpod.dart';
@@ -16,12 +19,18 @@ void main() {
   ) {
     final published = <ClusterBusBatch>[];
     late Duration interval;
+    // Completes with the first publish (no fixed wait for the timer).
+    late Completer<void> firstPublish;
 
     setUp(() {
       published.clear();
+      firstPublish = Completer<void>();
       interval = ClusterBus.flushInterval;
       ClusterBus.flushInterval = const Duration(milliseconds: 50);
-      ClusterBus.debugPublish = (batch) async => published.add(batch);
+      ClusterBus.debugPublish = (batch) async {
+        published.add(batch);
+        if (!firstPublish.isCompleted) firstPublish.complete();
+      };
     });
     tearDown(() {
       ClusterBus.debugPublish = null;
@@ -62,7 +71,7 @@ void main() {
         expect(local, hasLength(1));
         expect(published, isEmpty);
 
-        await Future<void>.delayed(const Duration(milliseconds: 150));
+        await firstPublish.future.timeout(const Duration(seconds: 10));
 
         expect(published, hasLength(1));
         expect(published.single.channels, ['doc:a', 'presence:b']);
@@ -95,6 +104,34 @@ void main() {
         expect([for (final m in decoded) m.type], ['left', 'cursor', 'cursor']);
         expect(decoded[1].cursor!.anchor, 2);
         expect(decoded[2].cursor!.sessionId, 's3');
+      },
+    );
+
+    test(
+      'when an op is posted then it and the messages queued before it are '
+      'published at once, in order',
+      () async {
+        ClusterBus.flushInterval = const Duration(seconds: 30);
+        final session = sessionBuilder.build();
+        final doc = UuidValue.fromString(const Uuid().v4());
+
+        await DocumentBus.post(session, doc, cursor('s1', 1));
+        expect(published, isEmpty);
+        await DocumentBus.post(
+          session,
+          doc,
+          DocBusMessage(type: 'op', originSessionId: 's1'),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(published, hasLength(1));
+        final types = [
+          for (final m in published.single.messages)
+            (session.serverpod.serializationManager.decodeWithType(m)
+                    as DocBusMessage)
+                .type,
+        ];
+        expect(types, ['cursor', 'op']);
       },
     );
 

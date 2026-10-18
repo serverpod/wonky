@@ -41,13 +41,17 @@ class TableModel {
 
   /// Reads the inner embed value; pads ragged rows.
   factory TableModel.fromEmbed(Map<String, dynamic> value) {
-    final rawRows = value['rows'] is List ? value['rows'] as List : const [];
+    final rawRows = value['rows'] is List
+        ? value['rows'] as List
+        : const <Object?>[];
     var columns = 0;
     for (final row in rawRows) {
       if (row is List && row.length > columns) columns = row.length;
     }
     if (columns == 0) columns = 1;
-    final rawAlign = value['align'] is List ? value['align'] as List : const [];
+    final rawAlign = value['align'] is List
+        ? value['align'] as List
+        : const <Object?>[];
     return TableModel(
       id: '${value['id'] ?? ''}',
       align: [

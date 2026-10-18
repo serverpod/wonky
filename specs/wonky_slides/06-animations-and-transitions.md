@@ -62,7 +62,7 @@ Units: frames and distances are in **slide units (su)**, the deck's logical coor
 
 | Field | Type | Meaning |
 |-------|------|---------|
-| `id` | UUID | Row id (`spaceId` = the deck, injected by the sync engine). |
+| `id` | UUID | Row id (the deck's RevLog file, `fileId`, is set by the server's sequencer). |
 | `slide` (`slideId`) | FK | Slide the build belongs to (cascade). |
 | `element` (`elementId`) | FK | Animated element (top-level element or element group; children of groups: P2) (cascade). |
 | `sortKey` | String | Fractional index: order in the slide's build sequence (tie-break on `id`). |

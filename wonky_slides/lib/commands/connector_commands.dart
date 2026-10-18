@@ -12,6 +12,7 @@ import '../features/canvas/canvas_interactions.dart';
 import '../features/canvas/slide_canvas_controller.dart';
 import '../features/editor_screen/deck_editor_controller.dart';
 import '../features/elements/line/connector_handles.dart';
+import '../l10n/slides_l10n.dart' show slidesL10nOf;
 import 'slides_command.dart';
 
 /// Connector route editing (Slides 03 §6.4, SL-44): the segment handles of
@@ -93,21 +94,25 @@ CommandResult setLineWaypoints(
   if (rec == null || rec.kind != ElementKind.line) {
     return const CommandResult.failed('Not a line');
   }
-  if (rec.locked) return const CommandResult.failed('This object is locked.');
+  if (rec.locked) {
+    return CommandResult.failed(slidesL10nOf(ed.services).errorObjectLocked);
+  }
   final els = selectionOf(ed).elements;
   final line = els?[id];
   if (line == null) {
-    return const CommandResult.failed('The line is not on the current slide');
+    return CommandResult.failed(slidesL10nOf(ed.services).errorLineNotOnSlide);
   }
   if (line.parentId != null) {
-    return const CommandResult.failed(
-      'Route handles are not available inside groups',
+    return CommandResult.failed(
+      slidesL10nOf(ed.services).errorRouteHandlesInGroups,
     );
   }
   final data = line.data ?? const <String, Object?>{};
   final routing = LineRouting.fromName(data['routing']);
   if (routing == LineRouting.straight && waypoints.isNotEmpty) {
-    return const CommandResult.failed('Straight lines have no waypoints');
+    return CommandResult.failed(
+      slidesL10nOf(ed.services).errorStraightLineWaypoints,
+    );
   }
   if (routing == LineRouting.curved && waypoints.length > 1) {
     return const CommandResult.failed('A curved connector bends once');

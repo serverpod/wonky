@@ -1030,6 +1030,126 @@ abstract class SheetsLocalizations {
   /// **'via {label}'**
   String cellHistoryVia(String label);
 
+  /// Name of a change in the cell history ("via …"): typing into a cell. The change logs store English codes; this is how they are shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Typing'**
+  String get changeLabelTyping;
+
+  /// No description provided for @changeLabelInsertAiResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert AI result'**
+  String get changeLabelInsertAiResult;
+
+  /// No description provided for @changeLabelInsertImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert image'**
+  String get changeLabelInsertImage;
+
+  /// No description provided for @changeLabelRestoreVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore version'**
+  String get changeLabelRestoreVersion;
+
+  /// No description provided for @changeLabelMakeCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Make a copy'**
+  String get changeLabelMakeCopy;
+
+  /// No description provided for @changeLabelMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get changeLabelMaintenance;
+
+  /// No description provided for @changeLabelCreateScriptProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Create script project'**
+  String get changeLabelCreateScriptProject;
+
+  /// No description provided for @changeLabelDeleteScriptProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete script project'**
+  String get changeLabelDeleteScriptProject;
+
+  /// No description provided for @changeLabelCreateScriptFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Create script file'**
+  String get changeLabelCreateScriptFile;
+
+  /// No description provided for @changeLabelRenameScriptFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename script file'**
+  String get changeLabelRenameScriptFile;
+
+  /// No description provided for @changeLabelDeleteScriptFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete script file'**
+  String get changeLabelDeleteScriptFile;
+
+  /// No description provided for @changeLabelMoveScriptFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Move script file'**
+  String get changeLabelMoveScriptFile;
+
+  /// No description provided for @changeLabelSaveScriptFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Save script file'**
+  String get changeLabelSaveScriptFile;
+
+  /// No description provided for @changeLabelScriptSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Script settings'**
+  String get changeLabelScriptSettings;
+
+  /// No description provided for @changeLabelCreateMacro.
+  ///
+  /// In en, this message translates to:
+  /// **'Create macro'**
+  String get changeLabelCreateMacro;
+
+  /// No description provided for @changeLabelEditMacro.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit macro'**
+  String get changeLabelEditMacro;
+
+  /// No description provided for @changeLabelDeleteMacro.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete macro'**
+  String get changeLabelDeleteMacro;
+
+  /// No description provided for @changeLabelRecordMacro.
+  ///
+  /// In en, this message translates to:
+  /// **'Record macro'**
+  String get changeLabelRecordMacro;
+
+  /// No description provided for @changeLabelAddTrigger.
+  ///
+  /// In en, this message translates to:
+  /// **'Add trigger'**
+  String get changeLabelAddTrigger;
+
+  /// No description provided for @changeLabelEditTrigger.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit trigger'**
+  String get changeLabelEditTrigger;
+
   /// No description provided for @cellHistoryRestore.
   ///
   /// In en, this message translates to:
@@ -5230,12 +5350,6 @@ abstract class SheetsLocalizations {
   /// **'Microsoft Excel (.xlsx)'**
   String get downloadXlsx;
 
-  /// No description provided for @downloadingSpreadsheet.
-  ///
-  /// In en, this message translates to:
-  /// **'Downloading spreadsheet… {percent}%'**
-  String downloadingSpreadsheet(int percent);
-
   /// No description provided for @errorSheetNameEmpty.
   ///
   /// In en, this message translates to:
@@ -5758,6 +5872,12 @@ abstract class SheetsLocalizations {
   /// **'This spreadsheet isn’t available offline'**
   String get screenOfflineUnavailable;
 
+  /// No description provided for @screenOfflineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'It isn’t on this device yet. Open it once while online to keep it available offline.'**
+  String get screenOfflineHint;
+
   /// No description provided for @screenOpenFailed.
   ///
   /// In en, this message translates to:
@@ -6021,6 +6141,24 @@ abstract class SheetsLocalizations {
   /// In en, this message translates to:
   /// **'Some changes couldn’t be undone because they were edited by someone else.'**
   String get toastUndoPartial;
+
+  /// A change the server rejected (RevLog 06 §4.6); it is undone on this device.
+  ///
+  /// In en, this message translates to:
+  /// **'“{label}” couldn’t be saved: {reason}'**
+  String toastChangeNotSaved(String label, String reason);
+
+  /// No description provided for @toastChangeProtected.
+  ///
+  /// In en, this message translates to:
+  /// **'“{label}” wasn’t saved because it edits a protected cell or object.'**
+  String toastChangeProtected(String label);
+
+  /// No description provided for @toastChangeNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'You can no longer edit this spreadsheet'**
+  String get toastChangeNoAccess;
 
   /// No description provided for @toolbarBorders.
   ///
@@ -6319,7 +6457,7 @@ abstract class SheetsLocalizations {
   /// No description provided for @protectAdvisory.
   ///
   /// In en, this message translates to:
-  /// **'Protection prevents accidental edits by collaborators.'**
+  /// **'Only the people you choose can edit protected ranges, also from other devices, scripts and agents. Warning-only ranges ask for a confirmation instead.'**
   String get protectAdvisory;
 
   /// No description provided for @protectEdit.

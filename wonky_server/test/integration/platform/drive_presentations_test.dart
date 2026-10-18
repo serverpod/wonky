@@ -1,8 +1,10 @@
+@Tags(['integration'])
+library;
+
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/drive/kind_masks.dart';
-import 'package:wonky_server/src/platform/spaces/space_kinds.dart';
 
 import '../../support/test_drive.dart';
 import '../../support/test_files.dart';
@@ -12,82 +14,54 @@ import '../../support/wonky_serverpod.dart';
 Matcher _wonky(WonkyErrorCode code) =>
     throwsA(isA<WonkyException>().having((e) => e.code, 'code', code));
 
+/// `drive.registerPresentation` (Slides 02 §9.3, RevLog spec 04 §5): a
+/// deck a device created registers as `createPresentation(fileUuid,
+/// initialize: false)`.
 void main() {
-  withWonkyServerpod('Given a reserved deck space', (
+  withWonkyServerpod('Given a deck file id from a device', (
     sessionBuilder,
     endpoints,
   ) {
     late TestUser anna;
-    late UuidValue space;
-
-    Future<UuidValue> reserve(TestUser user, SpaceKind kind) async {
-      final uuid = const Uuid().v7obj();
-      await SpaceReservation.db.insertRow(
-        user.session,
-        SpaceReservation(
-          userId: user.id,
-          spaceUuid: uuid,
-          kind: kind,
-          createdAt: DateTime.now().toUtc(),
-        ),
-      );
-      return uuid;
-    }
+    late UuidValue file;
 
     setUp(() async {
       anna = await TestUsers.create(sessionBuilder, name: 'Anna');
-      space = await reserve(anna, SpaceKind.deck);
+      file = const Uuid().v7obj();
     });
 
-    test(
-      'when registering then a presentation item with the space uuid is created',
-      () async {
-        final item = await endpoints.drive.registerPresentation(
-          anna.endpointSession,
-          space,
-          null,
-          'Pitch',
-        );
-
-        expect(item.kind, DriveItemKind.presentation);
-        expect(item.uuid, space);
-        expect(item.contentRef, space);
-        expect(item.name, 'Pitch');
-        final reservation = await SpaceReservation.db.findFirstRow(
-          anna.session,
-          where: (t) => t.spaceUuid.equals(space),
-        );
-        expect(reservation?.usedAt, isNotNull);
-        final subscription = await SpaceSubscription.db.findFirstRow(
-          anna.session,
-          where: (t) => t.spaceUuid.equals(space),
-        );
-        expect(subscription?.kind, SpaceKind.deck);
-      },
-    );
-
-    test('when registered then the space is recorded as a deck', () async {
-      await endpoints.drive.registerPresentation(
+    test('when registering then a presentation item with the file uuid and '
+        'an empty RevLog file are created', () async {
+      final item = await endpoints.drive.registerPresentation(
         anna.endpointSession,
-        space,
+        file,
         null,
         'Pitch',
       );
 
-      expect(await SpaceKinds.of(anna.session, space), SpaceKind.deck);
+      expect(item.kind, DriveItemKind.presentation);
+      expect(item.uuid, file);
+      expect(item.contentRef, file);
+      expect(item.name, 'Pitch');
+      final rev = await RevFile.db.findFirstRow(
+        anna.session,
+        where: (t) => t.fileUuid.equals(file),
+      );
+      expect(rev?.kind, RevFileKind.deck);
+      expect(rev?.headRevision, 0);
     });
 
     test('when registering twice then the same item is returned', () async {
       final first = await endpoints.drive.registerPresentation(
         anna.endpointSession,
-        space,
+        file,
         null,
         'Pitch',
       );
 
       final again = await endpoints.drive.registerPresentation(
         anna.endpointSession,
-        space,
+        file,
         null,
         'Pitch again',
       );
@@ -103,7 +77,7 @@ void main() {
 
         await endpoints.drive.registerPresentation(
           anna.endpointSession,
-          space,
+          file,
           folder.uuid,
           'Pitch',
         );
@@ -116,7 +90,7 @@ void main() {
     test('when the folder is gone then the deck lands in My Drive', () async {
       final item = await endpoints.drive.registerPresentation(
         anna.endpointSession,
-        space,
+        file,
         const Uuid().v7obj(),
         'Pitch',
       );
@@ -125,41 +99,40 @@ void main() {
     });
 
     test(
-      'when the space is reserved for a spreadsheet then it is invalid',
+      'when the id belongs to a spreadsheet then it is a conflict',
       () async {
-        final sheetSpace = await reserve(anna, SpaceKind.spreadsheet);
+        final sheet = await endpoints.drive.createSpreadsheet(
+          anna.endpointSession,
+          null,
+          'Sheet',
+          null,
+        );
 
         await expectLater(
           endpoints.drive.registerPresentation(
             anna.endpointSession,
-            sheetSpace,
+            sheet.uuid,
             null,
             'Pitch',
           ),
-          _wonky(WonkyErrorCode.invalidArgument),
+          _wonky(WonkyErrorCode.conflict),
         );
       },
     );
 
-    test('when someone else registers the space then it is refused', () async {
+    test('when someone else registers the file then it is refused', () async {
       final bo = await TestUsers.create(sessionBuilder, name: 'Bo');
+      await endpoints.drive.registerPresentation(
+        anna.endpointSession,
+        file,
+        null,
+        'Pitch',
+      );
 
       await expectLater(
         endpoints.drive.registerPresentation(
           bo.endpointSession,
-          space,
-          null,
-          'Pitch',
-        ),
-        _wonky(WonkyErrorCode.forbidden),
-      );
-    });
-
-    test('when the space was never reserved then it is refused', () async {
-      await expectLater(
-        endpoints.drive.registerPresentation(
-          anna.endpointSession,
-          const Uuid().v7obj(),
+          file,
           null,
           'Pitch',
         ),
@@ -170,7 +143,7 @@ void main() {
     test('when the deck is listed then it shows as a presentation', () async {
       await endpoints.drive.registerPresentation(
         anna.endpointSession,
-        space,
+        file,
         null,
         'Pitch',
       );
@@ -184,7 +157,7 @@ void main() {
         10,
       );
 
-      expect(page.items.map((i) => i.uuid), [space]);
+      expect(page.items.map((i) => i.uuid), [file]);
     });
   });
 }

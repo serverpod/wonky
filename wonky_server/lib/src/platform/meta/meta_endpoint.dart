@@ -1,6 +1,7 @@
 import 'package:serverpod/serverpod.dart';
 
-import '../../sheets/versions/sheets_version_provider.dart';
+import '../../sheets/revlog/sheets_rev_binding.dart';
+import '../../slides/revlog/slides_rev_binding.dart';
 import '../common/models.dart';
 import '../common/time.dart';
 import '../config/wonky_config.dart';
@@ -17,7 +18,9 @@ class MetaEndpoint extends Endpoint {
       redisConnected: redis != null && await _ping(redis),
       serverVersion: c.serverVersion,
       minClientVersion: c.minClientVersion,
-      syncTablesHash: _hash ??= SheetsVersionProvider.syncTablesHashOf(),
+      revSchemaHash: _hash ??=
+          'sheets:${SheetsRevBinding.instance.schema.hash},'
+          'slides:${SlidesRevBinding.instance.schema.hash}',
       runMode: session.serverpod.runMode,
       features: FeatureFlags(
         ai: c.aiEnabled,
@@ -27,7 +30,6 @@ class MetaEndpoint extends Endpoint {
       ),
       limits: ServerLimits(
         maxCellsPerSpreadsheet: c.maxCellsPerSpreadsheet,
-        maxActiveSpacesPerUser: c.maxActiveSpacesPerUser,
         maxSheetsPerSpreadsheet: c.maxSheetsPerSpreadsheet,
         maxDocumentChars: c.maxDocumentChars,
         maxImageUploadBytes: c.maxImageUploadBytes,

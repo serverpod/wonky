@@ -1,0 +1,24 @@
+### A Suggest-mode AI changes preview persisted in the database (Sheets 12
+### §6.3, Slides 11 §6.3), so any server instance can show, apply or
+### discard it until it expires (30 min). `fileUuid` is the RevLog file uuid
+### of the spreadsheet or deck; `previewJson` is a `SheetsAiPreview` or a
+### `SlidesAiPreview`.
+class: AiPreviewRecord
+table: ai_preview_record
+serverOnly: true
+fields:
+  previewId: String
+  userId: int
+  fileUuid: UuidValue
+  ### The preview shown by the dialog (JSON).
+  previewJson: String
+  ### gzip+base64 JSON of the recorded row changes per call.
+  changesJson: String
+  createdAt: DateTime
+  expiresAt: DateTime
+indexes:
+  ai_preview_id_idx:
+    fields: previewId
+    unique: true
+  ai_preview_expires_idx:
+    fields: expiresAt

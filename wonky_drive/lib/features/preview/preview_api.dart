@@ -42,7 +42,11 @@ abstract class FilePreviewApi {
 
   /// GETs [url] into memory; throws [PreviewFetchException] beyond
   /// [maxBytes] or on an HTTP error, `OfflineException` when unreachable.
-  Future<Uint8List> fetch(String url, {int? maxBytes});
+  /// With [firstBytes], only the start of the file is requested (an HTTP
+  /// `Range`; a server that ignores it is read only that far) and at most
+  /// that many bytes are returned, never an error for the size (text and
+  /// CSV previews show the first megabyte, DR-3).
+  Future<Uint8List> fetch(String url, {int? maxBytes, int? firstBytes});
 
   /// `drive.fileUploadStatus`.
   Future<FileUploadProgress> uploadStatus(UuidValue itemUuid);
@@ -104,15 +108,32 @@ class ServerFilePreviewApi implements FilePreviewApi {
       services.repositories.files.getUrl(fileUuid);
 
   @override
-  Future<Uint8List> fetch(String url, {int? maxBytes}) async {
+  Future<Uint8List> fetch(String url, {int? maxBytes, int? firstBytes}) async {
     if (Api.simulatedOffline) {
       throw const OfflineException('simulated offline');
     }
-    final http.StreamedResponse res;
+    http.Request request() {
+      final r = http.Request('GET', Uri.parse(url));
+      if (firstBytes != null) r.headers['Range'] = 'bytes=0-${firstBytes - 1}';
+      return r;
+    }
+
+    http.StreamedResponse res;
     try {
-      res = await _http.send(http.Request('GET', Uri.parse(url)));
+      res = await _http.send(request());
     } on http.ClientException catch (e) {
-      throw OfflineException(e);
+      if (firstBytes == null) throw OfflineException(e);
+      // A storage host whose CORS rules refuse the `Range` header (web):
+      // once more without it (only the first bytes are kept anyway).
+      try {
+        res = await _http.send(http.Request('GET', Uri.parse(url)));
+      } on http.ClientException catch (e) {
+        throw OfflineException(e);
+      }
+    }
+    if (firstBytes != null &&
+        (res.statusCode == 200 || res.statusCode == 206)) {
+      return _readFirst(res.stream, firstBytes);
     }
     if (res.statusCode != 200) {
       await res.stream.drain<void>();
@@ -129,6 +150,17 @@ class ServerFilePreviewApi implements FilePreviewApi {
       if (maxBytes != null && builder.length > maxBytes) {
         throw const PreviewFetchException('Too large', tooLarge: true);
       }
+    }
+    return builder.takeBytes();
+  }
+
+  /// At most [n] bytes of [stream]; stops reading there.
+  static Future<Uint8List> _readFirst(Stream<List<int>> stream, int n) async {
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in stream) {
+      final room = n - builder.length;
+      builder.add(chunk.length > room ? chunk.sublist(0, room) : chunk);
+      if (builder.length >= n) break;
     }
     return builder.takeBytes();
   }

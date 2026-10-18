@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
 import 'package:serverpod/serverpod.dart';
@@ -13,6 +16,7 @@ import 'package:wonky_sheets_core/model.dart' show ChangeSummary;
 
 import '../../../support/mcp_harness.dart';
 import '../../../support/sheets_fixtures.dart';
+import '../../../support/sheets_rev_hooks.dart';
 import '../../../support/test_users.dart';
 import '../../../support/wonky_serverpod.dart';
 
@@ -28,14 +32,18 @@ void main() {
     late String ss;
     late UuidValue item;
 
-    Future<void> set(McpHarness who, String range, Object? value) =>
-        who.call('sheets.set_values', {
-          'spreadsheet': ss,
-          'range': range,
-          'values': [
-            [value],
-          ],
-        });
+    SheetsRevHooks.install();
+
+    Future<void> set(McpHarness who, String range, Object? value) async {
+      await who.call('sheets.set_values', {
+        'spreadsheet': ss,
+        'range': range,
+        'values': [
+          [value],
+        ],
+      });
+      await SheetsRevHooks.drainItem(a.session, item);
+    }
 
     Future<ItemVersionState> state() async {
       final d = await DriveItem.db.findFirstRow(
@@ -137,7 +145,7 @@ void main() {
       );
       final ranges =
           ((jsonDecode(index!.changedRangesJson) as Map)['ranges'] as List)
-              .cast<Map>();
+              .cast<Map<Object?, Object?>>();
       expect({for (final r in ranges) r['u']}, {a.id, b.id});
 
       final viaEndpoint =
@@ -238,6 +246,63 @@ void main() {
       HeadlessWorkbookProvider.clear();
       expect(await SheetsFixtures.read(anna, ss, 'A1:B1'), [
         ['bo', 'new'],
+      ]);
+    });
+
+    test('when a version is captured then it records the file revision, and '
+        'a restore that would change ranges protected from the restorer is '
+        'refused before anything is written', () async {
+      await set(anna, 'A1', 'old');
+      final v1 = await VersionService.nameCurrent(
+        a.session,
+        a.actor,
+        item,
+        'Old',
+      );
+      expect(v1.revision, isNotNull);
+      await set(anna, 'A1', 'new');
+      await set(anna, 'C5', 'free');
+      await anna.call('sheets.protect_range', {
+        'spreadsheet': ss,
+        'range': 'A1:B2',
+        'description': 'Anna only',
+      });
+      final v2 = await VersionService.nameCurrent(
+        a.session,
+        a.actor,
+        item,
+        'Protected',
+      );
+      expect(v2.revision, greaterThan(v1.revision!));
+
+      final driveItem = await DriveItem.db.findFirstRow(
+        a.session,
+        where: (t) => t.uuid.equals(item),
+      );
+      final head = await RevFile.db.findFirstRow(
+        a.session,
+        where: (t) => t.fileUuid.equals(driveItem!.contentRef!),
+      );
+      await expectLater(
+        VersionService.restore(b.session, b.actor, item, v1.id),
+        throwsA(
+          isA<WonkyException>().having(
+            (e) => e.message,
+            'message',
+            "This version changes protected ranges you can't edit",
+          ),
+        ),
+      );
+      final after = await RevFile.db.findById(a.session, head!.id!);
+      expect(after!.headRevision, head.headRevision);
+      expect(await SheetsFixtures.read(anna, ss, 'A1'), [
+        ['new'],
+      ]);
+
+      // The owner of the protection may restore it.
+      await VersionService.restore(a.session, a.actor, item, v1.id);
+      expect(await SheetsFixtures.read(anna, ss, 'A1'), [
+        ['old'],
       ]);
     });
 

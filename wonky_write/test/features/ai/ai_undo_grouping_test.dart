@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_write/features/ai/ai_undo_grouping.dart';
 import 'package:wonky_write/features/editor/controller/editor_types.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../document/support/session_harness.dart';
 import '../sync/support/fake_document_server.dart';

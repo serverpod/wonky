@@ -12,11 +12,12 @@ import '../../platform/common/errors.dart';
 import '../../platform/common/models.dart';
 import '../../platform/files/file_service.dart';
 import '../../platform/sharing/access_service.dart';
-import '../headless/headless_workbook_provider.dart';
+import '../../platform/revlog/headless_file_cache.dart';
+import '../headless/headless_workbook.dart';
 import '../mcp/sheets_bulk_writer.dart';
 import '../mcp/sheets_mcp_support.dart';
-import '../mcp/sheets_writes.dart';
-import '../../platform/spaces/space_service.dart';
+import '../revlog/sheets_rev_binding.dart';
+import '../revlog/sheets_server_writes.dart';
 import 'sheets_import_service.dart';
 import '../../platform/storage/content_sizes.dart';
 import '../../platform/storage/storage_hooks.dart';
@@ -26,13 +27,15 @@ import '../../platform/storage/storage_service.dart';
 ///
 /// `importInto` queues a [SheetsImportJob] for an uploaded file
 /// (`StoredFileKind.importSource`) and returns its id; the instance that
-/// queued it runs the user's jobs one at a time (a lease in the row keeps
-/// other instances from running a second job of the same user): parse (in
-/// an isolate for big files) → `IrToRowsPlanner` on the headless model →
-/// [SheetsBulkWriter.apply] in chunks of ≤ 5,000 row changes (progress per
-/// chunk, cancel checked between chunks) → one [ServerChangeRecord] (undo:
-/// `sheets.serverChange`). A cancelled job reverts the chunks already
-/// written. `watch` streams [SheetsImportProgress] until the job ends.
+/// queued it runs the user's jobs one at a time (a lease in the row, renewed
+/// while the job runs, keeps other instances from running a second job of
+/// the same user): parse (in an isolate for big files) → `IrToRowsPlanner`
+/// on the live headless model → [SheetsBulkWriter.apply] in chunks of
+/// ≤ 5,000 row changes whose RevLog ops share one record id (progress per
+/// chunk, cancel checked between chunks) → one [ServerChangeRecord] for
+/// that record id (undo: `sheets.serverChange`). A cancelled or failed job
+/// reverts the chunks already written. `watch` streams
+/// [SheetsImportProgress] until the job ends.
 abstract final class SheetsImportJobs {
   /// How long a running job's lease lasts without renewal (renewed per
   /// chunk). A job whose lease ran out was interrupted (server restart).
@@ -291,23 +294,36 @@ abstract final class SheetsImportJobs {
     int? total,
   }) async {
     final now = clock.now().toUtc();
-    return SheetsImportJob.db.updateRow(
-      session,
-      job.copyWith(
-        status: status ?? job.status,
-        progressDone: done ?? job.progressDone,
-        progressTotal: total ?? job.progressTotal,
-        updatedAt: now,
-        leaseUntil: now.add(leaseDuration),
-      ),
-      columns: (t) => [
-        t.status,
-        t.progressDone,
-        t.progressTotal,
-        t.updatedAt,
-        t.leaseUntil,
-      ],
+    final next = job.copyWith(
+      status: status ?? job.status,
+      progressDone: done ?? job.progressDone,
+      progressTotal: total ?? job.progressTotal,
+      updatedAt: now,
+      leaseUntil: now.add(leaseDuration),
     );
+    // Only while this instance still holds the lease (CQ-9): a job whose
+    // lease ran out was marked failed and must stop.
+    final rows = await session.db.unsafeQuery(
+      r'''
+      UPDATE sheets_import_job SET status = @status,
+        "progressDone" = @done, "progressTotal" = @total,
+        "updatedAt" = @now, "leaseUntil" = @until
+      WHERE id = @id AND "leaseOwner" = @owner
+        AND status IN ('parsing', 'writing', 'finalizing')
+      RETURNING id
+      ''',
+      parameters: QueryParameters.named({
+        'status': next.status.name,
+        'done': next.progressDone,
+        'total': next.progressTotal,
+        'now': now,
+        'until': next.leaseUntil,
+        'id': job.id,
+        'owner': Cluster.instanceId,
+      }),
+    );
+    if (rows.isEmpty) throw const _LeaseLost();
+    return next;
   }
 
   static Future<bool> _cancelRequested(
@@ -327,6 +343,14 @@ abstract final class SheetsImportJobs {
     String? sheetIdsJson,
     UuidValue? changeId,
   }) async {
+    // A job whose lease was lost was already marked failed (CQ-9).
+    final current = await SheetsImportJob.db.findById(session, job.id!);
+    if (current == null ||
+        current.leaseOwner != Cluster.instanceId ||
+        !_running.contains(current.status)) {
+      await _deleteUpload(session, job);
+      return;
+    }
     await SheetsImportJob.db.updateRow(
       session,
       job.copyWith(
@@ -408,12 +432,38 @@ abstract final class SheetsImportJobs {
       job.spreadsheetUuid,
       Role.editor,
     );
-    await SpaceService.ensureWriter(
-      session,
-      actor,
-      item,
-      reason: SubscriptionReason.open,
+    final space = item.contentRef!;
+    // The lease is renewed for the whole job, also while reading and
+    // parsing big files (CQ-9).
+    final heartbeat = Timer.periodic(
+      leaseDuration ~/ 3,
+      (_) => unawaited(_renewLease(session, job)),
     );
+    // The model stays cached (and live) for the whole job.
+    final lease = await HeadlessFileCache.open(
+      session,
+      SheetsRevBinding.instance,
+      space,
+    );
+    if (lease == null) {
+      heartbeat.cancel();
+      throw Errors.notFound('Spreadsheet');
+    }
+    try {
+      await _write(session, actor, job, item, lease);
+    } finally {
+      heartbeat.cancel();
+      lease.release();
+    }
+  }
+
+  static Future<void> _write(
+    Session session,
+    Actor actor,
+    SheetsImportJob job,
+    DriveItem item,
+    HeadlessLease lease,
+  ) async {
     final space = item.contentRef!;
     final file = await FileService.byUuid(session, job.uploadFileId);
     if (file == null) throw Errors.notFound('Upload');
@@ -425,7 +475,7 @@ abstract final class SheetsImportJobs {
     final options = _options(job.optionsJson);
     if (await _cancelRequested(session, job)) throw const _Cancelled();
 
-    var wb = await HeadlessWorkbookProvider.open(session, space);
+    final wb = lease.model as HeadlessWorkbook;
     final parsed = await SheetsImportService.parse(
       bytes,
       fileName: job.fileName,
@@ -435,8 +485,8 @@ abstract final class SheetsImportJobs {
     );
     if (await _cancelRequested(session, job)) throw const _Cancelled();
 
-    // Plan against the current model (refreshed after the parse).
-    wb = await HeadlessWorkbookProvider.open(session, space);
+    // Plan against the current head (the model follows the file's ops).
+    await lease.ensureAtLeast(session, lease.state.revision);
     final model = wb.model;
     final activeSheetId =
         job.activeSheetId != null && model.sheet(job.activeSheetId!) != null
@@ -451,9 +501,11 @@ abstract final class SheetsImportJobs {
       maxCells: SheetsMcp.maxCells,
     );
     // Chunked planning (11 §3.5): the head (sheets, rows, columns, rules,
-    // objects) first, then ≤ [chunkSize] cells per chunk, each applied to
-    // the headless model (in-place writes read it) and written before the
-    // next is planned, so the job never holds every row change at once.
+    // objects) first, then ≤ [chunkSize] cells per chunk, each committed
+    // before the next is planned; the committed ops reach the live model
+    // (in-place writes read it). The job never holds every row change at
+    // once: the chunks' ops share one record id, and the record and the
+    // cancel/failure revert read them back from the log.
     final chunks = core.IrToRowsPlanner.planChunked(
       parsed.document,
       model,
@@ -489,8 +541,9 @@ abstract final class SheetsImportJobs {
       await StorageHooks.chargeImage(session, item, f);
     }
 
-    final applied = <core.RowChange>[];
+    final recordId = const Uuid().v7obj();
     var written = 0;
+    var cells = 0;
     try {
       var i = 0;
       for (
@@ -498,11 +551,10 @@ abstract final class SheetsImportJobs {
         plan != null;
         plan = chunks.next(), i++
       ) {
-        model.applyPlan(plan);
         // The head can exceed one bulk-writer chunk (big grids).
         for (var j = 0; j < plan.changes.length; j += chunkSize) {
           if (await _cancelRequested(session, job)) throw const _Cancelled();
-          await beforeChunk?.call(written++, -1);
+          await beforeChunk?.call(written, -1);
           final part = plan.changes.sublist(
             j,
             j + chunkSize > plan.changes.length
@@ -517,8 +569,10 @@ abstract final class SheetsImportJobs {
             label: label,
             plans: i == 0 && j == 0 ? [plan] : const [],
             kinds: const {core.ChangeKinds.import},
+            recordId: recordId,
           );
-          applied.addAll(r.applied);
+          written++;
+          cells += r.cellsAffected;
           done += part.where((c) => c.table == core.SheetsTables.cell).length;
           job = await _update(
             session,
@@ -526,28 +580,26 @@ abstract final class SheetsImportJobs {
             done: done > chunks.totalCells ? chunks.totalCells : done,
           );
         }
+        // The next chunk reads the model with this one's ops.
+        await lease.ensureAtLeast(session, lease.state.revision);
       }
-    } on _Cancelled {
-      await _revert(session, actor, space, applied, label);
-      rethrow;
     } on Object {
-      // A failed chunk: undo the chunks that were written.
-      await _revert(session, actor, space, applied, label);
+      // Cancelled or failed: undo the chunks that were written (a failed
+      // call may have committed some of its ops).
+      await _revert(session, actor, item, label, recordId);
       rethrow;
-    } finally {
-      HeadlessWorkbookProvider.markStale(space);
     }
     final result = chunks.result;
 
     job = await _update(session, job, status: SheetsImportStatus.finalizing);
-    final changeId = await SheetsChangeRecords.store(
+    final changeId = await SheetsServerWrites.storeRecord(
       session,
       actor: actor,
       item: item,
       label: label,
-      applied: applied,
+      recordId: recordId,
+      cellsAffected: cells,
     );
-    await SheetsWrites.afterCommit(session, space);
     await ContentSizes.refresh(session, item);
     await _finish(
       session,
@@ -559,27 +611,65 @@ abstract final class SheetsImportJobs {
     );
   }
 
-  /// Reverts the chunks [applied] so far (cancel, failure).
+  /// Reverts the chunks written so far (cancel, failure): the inverse of
+  /// the ops of [recordId], read back from the log, with the revert skip
+  /// rule (columns changed by others since stay).
   static Future<void> _revert(
     Session session,
     Actor actor,
-    UuidValue space,
-    List<core.RowChange> applied,
+    DriveItem item,
     String label,
+    UuidValue recordId,
   ) async {
-    if (applied.isEmpty) return;
-    final inverse = [for (final c in applied.reversed) c.inverse()];
+    final now = clock.now().toUtc();
+    final inverse = await SheetsServerWrites.inverse(
+      session,
+      ServerChangeRecord(
+        changeId: recordId,
+        fileUuid: item.contentRef!,
+        userId: actor.userId,
+        actorKind: actor.kind,
+        label: label,
+        recordId: recordId,
+        cellsAffected: 0,
+        createdAt: now,
+        expiresAt: now,
+      ),
+    );
+    if (inverse.isEmpty) return;
     await SheetsBulkWriter.apply(
       session,
       actor: actor,
-      spaceUuid: space,
+      spaceUuid: item.contentRef!,
       changes: inverse,
       label: 'Cancel $label',
       plans: const [],
       skipChanged: true,
       kinds: const {core.ChangeKinds.import},
     );
-    await SheetsWrites.afterCommit(session, space);
+  }
+
+  /// Extends the lease of a running [job] owned by this instance.
+  static Future<void> _renewLease(Session session, SheetsImportJob job) async {
+    try {
+      await session.db.unsafeQuery(
+        r'''
+        UPDATE sheets_import_job SET "leaseUntil" = @until
+        WHERE id = @id AND "leaseOwner" = @owner
+          AND status IN ('parsing', 'writing', 'finalizing')
+        ''',
+        parameters: QueryParameters.named({
+          'id': job.id,
+          'owner': Cluster.instanceId,
+          'until': clock.now().toUtc().add(leaseDuration),
+        }),
+      );
+    } on Object catch (e) {
+      session.log(
+        'Renewing the lease of import ${job.uuid} failed: $e',
+        level: LogLevel.warning,
+      );
+    }
   }
 
   // ------------------------------------------------------------- helpers
@@ -690,4 +780,9 @@ abstract final class SheetsImportJobs {
 
 class _Cancelled implements Exception {
   const _Cancelled();
+}
+
+/// The job's lease ran out and it was marked failed meanwhile.
+class _LeaseLost implements Exception {
+  const _LeaseLost();
 }

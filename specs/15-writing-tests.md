@@ -33,7 +33,7 @@ File names mirror `lib/`: `lib/src/markdown/markdown_codec.dart` →
 
 | Package kind | Folder | Content |
 |--------------|--------|---------|
-| Pure Dart (`packages/wonky_core`, `*_core`, `wonky_sheets_script`, `wonky_sync_models`) | `test/` | Unit tests, mirroring `lib/` |
+| Pure Dart (`packages/wonky_core`, `*_core`, `wonky_sheets_script`, `wonky_revlog`, `wonky_sync_models`) | `test/` | Unit tests, mirroring `lib/` |
 | | `test/property/` | Property/fuzz tests (§8) |
 | | `test/support/` | Generators, builders, fakes for this package's own tests |
 | | `lib/testing.dart` | Public test helpers other packages reuse (fakes, builders, generators); never imported from `lib/` code |
@@ -72,20 +72,27 @@ void main() {
 - Prefer precise matchers (`equals`, `isA<T>().having(…)`, `throwsA(isA<X>())`) over
   `isTrue` on a computed boolean.
 
-**Tags** (declared in each package's `dart_test.yaml`; the server already declares
-`integration`):
+**Tags** (declared in each package's `dart_test.yaml`; the server declares `integration`, `slow`
+and `live-ai`). package:test has no folder-level tags: every server file under
+`test/integration/` starts with `@Tags(['integration'])` + `library;` (`withServerpod` also tags its
+group), and `test/unit/source_rules_test.dart` checks that and that Serverpod tests live there.
+CI runs the server tests with `-x slow`:
 
 | Tag | Meaning | Default run |
 |-----|---------|-------------|
 | `integration` | Needs `withServerpod` / a database | yes in server package |
 | `property` | Property/fuzz tests with fixed seeds | yes (fast seeds); long runs nightly |
 | `golden` | Golden image comparison | CI Linux only (§7) |
-| `slow` | > 2 s per test | nightly |
+| `slow` | > 2 s per test (packages that exclude it in `dart_test.yaml` run it with `-P slow`) | nightly (`nightly.yml`) |
 | `e2e` | Full app against a running server | nightly / pre-merge |
+| `perf` | Timed perf suites with budgets (`wonky_write/test/perf/`, Write 04 §36; `wonky_slides/test/perf/`, Slides 03 §18); skipped unless `-t perf --run-skipped` | nightly (`nightly.yml`) |
 
 ## 4. Determinism
 
-- **Time**: never call `DateTime.now()` in code under test. Services take a clock: pure Dart
+- **Time**: never call `DateTime.now()` in code under test, nor in tests: tests read
+  `clock.now()` (so a `withClock` around them applies) or use fixed instants, and wait with a
+  `Stopwatch` deadline, never the wall clock (CQ-64j; only the E2E journeys against a live
+  server use real time). Services take a clock: pure Dart
   uses `package:clock` (`clock.now()`, tests wrap with `withClock(Clock.fixed(…))`); Sheets'
   formula engine uses its own `EngineClock` ([Sheets 05](wonky_sheets/05-formula-engine.md)).
   Timers and debounces are tested with `fake_async` (pure Dart) or `tester.pump(duration)`
@@ -107,7 +114,8 @@ void main() {
 | External service (AI providers via `dartantic_ai`, email, HTTP fetch) | Fake implementation with scripted responses (`FakeAiModelClient` replays scripted model turns; records requests for assertions) |
 | Verify an interaction at a boundary (e.g. "notification sent once") | `mocktail` mock, sparingly |
 | Generated Serverpod client | **Never mock it.** UI talks to repositories ([03 §5](03-app-shell-and-navigation.md)); fake the repository instead. Client ↔ server behavior is covered by server tests |
-| Database | Real (embedded Postgres via `withServerpod`, in-memory/temporary SQLite for the Sheets sync DB) |
+| Database | Real (embedded Postgres via `withServerpod`, in-memory/temporary SQLite for the RevLog client cache) |
+| RevLog server (client, Sheets and Slides tests) | `FakeRevServer` (`wonky_revlog/testing.dart`: an in-memory sequencer with the real apply rules, plus `RevTestReplica` clients) and `FakeRevHub` / `FakeRevTransport` (`wonky_revlog_flutter/testing.dart`: the same server behind the client transport, with drop/reconnect hooks). Never a mocked client ([17](17-revlog-sync.md) As built 16) |
 
 Fakes must honor the interface's contract; a shared contract test suite
 (`runDriveRepositoryContract(() => impl)`) runs against both the fake and the real
@@ -143,11 +151,13 @@ endpoints the test tools are regenerated (automatic under `serverpod start`, oth
   ```
 
 - **Rollback**: default `RollbackDatabase.afterEach`. Use `RollbackDatabase.disabled` only for
-  code that runs concurrent transactions (Write OT, sync merges); each `withServerpod` group
+  code that runs concurrent transactions (Write OT, RevLog commits); each `withServerpod` group
   gets its own database, so no manual cleanup across groups.
 - **Streams** (Write document sessions, presence, UI bridge): open the stream, then
   `await flushEventQueue()`, then act as the second user and assert with
-  `emitsInOrder`/`emitsThrough`.
+  `emitsInOrder`/`emitsThrough`. Wait for a subscription with `subscribed()` and for events with
+  `nextWhere()` (`test/support/streams.dart`); presence through `TestPresence` (`join` returns once
+  the roster arrived, `send` once another session saw the update). Never a fixed delay.
 - **Future calls / scheduled jobs**: call the job's handler directly with a fixed clock;
   scheduling itself is tested once per job (it is registered with the right delay).
 - **External services**: injected through the server's service registry; `withServerpod`
@@ -156,8 +166,9 @@ endpoints the test tools are regenerated (automatic under `serverpod start`, oth
   also has one test through the `/mcp` route (JSON-RPC in, result out) — 09 contract rule.
   If the test tools don't expose the web server, the route tests start the server on port 0
   (as `config/test.yaml` does) and call it over HTTP; decided in the M0 MCP spike.
-- **Multi-client sync** (Sheets): the isolate-based harness of
-  [Sheets 13 §7.3](wonky_sheets/13-implementation-plan.md); Write's in-process
+- **Multi-client sync**: RevLog (Sheets, Slides) with several clients on `FakeRevServer` /
+  `FakeRevHub` in one process (pure and client tests), and the sequencer itself with real
+  connections in `wonky_server/test/integration/platform/revlog/`; Write's in-process
   `WriteSimulator` ([Write 10](wonky_write/10-implementation-plan.md) WS-W0).
 - **(v2) Storage quota**: give the test user a small quota with
   `StorageTestHelpers.setQuota(session, user, bytes)` (writes `UserStorage.quotaBytesOverride`)
@@ -199,10 +210,15 @@ endpoints the test tools are regenerated (automatic under `serverpod start`, oth
   and `labeledTapTargetGuideline` on every screen-level test;
   semantics announcements asserted via `tester.takeAnnouncements()` where specs require them.
 - **Goldens**: `test/goldens/<area>/<name>_<variant>_<light|dark>.png`, tagged `golden`.
-  Masters are generated and compared **only on CI Linux** with bundled fonts (OS font
-  rendering differs); locally run `flutter test -x golden`, and update masters with the
-  `tool/update_goldens.sh` script (runs the CI container) — never commit masters rendered on
-  macOS.
+  Masters are generated and compared **only on Linux** in the pinned
+  `ghcr.io/cirruslabs/flutter:<version>` container with bundled fonts (OS font rendering
+  differs); locally run `flutter test -x golden`. Update masters with `tool/update_goldens.sh
+  [package…]` (Docker: copies the checkout into the container, runs `flutter test
+  --update-goldens -t golden test/goldens` and copies only the PNGs back) or the `Goldens`
+  workflow run manually with `update` (masters as the `golden-masters` artifact) — never
+  commit masters rendered on macOS or Windows. CI (`goldens.yml`) compares every package that
+  has committed masters (`tool/golden_packages.sh --with-masters`) and uploads `failures/` on
+  a mismatch; a package with golden tests but no masters is listed in the job summary.
 
 ## 8. Property and fuzz tests
 
@@ -213,8 +229,11 @@ endpoints the test tools are regenerated (automatic under `serverpod start`, oth
   `WONKY_SEED=12345 dart test test/property/ot_convergence_test.dart`.
 - CI runs the fixed seeds plus one random seed per run (logged); nightly runs long counts.
 - Failing cases are shrunk to a minimal sequence and added as a regular regression test.
-- Tests that need several Serverpod/sync clients run each client in its own isolate
-  (`serverpod_database` has a process-wide encoder — [11 §1](11-quality-testing-accessibility.md)).
+- RevLog property tests (`wonky_revlog/test/property/`: codec round-trip, chunker, overlay,
+  convergence of several clients with offline periods; `wonky_sheets_core`: plans list every
+  descendant they delete) run in one process against `FakeRevServer`. Tests that need several
+  real Serverpod clients run each client in its own isolate (`serverpod_database` has a
+  process-wide encoder — [11 §1](11-quality-testing-accessibility.md)).
 
 ## 9. Integration and E2E tests
 
@@ -284,9 +303,13 @@ packages, `flutter test -x golden,slow,e2e` for Flutter packages and apps, `dart
 `third_party/attributed_text`). Exclude tags in one comma-separated `-x`: `flutter test` keeps only
 the last of repeated `-x` options. The job *All tests* passes only when every test job passed;
 it is the Tests check the `main` ruleset requires (with `analyze`, `format`, `dependencies`,
-`server` and *Wonky task*, 16 §13.4), so new packages need no ruleset change. Still to be added: one random property seed per run, image
-goldens on PRs that touch Flutter packages (needs the golden container of §7), and the nightly
-`slow`, `e2e`, long property, export-validation and perf runs.
+`server` and *Wonky task*, 16 §13.4), so new packages need no ruleset change. Also on every PR: image goldens in the golden container (`goldens.yml`, §7), the `--wasm` web
+build with bundle-size budgets (`build.yml`) and the generated-code check (`analyze.yml`,
+`generated`). Nightly (`nightly.yml`): `slow` tests of every member and the server, the `perf`
+suites and the Sheets core benchmarks, and long property runs (`WONKY_PROPERTY_RUNS=2000`, the
+fixed seeds and one random seed, printed for replay); `e2e.yml` runs the Write journeys.
+Still to be added: export validation (LibreOffice, epubcheck, poppler), the web E2E runner
+and the coverage gate below.
 
 **Coverage**: logic folders of `*_core`, `wonky_sheets_script` and `wonky_sync_models` keep
 ≥ 90 % line coverage ([Sheets 13 §7.1](wonky_sheets/13-implementation-plan.md)); other

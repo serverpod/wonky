@@ -193,7 +193,8 @@ void main() {
 
       final r = await call(null, h.services, 'ui.drive.get_upload_queue');
 
-      final uploads = (r.result['uploads']! as List).cast<Map>();
+      final uploads = (r.result['uploads']! as List)
+          .cast<Map<Object?, Object?>>();
       expect(uploads.map((u) => u['name']), ['a.txt', 'b.pdf']);
       expect(uploads[0]['state'], 'waitingForNetwork');
       expect(uploads[0]['size_bytes'], 10);

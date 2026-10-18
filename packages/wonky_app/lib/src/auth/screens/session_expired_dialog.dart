@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/wonky_app_localizations.dart';
 import '../../shell/shell_services.dart';
@@ -24,6 +25,7 @@ Future<void> showSessionExpiredDialog(BuildContext context, ShellServices s) =>
             }
             return ShadDialog(
               key: const ValueKey<String>('dialog.sessionExpired'),
+              closeIcon: const WonkyDialogCloseButton(),
               title: Text(l.sessionExpiredTitle),
               description: Text(l.sessionExpiredBody),
               actions: [

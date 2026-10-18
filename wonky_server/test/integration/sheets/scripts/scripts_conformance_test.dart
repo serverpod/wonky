@@ -1,9 +1,12 @@
+@Tags(['integration'])
+library;
+
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart' hide Dimension;
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
-import 'package:wonky_server/src/platform/spaces/space_service.dart';
-import 'package:wonky_server/src/sheets/sync/server_sheets_writer.dart';
+import 'package:wonky_server/src/sheets/revlog/sheets_server_writes.dart';
 import 'package:wonky_sheets_core/wonky_sheets_core.dart'
     hide ActorKind, CellInput, TriggerKind;
 import 'package:wonky_sheets_script/native.dart';
@@ -72,17 +75,16 @@ void main() {
       access.apply(const AddSheet(name: 'Sheet2', rows: 10, columns: 5));
       access.apply(
         GenericRowWrite(SheetsTables.scriptProject, const Uuid().v7(), {
-          'spreadsheetId': space,
+          'spreadsheetId': space.uuid,
           'name': 'Fixture script',
           'settingsJson': '{}',
-          'createdAt': DateTime.now().toUtc(),
+          'createdAt': clock.now().toUtc(),
         }),
       );
-      await SpaceService.ensureWriter(session, anna.actor, item);
-      await ServerSheetsWriter.apply(
+      await SheetsServerWrites.apply(
         session,
         actor: anna.actor,
-        spaceUuid: space,
+        fileUuid: space,
         changes: access.changes,
         label: 'Fixture',
       );

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_sheets_core/model.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/sheets_l10n.dart';
 import 'mcp_dialog_state.dart';
@@ -199,6 +200,7 @@ class _CustomCurrencyDialogState extends McpDialogState<CustomCurrencyDialog> {
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.customCurrency'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.currencyDialogTitle),
         actions: [
           ShadButton.outline(

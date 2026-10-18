@@ -145,45 +145,46 @@ class _DriveItemsViewState extends State<DriveItemsView> {
     final theme = ShadTheme.of(context);
     // Below `md` the list shows Name + ⋮ only (Drive 04 §11).
     final compact = MediaQuery.sizeOf(context).width < 768;
-    final rows = <Widget>[];
+    // A flat model (date headers + items); rows are built lazily, so a
+    // long, paged list costs only its visible rows per notification.
+    final entries = <Object>[];
     RecentGroup? group;
     for (final item in items) {
       if (c.location.groupsByDate) {
         final g = recentGroupOf(item.lastOpenedAt ?? item.modifiedAt);
         if (g != group) {
           group = g;
-          rows.add(
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-              child: Text(
-                recentGroupLabel(l, g),
-                style: theme.textTheme.small.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          );
+          entries.add(g);
         }
       }
-      rows.add(
-        _ItemRow(
-          key: ValueKey<String>('drive.item.${item.uuid.uuid}'),
-          item: item,
-          services: s,
-          selected: c.isSelected(item),
-          focused: c.focusedId == item.uuid.uuid && widget.focusNode.hasFocus,
-          dragData: () => DriveDragData([
-            for (final i in c.isSelected(item) ? c.selection : [item])
-              i.uuid.uuid,
-          ]),
-          onTap: () => _tap(item),
-          onOpen: () => _open(item),
-          onMenu: () => _prepareMenu(item),
-          trash: c.location.isTrash,
-          compact: compact,
-        ),
-      );
+      entries.add(item);
     }
+    Widget entry(Object e) => switch (e) {
+      RecentGroup g => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+        child: Text(
+          recentGroupLabel(l, g),
+          style: theme.textTheme.small.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
+      final DriveItemView item => _ItemRow(
+        key: ValueKey<String>('drive.item.${item.uuid.uuid}'),
+        item: item,
+        services: s,
+        selected: c.isSelected(item),
+        focused: c.focusedId == item.uuid.uuid && widget.focusNode.hasFocus,
+        dragData: () => DriveDragData([
+          for (final i in c.isSelected(item) ? c.selection : [item])
+            i.uuid.uuid,
+        ]),
+        onTap: () => _tap(item),
+        onOpen: () => _open(item),
+        onMenu: () => _prepareMenu(item),
+        trash: c.location.isTrash,
+        compact: compact,
+      ),
+      _ => const SizedBox.shrink(),
+    };
     return Column(
       children: [
         Container(
@@ -237,17 +238,25 @@ class _DriveItemsViewState extends State<DriveItemsView> {
             // Pointer convenience; keyboard and screen readers use Esc.
             excludeFromSemantics: true,
             onTap: c.clearSelection,
-            child: ListView(
+            child: ListView.builder(
               controller: _scroll,
               padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                ...rows,
-                if (c.loadingMore)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(child: ShadSpinner()),
-                  ),
-              ],
+              itemCount: entries.length + (c.loadingMore ? 1 : 0),
+              findChildIndexCallback: (key) {
+                if (key is! ValueKey<String>) return null;
+                final i = entries.indexWhere(
+                  (e) =>
+                      e is DriveItemView &&
+                      key.value == 'drive.item.${e.uuid.uuid}',
+                );
+                return i < 0 ? null : i;
+              },
+              itemBuilder: (context, i) => i < entries.length
+                  ? entry(entries[i])
+                  : const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: ShadSpinner()),
+                    ),
             ),
           ),
         ),

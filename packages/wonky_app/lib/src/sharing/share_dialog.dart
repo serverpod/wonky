@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
@@ -57,6 +58,10 @@ class _ShareDialogState extends State<ShareDialog> {
   List<UserSummary> _suggestions = const [];
   Timer? _debounce;
 
+  // The link selects follow `_info` (also after a failed change).
+  final _linkMode = ShadSelectController<String>();
+  final _linkRole = ShadSelectController<AccessRole>();
+
   ShellServices get s => widget.services;
 
   @override
@@ -71,28 +76,50 @@ class _ShareDialogState extends State<ShareDialog> {
     _inputFocus.dispose();
     _message.dispose();
     _debounce?.cancel();
+    _linkMode.dispose();
+    _linkRole.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
     try {
       final info = await s.repositories.sharing.getSharing(widget.item.uuid);
-      if (mounted) setState(() => _info = info);
+      if (mounted) _setInfo(info);
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
   }
 
-  Future<void> _run(Future<SharingInfo> Function() op) async {
+  void _setInfo(SharingInfo info) {
+    setState(() => _info = info);
+    _syncLinkSelects();
+  }
+
+  /// Shows the link mode and role of `_info` in the link selects.
+  void _syncLinkSelects() {
+    final role = _info?.link?.role;
+    final mode = {role == null ? 'restricted' : 'link'};
+    if (!setEquals(_linkMode.value, mode)) _linkMode.value = mode;
+    if (role != null && !setEquals(_linkRole.value, {role})) {
+      _linkRole.value = {role};
+    }
+  }
+
+  /// Runs a sharing change; false (after an error toast) when it failed.
+  Future<bool> _run(Future<SharingInfo> Function() op) async {
     setState(() => _busy = true);
     try {
       final info = await op();
-      if (mounted) setState(() => _info = info);
+      if (mounted) _setInfo(info);
+      return true;
     } catch (e) {
+      // A select already shows the value that was not applied.
+      if (mounted) _syncLinkSelects();
       s.toasts.error(
         s.l10n?.shareFailed ?? 'Error',
         description: errorMessage(e),
       );
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -136,7 +163,7 @@ class _ShareDialogState extends State<ShareDialog> {
     if (_recipients.isEmpty) return;
     final l = WonkyAppLocalizations.of(context);
     final emails = [..._recipients];
-    await _run(
+    final shared = await _run(
       () => s.repositories.sharing.share(
         widget.item.uuid,
         emails: emails,
@@ -145,7 +172,8 @@ class _ShareDialogState extends State<ShareDialog> {
         message: _message.text.trim().isEmpty ? null : _message.text.trim(),
       ),
     );
-    if (!mounted) return;
+    // On failure the recipients stay for a retry (the error toast showed).
+    if (!shared || !mounted) return;
     setState(() {
       _recipients.clear();
       _message.clear();
@@ -184,6 +212,7 @@ class _ShareDialogState extends State<ShareDialog> {
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.share'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Row(
           children: [
             if (_settings)
@@ -520,10 +549,12 @@ class _ShareDialogState extends State<ShareDialog> {
     ValueChanged<AccessRole> onChanged, {
     String? key,
     bool enabled = true,
+    ShadSelectController<AccessRole>? controller,
   }) {
     final l = WonkyAppLocalizations.of(context);
     return ShadSelect<AccessRole>(
       key: key == null ? null : ValueKey<String>(key),
+      controller: controller,
       initialValue: value,
       enabled: enabled && !_busy,
       minWidth: 130,
@@ -712,7 +743,7 @@ class _ShareDialogState extends State<ShareDialog> {
             children: [
               ShadSelect<String>(
                 key: const ValueKey<String>('dialog.share.linkMode'),
-                initialValue: restricted ? 'restricted' : 'link',
+                controller: _linkMode,
                 enabled: info.canShare && !_busy,
                 options: [
                   ShadOption(
@@ -750,6 +781,7 @@ class _ShareDialogState extends State<ShareDialog> {
             (r) =>
                 _run(() => s.repositories.sharing.setLink(widget.item.uuid, r)),
             key: 'dialog.share.linkRole',
+            controller: _linkRole,
             enabled: info.canShare,
           ),
         ],

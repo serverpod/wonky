@@ -2,9 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_write/features/comments/comment_margin_layout.dart';
-import 'package:wonky_write/features/editor/applier/delta_applier.dart'
-    show DeltaSelection;
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../document/support/session_harness.dart';
 import '../sync/support/fake_document_server.dart';

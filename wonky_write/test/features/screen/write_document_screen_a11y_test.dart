@@ -10,7 +10,6 @@ import 'package:wonky_ui/wonky_ui.dart';
 import 'package:wonky_write/config/write_app_config.dart';
 import 'package:wonky_write/features/document/write_document_session.dart';
 import 'package:wonky_write/features/screen/write_document_screen.dart';
-import 'package:wonky_write/features/sync/connection_keeper.dart';
 import 'package:wonky_write/features/themes/document_theme.dart';
 import 'package:wonky_write/l10n/write_l10n.dart';
 import 'package:wonky_write_core/wonky_write_core.dart' hide ThemeCatalog;
@@ -47,31 +46,28 @@ void main() {
     await tester.pumpWidget(
       Provider<ShellServices>.value(
         value: h.services,
-        child: ActiveDocumentHostScope(
-          host: h.services,
-          child: ShadApp(
-            theme: WonkyTheme.light(),
-            darkTheme: WonkyTheme.dark(),
-            themeMode: brightness == Brightness.dark
-                ? ThemeMode.dark
-                : ThemeMode.light,
-            locale: locale,
-            supportedLocales: const [Locale('en'), pseudoLocale],
-            localizationsDelegates: const [
-              WonkyAppLocalizations.delegate,
-              WonkyUiLocalizations.delegate,
-              WriteLocalizations.delegate,
-            ],
-            home: Material(
-              type: MaterialType.transparency,
-              child: WonkyThemeScope(
-                data: const WonkyThemeExtension(),
-                child: WriteDocumentScreen(
-                  services: h.services,
-                  itemUuid: itemUuid,
-                  themes: WriteThemeCatalog(),
-                  sessionFactory: (s, uuid) => session,
-                ),
+        child: ShadApp(
+          theme: WonkyTheme.light(),
+          darkTheme: WonkyTheme.dark(),
+          themeMode: brightness == Brightness.dark
+              ? ThemeMode.dark
+              : ThemeMode.light,
+          locale: locale,
+          supportedLocales: const [Locale('en'), pseudoLocale],
+          localizationsDelegates: const [
+            WonkyAppLocalizations.delegate,
+            WonkyUiLocalizations.delegate,
+            WriteLocalizations.delegate,
+          ],
+          home: Material(
+            type: MaterialType.transparency,
+            child: WonkyThemeScope(
+              data: const WonkyThemeExtension(),
+              child: WriteDocumentScreen(
+                services: h.services,
+                itemUuid: itemUuid,
+                themes: WriteThemeCatalog(),
+                sessionFactory: (s, uuid) => session,
               ),
             ),
           ),

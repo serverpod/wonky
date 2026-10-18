@@ -22,7 +22,8 @@ charts).
 - **v2 changes** (milestones M8–M11, [14](14-roadmap.md)) are marked "(v2)" in the suite
   specs: the unified drive and app homes, the 50 MB storage quota, the settings split, *Report a
   bug*, Wonky Slides, and the shared packages (`wonky_charts*`, `wonky_code*`, `wonky_numfmt`,
-  `wonky_rich_text`, `wonky_fonts`, `wonky_spellcheck`, `wonky_sync_kit*`).
+  `wonky_rich_text`, `wonky_fonts`, `wonky_spellcheck`, `wonky_sync_kit*`, which M13 replaces
+  with `wonky_revlog*`).
 
 ## Reading order
 
@@ -32,8 +33,8 @@ charts).
    server/client structure.
 3. [08 · Commands and undo](08-commands-and-undo.md) — the backbone: every action is a command;
    undo for everything; how MCP and AI plug in.
-4. [12 · Offline and sync](12-offline-and-sync.md) — Write OT vs Sheets/Slides offline-sync,
-   local storage, the offline-sync engine constraints and upstream requirements.
+4. [12 · Offline and sync](12-offline-and-sync.md) — Write OT, local storage, offline behavior;
+   then [17 · RevLog sync](17-revlog-sync.md), the op log Sheets and Slides sync through.
 5. [15 · Writing tests](15-writing-tests.md) — before writing the first test.
 6. [05 · Drive & files](05-drive-and-files.md) and [Drive 03 · Storage quota](wonky_drive/03-storage-quota.md)
    (v2) — the unified drive, app homes and the rules every byte-adding feature must follow.
@@ -64,11 +65,12 @@ charts).
 | 09 | [MCP](09-mcp.md) | Server MCP endpoint, auth, headless tools, UI bridge |
 | 10 | [AI assistant](10-ai-assistant.md) | Claude integration (server-side), assistant panel, inline AI |
 | 11 | [Quality](11-quality-testing-accessibility.md) | Testing, performance budgets, accessibility, i18n, observability |
-| 12 | [Offline & sync](12-offline-and-sync.md) | Local stores, Write offline, Sheets/Slides spaces and active set, upload queue, upstream requirements, staged limits |
+| 12 | [Offline & sync](12-offline-and-sync.md) | Local stores, Write offline, Sheets/Slides on RevLog (summary), upload queue, scale limits |
 | 13 | [Security & operations](13-security-and-operations.md) | Threat model, privacy, deployment, scheduled jobs, arbitrary uploads |
-| 14 | [Roadmap](14-roadmap.md) | Milestones M0–M12 (v2: M8 Drive + suite changes, M9–M11 Slides; M12 Bugs & improvements), how parallel agents execute the work packages, shared workstreams, risks |
+| 14 | [Roadmap](14-roadmap.md) | Milestones M0–M13 (v2: M8 Drive + suite changes, M9–M11 Slides; M12 Bugs & improvements; M13 RevLog), how parallel agents execute the work packages, shared workstreams, risks |
 | 15 | [Writing tests](15-writing-tests.md) | How to write tests: layout, naming, helpers, server/widget/golden/property/E2E patterns, determinism, running |
 | 16 | [Bugs & improvements](16-bugs-and-improvements.md) | Public board for bug reports and improvement ideas: report dialog with annotated screenshots, votes, comments, AI triage and moderation, admins, tasks with contributor prompts, claims, GitHub PR rules (M12, built) |
+| 17 | [RevLog sync](17-revlog-sync.md) | Server-sequenced op log of Sheets and Slides: decisions, data model, change sets and apply rules, protocol, server (sequencer, hooks, pages, headless cache), client (cache, outbox, bootstrap, conflicts), performance gates, as-built notes (M13) |
 
 ## Conventions used in all specs
 
@@ -79,8 +81,8 @@ charts).
   `sheets.set_values`, `slides.add_slide`, `ui.invoke_command`).
 - **Shortcuts**: `Mod` = ⌘ on macOS, Ctrl elsewhere. Browser-reserved shortcuts are never bound.
 - **Priorities**: P0 = required for v1, P1 = v1 if possible, P2 = later.
-- **Models** are shown as Serverpod `.spy.yaml` sketches; `database: sync` marks offline-synced
-  tables (Sheets, Slides).
+- **Models** are shown as Serverpod `.spy.yaml` sketches. The Sheets and Slides domain tables
+  are server tables (`serverOnly: true`) whose rows sync through RevLog ([17](17-revlog-sync.md)).
 - **(v2)** marks sections added or changed for the second iteration (Drive, Slides, suite
   changes). **Decided (v2 review, Qn)** marks a choice settled in the [v2 review](v2-review.md).
   New choices that need the user are marked **Open question (for review)**, always with a

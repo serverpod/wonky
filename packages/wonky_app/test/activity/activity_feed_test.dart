@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/src/activity/activity_feed.dart';
@@ -14,7 +15,7 @@ ActivityEventView _e(int id, ActivityType type) => ActivityEventView(
   actor: TestUsers.bob,
   actorKind: ActorKind.user,
   summary: '{}',
-  at: DateTime.now().subtract(Duration(minutes: id)),
+  at: clock.now().subtract(Duration(minutes: id)),
 );
 
 void main() {
@@ -84,7 +85,7 @@ void main() {
         summary:
             '{"changes": 4, "slideIds": ["a", "b", "c"], "slidesDeleted": 1, '
             '"themes": 1, "actorKinds": ["mcp", "user"]}',
-        at: DateTime.now(),
+        at: clock.now(),
       ),
     ];
 
@@ -104,7 +105,7 @@ void main() {
       type: ActivityType.edited,
       actorKind: ActorKind.user,
       summary: '{"changes": 2, "cells": 5, "actorKinds": ["user"]}',
-      at: DateTime.now(),
+      at: clock.now(),
     );
     expect(activityDetail(l, e), isNull);
   });

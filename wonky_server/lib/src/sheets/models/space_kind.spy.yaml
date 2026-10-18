@@ -1,9 +1,0 @@
-### (v2) What an offline-sync space holds (suite 12 §2.6, Slides 02 §9.2).
-### Each sync endpoint syncs only its kind (+ the personal space, patch OS-8).
-enum: SpaceKind
-serialized: byName
-values:
-  ### A Wonky Sheets spreadsheet (Spreadsheet.id = space UUID).
-  - spreadsheet
-  ### A Wonky Slides deck (Deck.id = space UUID).
-  - deck

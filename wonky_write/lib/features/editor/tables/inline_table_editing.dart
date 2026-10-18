@@ -178,7 +178,8 @@ class InlineTableEditing extends ChangeNotifier
 
   /// Writes the field into the table (one undo step). Returns whether the
   /// document changed.
-  bool commit({String label = 'Edit cell'}) {
+  bool commit({String? label}) {
+    label ??= controller.strings().undoEditCell;
     _idle?.cancel();
     final cell = _active;
     if (cell == null || !isDirty || _committing) return false;
@@ -257,8 +258,8 @@ class InlineTableEditing extends ChangeNotifier
           EditorNotice(
             EditorNoticeKind.message,
             table == null
-                ? 'This table was deleted'
-                : 'This cell was removed while you were editing',
+                ? controller.strings().editorTableDeleted
+                : controller.strings().editorCellRemoved,
           ),
         );
       }
@@ -342,7 +343,7 @@ class InlineTableEditing extends ChangeNotifier
     commands.editTable(
       (table) => table.insertRow(table.rowCount),
       nodeId: tableId,
-      label: 'Insert row',
+      label: controller.strings().undoInsertRow,
     );
   }
 

@@ -4,3 +4,6 @@ serverOnly: true
 fields:
   kind: DriveChangeKind
   itemUuid: UuidValue
+  ### More items with the same change (one signal per user for a folder's
+  ### subtree, CQ-26); [itemUuid] is the first of them.
+  itemUuids: List<UuidValue>?

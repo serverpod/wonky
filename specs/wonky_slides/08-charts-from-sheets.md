@@ -522,36 +522,37 @@ offers *Keep source formatting* and *Paste unlinked*. Desktop apps use the same 
 
 ### 5.1 Version token
 
-`sourceVersion = "<changeLogId>:<specHash>:<dataVersion>"`:
-- `changeLogId` — id (UUID v7) of the newest `ChangeLog` row of the spreadsheet when resolved
-  (Sheets 02; cheap "anything changed?" check);
+`sourceVersion = "<revision>:<specHash>:<dataVersion>"`:
+- `revision` — `r<headRevision>`, the head revision of the spreadsheet's RevLog file when
+  resolved ([17](../17-revlog-sync.md) part 2 §1; the cheap "anything changed?" check). Every
+  committed change of the spreadsheet raises it — client edits, offline edits sent late and server
+  writes alike — so nothing bypasses the comparison; empty when the file doesn't exist;
 - `specHash` — SHA-256 (first 16 hex) of the chart's `specJson` (canonical JSON);
 - `dataVersion` — `ChartData.dataVersion` (hash of all source values, Sheets 08 §4).
 
-*As built (SL-27):* the first part is `<newest ChangeLog id>.<ChangeLog row count>` (newest
-by `at`): the count also changes when an offline client merges changes with older timestamps,
-and the 30-day change-log retention only causes one extra (unchanged) resolve. Server writes
-that bypass the change log are not detected by the cheap comparison.
+The first part is `ChartSourceVersion.changeLog` in code (`wonky_charts`); tokens stored with an
+older marker simply compare unequal once and are refreshed by the next resolve.
 
 ### 5.2 Checking (server, `slidesCharts.checkLinks`)
 
 For each link probe `{elementId, spreadsheetUuid, chartObjectId, sourceVersion}`:
 1. Access check for the **caller** (role on the spreadsheet; trashed/deleted state). → `noAccess`,
    `spreadsheetTrashed`, `spreadsheetDeleted`.
-2. If the spreadsheet's newest `ChangeLog` id equals the token's `changeLogId` → `upToDate`
-   (no workbook load).
-3. Else load (or patch) the `HeadlessWorkbook` (Sheets 12 §2, shared cache), find the object →
+2. If the spreadsheet's head revision equals the token's `revision` → `upToDate` (no workbook
+   load).
+3. Else open the spreadsheet's headless model (`HeadlessWorkbookProvider.open`, a lease on the
+   shared `HeadlessFileCache`, [17](../17-revlog-sync.md) part 5 §9), find the object →
    `chartDeleted` if missing; compute `specHash` and resolve data (`dataVersion`) → `upToDate`
    (both equal; the response carries the new token so the client can store the newer
-   `changeLogId` silently, see below) or `changed` (with the new token and a short summary:
+   `revision` silently, see below) or `changed` (with the new token and a short summary:
    "Data changed", "Chart style changed", "Data and style changed").
 4. Batched: ≤ 50 probes per call, grouped by spreadsheet; ≤ 2 s typical; per-user rate limit 30
    calls/min.
 5. The server caches the current token per `(spreadsheetItemUuid, chartObjectId)` in
-   `ChartLinkSourceState` (02 §8), invalidated by the spreadsheet's merge signal, so many decks
+   `ChartLinkSourceState` (02 §8), keyed by the spreadsheet's head revision, so many decks
    linking the same chart share one resolve.
 
-When the result is `upToDate` with a newer `changeLogId`, editors write the new token without an
+When the result is `upToDate` with a newer `revision`, editors write the new token without an
 undo step (maintenance write, so later checks stay cheap); viewers just cache it locally.
 
 ### 5.3 When clients check
@@ -560,8 +561,9 @@ undo step (maintenance write, so later checks stay cheap); viewers just cache it
 - When the deck window regains focus/visibility after ≥ 60 s.
 - Every 5 minutes while the deck is open and online.
 - P1: **push** — `slidesCharts.watch(deckUuid)` stream: the server subscribes to the
-  `sheets:merged:<space>` bus channels (Sheets 12 §2.2) of the deck's linked spreadsheets and
-  sends `linkChanged {spreadsheetUuid}` (debounced 5 s); the client then re-checks those links.
+  `rev:<fileUuid>` bus channels ([17](../17-revlog-sync.md) part 5 §5) of the deck's linked
+  spreadsheets and sends `linkChanged {spreadsheetUuid}` (debounced 5 s); the client then
+  re-checks those links.
 - Presenting: the check runs once at start; updates are never applied during a presentation
   (no surprises on stage); a toast after the presentation offers "2 charts have newer data —
   Update".
@@ -595,12 +597,12 @@ undo step (maintenance write, so later checks stay cheap); viewers just cache it
   the same update write identical values (LWW-safe). Viewers render the stored snapshot.
 
 **Decided (v2 review, Q28) — server-side auto-update.** Auto-update is **client-side in M10**
-(simple, no background writes into other users' spaces); MCP `slides.export_pdf` gets
+(simple, no background writes into other users' decks); MCP `slides.export_pdf` gets
 `refresh_linked_charts: true` to update right before export (editor role required). Client-side
 updates leave decks that nobody opens stale (e.g. exported via MCP); if usage shows that, M11
 adds the server-side variant: a reverse index `ChartLinkIndex(spreadsheetUuid → deckUuid,
-elementId)` maintained from deck merges and a debounced job that updates `autoUpdate` snapshots
-after spreadsheet merges, writing into the deck space as the deck owner.
+elementId)` maintained from deck ops and a debounced job that updates `autoUpdate` snapshots
+after spreadsheet changes, writing into the deck as a server change attributed to the deck owner.
 
 ---
 
@@ -865,8 +867,9 @@ per minute and user) give `limitExceeded`. `listCharts` is viewer+: without the 
 data the charts are listed **without previews** and `exportAllowed: false` (titles are visible
 to viewers anyway). `checkLinks` checks the role before the trash state, so callers without
 access learn nothing but `noAccess`; a missing item is `spreadsheetDeleted`. The token cache
-(`ChartLinkSourceState` of §5.2) is in memory per instance, keyed by the change-log marker
-(no merge-signal subscription needed); resolved snapshots are cached 10 min per token.
+(`ChartLinkSourceState` of §5.2) is in memory per instance, keyed by the spreadsheet's head
+revision (`r<headRevision>` read from `rev_file`; no bus subscription needed); resolved
+snapshots are cached 10 min per token.
 `watch` (P1) is not built.
 
 ---
@@ -946,7 +949,7 @@ and is discarded; the static snapshot from A stays.
 | Snapshot decode + layout of a 2,000-point line chart | ≤ 10 ms |
 | Chart paint per frame during `chartGrow` (2D, ≤ 500 parts) | ≤ 3 ms (scene laid out once; reveal applied at paint) |
 | Insert dialog: chart list with previews (≤ 30 charts) | first tiles ≤ 1.5 s after picking the spreadsheet (server resolve dominates) |
-| `checkLinks` for 20 links in 3 spreadsheets, nothing changed | ≤ 150 ms server time (ChangeLog comparison only) |
+| `checkLinks` for 20 links in 3 spreadsheets, nothing changed | ≤ 150 ms server time (head-revision comparison only) |
 
 ---
 
@@ -986,7 +989,7 @@ and is discarded; the static snapshot from A stays.
 - `wonky_charts_flutter`: painter goldens (moved), `ChartStyleEditor` in override mode
   (allowlist, reset), orbit gesture.
 - Server: `slidesCharts` endpoint tests with `serverpod_test` (access matrix of §6, export
-  disabled, deleted/trashed, unchanged vs changed detection with a simulated Sheets merge, rate
+  disabled, deleted/trashed, unchanged vs changed detection after a committed Sheets op, rate
   limits, snapshot size limit, downsampling).
 - Slides: insert dialog flow (fake API), badge/Update states, update undo, unlink/relink,
   inspector overrides, 3D presets and camera builds, offline disabled states; E2E: insert from a

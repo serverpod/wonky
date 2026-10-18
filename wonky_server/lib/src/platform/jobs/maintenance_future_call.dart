@@ -1,14 +1,14 @@
 import 'package:serverpod/serverpod.dart';
 
-import '../../sheets/changelog/change_log_consumer.dart';
-import '../spaces/space_service.dart';
-import '../../sheets/sync/server_sheets_writer.dart';
-import '../../slides/versions/deck_change_log_pruning.dart';
+import '../revlog/rev_jobs.dart';
+import '../revlog/server_change_records.dart';
 import '../../write/ot/document_service.dart';
 import '../../write/themes/theme_service.dart';
 import '../../write/versions/write_history_service.dart';
+import '../ai/ai_usage_service.dart';
+import '../common/guarded.dart';
 import '../drive/drive_file_service.dart';
-import '../drive/drive_service.dart';
+import '../drive/drive_trash.dart';
 import '../drive/kind_masks.dart';
 import '../files/file_service.dart';
 import '../notifications/notification_service.dart';
@@ -18,18 +18,14 @@ import '../versions/version_service.dart';
 /// Scheduled jobs (specs/13 §3). Each job is idempotent; schedules are
 /// registered at server start (`registerMaintenanceJobs`).
 class MaintenanceFutureCall extends FutureCall {
+  /// Runs one job through [runGuarded]: any failure (an `Error` too) is
+  /// logged at error level with the job's name and duration, and never
+  /// stops the jobs after it.
   Future<void> _run(
     Session session,
     String name,
     Future<int> Function() job,
-  ) async {
-    try {
-      final count = await job();
-      if (count > 0) session.log('$name: $count');
-    } on Exception catch (e, st) {
-      session.log('$name failed: $e', level: LogLevel.error, stackTrace: st);
-    }
-  }
+  ) => runGuarded<int>(session, name, job, describe: describeCount);
 
   /// Every minute: version capture policy.
   Future<void> captureVersions(Session session) => _run(
@@ -52,15 +48,28 @@ class MaintenanceFutureCall extends FutureCall {
     () => FileService.cleanupExpired(session),
   );
 
+  /// Every 5 minutes: RevLog hook sweep (RevLog spec 05 §10): files whose
+  /// post-commit hooks lag or whose retry is due.
+  Future<void> revlogSweep(Session session) =>
+      _run(session, 'revlog.hookSweep', () => RevJobs.hookSweep(session));
+
+  /// Hourly: expired grants (specs/06 §2: access ends at expiry, also for
+  /// open sync spaces and documents), until none are left.
+  Future<void> expireGrants(Session session) => _run(
+    session,
+    'sharing.expiredGrants',
+    () => SharingService.removeExpiredGrants(session),
+  );
+
   /// Daily: trash purge, (v2) expired uploads and folder kind masks,
-  /// version thinning, op-log and change-log pruning,
-  /// active-set eviction, expired grants, server change records, deleted
-  /// themes and the diff cache.
+  /// version thinning, op-log and change-log pruning, active-set eviction,
+  /// server change records, deleted themes, the diff cache, old AI usage
+  /// and old notifications.
   Future<void> daily(Session session) async {
     await _run(
       session,
       'drive.purgeTrash',
-      () => DriveService.purgeExpiredTrash(session),
+      () => DriveTrash.purgeExpiredTrash(session),
     );
     await _run(
       session,
@@ -78,30 +87,18 @@ class MaintenanceFutureCall extends FutureCall {
       'write.pruneOps',
       () => DocumentService.pruneOps(session),
     );
+    await _run(session, 'revlog.pruneOps', () => RevJobs.pruneOps(session));
+    if (DateTime.now().toUtc().weekday == DateTime.sunday) {
+      await _run(
+        session,
+        'revlog.repairStats',
+        () => RevJobs.repairStats(session),
+      );
+    }
     await _run(
       session,
-      'sheets.pruneChangeLog',
-      () => ChangeLogConsumer.pruneOld(session),
-    );
-    await _run(
-      session,
-      'slides.pruneChangeLog',
-      () => DeckChangeLogPruning.pruneOld(session),
-    );
-    await _run(
-      session,
-      'sheets.evictSpaces',
-      () => SpaceService.evictInactive(session),
-    );
-    await _run(
-      session,
-      'sharing.expiredGrants',
-      () => SharingService.removeExpiredGrants(session),
-    );
-    await _run(
-      session,
-      'sheets.purgeServerChanges',
-      () => ServerSheetsWriter.purgeExpired(session),
+      'revlog.purgeServerChanges',
+      () => ServerChangeRecords.purgeExpired(session),
     );
     await _run(
       session,
@@ -112,6 +109,12 @@ class MaintenanceFutureCall extends FutureCall {
       session,
       'write.purgeDiffCache',
       () => WriteHistoryService.purgeDiffCache(session),
+    );
+    await _run(session, 'ai.purgeUsage', () => AiUsageService.purge(session));
+    await _run(
+      session,
+      'notifications.purgeOld',
+      () => NotificationService.purgeOld(session),
     );
   }
 }

@@ -143,9 +143,9 @@ bool _builtInShortcut(
         return run(commands.clearFormatting);
       case LogicalKeyboardKey.keyU when !shift:
         controller.notify(
-          const EditorNotice(
+          EditorNotice(
             EditorNoticeKind.markdownHint,
-            "Underline isn't available in Markdown — use italic or bold.",
+            controller.strings().editorUnderlineHint,
           ),
         );
         return true;
@@ -242,7 +242,7 @@ bool _builtInShortcut(
       return false;
     }
     if (!selection.isCollapsed) {
-      controller.select(DeltaSelection.collapsed(selection.extent));
+      controller.select(DeltaSelection.collapsed(selection.head));
       return true;
     }
     commands.selectBlock();

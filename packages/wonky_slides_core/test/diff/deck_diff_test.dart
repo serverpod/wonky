@@ -5,7 +5,7 @@ import 'package:wonky_slides_core/history.dart';
 import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/schema.dart';
 import 'package:wonky_slides_core/testing.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 import 'package:wonky_sync_models/ids.dart' show FractionalIndex;
 
 /// Two copies of one deck: [before] stays, [after] gets the edits.

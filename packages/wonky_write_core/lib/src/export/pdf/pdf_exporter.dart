@@ -259,7 +259,16 @@ final class _PdfJob {
       _images[im.src] = await _loadImage(im);
     }
     input.cancel?.throwIfCancelled();
-    blocks = _buildBlocks(tree.blocks);
+    blocks = await _buildBlocks(tree.blocks);
+  }
+
+  /// A turn for the event loop when the export runs on the UI isolate (web,
+  /// 07 §4.3), then the cancellation check: without the turn, *Cancel*
+  /// (and the progress) could only be handled after the whole export.
+  Future<void> _turn() async {
+    final yielder = input.yielder;
+    if (yielder != null) await yielder.maybeYield();
+    input.cancel?.throwIfCancelled();
   }
 
   String _allText() {
@@ -416,7 +425,7 @@ final class _PdfJob {
   // ---------------------------------------------------------------------
   // Blocks
 
-  List<_Block> _buildBlocks(List<DocBlock> source) {
+  Future<List<_Block>> _buildBlocks(List<DocBlock> source) async {
     final t = theme;
     final labels = HeadingNumberer.labelsFor(
       t.headingNumbering,
@@ -426,6 +435,8 @@ final class _PdfJob {
     final out = <_Block>[];
     DocBlock? prev;
     for (var i = 0; i < source.length; i++) {
+      // Line breaking is most of the work: a turn every few blocks.
+      if (i % 8 == 7) await _turn();
       final b = source[i];
       final afterHeading = prev is HeadingBlock;
       switch (b) {
@@ -1054,7 +1065,7 @@ final class _PdfJob {
     final outlineStack = <(int, PdfOutline)>[];
     final count = result.pages.length;
     for (final page in result.pages) {
-      input.cancel?.throwIfCancelled();
+      await _turn();
       input.progress?.call(ExportPhase.layout, page.index / count);
       if (selected != null && !selected.contains(page.index)) continue;
       emittedPages++;

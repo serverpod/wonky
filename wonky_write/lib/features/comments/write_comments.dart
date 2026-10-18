@@ -57,7 +57,7 @@ class WriteComments extends ChangeNotifier implements CommentAnchorProvider {
 
   /// Anchors of every thread present in the document (by thread uuid).
   Map<String, CommentAnchor> get anchors =>
-      _anchors ??= CommentAnchors.anchors(session.editor.delta);
+      _anchors ??= session.editor.overlays.anchors();
 
   /// Threads that should be listed with an anchor in the margin: open text
   /// threads (not suggestion threads), in document order.
@@ -183,7 +183,7 @@ class WriteComments extends ChangeNotifier implements CommentAnchorProvider {
       final end = sel.end.clamp(0, max);
       return end > start ? (start, end) : null;
     }
-    return _wordAt(sel.base);
+    return _wordAt(sel.anchor);
   }
 
   (int, int)? _wordAt(int offset) {
@@ -335,7 +335,7 @@ class WriteComments extends ChangeNotifier implements CommentAnchorProvider {
   void _onEditor() {
     if (_disposed || !session.isLoaded) return;
     final sel = session.editor.selection;
-    final caret = sel == null ? null : (sel.base, sel.extent);
+    final caret = sel == null ? null : (sel.anchor, sel.head);
     // A content change notified together with the caret move means typing.
     final version = session.contentVersion.value;
     final typed = version != _contentAtSelection;
@@ -344,17 +344,17 @@ class WriteComments extends ChangeNotifier implements CommentAnchorProvider {
     _lastCaret = caret;
     // Caret moves caused by typing never change the active card.
     if (typed || sel == null || !sel.isCollapsed) return;
-    final thread = threadAt(sel.base);
+    final thread = threadAt(sel.anchor);
     if (thread != null && thread != activeThreadUuid) {
       activate(thread, reveal: false);
     } else if (thread == null && activeThreadUuid != null) {
       final a = anchors[activeThreadUuid];
       final inside =
           a != null &&
-          a.ranges.any((r) => sel.base >= r.start && sel.base <= r.end);
+          a.ranges.any((r) => sel.anchor >= r.start && sel.anchor <= r.end);
       if (!inside) activate(null, reveal: false);
     }
-    session.suggestions.activateAt(sel.base);
+    session.suggestions.activateAt(sel.anchor);
   }
 
   /// Threads with anchors in document order (navigation).
@@ -377,7 +377,7 @@ class WriteComments extends ChangeNotifier implements CommentAnchorProvider {
     final active = activeThreadUuid;
     final from = active != null && a.containsKey(active)
         ? a[active]!.start
-        : (session.editor.selection?.base ?? 0);
+        : (session.editor.selection?.anchor ?? 0);
     String? target;
     if (previous) {
       for (final id in ids.reversed) {

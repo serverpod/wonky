@@ -1,0 +1,9 @@
+### The op was not committed (RevLog spec 04 §4). [clientOpId] null: a
+### session-level error, after which the stream closes.
+class: RevRejected
+extends: RevServerMessage
+fields:
+  clientOpId: UuidValue?
+  code: RevRejectCode
+  message: String
+  detailsJson: String?

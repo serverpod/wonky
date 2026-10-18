@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:test/test.dart';
 import 'package:wonky_core/wonky_core.dart' show McpScope, SheetsTools;
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';

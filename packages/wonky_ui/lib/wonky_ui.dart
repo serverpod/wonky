@@ -13,6 +13,7 @@ export 'src/widgets/brand_logos/google_logo.dart';
 export 'src/widgets/color_picker/color_picker.dart';
 export 'src/widgets/color_picker/custom_color_panel.dart';
 export 'src/widgets/color_picker/wonky_color.dart';
+export 'src/widgets/dialog/dialog_close_button.dart';
 export 'src/widgets/empty_state/empty_state.dart';
 export 'src/widgets/font_picker/font_picker.dart';
 export 'src/widgets/menu/dropdown_menu.dart';

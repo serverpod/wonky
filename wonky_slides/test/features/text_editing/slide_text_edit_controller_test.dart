@@ -12,7 +12,7 @@ import 'package:super_editor/super_editor_test.dart';
 import 'package:wonky_slides/features/text_editing/slide_text_editor.dart';
 import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/schema.dart';
-import 'package:wonky_sync_kit/rows.dart' show RowChange;
+import 'package:wonky_revlog/rows.dart' show RowChange;
 
 import 'text_edit_fixture.dart';
 

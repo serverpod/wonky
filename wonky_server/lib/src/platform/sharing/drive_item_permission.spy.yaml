@@ -22,3 +22,6 @@ indexes:
     fields: userId
   perm_email_idx:
     fields: invitedEmail
+  ### Hourly removal of expired grants (`sharing.expiredGrants`).
+  perm_expires_idx:
+    fields: expiresAt

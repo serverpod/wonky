@@ -338,7 +338,7 @@ The client maps it to the dialog variants of §6.3 (`QuotaErrorPresenter`, `wonk
 | `drive.copy`, *Make a copy* in editors, MCP `drive.copy` | counted size of the source (content + attachments) | the copier (new owner) | `checkRoom`; refuse |
 | `versions` *Make a copy* of a version | version content size | caller | `checkRoom`; refuse |
 | `drive.createDocument/createSpreadsheet/createPresentation` with `templateUuid` or initial content; MCP `drive.create_*` with content | template/content size | creator | `checkRoom`; refuse. Blank items: 0 bytes, always allowed |
-| `drive.registerSpreadsheet` / `registerPresentation` (offline-first creations) | 0 | owner | never refused (content arrives via sync) |
+| `drive.registerSpreadsheet` / `registerPresentation` (offline-first creations) | 0 | owner | never refused (the content arrives as the file's RevLog ops) |
 | `sharing.transferOwnership` (request and accept) | counted size of the item | new owner | `checkRoom` at request (pre-check) and at accept; refuse |
 | `drive.restore` (from trash) | 0 (trash already counts) | — | never refused |
 | `versions.restore` | content change = an edit | owner | never refused |
@@ -394,12 +394,12 @@ of images in a batch); it never reserves.
    `user_storage` has no rows or the stored backfill version is older; idempotent, resumable,
    100 items per batch, under a cluster advisory lock, suite 13 §4):
    - documents: recompute `sizeBytes` from the current content (§2);
-   - spreadsheets (and presentations): run `SheetsSizeEstimator` per space;
+   - spreadsheets (and presentations): run `SheetsSizeEstimator` per file;
    - `attachmentBytes`: sum of ready `image` StoredFiles per `itemId`;
    - then a full reconcile (§4.3) per user, setting `reconciledAt`.
    While a user's row has `reconciledAt == null`, `StorageUsage.calculating` is true, the meter
    shows "Calculating storage…" and enforcement **fails open** (uploads are allowed; the
-   reconcile catches up). Expected duration: minutes (the backfill reads each space once).
+   reconcile catches up). Expected duration: minutes (the backfill reads each file once).
 3. **Users over 50 MB after the backfill** keep all their data. They get the over-quota
    banner and one in-app notification (`NotificationKind.storage`, new): "Wonky Work now
    includes 50 MB of storage per person. You're using 73.2 MB — you can keep editing, but free
@@ -459,17 +459,17 @@ reconcile), `StorageFutureCall`, `StorageEvents`, `StorageHooks` (one-line enfor
   inserts the `StoredFile` and commit/release in `file.completeUpload`; deleting a stored file
   releases its reservation.
 - **Content sizes** (§2): documents = UTF-8 length of the Delta JSON (`DocumentSize`), set on
-  create/copy/import/version copy and by the OT service's throttled update. Spaces:
-  `SpaceSizeEstimator` (generic over table names; Slides registers its deck estimator with
-  `ContentSizes.register(DriveItemKind.presentation, …)`) sums `pg_column_size` of the live
-  rows, driven by the sync engine's `crdt_data_rows (spaceId, tblId, uuidRowId)` index with
-  `visibility <= 2`. `SheetsSizeEstimator` covers every synced Sheets table except
-  `change_log` (history) and `script_build` (bytecode). The change-log consumer calls
-  `ContentSizes.onSpaceChanged` (immediately when the last estimate is ≥ 5 min old, else one
-  trailing `StorageFutureCall.refreshItemSize` at the end of the interval); server creations,
-  copies and imports refresh at once.
-- **Spike S-D3** (index-driven query, embedded Postgres on the laptop): 100k cells → estimate
-  12.9 MB in ~35 ms; 1M cells → 125 MB in ~3 s; a small space next to 2M foreign cells → 6 ms
+  create/copy/import/version copy and by the OT service's throttled update. RevLog files
+  (spreadsheets, decks): `RevFileSizeEstimator` (generic over table names; Slides registers its
+  deck estimator with `ContentSizes.register(DriveItemKind.presentation, …)`) sums
+  `pg_column_size` of the file's rows by the `fileId` index. `SheetsSizeEstimator` covers
+  every Sheets table except `script_build` (bytecode), with cells read sheet by sheet
+  ([17](../17-revlog-sync.md) part 2 §2.2); the op log is history and does not count. The
+  RevLog `contentSize` hook calls `ContentSizes.onSpaceChanged` (immediately when the last
+  estimate is ≥ 5 min old, else one trailing `StorageFutureCall.refreshItemSize` at the end of
+  the interval); server creations, copies and imports refresh at once.
+- **Spike S-D3** (index-driven query on the former CRDT engine's tables, before M13; embedded
+  Postgres on the laptop): 100k cells → estimate 12.9 MB in ~35 ms; 1M cells → 125 MB in ~3 s; a small space next to 2M foreign cells → 6 ms
   (cost follows the space, not the table; a plain `WHERE "spaceId" = …` would scan the whole
   table — no index on `spaceId`). The 5-minute cadence is confirmed. **Finding:** a cell row
   costs ~125 bytes, so 50 MB holds ~400k cells, less than `maxCellsPerSpreadsheet` (1M) —
@@ -492,9 +492,9 @@ reconcile), `StorageFutureCall`, `StorageEvents`, `StorageHooks` (one-line enfor
   sort keys and `createdAt` never count); 256 B per row of every other table (charts and
   images as `embedded_object`, pivots, merges, groups, named/protected ranges, CF/DV rules,
   filters, filter views, bandings, script projects/triggers/properties, macros), script files
-  256 B + their source. The query keeps S-D3's shape (driven by `crdt_data_rows (spaceId,
-  tblId, uuidRowId)`, one `UNION ALL` over the tables) — only the per-row expression changed;
-  `SpaceSizeEstimator` keeps `pg_column_size` as its default (`rowBytes`, `baseBytes` are the
+  256 B + their source. The query is one `UNION ALL` over the tables (since M13 by `fileId`,
+  cells by sheet) — only the per-row expression differs from the generic estimator;
+  `RevFileSizeEstimator` keeps `pg_column_size` as its default (`rowBytes`, `baseBytes` are the
   override points). `StorageHooks.sheetsEstimate` (template and sheet-list pre-checks) uses the
   same constants and mirrors `SpreadsheetFactory` (cells it writes, bold, number formats,
   formula references in stored form), so the pre-check and the measured size agree (the
@@ -624,7 +624,9 @@ frame: top bar, banner, left menu with *Storage* highlighted via
 - **Items using storage**: the type menu (All, Documents, Spreadsheets, Presentations, Files,
   Trash) is the `?filter=` of the route; paged by 50 with the keyset cursor (infinite scroll);
   sorted by counted size only (no sort menu). Columns Name (category icon, *In trash* badge),
-  Kind ("M4A audio", "Spreadsheet"), Location (folder name, *My Drive*, *Trash*), Last opened,
+  Kind ("M4A audio", "Spreadsheet"), Location (folder name, *My Drive*, *Trash*; the folder names
+  of a page are looked up as one batch, 8 at a time, with one rebuild, and failed lookups are
+  retried on the next page load, DR-4), Last opened,
   Storage, ⋮ (the shell's item menu); below ~800 px only Name, Storage and ⋮. Checkboxes,
   click / `Mod`-click / `Shift`-click, arrows / Home / End / Esc; the selection is published as
   `ShellServices.driveSelection`, so `Del`, `Space`, `Enter`, `F2`, `S` and `Mod+A` act on it.

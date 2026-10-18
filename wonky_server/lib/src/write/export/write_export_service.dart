@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
@@ -9,6 +10,7 @@ import 'package:wonky_write_core/wonky_write_core.dart' as core;
 import '../../platform/activity/activity_service.dart';
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
+import '../../platform/common/isolate_runner.dart';
 import '../../platform/common/json.dart';
 import '../../platform/common/models.dart';
 import '../../platform/common/time.dart';
@@ -29,7 +31,6 @@ abstract final class WriteExportService {
   static const resultLifetime = Duration(hours: 24);
   static const inlineLimit = 1024 * 1024;
   static const maxConcurrentPerUser = 2;
-  static const maxImageBytes = SafeImageFetcher.maxBytes;
   static const exportTimeout = Duration(seconds: 120);
 
   /// Font provider of server exports (tests may replace it).
@@ -79,6 +80,7 @@ abstract final class WriteExportService {
     String optionsJson, {
     int? revision,
     void Function(String phase, double progress)? onProgress,
+    IsolateCancelToken? cancel,
   }) async {
     final (doc, item, role) = await DocumentService.require(
       session,
@@ -115,7 +117,6 @@ abstract final class WriteExportService {
         content,
         rev,
         options,
-        onProgress: onProgress,
       );
       final core.ExportArtifact artifact;
       try {
@@ -125,11 +126,15 @@ abstract final class WriteExportService {
           fmt,
           input,
           options,
-        ).timeout(exportTimeout);
+          cancel: cancel,
+          onProgress: onProgress,
+        );
       } on TimeoutException {
         throw Errors.unavailable(
           'The export took too long. Try a smaller document or format.',
         );
+      } on IsolateCancelledException {
+        throw Errors.unavailable('The export was cancelled.');
       } on core.ExportCancelledException {
         throw Errors.unavailable('The export was cancelled.');
       }
@@ -173,7 +178,12 @@ abstract final class WriteExportService {
         ],
       );
     } finally {
-      _running[actor.userId] = (_running[actor.userId] ?? 1) - 1;
+      final left = (_running[actor.userId] ?? 1) - 1;
+      if (left <= 0) {
+        _running.remove(actor.userId);
+      } else {
+        _running[actor.userId] = left;
+      }
     }
   }
 
@@ -201,42 +211,115 @@ abstract final class WriteExportService {
     return _run(session, actor, format, input, options);
   }
 
+  /// Runs the exporter of [format] in a worker isolate (the shared
+  /// `IsolateRunner`: killed after [exportTimeout] or on [cancel], global
+  /// slots). Images are resolved here, on the request isolate, through
+  /// the channel; Markdown's signed image URLs are made before.
   static Future<core.ExportArtifact> _run(
     Session session,
     Actor actor,
     core.ExportFormat format,
     core.ExportInput input,
-    Map<String, dynamic> options,
+    Map<String, dynamic> options, {
+    IsolateCancelToken? cancel,
+    void Function(String phase, double progress)? onProgress,
+  }) async {
+    var signed = const <String, String>{};
+    if (format == core.ExportFormat.markdown &&
+        core.MarkdownFileExportOptions.fromJson(options).images ==
+            core.MarkdownImageMode.signedUrl) {
+      signed = await _signedImageUrls(session, actor, input.document);
+    }
+    final images = input.images;
+    final fonts = WriteExportService.fonts;
+    return IsolateRunner.runWithChannel(
+      _exportWork(
+        format,
+        _WorkerInput.of(input),
+        options,
+        signed,
+        // The process-wide provider caches futures; the worker reads the
+        // same directory itself.
+        fonts is FileSystemFontProvider ? fonts.directory.path : fonts,
+      ),
+      name: 'write-export',
+      timeout: exportTimeout,
+      cancel: cancel,
+      onRequest: (src) => images.resolve(src! as String),
+      onMessage: (m) {
+        if (m case (final String phase, final double p)) {
+          onProgress?.call(phase, 0.1 + p * 0.7);
+        }
+      },
+    );
+  }
+
+  /// Signed URLs of the document's `wonky-file` images the actor can read
+  /// (Markdown export with `images: signed_url`).
+  static Future<Map<String, String>> _signedImageUrls(
+    Session session,
+    Actor actor,
+    core.Delta document,
   ) async {
+    final signed = <String, String>{};
+    final tree = const core.DocTreeBuilder().fromDelta(document);
+    for (final image in tree.images) {
+      final src = image.src;
+      if (!src.startsWith(core.ImageEmbed.wonkyFileScheme) ||
+          signed.containsKey(src)) {
+        continue;
+      }
+      try {
+        final view = await FileService.getUrl(
+          session,
+          actor,
+          UuidValue.withValidation(
+            src.substring(core.ImageEmbed.wonkyFileScheme.length),
+          ),
+        );
+        if (view.url != null) signed[src] = view.url!;
+      } on Object {
+        // Not readable: keep the wonky-file link.
+      }
+    }
+    return signed;
+  }
+
+  /// The worker of [_run]. A separate function, so the closure captures
+  /// only these arguments (never the session). [fonts] is a font directory
+  /// path or a provider.
+  static FutureOr<core.ExportArtifact> Function(IsolateChannel) _exportWork(
+    core.ExportFormat format,
+    _WorkerInput input,
+    Map<String, dynamic> options,
+    Map<String, String> signed,
+    Object fonts,
+  ) =>
+      (channel) => runExporter(
+        format,
+        input.build(
+          images: _ChannelImageResolver(channel),
+          fonts: fonts is String
+              ? FileSystemFontProvider(directory: Directory(fonts))
+              : fonts as core.FontProvider,
+          progress: (phase, p) => channel.post((phase.name, p)),
+        ),
+        options,
+        signedUrls: signed,
+      );
+
+  /// Runs the core exporter of [format] on [input] (any isolate).
+  static Future<core.ExportArtifact> runExporter(
+    core.ExportFormat format,
+    core.ExportInput input,
+    Map<String, dynamic> options, {
+    Map<String, String> signedUrls = const {},
+  }) async {
     switch (format) {
       case core.ExportFormat.markdown:
-        final o = core.MarkdownFileExportOptions.fromJson(options);
-        final signed = <String, String>{};
-        if (o.images == core.MarkdownImageMode.signedUrl) {
-          final tree = const core.DocTreeBuilder().fromDelta(input.document);
-          for (final image in tree.images) {
-            final src = image.src;
-            if (!src.startsWith(core.ImageEmbed.wonkyFileScheme) ||
-                signed.containsKey(src)) {
-              continue;
-            }
-            try {
-              final view = await FileService.getUrl(
-                session,
-                actor,
-                UuidValue.withValidation(
-                  src.substring(core.ImageEmbed.wonkyFileScheme.length),
-                ),
-              );
-              if (view.url != null) signed[src] = view.url!;
-            } on Object {
-              // Not readable: keep the wonky-file link.
-            }
-          }
-        }
         return core.MarkdownFileExporter(
-          signedUrl: (src) => signed[src] ?? src,
-        ).export(input, o);
+          signedUrl: (src) => signedUrls[src] ?? src,
+        ).export(input, core.MarkdownFileExportOptions.fromJson(options));
       case core.ExportFormat.markdownZip:
         return const core.MarkdownZipExporter().export(
           input,
@@ -292,9 +375,8 @@ abstract final class WriteExportService {
     DriveItem item,
     core.Delta content,
     int revision,
-    Map<String, dynamic> options, {
-    void Function(String phase, double progress)? onProgress,
-  }) async {
+    Map<String, dynamic> options,
+  ) async {
     final owner = await UserService.summary(session, item.ownerId);
     final theme = await _theme(session, actor, doc);
     core.PageSetup setup;
@@ -349,9 +431,6 @@ abstract final class WriteExportService {
             ),
       locale: options['locale'] as String? ?? 'en-US',
       now: nowUtc(),
-      progress: onProgress == null
-          ? null
-          : (phase, p) => onProgress(phase.name, 0.1 + p * 0.7),
     );
   }
 
@@ -400,7 +479,15 @@ abstract final class WriteExportService {
     String optionsJson, {
     int? revision,
   }) {
-    final controller = StreamController<ExportProgressEvent>();
+    // Cancelling the subscription kills the export's isolate.
+    final cancel = IsolateCancelToken();
+    final controller = StreamController<ExportProgressEvent>(
+      onCancel: cancel.cancel,
+    );
+    void add(ExportProgressEvent e) {
+      if (!controller.isClosed) controller.add(e);
+    }
+
     unawaited(() async {
       try {
         final result = await export(
@@ -410,6 +497,7 @@ abstract final class WriteExportService {
           format,
           optionsJson,
           revision: revision,
+          cancel: cancel,
           onProgress: (phase, progress) {
             if (controller.isClosed) return;
             controller.add(
@@ -421,15 +509,27 @@ abstract final class WriteExportService {
             );
           },
         );
-        controller.add(
-          ExportProgressEvent(kind: ExportProgressKind.done, result: result),
-        );
+        add(ExportProgressEvent(kind: ExportProgressKind.done, result: result));
       } on WonkyException catch (e) {
-        controller.add(
+        add(
           ExportProgressEvent(
             kind: ExportProgressKind.error,
             errorCode: e.code.name,
             message: e.message,
+          ),
+        );
+      } on Object catch (e, st) {
+        session.log(
+          'Write export failed: $e',
+          level: LogLevel.error,
+          exception: e,
+          stackTrace: st,
+        );
+        add(
+          ExportProgressEvent(
+            kind: ExportProgressKind.error,
+            errorCode: WonkyErrorCode.unavailable.name,
+            message: 'The export failed.',
           ),
         );
       } finally {
@@ -501,15 +601,65 @@ abstract final class WriteExportService {
     await DocumentService.require(session, actor, documentUuid);
     return ByteData.sublistView(await fetchRemoteImage(src));
   }
+}
 
-  /// Sanitized file name (no `/\\:*?"<>|`, ≤ 120 chars) with [extension].
-  static String exportFileName(String name, String extension) {
-    var n = name
-        .replaceAll(RegExp(r'[/\\:*?"<>|\x00-\x1F]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (n.isEmpty) n = 'Untitled';
-    if (n.length > 120) n = n.substring(0, 120).trim();
-    return '$n.$extension';
+/// The sendable part of a [core.ExportInput] (everything but the
+/// resolvers and sinks that need the request isolate).
+final class _WorkerInput {
+  _WorkerInput.of(core.ExportInput i)
+    : document = i.document,
+      revision = i.revision,
+      meta = i.meta,
+      theme = i.theme,
+      variant = i.variant,
+      pageSetup = i.pageSetup,
+      links = i.links,
+      locale = i.locale,
+      now = i.now;
+
+  final core.Delta document;
+  final int revision;
+  final core.DocMeta meta;
+  final core.WriteThemeData theme;
+  final core.ThemeVariant variant;
+  final core.PageSetup pageSetup;
+  final core.LinkResolver links;
+  final String locale;
+  final DateTime now;
+
+  core.ExportInput build({
+    required core.ImageResolver images,
+    required core.FontProvider fonts,
+    required core.ExportProgressSink progress,
+  }) => core.ExportInput(
+    document: document,
+    revision: revision,
+    meta: meta,
+    theme: theme,
+    variant: variant,
+    pageSetup: pageSetup,
+    images: images,
+    fonts: fonts,
+    links: links,
+    locale: locale,
+    now: now,
+    progress: progress,
+  );
+}
+
+/// [core.ImageResolver] of the export isolate: asks the request isolate
+/// ([ServerImageResolver] there).
+final class _ChannelImageResolver implements core.ImageResolver {
+  _ChannelImageResolver(this.channel);
+
+  final IsolateChannel channel;
+
+  @override
+  Future<core.ResolvedImage?> resolve(String src) async {
+    try {
+      return await channel.request(src) as core.ResolvedImage?;
+    } on Object {
+      return null;
+    }
   }
 }

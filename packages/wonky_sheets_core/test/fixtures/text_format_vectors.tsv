@@ -1,0 +1,3378 @@
+# TEXT() vectors (CQ-50): locale, pattern, value (number, or text:<s>), expected.
+# Generated from the former built-in TEXT() formatter where it agreed with the
+# cell display (wonky_numfmt); TEXT() now formats through wonky_numfmt.
+en_US	0	0.0	0
+en_US	0	1.0	1
+en_US	0	-1.0	-1
+en_US	0	0.5	1
+en_US	0	0.3333	0
+en_US	0	1.5	2
+en_US	0	-1.5	-2
+en_US	0	1234.5678	1235
+en_US	0	-1234.5678	-1235
+en_US	0	1000000000.0	1000000000
+en_US	0	1e-7	0
+en_US	0	45000.75	45001
+en_US	0	0.999	1
+en_US	0	100.0	100
+en_US	0	12345678.0	12345678
+en_US	0	-0.5	-1
+en_US	0	2.5	3
+en_US	0	3.14159	3
+en_US	0	60000.123456	60000
+en_US	0	text:abc	abc
+en_US	0	text:	
+en_US	0.00	0.0	0.00
+en_US	0.00	1.0	1.00
+en_US	0.00	-1.0	-1.00
+en_US	0.00	0.5	0.50
+en_US	0.00	0.3333	0.33
+en_US	0.00	1.5	1.50
+en_US	0.00	-1.5	-1.50
+en_US	0.00	1234.5678	1234.57
+en_US	0.00	-1234.5678	-1234.57
+en_US	0.00	1000000000.0	1000000000.00
+en_US	0.00	1e-7	0.00
+en_US	0.00	45000.75	45000.75
+en_US	0.00	0.999	1.00
+en_US	0.00	100.0	100.00
+en_US	0.00	12345678.0	12345678.00
+en_US	0.00	-0.5	-0.50
+en_US	0.00	2.5	2.50
+en_US	0.00	3.14159	3.14
+en_US	0.00	60000.123456	60000.12
+en_US	0.00	text:abc	abc
+en_US	0.00	text:	
+en_US	#,##0	0.0	0
+en_US	#,##0	1.0	1
+en_US	#,##0	-1.0	-1
+en_US	#,##0	0.5	1
+en_US	#,##0	0.3333	0
+en_US	#,##0	1.5	2
+en_US	#,##0	-1.5	-2
+en_US	#,##0	1234.5678	1,235
+en_US	#,##0	-1234.5678	-1,235
+en_US	#,##0	1000000000.0	1,000,000,000
+en_US	#,##0	1e-7	0
+en_US	#,##0	45000.75	45,001
+en_US	#,##0	0.999	1
+en_US	#,##0	100.0	100
+en_US	#,##0	12345678.0	12,345,678
+en_US	#,##0	-0.5	-1
+en_US	#,##0	2.5	3
+en_US	#,##0	3.14159	3
+en_US	#,##0	60000.123456	60,000
+en_US	#,##0	text:abc	abc
+en_US	#,##0	text:	
+en_US	#,##0.00	0.0	0.00
+en_US	#,##0.00	1.0	1.00
+en_US	#,##0.00	-1.0	-1.00
+en_US	#,##0.00	0.5	0.50
+en_US	#,##0.00	0.3333	0.33
+en_US	#,##0.00	1.5	1.50
+en_US	#,##0.00	-1.5	-1.50
+en_US	#,##0.00	1234.5678	1,234.57
+en_US	#,##0.00	-1234.5678	-1,234.57
+en_US	#,##0.00	1000000000.0	1,000,000,000.00
+en_US	#,##0.00	1e-7	0.00
+en_US	#,##0.00	45000.75	45,000.75
+en_US	#,##0.00	0.999	1.00
+en_US	#,##0.00	100.0	100.00
+en_US	#,##0.00	12345678.0	12,345,678.00
+en_US	#,##0.00	-0.5	-0.50
+en_US	#,##0.00	2.5	2.50
+en_US	#,##0.00	3.14159	3.14
+en_US	#,##0.00	60000.123456	60,000.12
+en_US	#,##0.00	text:abc	abc
+en_US	#,##0.00	text:	
+en_US	0%	0.0	0%
+en_US	0%	1.0	100%
+en_US	0%	-1.0	-100%
+en_US	0%	0.5	50%
+en_US	0%	0.3333	33%
+en_US	0%	1.5	150%
+en_US	0%	-1.5	-150%
+en_US	0%	1234.5678	123457%
+en_US	0%	-1234.5678	-123457%
+en_US	0%	1000000000.0	100000000000%
+en_US	0%	1e-7	0%
+en_US	0%	45000.75	4500075%
+en_US	0%	0.999	100%
+en_US	0%	100.0	10000%
+en_US	0%	12345678.0	1234567800%
+en_US	0%	-0.5	-50%
+en_US	0%	2.5	250%
+en_US	0%	3.14159	314%
+en_US	0%	60000.123456	6000012%
+en_US	0%	text:abc	abc
+en_US	0%	text:	
+en_US	0.0%	0.0	0.0%
+en_US	0.0%	1.0	100.0%
+en_US	0.0%	-1.0	-100.0%
+en_US	0.0%	0.5	50.0%
+en_US	0.0%	0.3333	33.3%
+en_US	0.0%	1.5	150.0%
+en_US	0.0%	-1.5	-150.0%
+en_US	0.0%	1234.5678	123456.8%
+en_US	0.0%	-1234.5678	-123456.8%
+en_US	0.0%	1000000000.0	100000000000.0%
+en_US	0.0%	1e-7	0.0%
+en_US	0.0%	45000.75	4500075.0%
+en_US	0.0%	0.999	99.9%
+en_US	0.0%	100.0	10000.0%
+en_US	0.0%	12345678.0	1234567800.0%
+en_US	0.0%	-0.5	-50.0%
+en_US	0.0%	2.5	250.0%
+en_US	0.0%	3.14159	314.2%
+en_US	0.0%	60000.123456	6000012.3%
+en_US	0.0%	text:abc	abc
+en_US	0.0%	text:	
+en_US	0.00E+00	0.0	0.00E+00
+en_US	0.00E+00	-0.0001	-1.00E-04
+en_US	0.00E+00	1.0	1.00E+00
+en_US	0.00E+00	-1.0	-1.00E+00
+en_US	0.00E+00	0.5	5.00E-01
+en_US	0.00E+00	0.3333	3.33E-01
+en_US	0.00E+00	1.5	1.50E+00
+en_US	0.00E+00	-1.5	-1.50E+00
+en_US	0.00E+00	1234.5678	1.23E+03
+en_US	0.00E+00	-1234.5678	-1.23E+03
+en_US	0.00E+00	1000000000.0	1.00E+09
+en_US	0.00E+00	1e-7	1.00E-07
+en_US	0.00E+00	45000.75	4.50E+04
+en_US	0.00E+00	0.999	9.99E-01
+en_US	0.00E+00	100.0	1.00E+02
+en_US	0.00E+00	12345678.0	1.23E+07
+en_US	0.00E+00	-0.5	-5.00E-01
+en_US	0.00E+00	2.5	2.50E+00
+en_US	0.00E+00	3.14159	3.14E+00
+en_US	0.00E+00	60000.123456	6.00E+04
+en_US	0.00E+00	text:abc	abc
+en_US	0.00E+00	text:	
+en_US	##0.0E+0	0.0	0.0E+0
+en_US	##0.0E+0	-0.0001	-100.0E-6
+en_US	##0.0E+0	1.0	1.0E+0
+en_US	##0.0E+0	-1.0	-1.0E+0
+en_US	##0.0E+0	0.5	500.0E-3
+en_US	##0.0E+0	0.3333	333.3E-3
+en_US	##0.0E+0	1.5	1.5E+0
+en_US	##0.0E+0	-1.5	-1.5E+0
+en_US	##0.0E+0	1234.5678	1.2E+3
+en_US	##0.0E+0	-1234.5678	-1.2E+3
+en_US	##0.0E+0	1000000000.0	1.0E+9
+en_US	##0.0E+0	1e-7	100.0E-9
+en_US	##0.0E+0	45000.75	45.0E+3
+en_US	##0.0E+0	0.999	999.0E-3
+en_US	##0.0E+0	100.0	100.0E+0
+en_US	##0.0E+0	12345678.0	12.3E+6
+en_US	##0.0E+0	-0.5	-500.0E-3
+en_US	##0.0E+0	2.5	2.5E+0
+en_US	##0.0E+0	3.14159	3.1E+0
+en_US	##0.0E+0	60000.123456	60.0E+3
+en_US	##0.0E+0	text:abc	abc
+en_US	##0.0E+0	text:	
+en_US	# ?/?	1.5	1 1/2
+en_US	# ?/?	-1.5	-1 1/2
+en_US	# ?/?	1234.5678	1234 4/7
+en_US	# ?/?	-1234.5678	-1234 4/7
+en_US	# ?/?	45000.75	45000 3/4
+en_US	# ?/?	2.5	2 1/2
+en_US	# ?/?	3.14159	3 1/7
+en_US	# ?/?	60000.123456	60000 1/8
+en_US	# ?/?	text:abc	abc
+en_US	# ?/?	text:	
+en_US	# ??/??	1.5	1  1/2 
+en_US	# ??/??	-1.5	-1  1/2 
+en_US	# ??/??	1234.5678	1234 46/81
+en_US	# ??/??	-1234.5678	-1234 46/81
+en_US	# ??/??	45000.75	45000  3/4 
+en_US	# ??/??	2.5	2  1/2 
+en_US	# ??/??	3.14159	3 14/99
+en_US	# ??/??	60000.123456	60000 10/81
+en_US	# ??/??	text:abc	abc
+en_US	# ??/??	text:	
+en_US	?/8	0.0	0/8
+en_US	?/8	1.0	8/8
+en_US	?/8	-1.0	-8/8
+en_US	?/8	0.5	4/8
+en_US	?/8	0.3333	3/8
+en_US	?/8	1.5	12/8
+en_US	?/8	-1.5	-12/8
+en_US	?/8	1234.5678	9877/8
+en_US	?/8	-1234.5678	-9877/8
+en_US	?/8	1000000000.0	8000000000/8
+en_US	?/8	1e-7	0/8
+en_US	?/8	45000.75	360006/8
+en_US	?/8	0.999	8/8
+en_US	?/8	100.0	800/8
+en_US	?/8	12345678.0	98765424/8
+en_US	?/8	-0.5	-4/8
+en_US	?/8	2.5	20/8
+en_US	?/8	3.14159	25/8
+en_US	?/8	60000.123456	480001/8
+en_US	?/8	text:abc	abc
+en_US	?/8	text:	
+en_US	0.00,,"M"	0.0	0.00M
+en_US	0.00,,"M"	1.0	0.00M
+en_US	0.00,,"M"	0.5	0.00M
+en_US	0.00,,"M"	0.3333	0.00M
+en_US	0.00,,"M"	1.5	0.00M
+en_US	0.00,,"M"	1234.5678	0.00M
+en_US	0.00,,"M"	1000000000.0	1000.00M
+en_US	0.00,,"M"	1e-7	0.00M
+en_US	0.00,,"M"	45000.75	0.05M
+en_US	0.00,,"M"	0.999	0.00M
+en_US	0.00,,"M"	100.0	0.00M
+en_US	0.00,,"M"	12345678.0	12.35M
+en_US	0.00,,"M"	2.5	0.00M
+en_US	0.00,,"M"	3.14159	0.00M
+en_US	0.00,,"M"	60000.123456	0.06M
+en_US	0.00,,"M"	text:abc	abc
+en_US	0.00,,"M"	text:	
+en_US	#,##0,"K"	0.0	0K
+en_US	#,##0,"K"	1.0	0K
+en_US	#,##0,"K"	0.5	0K
+en_US	#,##0,"K"	0.3333	0K
+en_US	#,##0,"K"	1.5	0K
+en_US	#,##0,"K"	1234.5678	1K
+en_US	#,##0,"K"	-1234.5678	-1K
+en_US	#,##0,"K"	1000000000.0	1,000,000K
+en_US	#,##0,"K"	1e-7	0K
+en_US	#,##0,"K"	45000.75	45K
+en_US	#,##0,"K"	0.999	0K
+en_US	#,##0,"K"	100.0	0K
+en_US	#,##0,"K"	12345678.0	12,346K
+en_US	#,##0,"K"	2.5	0K
+en_US	#,##0,"K"	3.14159	0K
+en_US	#,##0,"K"	60000.123456	60K
+en_US	#,##0,"K"	text:abc	abc
+en_US	#,##0,"K"	text:	
+en_US	$#,##0.00	0.0	$0.00
+en_US	$#,##0.00	1.0	$1.00
+en_US	$#,##0.00	-1.0	-$1.00
+en_US	$#,##0.00	0.5	$0.50
+en_US	$#,##0.00	0.3333	$0.33
+en_US	$#,##0.00	1.5	$1.50
+en_US	$#,##0.00	-1.5	-$1.50
+en_US	$#,##0.00	1234.5678	$1,234.57
+en_US	$#,##0.00	-1234.5678	-$1,234.57
+en_US	$#,##0.00	1000000000.0	$1,000,000,000.00
+en_US	$#,##0.00	1e-7	$0.00
+en_US	$#,##0.00	45000.75	$45,000.75
+en_US	$#,##0.00	0.999	$1.00
+en_US	$#,##0.00	100.0	$100.00
+en_US	$#,##0.00	12345678.0	$12,345,678.00
+en_US	$#,##0.00	-0.5	-$0.50
+en_US	$#,##0.00	2.5	$2.50
+en_US	$#,##0.00	3.14159	$3.14
+en_US	$#,##0.00	60000.123456	$60,000.12
+en_US	$#,##0.00	text:abc	abc
+en_US	$#,##0.00	text:	
+en_US	[$€-407]#,##0.00	0.0	€0.00
+en_US	[$€-407]#,##0.00	1.0	€1.00
+en_US	[$€-407]#,##0.00	-1.0	-€1.00
+en_US	[$€-407]#,##0.00	0.5	€0.50
+en_US	[$€-407]#,##0.00	0.3333	€0.33
+en_US	[$€-407]#,##0.00	1.5	€1.50
+en_US	[$€-407]#,##0.00	-1.5	-€1.50
+en_US	[$€-407]#,##0.00	1234.5678	€1,234.57
+en_US	[$€-407]#,##0.00	-1234.5678	-€1,234.57
+en_US	[$€-407]#,##0.00	1000000000.0	€1,000,000,000.00
+en_US	[$€-407]#,##0.00	1e-7	€0.00
+en_US	[$€-407]#,##0.00	45000.75	€45,000.75
+en_US	[$€-407]#,##0.00	0.999	€1.00
+en_US	[$€-407]#,##0.00	100.0	€100.00
+en_US	[$€-407]#,##0.00	12345678.0	€12,345,678.00
+en_US	[$€-407]#,##0.00	-0.5	-€0.50
+en_US	[$€-407]#,##0.00	2.5	€2.50
+en_US	[$€-407]#,##0.00	3.14159	€3.14
+en_US	[$€-407]#,##0.00	60000.123456	€60,000.12
+en_US	[$€-407]#,##0.00	text:abc	abc
+en_US	[$€-407]#,##0.00	text:	
+en_US	\-0	0.0	-0
+en_US	\-0	1.0	-1
+en_US	\-0	-1.0	--1
+en_US	\-0	0.5	-1
+en_US	\-0	0.3333	-0
+en_US	\-0	1.5	-2
+en_US	\-0	-1.5	--2
+en_US	\-0	1234.5678	-1235
+en_US	\-0	-1234.5678	--1235
+en_US	\-0	1000000000.0	-1000000000
+en_US	\-0	1e-7	-0
+en_US	\-0	45000.75	-45001
+en_US	\-0	0.999	-1
+en_US	\-0	100.0	-100
+en_US	\-0	12345678.0	-12345678
+en_US	\-0	-0.5	--1
+en_US	\-0	2.5	-3
+en_US	\-0	3.14159	-3
+en_US	\-0	60000.123456	-60000
+en_US	\-0	text:abc	abc
+en_US	\-0	text:	
+en_US	"pre"0"post"	0.0	pre0post
+en_US	"pre"0"post"	1.0	pre1post
+en_US	"pre"0"post"	-1.0	-pre1post
+en_US	"pre"0"post"	0.5	pre1post
+en_US	"pre"0"post"	0.3333	pre0post
+en_US	"pre"0"post"	1.5	pre2post
+en_US	"pre"0"post"	-1.5	-pre2post
+en_US	"pre"0"post"	1234.5678	pre1235post
+en_US	"pre"0"post"	-1234.5678	-pre1235post
+en_US	"pre"0"post"	1000000000.0	pre1000000000post
+en_US	"pre"0"post"	1e-7	pre0post
+en_US	"pre"0"post"	45000.75	pre45001post
+en_US	"pre"0"post"	0.999	pre1post
+en_US	"pre"0"post"	100.0	pre100post
+en_US	"pre"0"post"	12345678.0	pre12345678post
+en_US	"pre"0"post"	-0.5	-pre1post
+en_US	"pre"0"post"	2.5	pre3post
+en_US	"pre"0"post"	3.14159	pre3post
+en_US	"pre"0"post"	60000.123456	pre60000post
+en_US	"pre"0"post"	text:abc	abc
+en_US	"pre"0"post"	text:	
+en_US	0;(0)	0.0	0
+en_US	0;(0)	-0.0001	(0)
+en_US	0;(0)	1.0	1
+en_US	0;(0)	-1.0	(1)
+en_US	0;(0)	0.5	1
+en_US	0;(0)	0.3333	0
+en_US	0;(0)	1.5	2
+en_US	0;(0)	-1.5	(2)
+en_US	0;(0)	1234.5678	1235
+en_US	0;(0)	-1234.5678	(1235)
+en_US	0;(0)	1000000000.0	1000000000
+en_US	0;(0)	1e-7	0
+en_US	0;(0)	45000.75	45001
+en_US	0;(0)	0.999	1
+en_US	0;(0)	100.0	100
+en_US	0;(0)	12345678.0	12345678
+en_US	0;(0)	-0.5	(1)
+en_US	0;(0)	2.5	3
+en_US	0;(0)	3.14159	3
+en_US	0;(0)	60000.123456	60000
+en_US	0;(0)	text:abc	abc
+en_US	0;(0)	text:	
+en_US	0;-0;"zero"	0.0	zero
+en_US	0;-0;"zero"	-0.0001	-0
+en_US	0;-0;"zero"	1.0	1
+en_US	0;-0;"zero"	-1.0	-1
+en_US	0;-0;"zero"	0.5	1
+en_US	0;-0;"zero"	0.3333	0
+en_US	0;-0;"zero"	1.5	2
+en_US	0;-0;"zero"	-1.5	-2
+en_US	0;-0;"zero"	1234.5678	1235
+en_US	0;-0;"zero"	-1234.5678	-1235
+en_US	0;-0;"zero"	1000000000.0	1000000000
+en_US	0;-0;"zero"	1e-7	0
+en_US	0;-0;"zero"	45000.75	45001
+en_US	0;-0;"zero"	0.999	1
+en_US	0;-0;"zero"	100.0	100
+en_US	0;-0;"zero"	12345678.0	12345678
+en_US	0;-0;"zero"	-0.5	-1
+en_US	0;-0;"zero"	2.5	3
+en_US	0;-0;"zero"	3.14159	3
+en_US	0;-0;"zero"	60000.123456	60000
+en_US	0;-0;"zero"	text:abc	abc
+en_US	0;-0;"zero"	text:	
+en_US	[Red]0;[Blue]-0	0.0	0
+en_US	[Red]0;[Blue]-0	-0.0001	-0
+en_US	[Red]0;[Blue]-0	1.0	1
+en_US	[Red]0;[Blue]-0	-1.0	-1
+en_US	[Red]0;[Blue]-0	0.5	1
+en_US	[Red]0;[Blue]-0	0.3333	0
+en_US	[Red]0;[Blue]-0	1.5	2
+en_US	[Red]0;[Blue]-0	-1.5	-2
+en_US	[Red]0;[Blue]-0	1234.5678	1235
+en_US	[Red]0;[Blue]-0	-1234.5678	-1235
+en_US	[Red]0;[Blue]-0	1000000000.0	1000000000
+en_US	[Red]0;[Blue]-0	1e-7	0
+en_US	[Red]0;[Blue]-0	45000.75	45001
+en_US	[Red]0;[Blue]-0	0.999	1
+en_US	[Red]0;[Blue]-0	100.0	100
+en_US	[Red]0;[Blue]-0	12345678.0	12345678
+en_US	[Red]0;[Blue]-0	-0.5	-1
+en_US	[Red]0;[Blue]-0	2.5	3
+en_US	[Red]0;[Blue]-0	3.14159	3
+en_US	[Red]0;[Blue]-0	60000.123456	60000
+en_US	[Red]0;[Blue]-0	text:abc	abc
+en_US	[Red]0;[Blue]-0	text:	
+en_US	[>100]"big";"small"	0.0	small
+en_US	[>100]"big";"small"	1.0	small
+en_US	[>100]"big";"small"	0.5	small
+en_US	[>100]"big";"small"	0.3333	small
+en_US	[>100]"big";"small"	1.5	small
+en_US	[>100]"big";"small"	1234.5678	big
+en_US	[>100]"big";"small"	1000000000.0	big
+en_US	[>100]"big";"small"	1e-7	small
+en_US	[>100]"big";"small"	45000.75	big
+en_US	[>100]"big";"small"	0.999	small
+en_US	[>100]"big";"small"	100.0	small
+en_US	[>100]"big";"small"	12345678.0	big
+en_US	[>100]"big";"small"	2.5	small
+en_US	[>100]"big";"small"	3.14159	small
+en_US	[>100]"big";"small"	60000.123456	big
+en_US	[>100]"big";"small"	text:abc	abc
+en_US	[>100]"big";"small"	text:	
+en_US	@	0.0	0
+en_US	@	-0.0001	-0.0001
+en_US	@	1.0	1
+en_US	@	-1.0	-1
+en_US	@	0.5	0.5
+en_US	@	0.3333	0.3333
+en_US	@	1.5	1.5
+en_US	@	-1.5	-1.5
+en_US	@	1234.5678	1234.5678
+en_US	@	-1234.5678	-1234.5678
+en_US	@	1000000000.0	1000000000
+en_US	@	1e-7	0.0000001
+en_US	@	45000.75	45000.75
+en_US	@	0.999	0.999
+en_US	@	100.0	100
+en_US	@	12345678.0	12345678
+en_US	@	-0.5	-0.5
+en_US	@	2.5	2.5
+en_US	@	3.14159	3.14159
+en_US	@	60000.123456	60000.12346
+en_US	@	text:abc	abc
+en_US	@	text:	
+en_US	"x"@	0.0	0
+en_US	"x"@	-0.0001	-0.0001
+en_US	"x"@	1.0	1
+en_US	"x"@	-1.0	-1
+en_US	"x"@	0.5	0.5
+en_US	"x"@	0.3333	0.3333
+en_US	"x"@	1.5	1.5
+en_US	"x"@	-1.5	-1.5
+en_US	"x"@	1234.5678	1234.5678
+en_US	"x"@	-1234.5678	-1234.5678
+en_US	"x"@	1000000000.0	1000000000
+en_US	"x"@	1e-7	0.0000001
+en_US	"x"@	45000.75	45000.75
+en_US	"x"@	0.999	0.999
+en_US	"x"@	100.0	100
+en_US	"x"@	12345678.0	12345678
+en_US	"x"@	-0.5	-0.5
+en_US	"x"@	2.5	2.5
+en_US	"x"@	3.14159	3.14159
+en_US	"x"@	60000.123456	60000.12346
+en_US	"x"@	text:abc	xabc
+en_US	"x"@	text:	x
+en_US	yyyy-mm-dd	0.0	1899-12-30
+en_US	yyyy-mm-dd	-0.0001	1899-12-29
+en_US	yyyy-mm-dd	1.0	1899-12-31
+en_US	yyyy-mm-dd	-1.0	1899-12-29
+en_US	yyyy-mm-dd	0.5	1899-12-30
+en_US	yyyy-mm-dd	0.3333	1899-12-30
+en_US	yyyy-mm-dd	1.5	1899-12-31
+en_US	yyyy-mm-dd	-1.5	1899-12-28
+en_US	yyyy-mm-dd	1234.5678	1903-05-18
+en_US	yyyy-mm-dd	-1234.5678	1896-08-12
+en_US	yyyy-mm-dd	1000000000.0	1000000000
+en_US	yyyy-mm-dd	1e-7	1899-12-30
+en_US	yyyy-mm-dd	45000.75	2023-03-15
+en_US	yyyy-mm-dd	0.999	1899-12-30
+en_US	yyyy-mm-dd	100.0	1900-04-09
+en_US	yyyy-mm-dd	12345678.0	12345678
+en_US	yyyy-mm-dd	-0.5	1899-12-29
+en_US	yyyy-mm-dd	2.5	1900-01-01
+en_US	yyyy-mm-dd	3.14159	1900-01-02
+en_US	yyyy-mm-dd	60000.123456	2064-04-08
+en_US	yyyy-mm-dd	text:abc	abc
+en_US	yyyy-mm-dd	text:	
+en_US	dd/mm/yyyy	0.0	30/12/1899
+en_US	dd/mm/yyyy	-0.0001	29/12/1899
+en_US	dd/mm/yyyy	1.0	31/12/1899
+en_US	dd/mm/yyyy	-1.0	29/12/1899
+en_US	dd/mm/yyyy	0.5	30/12/1899
+en_US	dd/mm/yyyy	0.3333	30/12/1899
+en_US	dd/mm/yyyy	1.5	31/12/1899
+en_US	dd/mm/yyyy	-1.5	28/12/1899
+en_US	dd/mm/yyyy	1234.5678	18/05/1903
+en_US	dd/mm/yyyy	-1234.5678	12/08/1896
+en_US	dd/mm/yyyy	1000000000.0	1000000000
+en_US	dd/mm/yyyy	1e-7	30/12/1899
+en_US	dd/mm/yyyy	45000.75	15/03/2023
+en_US	dd/mm/yyyy	0.999	30/12/1899
+en_US	dd/mm/yyyy	100.0	09/04/1900
+en_US	dd/mm/yyyy	12345678.0	12345678
+en_US	dd/mm/yyyy	-0.5	29/12/1899
+en_US	dd/mm/yyyy	2.5	01/01/1900
+en_US	dd/mm/yyyy	3.14159	02/01/1900
+en_US	dd/mm/yyyy	60000.123456	08/04/2064
+en_US	dd/mm/yyyy	text:abc	abc
+en_US	dd/mm/yyyy	text:	
+en_US	mmm d, yyyy	0.0	Dec 30, 1899
+en_US	mmm d, yyyy	-0.0001	Dec 29, 1899
+en_US	mmm d, yyyy	1.0	Dec 31, 1899
+en_US	mmm d, yyyy	-1.0	Dec 29, 1899
+en_US	mmm d, yyyy	0.5	Dec 30, 1899
+en_US	mmm d, yyyy	0.3333	Dec 30, 1899
+en_US	mmm d, yyyy	1.5	Dec 31, 1899
+en_US	mmm d, yyyy	-1.5	Dec 28, 1899
+en_US	mmm d, yyyy	1234.5678	May 18, 1903
+en_US	mmm d, yyyy	-1234.5678	Aug 12, 1896
+en_US	mmm d, yyyy	1000000000.0	1000000000
+en_US	mmm d, yyyy	1e-7	Dec 30, 1899
+en_US	mmm d, yyyy	45000.75	Mar 15, 2023
+en_US	mmm d, yyyy	0.999	Dec 30, 1899
+en_US	mmm d, yyyy	100.0	Apr 9, 1900
+en_US	mmm d, yyyy	12345678.0	12345678
+en_US	mmm d, yyyy	-0.5	Dec 29, 1899
+en_US	mmm d, yyyy	2.5	Jan 1, 1900
+en_US	mmm d, yyyy	3.14159	Jan 2, 1900
+en_US	mmm d, yyyy	60000.123456	Apr 8, 2064
+en_US	mmm d, yyyy	text:abc	abc
+en_US	mmm d, yyyy	text:	
+en_US	mmmm	0.0	December
+en_US	mmmm	-0.0001	December
+en_US	mmmm	1.0	December
+en_US	mmmm	-1.0	December
+en_US	mmmm	0.5	December
+en_US	mmmm	0.3333	December
+en_US	mmmm	1.5	December
+en_US	mmmm	-1.5	December
+en_US	mmmm	1234.5678	May
+en_US	mmmm	-1234.5678	August
+en_US	mmmm	1000000000.0	1000000000
+en_US	mmmm	1e-7	December
+en_US	mmmm	45000.75	March
+en_US	mmmm	0.999	December
+en_US	mmmm	100.0	April
+en_US	mmmm	12345678.0	12345678
+en_US	mmmm	-0.5	December
+en_US	mmmm	2.5	January
+en_US	mmmm	3.14159	January
+en_US	mmmm	60000.123456	April
+en_US	mmmm	text:abc	abc
+en_US	mmmm	text:	
+en_US	dddd	0.0	Saturday
+en_US	dddd	-0.0001	Friday
+en_US	dddd	1.0	Sunday
+en_US	dddd	-1.0	Friday
+en_US	dddd	0.5	Saturday
+en_US	dddd	0.3333	Saturday
+en_US	dddd	1.5	Sunday
+en_US	dddd	-1.5	Thursday
+en_US	dddd	1234.5678	Monday
+en_US	dddd	-1234.5678	Wednesday
+en_US	dddd	1000000000.0	1000000000
+en_US	dddd	1e-7	Saturday
+en_US	dddd	45000.75	Wednesday
+en_US	dddd	0.999	Saturday
+en_US	dddd	100.0	Monday
+en_US	dddd	12345678.0	12345678
+en_US	dddd	-0.5	Friday
+en_US	dddd	2.5	Monday
+en_US	dddd	3.14159	Tuesday
+en_US	dddd	60000.123456	Tuesday
+en_US	dddd	text:abc	abc
+en_US	dddd	text:	
+en_US	ddd	0.0	Sat
+en_US	ddd	-0.0001	Fri
+en_US	ddd	1.0	Sun
+en_US	ddd	-1.0	Fri
+en_US	ddd	0.5	Sat
+en_US	ddd	0.3333	Sat
+en_US	ddd	1.5	Sun
+en_US	ddd	-1.5	Thu
+en_US	ddd	1234.5678	Mon
+en_US	ddd	-1234.5678	Wed
+en_US	ddd	1000000000.0	1000000000
+en_US	ddd	1e-7	Sat
+en_US	ddd	45000.75	Wed
+en_US	ddd	0.999	Sat
+en_US	ddd	100.0	Mon
+en_US	ddd	12345678.0	12345678
+en_US	ddd	-0.5	Fri
+en_US	ddd	2.5	Mon
+en_US	ddd	3.14159	Tue
+en_US	ddd	60000.123456	Tue
+en_US	ddd	text:abc	abc
+en_US	ddd	text:	
+en_US	h:mm	0.0	0:00
+en_US	h:mm	-0.0001	23:59
+en_US	h:mm	1.0	0:00
+en_US	h:mm	-1.0	0:00
+en_US	h:mm	0.5	12:00
+en_US	h:mm	0.3333	7:59
+en_US	h:mm	1.5	12:00
+en_US	h:mm	-1.5	12:00
+en_US	h:mm	1234.5678	13:37
+en_US	h:mm	-1234.5678	10:22
+en_US	h:mm	1e-7	0:00
+en_US	h:mm	45000.75	18:00
+en_US	h:mm	0.999	23:58
+en_US	h:mm	100.0	0:00
+en_US	h:mm	-0.5	12:00
+en_US	h:mm	2.5	12:00
+en_US	h:mm	3.14159	3:23
+en_US	h:mm	60000.123456	2:57
+en_US	h:mm	text:abc	abc
+en_US	h:mm	text:	
+en_US	h:mm AM/PM	0.0	12:00 AM
+en_US	h:mm AM/PM	-0.0001	11:59 PM
+en_US	h:mm AM/PM	1.0	12:00 AM
+en_US	h:mm AM/PM	-1.0	12:00 AM
+en_US	h:mm AM/PM	0.5	12:00 PM
+en_US	h:mm AM/PM	0.3333	7:59 AM
+en_US	h:mm AM/PM	1.5	12:00 PM
+en_US	h:mm AM/PM	-1.5	12:00 PM
+en_US	h:mm AM/PM	1234.5678	1:37 PM
+en_US	h:mm AM/PM	-1234.5678	10:22 AM
+en_US	h:mm AM/PM	1e-7	12:00 AM
+en_US	h:mm AM/PM	45000.75	6:00 PM
+en_US	h:mm AM/PM	0.999	11:58 PM
+en_US	h:mm AM/PM	100.0	12:00 AM
+en_US	h:mm AM/PM	-0.5	12:00 PM
+en_US	h:mm AM/PM	2.5	12:00 PM
+en_US	h:mm AM/PM	3.14159	3:23 AM
+en_US	h:mm AM/PM	60000.123456	2:57 AM
+en_US	h:mm AM/PM	text:abc	abc
+en_US	h:mm AM/PM	text:	
+en_US	hh:mm:ss	0.0	00:00:00
+en_US	hh:mm:ss	-0.0001	23:59:51
+en_US	hh:mm:ss	1.0	00:00:00
+en_US	hh:mm:ss	-1.0	00:00:00
+en_US	hh:mm:ss	0.5	12:00:00
+en_US	hh:mm:ss	0.3333	07:59:57
+en_US	hh:mm:ss	1.5	12:00:00
+en_US	hh:mm:ss	-1.5	12:00:00
+en_US	hh:mm:ss	1234.5678	13:37:38
+en_US	hh:mm:ss	-1234.5678	10:22:22
+en_US	hh:mm:ss	1e-7	00:00:00
+en_US	hh:mm:ss	45000.75	18:00:00
+en_US	hh:mm:ss	0.999	23:58:34
+en_US	hh:mm:ss	100.0	00:00:00
+en_US	hh:mm:ss	-0.5	12:00:00
+en_US	hh:mm:ss	2.5	12:00:00
+en_US	hh:mm:ss	3.14159	03:23:53
+en_US	hh:mm:ss	60000.123456	02:57:47
+en_US	hh:mm:ss	text:abc	abc
+en_US	hh:mm:ss	text:	
+en_US	[h]:mm	0.0	0:00
+en_US	[h]:mm	-0.0001	-0:00
+en_US	[h]:mm	1.0	24:00
+en_US	[h]:mm	-1.0	-24:00
+en_US	[h]:mm	0.5	12:00
+en_US	[h]:mm	0.3333	7:59
+en_US	[h]:mm	1.5	36:00
+en_US	[h]:mm	-1.5	-36:00
+en_US	[h]:mm	1234.5678	29629:37
+en_US	[h]:mm	-1234.5678	-29629:37
+en_US	[h]:mm	1e-7	0:00
+en_US	[h]:mm	45000.75	1080018:00
+en_US	[h]:mm	0.999	23:58
+en_US	[h]:mm	100.0	2400:00
+en_US	[h]:mm	-0.5	-12:00
+en_US	[h]:mm	2.5	60:00
+en_US	[h]:mm	3.14159	75:23
+en_US	[h]:mm	60000.123456	1440002:57
+en_US	[h]:mm	text:abc	abc
+en_US	[h]:mm	text:	
+en_US	[mm]:ss	0.0	00:00
+en_US	[mm]:ss	-0.0001	-00:09
+en_US	[mm]:ss	1.0	1440:00
+en_US	[mm]:ss	-1.0	-1440:00
+en_US	[mm]:ss	0.5	720:00
+en_US	[mm]:ss	0.3333	479:57
+en_US	[mm]:ss	1.5	2160:00
+en_US	[mm]:ss	-1.5	-2160:00
+en_US	[mm]:ss	1234.5678	1777777:38
+en_US	[mm]:ss	-1234.5678	-1777777:38
+en_US	[mm]:ss	1e-7	00:00
+en_US	[mm]:ss	45000.75	64801080:00
+en_US	[mm]:ss	0.999	1438:34
+en_US	[mm]:ss	100.0	144000:00
+en_US	[mm]:ss	-0.5	-720:00
+en_US	[mm]:ss	2.5	3600:00
+en_US	[mm]:ss	3.14159	4523:53
+en_US	[mm]:ss	60000.123456	86400177:47
+en_US	[mm]:ss	text:abc	abc
+en_US	[mm]:ss	text:	
+en_US	mm:ss.00	0.0	00:00.00
+en_US	mm:ss.00	-0.0001	59:51.36
+en_US	mm:ss.00	1.0	00:00.00
+en_US	mm:ss.00	-1.0	00:00.00
+en_US	mm:ss.00	0.5	00:00.00
+en_US	mm:ss.00	0.3333	59:57.12
+en_US	mm:ss.00	1.5	00:00.00
+en_US	mm:ss.00	-1.5	00:00.00
+en_US	mm:ss.00	1234.5678	37:37.92
+en_US	mm:ss.00	-1234.5678	22:22.08
+en_US	mm:ss.00	1e-7	00:00.01
+en_US	mm:ss.00	45000.75	00:00.00
+en_US	mm:ss.00	0.999	58:33.60
+en_US	mm:ss.00	100.0	00:00.00
+en_US	mm:ss.00	-0.5	00:00.00
+en_US	mm:ss.00	2.5	00:00.00
+en_US	mm:ss.00	3.14159	23:53.38
+en_US	mm:ss.00	60000.123456	57:46.60
+en_US	mm:ss.00	text:abc	abc
+en_US	mm:ss.00	text:	
+en_US	s.000	0.0	0.000
+en_US	s.000	-0.0001	51.360
+en_US	s.000	1.0	0.000
+en_US	s.000	-1.0	0.000
+en_US	s.000	0.5	0.000
+en_US	s.000	0.3333	57.120
+en_US	s.000	1.5	0.000
+en_US	s.000	-1.5	0.000
+en_US	s.000	1234.5678	37.920
+en_US	s.000	-1234.5678	22.080
+en_US	s.000	1e-7	0.009
+en_US	s.000	45000.75	0.000
+en_US	s.000	0.999	33.600
+en_US	s.000	100.0	0.000
+en_US	s.000	-0.5	0.000
+en_US	s.000	2.5	0.000
+en_US	s.000	3.14159	53.376
+en_US	s.000	60000.123456	46.598
+en_US	s.000	text:abc	abc
+en_US	s.000	text:	
+en_US	yy	0.0	99
+en_US	yy	-0.0001	99
+en_US	yy	1.0	99
+en_US	yy	-1.0	99
+en_US	yy	0.5	99
+en_US	yy	0.3333	99
+en_US	yy	1.5	99
+en_US	yy	-1.5	99
+en_US	yy	1234.5678	03
+en_US	yy	-1234.5678	96
+en_US	yy	1000000000.0	1000000000
+en_US	yy	1e-7	99
+en_US	yy	45000.75	23
+en_US	yy	0.999	99
+en_US	yy	100.0	00
+en_US	yy	12345678.0	12345678
+en_US	yy	-0.5	99
+en_US	yy	2.5	00
+en_US	yy	3.14159	00
+en_US	yy	60000.123456	64
+en_US	yy	text:abc	abc
+en_US	yy	text:	
+en_US	m/d	0.0	12/30
+en_US	m/d	-0.0001	12/29
+en_US	m/d	1.0	12/31
+en_US	m/d	-1.0	12/29
+en_US	m/d	0.5	12/30
+en_US	m/d	0.3333	12/30
+en_US	m/d	1.5	12/31
+en_US	m/d	-1.5	12/28
+en_US	m/d	1234.5678	5/18
+en_US	m/d	-1234.5678	8/12
+en_US	m/d	1000000000.0	1000000000
+en_US	m/d	1e-7	12/30
+en_US	m/d	45000.75	3/15
+en_US	m/d	0.999	12/30
+en_US	m/d	100.0	4/9
+en_US	m/d	12345678.0	12345678
+en_US	m/d	-0.5	12/29
+en_US	m/d	2.5	1/1
+en_US	m/d	3.14159	1/2
+en_US	m/d	60000.123456	4/8
+en_US	m/d	text:abc	abc
+en_US	m/d	text:	
+en_US	General	0.0	0
+en_US	General	-0.0001	-0.0001
+en_US	General	1.0	1
+en_US	General	-1.0	-1
+en_US	General	0.5	0.5
+en_US	General	0.3333	0.3333
+en_US	General	1.5	1.5
+en_US	General	-1.5	-1.5
+en_US	General	1234.5678	1234.5678
+en_US	General	-1234.5678	-1234.5678
+en_US	General	1000000000.0	1000000000
+en_US	General	1e-7	0.0000001
+en_US	General	45000.75	45000.75
+en_US	General	0.999	0.999
+en_US	General	100.0	100
+en_US	General	12345678.0	12345678
+en_US	General	-0.5	-0.5
+en_US	General	2.5	2.5
+en_US	General	3.14159	3.14159
+en_US	General	60000.123456	60000.12346
+en_US	General	text:abc	abc
+en_US	General	text:	
+en_US	0.0_)	0.0	0.0 
+en_US	0.0_)	1.0	1.0 
+en_US	0.0_)	-1.0	-1.0 
+en_US	0.0_)	0.5	0.5 
+en_US	0.0_)	0.3333	0.3 
+en_US	0.0_)	1.5	1.5 
+en_US	0.0_)	-1.5	-1.5 
+en_US	0.0_)	1234.5678	1234.6 
+en_US	0.0_)	-1234.5678	-1234.6 
+en_US	0.0_)	1000000000.0	1000000000.0 
+en_US	0.0_)	1e-7	0.0 
+en_US	0.0_)	45000.75	45000.8 
+en_US	0.0_)	0.999	1.0 
+en_US	0.0_)	100.0	100.0 
+en_US	0.0_)	12345678.0	12345678.0 
+en_US	0.0_)	-0.5	-0.5 
+en_US	0.0_)	2.5	2.5 
+en_US	0.0_)	3.14159	3.1 
+en_US	0.0_)	60000.123456	60000.1 
+en_US	0.0_)	text:abc	abc
+en_US	0.0_)	text:	
+en_US	#,##0.00_);(#,##0.00)	0.0	0.00 
+en_US	#,##0.00_);(#,##0.00)	-0.0001	(0.00)
+en_US	#,##0.00_);(#,##0.00)	1.0	1.00 
+en_US	#,##0.00_);(#,##0.00)	-1.0	(1.00)
+en_US	#,##0.00_);(#,##0.00)	0.5	0.50 
+en_US	#,##0.00_);(#,##0.00)	0.3333	0.33 
+en_US	#,##0.00_);(#,##0.00)	1.5	1.50 
+en_US	#,##0.00_);(#,##0.00)	-1.5	(1.50)
+en_US	#,##0.00_);(#,##0.00)	1234.5678	1,234.57 
+en_US	#,##0.00_);(#,##0.00)	-1234.5678	(1,234.57)
+en_US	#,##0.00_);(#,##0.00)	1000000000.0	1,000,000,000.00 
+en_US	#,##0.00_);(#,##0.00)	1e-7	0.00 
+en_US	#,##0.00_);(#,##0.00)	45000.75	45,000.75 
+en_US	#,##0.00_);(#,##0.00)	0.999	1.00 
+en_US	#,##0.00_);(#,##0.00)	100.0	100.00 
+en_US	#,##0.00_);(#,##0.00)	12345678.0	12,345,678.00 
+en_US	#,##0.00_);(#,##0.00)	-0.5	(0.50)
+en_US	#,##0.00_);(#,##0.00)	2.5	2.50 
+en_US	#,##0.00_);(#,##0.00)	3.14159	3.14 
+en_US	#,##0.00_);(#,##0.00)	60000.123456	60,000.12 
+en_US	#,##0.00_);(#,##0.00)	text:abc	abc
+en_US	#,##0.00_);(#,##0.00)	text:	
+en_US	* #,##0	0.0	0
+en_US	* #,##0	1.0	1
+en_US	* #,##0	-1.0	-1
+en_US	* #,##0	0.5	1
+en_US	* #,##0	0.3333	0
+en_US	* #,##0	1.5	2
+en_US	* #,##0	-1.5	-2
+en_US	* #,##0	1234.5678	1,235
+en_US	* #,##0	-1234.5678	-1,235
+en_US	* #,##0	1000000000.0	1,000,000,000
+en_US	* #,##0	1e-7	0
+en_US	* #,##0	45000.75	45,001
+en_US	* #,##0	0.999	1
+en_US	* #,##0	100.0	100
+en_US	* #,##0	12345678.0	12,345,678
+en_US	* #,##0	-0.5	-1
+en_US	* #,##0	2.5	3
+en_US	* #,##0	3.14159	3
+en_US	* #,##0	60000.123456	60,000
+en_US	* #,##0	text:abc	abc
+en_US	* #,##0	text:	
+en_US	00000	0.0	00000
+en_US	00000	1.0	00001
+en_US	00000	-1.0	-00001
+en_US	00000	0.5	00001
+en_US	00000	0.3333	00000
+en_US	00000	1.5	00002
+en_US	00000	-1.5	-00002
+en_US	00000	1234.5678	01235
+en_US	00000	-1234.5678	-01235
+en_US	00000	1000000000.0	1000000000
+en_US	00000	1e-7	00000
+en_US	00000	45000.75	45001
+en_US	00000	0.999	00001
+en_US	00000	100.0	00100
+en_US	00000	12345678.0	12345678
+en_US	00000	-0.5	-00001
+en_US	00000	2.5	00003
+en_US	00000	3.14159	00003
+en_US	00000	60000.123456	60000
+en_US	00000	text:abc	abc
+en_US	00000	text:	
+en_US	0.###	0.0	0.
+en_US	0.###	1.0	1.
+en_US	0.###	-1.0	-1.
+en_US	0.###	0.5	0.5
+en_US	0.###	0.3333	0.333
+en_US	0.###	1.5	1.5
+en_US	0.###	-1.5	-1.5
+en_US	0.###	1234.5678	1234.568
+en_US	0.###	-1234.5678	-1234.568
+en_US	0.###	1000000000.0	1000000000.
+en_US	0.###	1e-7	0.
+en_US	0.###	45000.75	45000.75
+en_US	0.###	0.999	0.999
+en_US	0.###	100.0	100.
+en_US	0.###	12345678.0	12345678.
+en_US	0.###	-0.5	-0.5
+en_US	0.###	2.5	2.5
+en_US	0.###	3.14159	3.142
+en_US	0.###	60000.123456	60000.123
+en_US	0.###	text:abc	abc
+en_US	0.###	text:	
+en_US	#.##	0.0	.
+en_US	#.##	1.0	1.
+en_US	#.##	-1.0	-1.
+en_US	#.##	0.5	.5
+en_US	#.##	0.3333	.33
+en_US	#.##	1.5	1.5
+en_US	#.##	-1.5	-1.5
+en_US	#.##	1234.5678	1234.57
+en_US	#.##	-1234.5678	-1234.57
+en_US	#.##	1000000000.0	1000000000.
+en_US	#.##	1e-7	.
+en_US	#.##	45000.75	45000.75
+en_US	#.##	0.999	1.
+en_US	#.##	100.0	100.
+en_US	#.##	12345678.0	12345678.
+en_US	#.##	-0.5	-.5
+en_US	#.##	2.5	2.5
+en_US	#.##	3.14159	3.14
+en_US	#.##	60000.123456	60000.12
+en_US	#.##	text:abc	abc
+en_US	#.##	text:	
+en_US	#	0.0	
+en_US	#	1.0	1
+en_US	#	-1.0	-1
+en_US	#	0.5	1
+en_US	#	0.3333	
+en_US	#	1.5	2
+en_US	#	-1.5	-2
+en_US	#	1234.5678	1235
+en_US	#	-1234.5678	-1235
+en_US	#	1000000000.0	1000000000
+en_US	#	1e-7	
+en_US	#	45000.75	45001
+en_US	#	0.999	1
+en_US	#	100.0	100
+en_US	#	12345678.0	12345678
+en_US	#	-0.5	-1
+en_US	#	2.5	3
+en_US	#	3.14159	3
+en_US	#	60000.123456	60000
+en_US	#	text:abc	abc
+en_US	#	text:	
+en_US	.0	0.0	.0
+en_US	.0	1.0	1.0
+en_US	.0	-1.0	-1.0
+en_US	.0	0.5	.5
+en_US	.0	0.3333	.3
+en_US	.0	1.5	1.5
+en_US	.0	-1.5	-1.5
+en_US	.0	1234.5678	1234.6
+en_US	.0	-1234.5678	-1234.6
+en_US	.0	1000000000.0	1000000000.0
+en_US	.0	1e-7	.0
+en_US	.0	45000.75	45000.8
+en_US	.0	0.999	1.0
+en_US	.0	100.0	100.0
+en_US	.0	12345678.0	12345678.0
+en_US	.0	-0.5	-.5
+en_US	.0	2.5	2.5
+en_US	.0	3.14159	3.1
+en_US	.0	60000.123456	60000.1
+en_US	.0	text:abc	abc
+en_US	.0	text:	
+en_US	0.0#	0.0	0.0
+en_US	0.0#	1.0	1.0
+en_US	0.0#	-1.0	-1.0
+en_US	0.0#	0.5	0.5
+en_US	0.0#	0.3333	0.33
+en_US	0.0#	1.5	1.5
+en_US	0.0#	-1.5	-1.5
+en_US	0.0#	1234.5678	1234.57
+en_US	0.0#	-1234.5678	-1234.57
+en_US	0.0#	1000000000.0	1000000000.0
+en_US	0.0#	1e-7	0.0
+en_US	0.0#	45000.75	45000.75
+en_US	0.0#	0.999	1.0
+en_US	0.0#	100.0	100.0
+en_US	0.0#	12345678.0	12345678.0
+en_US	0.0#	-0.5	-0.5
+en_US	0.0#	2.5	2.5
+en_US	0.0#	3.14159	3.14
+en_US	0.0#	60000.123456	60000.12
+en_US	0.0#	text:abc	abc
+en_US	0.0#	text:	
+en_US	#,###	0.0	
+en_US	#,###	1.0	1
+en_US	#,###	-1.0	-1
+en_US	#,###	0.5	1
+en_US	#,###	0.3333	
+en_US	#,###	1.5	2
+en_US	#,###	-1.5	-2
+en_US	#,###	1234.5678	1,235
+en_US	#,###	-1234.5678	-1,235
+en_US	#,###	1000000000.0	1,000,000,000
+en_US	#,###	1e-7	
+en_US	#,###	45000.75	45,001
+en_US	#,###	0.999	1
+en_US	#,###	100.0	100
+en_US	#,###	12345678.0	12,345,678
+en_US	#,###	-0.5	-1
+en_US	#,###	2.5	3
+en_US	#,###	3.14159	3
+en_US	#,###	60000.123456	60,000
+en_US	#,###	text:abc	abc
+en_US	#,###	text:	
+en_US	#,	0.0	
+en_US	#,	1.0	
+en_US	#,	0.5	
+en_US	#,	0.3333	
+en_US	#,	1.5	
+en_US	#,	1234.5678	1
+en_US	#,	-1234.5678	-1
+en_US	#,	1000000000.0	1000000
+en_US	#,	1e-7	
+en_US	#,	45000.75	45
+en_US	#,	0.999	
+en_US	#,	100.0	
+en_US	#,	12345678.0	12346
+en_US	#,	2.5	
+en_US	#,	3.14159	
+en_US	#,	60000.123456	60
+en_US	#,	text:abc	abc
+en_US	#,	text:	
+en_US	h AM/PM	0.0	12 AM
+en_US	h AM/PM	-0.0001	11 PM
+en_US	h AM/PM	1.0	12 AM
+en_US	h AM/PM	-1.0	12 AM
+en_US	h AM/PM	0.5	12 PM
+en_US	h AM/PM	0.3333	7 AM
+en_US	h AM/PM	1.5	12 PM
+en_US	h AM/PM	-1.5	12 PM
+en_US	h AM/PM	1234.5678	1 PM
+en_US	h AM/PM	-1234.5678	10 AM
+en_US	h AM/PM	1e-7	12 AM
+en_US	h AM/PM	45000.75	6 PM
+en_US	h AM/PM	0.999	11 PM
+en_US	h AM/PM	100.0	12 AM
+en_US	h AM/PM	-0.5	12 PM
+en_US	h AM/PM	2.5	12 PM
+en_US	h AM/PM	3.14159	3 AM
+en_US	h AM/PM	60000.123456	2 AM
+en_US	h AM/PM	text:abc	abc
+en_US	h AM/PM	text:	
+en_US	h a/p	0.0	12 a
+en_US	h a/p	-0.0001	11 p
+en_US	h a/p	1.0	12 a
+en_US	h a/p	-1.0	12 a
+en_US	h a/p	0.5	12 p
+en_US	h a/p	0.3333	7 a
+en_US	h a/p	1.5	12 p
+en_US	h a/p	-1.5	12 p
+en_US	h a/p	1234.5678	1 p
+en_US	h a/p	-1234.5678	10 a
+en_US	h a/p	1e-7	12 a
+en_US	h a/p	45000.75	6 p
+en_US	h a/p	0.999	11 p
+en_US	h a/p	100.0	12 a
+en_US	h a/p	-0.5	12 p
+en_US	h a/p	2.5	12 p
+en_US	h a/p	3.14159	3 a
+en_US	h a/p	60000.123456	2 a
+en_US	h a/p	text:abc	abc
+en_US	h a/p	text:	
+en_US	d-mmm	0.0	30-Dec
+en_US	d-mmm	-0.0001	29-Dec
+en_US	d-mmm	1.0	31-Dec
+en_US	d-mmm	-1.0	29-Dec
+en_US	d-mmm	0.5	30-Dec
+en_US	d-mmm	0.3333	30-Dec
+en_US	d-mmm	1.5	31-Dec
+en_US	d-mmm	-1.5	28-Dec
+en_US	d-mmm	1234.5678	18-May
+en_US	d-mmm	-1234.5678	12-Aug
+en_US	d-mmm	1000000000.0	1000000000
+en_US	d-mmm	1e-7	30-Dec
+en_US	d-mmm	45000.75	15-Mar
+en_US	d-mmm	0.999	30-Dec
+en_US	d-mmm	100.0	9-Apr
+en_US	d-mmm	12345678.0	12345678
+en_US	d-mmm	-0.5	29-Dec
+en_US	d-mmm	2.5	1-Jan
+en_US	d-mmm	3.14159	2-Jan
+en_US	d-mmm	60000.123456	8-Apr
+en_US	d-mmm	text:abc	abc
+en_US	d-mmm	text:	
+en_US	mmmmm	0.0	D
+en_US	mmmmm	-0.0001	D
+en_US	mmmmm	1.0	D
+en_US	mmmmm	-1.0	D
+en_US	mmmmm	0.5	D
+en_US	mmmmm	0.3333	D
+en_US	mmmmm	1.5	D
+en_US	mmmmm	-1.5	D
+en_US	mmmmm	1234.5678	M
+en_US	mmmmm	-1234.5678	A
+en_US	mmmmm	1000000000.0	1000000000
+en_US	mmmmm	1e-7	D
+en_US	mmmmm	45000.75	M
+en_US	mmmmm	0.999	D
+en_US	mmmmm	100.0	A
+en_US	mmmmm	12345678.0	12345678
+en_US	mmmmm	-0.5	D
+en_US	mmmmm	2.5	J
+en_US	mmmmm	3.14159	J
+en_US	mmmmm	60000.123456	A
+en_US	mmmmm	text:abc	abc
+en_US	mmmmm	text:	
+en_US	[$-409]mmmm d, yyyy	0.0	December 30, 1899
+en_US	[$-409]mmmm d, yyyy	-0.0001	December 29, 1899
+en_US	[$-409]mmmm d, yyyy	1.0	December 31, 1899
+en_US	[$-409]mmmm d, yyyy	-1.0	December 29, 1899
+en_US	[$-409]mmmm d, yyyy	0.5	December 30, 1899
+en_US	[$-409]mmmm d, yyyy	0.3333	December 30, 1899
+en_US	[$-409]mmmm d, yyyy	1.5	December 31, 1899
+en_US	[$-409]mmmm d, yyyy	-1.5	December 28, 1899
+en_US	[$-409]mmmm d, yyyy	1234.5678	May 18, 1903
+en_US	[$-409]mmmm d, yyyy	-1234.5678	August 12, 1896
+en_US	[$-409]mmmm d, yyyy	1000000000.0	1000000000
+en_US	[$-409]mmmm d, yyyy	1e-7	December 30, 1899
+en_US	[$-409]mmmm d, yyyy	45000.75	March 15, 2023
+en_US	[$-409]mmmm d, yyyy	0.999	December 30, 1899
+en_US	[$-409]mmmm d, yyyy	100.0	April 9, 1900
+en_US	[$-409]mmmm d, yyyy	12345678.0	12345678
+en_US	[$-409]mmmm d, yyyy	-0.5	December 29, 1899
+en_US	[$-409]mmmm d, yyyy	2.5	January 1, 1900
+en_US	[$-409]mmmm d, yyyy	3.14159	January 2, 1900
+en_US	[$-409]mmmm d, yyyy	60000.123456	April 8, 2064
+en_US	[$-409]mmmm d, yyyy	text:abc	abc
+en_US	[$-409]mmmm d, yyyy	text:	
+en_US	yyyy"年"m"月"d"日"	0.0	1899年12月30日
+en_US	yyyy"年"m"月"d"日"	-0.0001	1899年12月29日
+en_US	yyyy"年"m"月"d"日"	1.0	1899年12月31日
+en_US	yyyy"年"m"月"d"日"	-1.0	1899年12月29日
+en_US	yyyy"年"m"月"d"日"	0.5	1899年12月30日
+en_US	yyyy"年"m"月"d"日"	0.3333	1899年12月30日
+en_US	yyyy"年"m"月"d"日"	1.5	1899年12月31日
+en_US	yyyy"年"m"月"d"日"	-1.5	1899年12月28日
+en_US	yyyy"年"m"月"d"日"	1234.5678	1903年5月18日
+en_US	yyyy"年"m"月"d"日"	-1234.5678	1896年8月12日
+en_US	yyyy"年"m"月"d"日"	1000000000.0	1000000000
+en_US	yyyy"年"m"月"d"日"	1e-7	1899年12月30日
+en_US	yyyy"年"m"月"d"日"	45000.75	2023年3月15日
+en_US	yyyy"年"m"月"d"日"	0.999	1899年12月30日
+en_US	yyyy"年"m"月"d"日"	100.0	1900年4月9日
+en_US	yyyy"年"m"月"d"日"	12345678.0	12345678
+en_US	yyyy"年"m"月"d"日"	-0.5	1899年12月29日
+en_US	yyyy"年"m"月"d"日"	2.5	1900年1月1日
+en_US	yyyy"年"m"月"d"日"	3.14159	1900年1月2日
+en_US	yyyy"年"m"月"d"日"	60000.123456	2064年4月8日
+en_US	yyyy"年"m"月"d"日"	text:abc	abc
+en_US	yyyy"年"m"月"d"日"	text:	
+en_US	0000-00	0.0	0000-00
+en_US	0000-00	1.0	0000-01
+en_US	0000-00	-1.0	-0000-01
+en_US	0000-00	0.5	0000-01
+en_US	0000-00	0.3333	0000-00
+en_US	0000-00	1.5	0000-02
+en_US	0000-00	-1.5	-0000-02
+en_US	0000-00	1234.5678	0012-35
+en_US	0000-00	-1234.5678	-0012-35
+en_US	0000-00	1000000000.0	10000000-00
+en_US	0000-00	1e-7	0000-00
+en_US	0000-00	45000.75	0450-01
+en_US	0000-00	0.999	0000-01
+en_US	0000-00	100.0	0001-00
+en_US	0000-00	12345678.0	123456-78
+en_US	0000-00	-0.5	-0000-01
+en_US	0000-00	2.5	0000-03
+en_US	0000-00	3.14159	0000-03
+en_US	0000-00	60000.123456	0600-00
+en_US	0000-00	text:abc	abc
+en_US	0000-00	text:	
+en_US	000-00-0000	0.0	000-00-0000
+en_US	000-00-0000	1.0	000-00-0001
+en_US	000-00-0000	-1.0	-000-00-0001
+en_US	000-00-0000	0.5	000-00-0001
+en_US	000-00-0000	0.3333	000-00-0000
+en_US	000-00-0000	1.5	000-00-0002
+en_US	000-00-0000	-1.5	-000-00-0002
+en_US	000-00-0000	1234.5678	000-00-1235
+en_US	000-00-0000	-1234.5678	-000-00-1235
+en_US	000-00-0000	1000000000.0	1000-00-0000
+en_US	000-00-0000	1e-7	000-00-0000
+en_US	000-00-0000	45000.75	000-04-5001
+en_US	000-00-0000	0.999	000-00-0001
+en_US	000-00-0000	100.0	000-00-0100
+en_US	000-00-0000	12345678.0	012-34-5678
+en_US	000-00-0000	-0.5	-000-00-0001
+en_US	000-00-0000	2.5	000-00-0003
+en_US	000-00-0000	3.14159	000-00-0003
+en_US	000-00-0000	60000.123456	000-06-0000
+en_US	000-00-0000	text:abc	abc
+en_US	000-00-0000	text:	
+en_US	#?/#?	0.0	0/1 
+en_US	#?/#?	1.0	1/1 
+en_US	#?/#?	-1.0	-1/1 
+en_US	#?/#?	0.5	1/2 
+en_US	#?/#?	0.3333	1/3 
+en_US	#?/#?	1.5	3/2 
+en_US	#?/#?	-1.5	-3/2 
+en_US	#?/#?	1234.5678	100000/81
+en_US	#?/#?	-1234.5678	-100000/81
+en_US	#?/#?	1000000000.0	1000000000/1 
+en_US	#?/#?	1e-7	0/1 
+en_US	#?/#?	45000.75	180003/4 
+en_US	#?/#?	0.999	1/1 
+en_US	#?/#?	100.0	100/1 
+en_US	#?/#?	12345678.0	12345678/1 
+en_US	#?/#?	-0.5	-1/2 
+en_US	#?/#?	2.5	5/2 
+en_US	#?/#?	3.14159	311/99
+en_US	#?/#?	60000.123456	4860010/81
+en_US	#?/#?	text:abc	abc
+en_US	#?/#?	text:	
+en_US	0 0/0	0.5	0 1/2
+en_US	0 0/0	0.3333	0 1/3
+en_US	0 0/0	1.5	1 1/2
+en_US	0 0/0	-1.5	-1 1/2
+en_US	0 0/0	1234.5678	1234 4/7
+en_US	0 0/0	-1234.5678	-1234 4/7
+en_US	0 0/0	45000.75	45000 3/4
+en_US	0 0/0	-0.5	-0 1/2
+en_US	0 0/0	2.5	2 1/2
+en_US	0 0/0	3.14159	3 1/7
+en_US	0 0/0	60000.123456	60000 1/8
+en_US	0 0/0	text:abc	abc
+en_US	0 0/0	text:	
+en_US	h:mm:ss AM/PM	0.0	12:00:00 AM
+en_US	h:mm:ss AM/PM	-0.0001	11:59:51 PM
+en_US	h:mm:ss AM/PM	1.0	12:00:00 AM
+en_US	h:mm:ss AM/PM	-1.0	12:00:00 AM
+en_US	h:mm:ss AM/PM	0.5	12:00:00 PM
+en_US	h:mm:ss AM/PM	0.3333	7:59:57 AM
+en_US	h:mm:ss AM/PM	1.5	12:00:00 PM
+en_US	h:mm:ss AM/PM	-1.5	12:00:00 PM
+en_US	h:mm:ss AM/PM	1234.5678	1:37:38 PM
+en_US	h:mm:ss AM/PM	-1234.5678	10:22:22 AM
+en_US	h:mm:ss AM/PM	1e-7	12:00:00 AM
+en_US	h:mm:ss AM/PM	45000.75	6:00:00 PM
+en_US	h:mm:ss AM/PM	0.999	11:58:34 PM
+en_US	h:mm:ss AM/PM	100.0	12:00:00 AM
+en_US	h:mm:ss AM/PM	-0.5	12:00:00 PM
+en_US	h:mm:ss AM/PM	2.5	12:00:00 PM
+en_US	h:mm:ss AM/PM	3.14159	3:23:53 AM
+en_US	h:mm:ss AM/PM	60000.123456	2:57:47 AM
+en_US	h:mm:ss AM/PM	text:abc	abc
+en_US	h:mm:ss AM/PM	text:	
+en_US	[ss]	0.0	00
+en_US	[ss]	-0.0001	-09
+en_US	[ss]	1.0	86400
+en_US	[ss]	-1.0	-86400
+en_US	[ss]	0.5	43200
+en_US	[ss]	0.3333	28797
+en_US	[ss]	1.5	129600
+en_US	[ss]	-1.5	-129600
+en_US	[ss]	1234.5678	106666658
+en_US	[ss]	-1234.5678	-106666658
+en_US	[ss]	1e-7	00
+en_US	[ss]	45000.75	3888064800
+en_US	[ss]	0.999	86314
+en_US	[ss]	100.0	8640000
+en_US	[ss]	-0.5	-43200
+en_US	[ss]	2.5	216000
+en_US	[ss]	3.14159	271433
+en_US	[ss]	60000.123456	5184010667
+en_US	[ss]	text:abc	abc
+en_US	[ss]	text:	
+en_US	0.00E-00	0.0	0.00E00
+en_US	0.00E-00	-0.0001	-1.00E-04
+en_US	0.00E-00	1.0	1.00E00
+en_US	0.00E-00	-1.0	-1.00E00
+en_US	0.00E-00	0.5	5.00E-01
+en_US	0.00E-00	0.3333	3.33E-01
+en_US	0.00E-00	1.5	1.50E00
+en_US	0.00E-00	-1.5	-1.50E00
+en_US	0.00E-00	1234.5678	1.23E03
+en_US	0.00E-00	-1234.5678	-1.23E03
+en_US	0.00E-00	1000000000.0	1.00E09
+en_US	0.00E-00	1e-7	1.00E-07
+en_US	0.00E-00	45000.75	4.50E04
+en_US	0.00E-00	0.999	9.99E-01
+en_US	0.00E-00	100.0	1.00E02
+en_US	0.00E-00	12345678.0	1.23E07
+en_US	0.00E-00	-0.5	-5.00E-01
+en_US	0.00E-00	2.5	2.50E00
+en_US	0.00E-00	3.14159	3.14E00
+en_US	0.00E-00	60000.123456	6.00E04
+en_US	0.00E-00	text:abc	abc
+en_US	0.00E-00	text:	
+en_US	0E+0	0.0	0E+0
+en_US	0E+0	-0.0001	-1E-4
+en_US	0E+0	1.0	1E+0
+en_US	0E+0	-1.0	-1E+0
+en_US	0E+0	0.5	5E-1
+en_US	0E+0	0.3333	3E-1
+en_US	0E+0	1.5	2E+0
+en_US	0E+0	-1.5	-2E+0
+en_US	0E+0	1234.5678	1E+3
+en_US	0E+0	-1234.5678	-1E+3
+en_US	0E+0	1000000000.0	1E+9
+en_US	0E+0	1e-7	1E-7
+en_US	0E+0	45000.75	5E+4
+en_US	0E+0	0.999	1E+0
+en_US	0E+0	100.0	1E+2
+en_US	0E+0	12345678.0	1E+7
+en_US	0E+0	-0.5	-5E-1
+en_US	0E+0	2.5	3E+0
+en_US	0E+0	3.14159	3E+0
+en_US	0E+0	60000.123456	6E+4
+en_US	0E+0	text:abc	abc
+en_US	0E+0	text:	
+en_US	0.0.0	0.0	0.0.0
+en_US	0.0.0	1.0	1.0.0
+en_US	0.0.0	-1.0	-1.0.0
+en_US	0.0.0	0.5	0.5.0
+en_US	0.0.0	0.3333	0.3.3
+en_US	0.0.0	1.5	1.5.0
+en_US	0.0.0	-1.5	-1.5.0
+en_US	0.0.0	1234.5678	1234.5.7
+en_US	0.0.0	-1234.5678	-1234.5.7
+en_US	0.0.0	1000000000.0	1000000000.0.0
+en_US	0.0.0	1e-7	0.0.0
+en_US	0.0.0	45000.75	45000.7.5
+en_US	0.0.0	0.999	1.0.0
+en_US	0.0.0	100.0	100.0.0
+en_US	0.0.0	12345678.0	12345678.0.0
+en_US	0.0.0	-0.5	-0.5.0
+en_US	0.0.0	2.5	2.5.0
+en_US	0.0.0	3.14159	3.1.4
+en_US	0.0.0	60000.123456	60000.1.2
+en_US	0.0.0	text:abc	abc
+en_US	0.0.0	text:	
+en_US	##%	0.0	%
+en_US	##%	1.0	100%
+en_US	##%	-1.0	-100%
+en_US	##%	0.5	50%
+en_US	##%	0.3333	33%
+en_US	##%	1.5	150%
+en_US	##%	-1.5	-150%
+en_US	##%	1234.5678	123457%
+en_US	##%	-1234.5678	-123457%
+en_US	##%	1000000000.0	100000000000%
+en_US	##%	1e-7	%
+en_US	##%	45000.75	4500075%
+en_US	##%	0.999	100%
+en_US	##%	100.0	10000%
+en_US	##%	12345678.0	1234567800%
+en_US	##%	-0.5	-50%
+en_US	##%	2.5	250%
+en_US	##%	3.14159	314%
+en_US	##%	60000.123456	6000012%
+en_US	##%	text:abc	abc
+en_US	##%	text:	
+en_US	0%%	0.0	0%%
+en_US	0%%	-0.0001	-1%%
+en_US	0%%	1.0	10000%%
+en_US	0%%	-1.0	-10000%%
+en_US	0%%	0.5	5000%%
+en_US	0%%	0.3333	3333%%
+en_US	0%%	1.5	15000%%
+en_US	0%%	-1.5	-15000%%
+en_US	0%%	1234.5678	12345678%%
+en_US	0%%	-1234.5678	-12345678%%
+en_US	0%%	1000000000.0	10000000000000%%
+en_US	0%%	1e-7	0%%
+en_US	0%%	45000.75	450007500%%
+en_US	0%%	0.999	9990%%
+en_US	0%%	100.0	1000000%%
+en_US	0%%	12345678.0	123456780000%%
+en_US	0%%	-0.5	-5000%%
+en_US	0%%	2.5	25000%%
+en_US	0%%	3.14159	31416%%
+en_US	0%%	60000.123456	600001235%%
+en_US	0%%	text:abc	abc
+en_US	0%%	text:	
+en_US	0‰	0.0	0‰
+en_US	0‰	1.0	1000‰
+en_US	0‰	-1.0	-1000‰
+en_US	0‰	0.5	500‰
+en_US	0‰	0.3333	333‰
+en_US	0‰	1.5	1500‰
+en_US	0‰	-1.5	-1500‰
+en_US	0‰	1234.5678	1234568‰
+en_US	0‰	-1234.5678	-1234568‰
+en_US	0‰	1000000000.0	1000000000000‰
+en_US	0‰	1e-7	0‰
+en_US	0‰	45000.75	45000750‰
+en_US	0‰	0.999	999‰
+en_US	0‰	100.0	100000‰
+en_US	0‰	12345678.0	12345678000‰
+en_US	0‰	-0.5	-500‰
+en_US	0‰	2.5	2500‰
+en_US	0‰	3.14159	3142‰
+en_US	0‰	60000.123456	60000123‰
+en_US	0‰	text:abc	abc
+en_US	0‰	text:	
+en_US	#,##0.00;[Red]-#,##0.00	0.0	0.00
+en_US	#,##0.00;[Red]-#,##0.00	-0.0001	-0.00
+en_US	#,##0.00;[Red]-#,##0.00	1.0	1.00
+en_US	#,##0.00;[Red]-#,##0.00	-1.0	-1.00
+en_US	#,##0.00;[Red]-#,##0.00	0.5	0.50
+en_US	#,##0.00;[Red]-#,##0.00	0.3333	0.33
+en_US	#,##0.00;[Red]-#,##0.00	1.5	1.50
+en_US	#,##0.00;[Red]-#,##0.00	-1.5	-1.50
+en_US	#,##0.00;[Red]-#,##0.00	1234.5678	1,234.57
+en_US	#,##0.00;[Red]-#,##0.00	-1234.5678	-1,234.57
+en_US	#,##0.00;[Red]-#,##0.00	1000000000.0	1,000,000,000.00
+en_US	#,##0.00;[Red]-#,##0.00	1e-7	0.00
+en_US	#,##0.00;[Red]-#,##0.00	45000.75	45,000.75
+en_US	#,##0.00;[Red]-#,##0.00	0.999	1.00
+en_US	#,##0.00;[Red]-#,##0.00	100.0	100.00
+en_US	#,##0.00;[Red]-#,##0.00	12345678.0	12,345,678.00
+en_US	#,##0.00;[Red]-#,##0.00	-0.5	-0.50
+en_US	#,##0.00;[Red]-#,##0.00	2.5	2.50
+en_US	#,##0.00;[Red]-#,##0.00	3.14159	3.14
+en_US	#,##0.00;[Red]-#,##0.00	60000.123456	60,000.12
+en_US	#,##0.00;[Red]-#,##0.00	text:abc	abc
+en_US	#,##0.00;[Red]-#,##0.00	text:	
+en_US	0.00;-0.00;0.00;@	0.0	0.00
+en_US	0.00;-0.00;0.00;@	-0.0001	-0.00
+en_US	0.00;-0.00;0.00;@	1.0	1.00
+en_US	0.00;-0.00;0.00;@	-1.0	-1.00
+en_US	0.00;-0.00;0.00;@	0.5	0.50
+en_US	0.00;-0.00;0.00;@	0.3333	0.33
+en_US	0.00;-0.00;0.00;@	1.5	1.50
+en_US	0.00;-0.00;0.00;@	-1.5	-1.50
+en_US	0.00;-0.00;0.00;@	1234.5678	1234.57
+en_US	0.00;-0.00;0.00;@	-1234.5678	-1234.57
+en_US	0.00;-0.00;0.00;@	1000000000.0	1000000000.00
+en_US	0.00;-0.00;0.00;@	1e-7	0.00
+en_US	0.00;-0.00;0.00;@	45000.75	45000.75
+en_US	0.00;-0.00;0.00;@	0.999	1.00
+en_US	0.00;-0.00;0.00;@	100.0	100.00
+en_US	0.00;-0.00;0.00;@	12345678.0	12345678.00
+en_US	0.00;-0.00;0.00;@	-0.5	-0.50
+en_US	0.00;-0.00;0.00;@	2.5	2.50
+en_US	0.00;-0.00;0.00;@	3.14159	3.14
+en_US	0.00;-0.00;0.00;@	60000.123456	60000.12
+en_US	0.00;-0.00;0.00;@	text:abc	abc
+en_US	0.00;-0.00;0.00;@	text:	
+en_US	"Total: "#,##0	0.0	Total: 0
+en_US	"Total: "#,##0	1.0	Total: 1
+en_US	"Total: "#,##0	-1.0	-Total: 1
+en_US	"Total: "#,##0	0.5	Total: 1
+en_US	"Total: "#,##0	0.3333	Total: 0
+en_US	"Total: "#,##0	1.5	Total: 2
+en_US	"Total: "#,##0	-1.5	-Total: 2
+en_US	"Total: "#,##0	1234.5678	Total: 1,235
+en_US	"Total: "#,##0	-1234.5678	-Total: 1,235
+en_US	"Total: "#,##0	1000000000.0	Total: 1,000,000,000
+en_US	"Total: "#,##0	1e-7	Total: 0
+en_US	"Total: "#,##0	45000.75	Total: 45,001
+en_US	"Total: "#,##0	0.999	Total: 1
+en_US	"Total: "#,##0	100.0	Total: 100
+en_US	"Total: "#,##0	12345678.0	Total: 12,345,678
+en_US	"Total: "#,##0	-0.5	-Total: 1
+en_US	"Total: "#,##0	2.5	Total: 3
+en_US	"Total: "#,##0	3.14159	Total: 3
+en_US	"Total: "#,##0	60000.123456	Total: 60,000
+en_US	"Total: "#,##0	text:abc	abc
+en_US	"Total: "#,##0	text:	
+en_US	0 "units"	0.0	0 units
+en_US	0 "units"	1.0	1 units
+en_US	0 "units"	-1.0	-1 units
+en_US	0 "units"	0.5	1 units
+en_US	0 "units"	0.3333	0 units
+en_US	0 "units"	1.5	2 units
+en_US	0 "units"	-1.5	-2 units
+en_US	0 "units"	1234.5678	1235 units
+en_US	0 "units"	-1234.5678	-1235 units
+en_US	0 "units"	1000000000.0	1000000000 units
+en_US	0 "units"	1e-7	0 units
+en_US	0 "units"	45000.75	45001 units
+en_US	0 "units"	0.999	1 units
+en_US	0 "units"	100.0	100 units
+en_US	0 "units"	12345678.0	12345678 units
+en_US	0 "units"	-0.5	-1 units
+en_US	0 "units"	2.5	3 units
+en_US	0 "units"	3.14159	3 units
+en_US	0 "units"	60000.123456	60000 units
+en_US	0 "units"	text:abc	abc
+en_US	0 "units"	text:	
+en_US	# ?/10	1.5	1 5/10
+en_US	# ?/10	-1.5	-1 5/10
+en_US	# ?/10	1234.5678	1234 6/10
+en_US	# ?/10	-1234.5678	-1234 6/10
+en_US	# ?/10	45000.75	45000 8/10
+en_US	# ?/10	2.5	2 5/10
+en_US	# ?/10	3.14159	3 1/10
+en_US	# ?/10	60000.123456	60000 1/10
+en_US	# ?/10	text:abc	abc
+en_US	# ?/10	text:	
+en_US	0.0000000000	0.0	0.0000000000
+en_US	0.0000000000	-0.0001	-0.0001000000
+en_US	0.0000000000	1.0	1.0000000000
+en_US	0.0000000000	-1.0	-1.0000000000
+en_US	0.0000000000	0.5	0.5000000000
+en_US	0.0000000000	0.3333	0.3333000000
+en_US	0.0000000000	1.5	1.5000000000
+en_US	0.0000000000	-1.5	-1.5000000000
+en_US	0.0000000000	1234.5678	1234.5678000000
+en_US	0.0000000000	-1234.5678	-1234.5678000000
+en_US	0.0000000000	1000000000.0	1000000000.0000000000
+en_US	0.0000000000	1e-7	0.0000001000
+en_US	0.0000000000	45000.75	45000.7500000000
+en_US	0.0000000000	0.999	0.9990000000
+en_US	0.0000000000	100.0	100.0000000000
+en_US	0.0000000000	12345678.0	12345678.0000000000
+en_US	0.0000000000	-0.5	-0.5000000000
+en_US	0.0000000000	2.5	2.5000000000
+en_US	0.0000000000	3.14159	3.1415900000
+en_US	0.0000000000	60000.123456	60000.1234560000
+en_US	0.0000000000	text:abc	abc
+en_US	0.0000000000	text:	
+en_US	#,##0.000000	0.0	0.000000
+en_US	#,##0.000000	-0.0001	-0.000100
+en_US	#,##0.000000	1.0	1.000000
+en_US	#,##0.000000	-1.0	-1.000000
+en_US	#,##0.000000	0.5	0.500000
+en_US	#,##0.000000	0.3333	0.333300
+en_US	#,##0.000000	1.5	1.500000
+en_US	#,##0.000000	-1.5	-1.500000
+en_US	#,##0.000000	1234.5678	1,234.567800
+en_US	#,##0.000000	-1234.5678	-1,234.567800
+en_US	#,##0.000000	1000000000.0	1,000,000,000.000000
+en_US	#,##0.000000	1e-7	0.000000
+en_US	#,##0.000000	45000.75	45,000.750000
+en_US	#,##0.000000	0.999	0.999000
+en_US	#,##0.000000	100.0	100.000000
+en_US	#,##0.000000	12345678.0	12,345,678.000000
+en_US	#,##0.000000	-0.5	-0.500000
+en_US	#,##0.000000	2.5	2.500000
+en_US	#,##0.000000	3.14159	3.141590
+en_US	#,##0.000000	60000.123456	60,000.123456
+en_US	#,##0.000000	text:abc	abc
+en_US	#,##0.000000	text:	
+en_US	dd mmm yyyy hh:mm	0.0	30 Dec 1899 00:00
+en_US	dd mmm yyyy hh:mm	-0.0001	29 Dec 1899 23:59
+en_US	dd mmm yyyy hh:mm	1.0	31 Dec 1899 00:00
+en_US	dd mmm yyyy hh:mm	-1.0	29 Dec 1899 00:00
+en_US	dd mmm yyyy hh:mm	0.5	30 Dec 1899 12:00
+en_US	dd mmm yyyy hh:mm	0.3333	30 Dec 1899 07:59
+en_US	dd mmm yyyy hh:mm	1.5	31 Dec 1899 12:00
+en_US	dd mmm yyyy hh:mm	-1.5	28 Dec 1899 12:00
+en_US	dd mmm yyyy hh:mm	1234.5678	18 May 1903 13:37
+en_US	dd mmm yyyy hh:mm	-1234.5678	12 Aug 1896 10:22
+en_US	dd mmm yyyy hh:mm	1000000000.0	1000000000
+en_US	dd mmm yyyy hh:mm	1e-7	30 Dec 1899 00:00
+en_US	dd mmm yyyy hh:mm	45000.75	15 Mar 2023 18:00
+en_US	dd mmm yyyy hh:mm	0.999	30 Dec 1899 23:58
+en_US	dd mmm yyyy hh:mm	100.0	09 Apr 1900 00:00
+en_US	dd mmm yyyy hh:mm	12345678.0	12345678
+en_US	dd mmm yyyy hh:mm	-0.5	29 Dec 1899 12:00
+en_US	dd mmm yyyy hh:mm	2.5	01 Jan 1900 12:00
+en_US	dd mmm yyyy hh:mm	3.14159	02 Jan 1900 03:23
+en_US	dd mmm yyyy hh:mm	60000.123456	08 Apr 2064 02:57
+en_US	dd mmm yyyy hh:mm	text:abc	abc
+en_US	dd mmm yyyy hh:mm	text:	
+en_US	ddd, mmm d	0.0	Sat, Dec 30
+en_US	ddd, mmm d	-0.0001	Fri, Dec 29
+en_US	ddd, mmm d	1.0	Sun, Dec 31
+en_US	ddd, mmm d	-1.0	Fri, Dec 29
+en_US	ddd, mmm d	0.5	Sat, Dec 30
+en_US	ddd, mmm d	0.3333	Sat, Dec 30
+en_US	ddd, mmm d	1.5	Sun, Dec 31
+en_US	ddd, mmm d	-1.5	Thu, Dec 28
+en_US	ddd, mmm d	1234.5678	Mon, May 18
+en_US	ddd, mmm d	-1234.5678	Wed, Aug 12
+en_US	ddd, mmm d	1000000000.0	1000000000
+en_US	ddd, mmm d	1e-7	Sat, Dec 30
+en_US	ddd, mmm d	45000.75	Wed, Mar 15
+en_US	ddd, mmm d	0.999	Sat, Dec 30
+en_US	ddd, mmm d	100.0	Mon, Apr 9
+en_US	ddd, mmm d	12345678.0	12345678
+en_US	ddd, mmm d	-0.5	Fri, Dec 29
+en_US	ddd, mmm d	2.5	Mon, Jan 1
+en_US	ddd, mmm d	3.14159	Tue, Jan 2
+en_US	ddd, mmm d	60000.123456	Tue, Apr 8
+en_US	ddd, mmm d	text:abc	abc
+en_US	ddd, mmm d	text:	
+en_US	[h]:mm:ss	0.0	0:00:00
+en_US	[h]:mm:ss	-0.0001	-0:00:09
+en_US	[h]:mm:ss	1.0	24:00:00
+en_US	[h]:mm:ss	-1.0	-24:00:00
+en_US	[h]:mm:ss	0.5	12:00:00
+en_US	[h]:mm:ss	0.3333	7:59:57
+en_US	[h]:mm:ss	1.5	36:00:00
+en_US	[h]:mm:ss	-1.5	-36:00:00
+en_US	[h]:mm:ss	1234.5678	29629:37:38
+en_US	[h]:mm:ss	-1234.5678	-29629:37:38
+en_US	[h]:mm:ss	1e-7	0:00:00
+en_US	[h]:mm:ss	45000.75	1080018:00:00
+en_US	[h]:mm:ss	0.999	23:58:34
+en_US	[h]:mm:ss	100.0	2400:00:00
+en_US	[h]:mm:ss	-0.5	-12:00:00
+en_US	[h]:mm:ss	2.5	60:00:00
+en_US	[h]:mm:ss	3.14159	75:23:53
+en_US	[h]:mm:ss	60000.123456	1440002:57:47
+en_US	[h]:mm:ss	text:abc	abc
+en_US	[h]:mm:ss	text:	
+en_US	mm/dd/yy	0.0	12/30/99
+en_US	mm/dd/yy	-0.0001	12/29/99
+en_US	mm/dd/yy	1.0	12/31/99
+en_US	mm/dd/yy	-1.0	12/29/99
+en_US	mm/dd/yy	0.5	12/30/99
+en_US	mm/dd/yy	0.3333	12/30/99
+en_US	mm/dd/yy	1.5	12/31/99
+en_US	mm/dd/yy	-1.5	12/28/99
+en_US	mm/dd/yy	1234.5678	05/18/03
+en_US	mm/dd/yy	-1234.5678	08/12/96
+en_US	mm/dd/yy	1000000000.0	1000000000
+en_US	mm/dd/yy	1e-7	12/30/99
+en_US	mm/dd/yy	45000.75	03/15/23
+en_US	mm/dd/yy	0.999	12/30/99
+en_US	mm/dd/yy	100.0	04/09/00
+en_US	mm/dd/yy	12345678.0	12345678
+en_US	mm/dd/yy	-0.5	12/29/99
+en_US	mm/dd/yy	2.5	01/01/00
+en_US	mm/dd/yy	3.14159	01/02/00
+en_US	mm/dd/yy	60000.123456	04/08/64
+en_US	mm/dd/yy	text:abc	abc
+en_US	mm/dd/yy	text:	
+en_US	yyyy	0.0	1899
+en_US	yyyy	-0.0001	1899
+en_US	yyyy	1.0	1899
+en_US	yyyy	-1.0	1899
+en_US	yyyy	0.5	1899
+en_US	yyyy	0.3333	1899
+en_US	yyyy	1.5	1899
+en_US	yyyy	-1.5	1899
+en_US	yyyy	1234.5678	1903
+en_US	yyyy	-1234.5678	1896
+en_US	yyyy	1000000000.0	1000000000
+en_US	yyyy	1e-7	1899
+en_US	yyyy	45000.75	2023
+en_US	yyyy	0.999	1899
+en_US	yyyy	100.0	1900
+en_US	yyyy	12345678.0	12345678
+en_US	yyyy	-0.5	1899
+en_US	yyyy	2.5	1900
+en_US	yyyy	3.14159	1900
+en_US	yyyy	60000.123456	2064
+en_US	yyyy	text:abc	abc
+en_US	yyyy	text:	
+en_US	d	0.0	30
+en_US	d	-0.0001	29
+en_US	d	1.0	31
+en_US	d	-1.0	29
+en_US	d	0.5	30
+en_US	d	0.3333	30
+en_US	d	1.5	31
+en_US	d	-1.5	28
+en_US	d	1234.5678	18
+en_US	d	-1234.5678	12
+en_US	d	1000000000.0	1000000000
+en_US	d	1e-7	30
+en_US	d	45000.75	15
+en_US	d	0.999	30
+en_US	d	100.0	9
+en_US	d	12345678.0	12345678
+en_US	d	-0.5	29
+en_US	d	2.5	1
+en_US	d	3.14159	2
+en_US	d	60000.123456	8
+en_US	d	text:abc	abc
+en_US	d	text:	
+en_US	hh	0.0	00
+en_US	hh	-0.0001	23
+en_US	hh	1.0	00
+en_US	hh	-1.0	00
+en_US	hh	0.5	12
+en_US	hh	0.3333	07
+en_US	hh	1.5	12
+en_US	hh	-1.5	12
+en_US	hh	1234.5678	13
+en_US	hh	-1234.5678	10
+en_US	hh	1e-7	00
+en_US	hh	45000.75	18
+en_US	hh	0.999	23
+en_US	hh	100.0	00
+en_US	hh	-0.5	12
+en_US	hh	2.5	12
+en_US	hh	3.14159	03
+en_US	hh	60000.123456	02
+en_US	hh	text:abc	abc
+en_US	hh	text:	
+en_US	m	0.0	12
+en_US	m	-0.0001	12
+en_US	m	1.0	12
+en_US	m	-1.0	12
+en_US	m	0.5	12
+en_US	m	0.3333	12
+en_US	m	1.5	12
+en_US	m	-1.5	12
+en_US	m	1234.5678	5
+en_US	m	-1234.5678	8
+en_US	m	1000000000.0	1000000000
+en_US	m	1e-7	12
+en_US	m	45000.75	3
+en_US	m	0.999	12
+en_US	m	100.0	4
+en_US	m	12345678.0	12345678
+en_US	m	-0.5	12
+en_US	m	2.5	1
+en_US	m	3.14159	1
+en_US	m	60000.123456	4
+en_US	m	text:abc	abc
+en_US	m	text:	
+en_US	mm	0.0	12
+en_US	mm	-0.0001	12
+en_US	mm	1.0	12
+en_US	mm	-1.0	12
+en_US	mm	0.5	12
+en_US	mm	0.3333	12
+en_US	mm	1.5	12
+en_US	mm	-1.5	12
+en_US	mm	1234.5678	05
+en_US	mm	-1234.5678	08
+en_US	mm	1000000000.0	1000000000
+en_US	mm	1e-7	12
+en_US	mm	45000.75	03
+en_US	mm	0.999	12
+en_US	mm	100.0	04
+en_US	mm	12345678.0	12345678
+en_US	mm	-0.5	12
+en_US	mm	2.5	01
+en_US	mm	3.14159	01
+en_US	mm	60000.123456	04
+en_US	mm	text:abc	abc
+en_US	mm	text:	
+de_DE	0	0.0	0
+de_DE	0	1.0	1
+de_DE	0	-1.0	-1
+de_DE	0	0.5	1
+de_DE	0	0.3333	0
+de_DE	0	1.5	2
+de_DE	0	-1.5	-2
+de_DE	0	1234.5678	1235
+de_DE	0	-1234.5678	-1235
+de_DE	0	1000000000.0	1000000000
+de_DE	0	1e-7	0
+de_DE	0	45000.75	45001
+de_DE	0	0.999	1
+de_DE	0	100.0	100
+de_DE	0	12345678.0	12345678
+de_DE	0	-0.5	-1
+de_DE	0	2.5	3
+de_DE	0	3.14159	3
+de_DE	0	60000.123456	60000
+de_DE	0	text:abc	abc
+de_DE	0	text:	
+de_DE	0.00	0.0	0,00
+de_DE	0.00	1.0	1,00
+de_DE	0.00	-1.0	-1,00
+de_DE	0.00	0.5	0,50
+de_DE	0.00	0.3333	0,33
+de_DE	0.00	1.5	1,50
+de_DE	0.00	-1.5	-1,50
+de_DE	0.00	1234.5678	1234,57
+de_DE	0.00	-1234.5678	-1234,57
+de_DE	0.00	1000000000.0	1000000000,00
+de_DE	0.00	1e-7	0,00
+de_DE	0.00	45000.75	45000,75
+de_DE	0.00	0.999	1,00
+de_DE	0.00	100.0	100,00
+de_DE	0.00	12345678.0	12345678,00
+de_DE	0.00	-0.5	-0,50
+de_DE	0.00	2.5	2,50
+de_DE	0.00	3.14159	3,14
+de_DE	0.00	60000.123456	60000,12
+de_DE	0.00	text:abc	abc
+de_DE	0.00	text:	
+de_DE	#,##0	0.0	0
+de_DE	#,##0	1.0	1
+de_DE	#,##0	-1.0	-1
+de_DE	#,##0	0.5	1
+de_DE	#,##0	0.3333	0
+de_DE	#,##0	1.5	2
+de_DE	#,##0	-1.5	-2
+de_DE	#,##0	1234.5678	1.235
+de_DE	#,##0	-1234.5678	-1.235
+de_DE	#,##0	1000000000.0	1.000.000.000
+de_DE	#,##0	1e-7	0
+de_DE	#,##0	45000.75	45.001
+de_DE	#,##0	0.999	1
+de_DE	#,##0	100.0	100
+de_DE	#,##0	12345678.0	12.345.678
+de_DE	#,##0	-0.5	-1
+de_DE	#,##0	2.5	3
+de_DE	#,##0	3.14159	3
+de_DE	#,##0	60000.123456	60.000
+de_DE	#,##0	text:abc	abc
+de_DE	#,##0	text:	
+de_DE	#,##0.00	0.0	0,00
+de_DE	#,##0.00	1.0	1,00
+de_DE	#,##0.00	-1.0	-1,00
+de_DE	#,##0.00	0.5	0,50
+de_DE	#,##0.00	0.3333	0,33
+de_DE	#,##0.00	1.5	1,50
+de_DE	#,##0.00	-1.5	-1,50
+de_DE	#,##0.00	1234.5678	1.234,57
+de_DE	#,##0.00	-1234.5678	-1.234,57
+de_DE	#,##0.00	1000000000.0	1.000.000.000,00
+de_DE	#,##0.00	1e-7	0,00
+de_DE	#,##0.00	45000.75	45.000,75
+de_DE	#,##0.00	0.999	1,00
+de_DE	#,##0.00	100.0	100,00
+de_DE	#,##0.00	12345678.0	12.345.678,00
+de_DE	#,##0.00	-0.5	-0,50
+de_DE	#,##0.00	2.5	2,50
+de_DE	#,##0.00	3.14159	3,14
+de_DE	#,##0.00	60000.123456	60.000,12
+de_DE	#,##0.00	text:abc	abc
+de_DE	#,##0.00	text:	
+de_DE	0%	0.0	0%
+de_DE	0%	1.0	100%
+de_DE	0%	-1.0	-100%
+de_DE	0%	0.5	50%
+de_DE	0%	0.3333	33%
+de_DE	0%	1.5	150%
+de_DE	0%	-1.5	-150%
+de_DE	0%	1234.5678	123457%
+de_DE	0%	-1234.5678	-123457%
+de_DE	0%	1000000000.0	100000000000%
+de_DE	0%	1e-7	0%
+de_DE	0%	45000.75	4500075%
+de_DE	0%	0.999	100%
+de_DE	0%	100.0	10000%
+de_DE	0%	12345678.0	1234567800%
+de_DE	0%	-0.5	-50%
+de_DE	0%	2.5	250%
+de_DE	0%	3.14159	314%
+de_DE	0%	60000.123456	6000012%
+de_DE	0%	text:abc	abc
+de_DE	0%	text:	
+de_DE	0.0%	0.0	0,0%
+de_DE	0.0%	1.0	100,0%
+de_DE	0.0%	-1.0	-100,0%
+de_DE	0.0%	0.5	50,0%
+de_DE	0.0%	0.3333	33,3%
+de_DE	0.0%	1.5	150,0%
+de_DE	0.0%	-1.5	-150,0%
+de_DE	0.0%	1234.5678	123456,8%
+de_DE	0.0%	-1234.5678	-123456,8%
+de_DE	0.0%	1000000000.0	100000000000,0%
+de_DE	0.0%	1e-7	0,0%
+de_DE	0.0%	45000.75	4500075,0%
+de_DE	0.0%	0.999	99,9%
+de_DE	0.0%	100.0	10000,0%
+de_DE	0.0%	12345678.0	1234567800,0%
+de_DE	0.0%	-0.5	-50,0%
+de_DE	0.0%	2.5	250,0%
+de_DE	0.0%	3.14159	314,2%
+de_DE	0.0%	60000.123456	6000012,3%
+de_DE	0.0%	text:abc	abc
+de_DE	0.0%	text:	
+de_DE	0.00E+00	0.0	0,00E+00
+de_DE	0.00E+00	-0.0001	-1,00E-04
+de_DE	0.00E+00	1.0	1,00E+00
+de_DE	0.00E+00	-1.0	-1,00E+00
+de_DE	0.00E+00	0.5	5,00E-01
+de_DE	0.00E+00	0.3333	3,33E-01
+de_DE	0.00E+00	1.5	1,50E+00
+de_DE	0.00E+00	-1.5	-1,50E+00
+de_DE	0.00E+00	1234.5678	1,23E+03
+de_DE	0.00E+00	-1234.5678	-1,23E+03
+de_DE	0.00E+00	1000000000.0	1,00E+09
+de_DE	0.00E+00	1e-7	1,00E-07
+de_DE	0.00E+00	45000.75	4,50E+04
+de_DE	0.00E+00	0.999	9,99E-01
+de_DE	0.00E+00	100.0	1,00E+02
+de_DE	0.00E+00	12345678.0	1,23E+07
+de_DE	0.00E+00	-0.5	-5,00E-01
+de_DE	0.00E+00	2.5	2,50E+00
+de_DE	0.00E+00	3.14159	3,14E+00
+de_DE	0.00E+00	60000.123456	6,00E+04
+de_DE	0.00E+00	text:abc	abc
+de_DE	0.00E+00	text:	
+de_DE	##0.0E+0	0.0	0,0E+0
+de_DE	##0.0E+0	-0.0001	-100,0E-6
+de_DE	##0.0E+0	1.0	1,0E+0
+de_DE	##0.0E+0	-1.0	-1,0E+0
+de_DE	##0.0E+0	0.5	500,0E-3
+de_DE	##0.0E+0	0.3333	333,3E-3
+de_DE	##0.0E+0	1.5	1,5E+0
+de_DE	##0.0E+0	-1.5	-1,5E+0
+de_DE	##0.0E+0	1234.5678	1,2E+3
+de_DE	##0.0E+0	-1234.5678	-1,2E+3
+de_DE	##0.0E+0	1000000000.0	1,0E+9
+de_DE	##0.0E+0	1e-7	100,0E-9
+de_DE	##0.0E+0	45000.75	45,0E+3
+de_DE	##0.0E+0	0.999	999,0E-3
+de_DE	##0.0E+0	100.0	100,0E+0
+de_DE	##0.0E+0	12345678.0	12,3E+6
+de_DE	##0.0E+0	-0.5	-500,0E-3
+de_DE	##0.0E+0	2.5	2,5E+0
+de_DE	##0.0E+0	3.14159	3,1E+0
+de_DE	##0.0E+0	60000.123456	60,0E+3
+de_DE	##0.0E+0	text:abc	abc
+de_DE	##0.0E+0	text:	
+de_DE	# ?/?	1.5	1 1/2
+de_DE	# ?/?	-1.5	-1 1/2
+de_DE	# ?/?	1234.5678	1234 4/7
+de_DE	# ?/?	-1234.5678	-1234 4/7
+de_DE	# ?/?	45000.75	45000 3/4
+de_DE	# ?/?	2.5	2 1/2
+de_DE	# ?/?	3.14159	3 1/7
+de_DE	# ?/?	60000.123456	60000 1/8
+de_DE	# ?/?	text:abc	abc
+de_DE	# ?/?	text:	
+de_DE	# ??/??	1.5	1  1/2 
+de_DE	# ??/??	-1.5	-1  1/2 
+de_DE	# ??/??	1234.5678	1234 46/81
+de_DE	# ??/??	-1234.5678	-1234 46/81
+de_DE	# ??/??	45000.75	45000  3/4 
+de_DE	# ??/??	2.5	2  1/2 
+de_DE	# ??/??	3.14159	3 14/99
+de_DE	# ??/??	60000.123456	60000 10/81
+de_DE	# ??/??	text:abc	abc
+de_DE	# ??/??	text:	
+de_DE	?/8	0.0	0/8
+de_DE	?/8	1.0	8/8
+de_DE	?/8	-1.0	-8/8
+de_DE	?/8	0.5	4/8
+de_DE	?/8	0.3333	3/8
+de_DE	?/8	1.5	12/8
+de_DE	?/8	-1.5	-12/8
+de_DE	?/8	1234.5678	9877/8
+de_DE	?/8	-1234.5678	-9877/8
+de_DE	?/8	1000000000.0	8000000000/8
+de_DE	?/8	1e-7	0/8
+de_DE	?/8	45000.75	360006/8
+de_DE	?/8	0.999	8/8
+de_DE	?/8	100.0	800/8
+de_DE	?/8	12345678.0	98765424/8
+de_DE	?/8	-0.5	-4/8
+de_DE	?/8	2.5	20/8
+de_DE	?/8	3.14159	25/8
+de_DE	?/8	60000.123456	480001/8
+de_DE	?/8	text:abc	abc
+de_DE	?/8	text:	
+de_DE	0.00,,"M"	0.0	0,00M
+de_DE	0.00,,"M"	1.0	0,00M
+de_DE	0.00,,"M"	0.5	0,00M
+de_DE	0.00,,"M"	0.3333	0,00M
+de_DE	0.00,,"M"	1.5	0,00M
+de_DE	0.00,,"M"	1234.5678	0,00M
+de_DE	0.00,,"M"	1000000000.0	1000,00M
+de_DE	0.00,,"M"	1e-7	0,00M
+de_DE	0.00,,"M"	45000.75	0,05M
+de_DE	0.00,,"M"	0.999	0,00M
+de_DE	0.00,,"M"	100.0	0,00M
+de_DE	0.00,,"M"	12345678.0	12,35M
+de_DE	0.00,,"M"	2.5	0,00M
+de_DE	0.00,,"M"	3.14159	0,00M
+de_DE	0.00,,"M"	60000.123456	0,06M
+de_DE	0.00,,"M"	text:abc	abc
+de_DE	0.00,,"M"	text:	
+de_DE	#,##0,"K"	0.0	0K
+de_DE	#,##0,"K"	1.0	0K
+de_DE	#,##0,"K"	0.5	0K
+de_DE	#,##0,"K"	0.3333	0K
+de_DE	#,##0,"K"	1.5	0K
+de_DE	#,##0,"K"	1234.5678	1K
+de_DE	#,##0,"K"	-1234.5678	-1K
+de_DE	#,##0,"K"	1000000000.0	1.000.000K
+de_DE	#,##0,"K"	1e-7	0K
+de_DE	#,##0,"K"	45000.75	45K
+de_DE	#,##0,"K"	0.999	0K
+de_DE	#,##0,"K"	100.0	0K
+de_DE	#,##0,"K"	12345678.0	12.346K
+de_DE	#,##0,"K"	2.5	0K
+de_DE	#,##0,"K"	3.14159	0K
+de_DE	#,##0,"K"	60000.123456	60K
+de_DE	#,##0,"K"	text:abc	abc
+de_DE	#,##0,"K"	text:	
+de_DE	$#,##0.00	0.0	$0,00
+de_DE	$#,##0.00	1.0	$1,00
+de_DE	$#,##0.00	-1.0	-$1,00
+de_DE	$#,##0.00	0.5	$0,50
+de_DE	$#,##0.00	0.3333	$0,33
+de_DE	$#,##0.00	1.5	$1,50
+de_DE	$#,##0.00	-1.5	-$1,50
+de_DE	$#,##0.00	1234.5678	$1.234,57
+de_DE	$#,##0.00	-1234.5678	-$1.234,57
+de_DE	$#,##0.00	1000000000.0	$1.000.000.000,00
+de_DE	$#,##0.00	1e-7	$0,00
+de_DE	$#,##0.00	45000.75	$45.000,75
+de_DE	$#,##0.00	0.999	$1,00
+de_DE	$#,##0.00	100.0	$100,00
+de_DE	$#,##0.00	12345678.0	$12.345.678,00
+de_DE	$#,##0.00	-0.5	-$0,50
+de_DE	$#,##0.00	2.5	$2,50
+de_DE	$#,##0.00	3.14159	$3,14
+de_DE	$#,##0.00	60000.123456	$60.000,12
+de_DE	$#,##0.00	text:abc	abc
+de_DE	$#,##0.00	text:	
+de_DE	[$€-407]#,##0.00	0.0	€0,00
+de_DE	[$€-407]#,##0.00	1.0	€1,00
+de_DE	[$€-407]#,##0.00	-1.0	-€1,00
+de_DE	[$€-407]#,##0.00	0.5	€0,50
+de_DE	[$€-407]#,##0.00	0.3333	€0,33
+de_DE	[$€-407]#,##0.00	1.5	€1,50
+de_DE	[$€-407]#,##0.00	-1.5	-€1,50
+de_DE	[$€-407]#,##0.00	1234.5678	€1.234,57
+de_DE	[$€-407]#,##0.00	-1234.5678	-€1.234,57
+de_DE	[$€-407]#,##0.00	1000000000.0	€1.000.000.000,00
+de_DE	[$€-407]#,##0.00	1e-7	€0,00
+de_DE	[$€-407]#,##0.00	45000.75	€45.000,75
+de_DE	[$€-407]#,##0.00	0.999	€1,00
+de_DE	[$€-407]#,##0.00	100.0	€100,00
+de_DE	[$€-407]#,##0.00	12345678.0	€12.345.678,00
+de_DE	[$€-407]#,##0.00	-0.5	-€0,50
+de_DE	[$€-407]#,##0.00	2.5	€2,50
+de_DE	[$€-407]#,##0.00	3.14159	€3,14
+de_DE	[$€-407]#,##0.00	60000.123456	€60.000,12
+de_DE	[$€-407]#,##0.00	text:abc	abc
+de_DE	[$€-407]#,##0.00	text:	
+de_DE	\-0	0.0	-0
+de_DE	\-0	1.0	-1
+de_DE	\-0	-1.0	--1
+de_DE	\-0	0.5	-1
+de_DE	\-0	0.3333	-0
+de_DE	\-0	1.5	-2
+de_DE	\-0	-1.5	--2
+de_DE	\-0	1234.5678	-1235
+de_DE	\-0	-1234.5678	--1235
+de_DE	\-0	1000000000.0	-1000000000
+de_DE	\-0	1e-7	-0
+de_DE	\-0	45000.75	-45001
+de_DE	\-0	0.999	-1
+de_DE	\-0	100.0	-100
+de_DE	\-0	12345678.0	-12345678
+de_DE	\-0	-0.5	--1
+de_DE	\-0	2.5	-3
+de_DE	\-0	3.14159	-3
+de_DE	\-0	60000.123456	-60000
+de_DE	\-0	text:abc	abc
+de_DE	\-0	text:	
+de_DE	"pre"0"post"	0.0	pre0post
+de_DE	"pre"0"post"	1.0	pre1post
+de_DE	"pre"0"post"	-1.0	-pre1post
+de_DE	"pre"0"post"	0.5	pre1post
+de_DE	"pre"0"post"	0.3333	pre0post
+de_DE	"pre"0"post"	1.5	pre2post
+de_DE	"pre"0"post"	-1.5	-pre2post
+de_DE	"pre"0"post"	1234.5678	pre1235post
+de_DE	"pre"0"post"	-1234.5678	-pre1235post
+de_DE	"pre"0"post"	1000000000.0	pre1000000000post
+de_DE	"pre"0"post"	1e-7	pre0post
+de_DE	"pre"0"post"	45000.75	pre45001post
+de_DE	"pre"0"post"	0.999	pre1post
+de_DE	"pre"0"post"	100.0	pre100post
+de_DE	"pre"0"post"	12345678.0	pre12345678post
+de_DE	"pre"0"post"	-0.5	-pre1post
+de_DE	"pre"0"post"	2.5	pre3post
+de_DE	"pre"0"post"	3.14159	pre3post
+de_DE	"pre"0"post"	60000.123456	pre60000post
+de_DE	"pre"0"post"	text:abc	abc
+de_DE	"pre"0"post"	text:	
+de_DE	0;(0)	0.0	0
+de_DE	0;(0)	-0.0001	(0)
+de_DE	0;(0)	1.0	1
+de_DE	0;(0)	-1.0	(1)
+de_DE	0;(0)	0.5	1
+de_DE	0;(0)	0.3333	0
+de_DE	0;(0)	1.5	2
+de_DE	0;(0)	-1.5	(2)
+de_DE	0;(0)	1234.5678	1235
+de_DE	0;(0)	-1234.5678	(1235)
+de_DE	0;(0)	1000000000.0	1000000000
+de_DE	0;(0)	1e-7	0
+de_DE	0;(0)	45000.75	45001
+de_DE	0;(0)	0.999	1
+de_DE	0;(0)	100.0	100
+de_DE	0;(0)	12345678.0	12345678
+de_DE	0;(0)	-0.5	(1)
+de_DE	0;(0)	2.5	3
+de_DE	0;(0)	3.14159	3
+de_DE	0;(0)	60000.123456	60000
+de_DE	0;(0)	text:abc	abc
+de_DE	0;(0)	text:	
+de_DE	0;-0;"zero"	0.0	zero
+de_DE	0;-0;"zero"	-0.0001	-0
+de_DE	0;-0;"zero"	1.0	1
+de_DE	0;-0;"zero"	-1.0	-1
+de_DE	0;-0;"zero"	0.5	1
+de_DE	0;-0;"zero"	0.3333	0
+de_DE	0;-0;"zero"	1.5	2
+de_DE	0;-0;"zero"	-1.5	-2
+de_DE	0;-0;"zero"	1234.5678	1235
+de_DE	0;-0;"zero"	-1234.5678	-1235
+de_DE	0;-0;"zero"	1000000000.0	1000000000
+de_DE	0;-0;"zero"	1e-7	0
+de_DE	0;-0;"zero"	45000.75	45001
+de_DE	0;-0;"zero"	0.999	1
+de_DE	0;-0;"zero"	100.0	100
+de_DE	0;-0;"zero"	12345678.0	12345678
+de_DE	0;-0;"zero"	-0.5	-1
+de_DE	0;-0;"zero"	2.5	3
+de_DE	0;-0;"zero"	3.14159	3
+de_DE	0;-0;"zero"	60000.123456	60000
+de_DE	0;-0;"zero"	text:abc	abc
+de_DE	0;-0;"zero"	text:	
+de_DE	[Red]0;[Blue]-0	0.0	0
+de_DE	[Red]0;[Blue]-0	-0.0001	-0
+de_DE	[Red]0;[Blue]-0	1.0	1
+de_DE	[Red]0;[Blue]-0	-1.0	-1
+de_DE	[Red]0;[Blue]-0	0.5	1
+de_DE	[Red]0;[Blue]-0	0.3333	0
+de_DE	[Red]0;[Blue]-0	1.5	2
+de_DE	[Red]0;[Blue]-0	-1.5	-2
+de_DE	[Red]0;[Blue]-0	1234.5678	1235
+de_DE	[Red]0;[Blue]-0	-1234.5678	-1235
+de_DE	[Red]0;[Blue]-0	1000000000.0	1000000000
+de_DE	[Red]0;[Blue]-0	1e-7	0
+de_DE	[Red]0;[Blue]-0	45000.75	45001
+de_DE	[Red]0;[Blue]-0	0.999	1
+de_DE	[Red]0;[Blue]-0	100.0	100
+de_DE	[Red]0;[Blue]-0	12345678.0	12345678
+de_DE	[Red]0;[Blue]-0	-0.5	-1
+de_DE	[Red]0;[Blue]-0	2.5	3
+de_DE	[Red]0;[Blue]-0	3.14159	3
+de_DE	[Red]0;[Blue]-0	60000.123456	60000
+de_DE	[Red]0;[Blue]-0	text:abc	abc
+de_DE	[Red]0;[Blue]-0	text:	
+de_DE	[>100]"big";"small"	0.0	small
+de_DE	[>100]"big";"small"	1.0	small
+de_DE	[>100]"big";"small"	0.5	small
+de_DE	[>100]"big";"small"	0.3333	small
+de_DE	[>100]"big";"small"	1.5	small
+de_DE	[>100]"big";"small"	1234.5678	big
+de_DE	[>100]"big";"small"	1000000000.0	big
+de_DE	[>100]"big";"small"	1e-7	small
+de_DE	[>100]"big";"small"	45000.75	big
+de_DE	[>100]"big";"small"	0.999	small
+de_DE	[>100]"big";"small"	100.0	small
+de_DE	[>100]"big";"small"	12345678.0	big
+de_DE	[>100]"big";"small"	2.5	small
+de_DE	[>100]"big";"small"	3.14159	small
+de_DE	[>100]"big";"small"	60000.123456	big
+de_DE	[>100]"big";"small"	text:abc	abc
+de_DE	[>100]"big";"small"	text:	
+de_DE	@	0.0	0
+de_DE	@	-0.0001	-0,0001
+de_DE	@	1.0	1
+de_DE	@	-1.0	-1
+de_DE	@	0.5	0,5
+de_DE	@	0.3333	0,3333
+de_DE	@	1.5	1,5
+de_DE	@	-1.5	-1,5
+de_DE	@	1234.5678	1234,5678
+de_DE	@	-1234.5678	-1234,5678
+de_DE	@	1000000000.0	1000000000
+de_DE	@	1e-7	0,0000001
+de_DE	@	45000.75	45000,75
+de_DE	@	0.999	0,999
+de_DE	@	100.0	100
+de_DE	@	12345678.0	12345678
+de_DE	@	-0.5	-0,5
+de_DE	@	2.5	2,5
+de_DE	@	3.14159	3,14159
+de_DE	@	60000.123456	60000,12346
+de_DE	@	text:abc	abc
+de_DE	@	text:	
+de_DE	"x"@	0.0	0
+de_DE	"x"@	-0.0001	-0,0001
+de_DE	"x"@	1.0	1
+de_DE	"x"@	-1.0	-1
+de_DE	"x"@	0.5	0,5
+de_DE	"x"@	0.3333	0,3333
+de_DE	"x"@	1.5	1,5
+de_DE	"x"@	-1.5	-1,5
+de_DE	"x"@	1234.5678	1234,5678
+de_DE	"x"@	-1234.5678	-1234,5678
+de_DE	"x"@	1000000000.0	1000000000
+de_DE	"x"@	1e-7	0,0000001
+de_DE	"x"@	45000.75	45000,75
+de_DE	"x"@	0.999	0,999
+de_DE	"x"@	100.0	100
+de_DE	"x"@	12345678.0	12345678
+de_DE	"x"@	-0.5	-0,5
+de_DE	"x"@	2.5	2,5
+de_DE	"x"@	3.14159	3,14159
+de_DE	"x"@	60000.123456	60000,12346
+de_DE	"x"@	text:abc	xabc
+de_DE	"x"@	text:	x
+de_DE	yyyy-mm-dd	0.0	1899-12-30
+de_DE	yyyy-mm-dd	-0.0001	1899-12-29
+de_DE	yyyy-mm-dd	1.0	1899-12-31
+de_DE	yyyy-mm-dd	-1.0	1899-12-29
+de_DE	yyyy-mm-dd	0.5	1899-12-30
+de_DE	yyyy-mm-dd	0.3333	1899-12-30
+de_DE	yyyy-mm-dd	1.5	1899-12-31
+de_DE	yyyy-mm-dd	-1.5	1899-12-28
+de_DE	yyyy-mm-dd	1234.5678	1903-05-18
+de_DE	yyyy-mm-dd	-1234.5678	1896-08-12
+de_DE	yyyy-mm-dd	1000000000.0	1000000000
+de_DE	yyyy-mm-dd	1e-7	1899-12-30
+de_DE	yyyy-mm-dd	45000.75	2023-03-15
+de_DE	yyyy-mm-dd	0.999	1899-12-30
+de_DE	yyyy-mm-dd	100.0	1900-04-09
+de_DE	yyyy-mm-dd	12345678.0	12345678
+de_DE	yyyy-mm-dd	-0.5	1899-12-29
+de_DE	yyyy-mm-dd	2.5	1900-01-01
+de_DE	yyyy-mm-dd	3.14159	1900-01-02
+de_DE	yyyy-mm-dd	60000.123456	2064-04-08
+de_DE	yyyy-mm-dd	text:abc	abc
+de_DE	yyyy-mm-dd	text:	
+de_DE	dd/mm/yyyy	0.0	30/12/1899
+de_DE	dd/mm/yyyy	-0.0001	29/12/1899
+de_DE	dd/mm/yyyy	1.0	31/12/1899
+de_DE	dd/mm/yyyy	-1.0	29/12/1899
+de_DE	dd/mm/yyyy	0.5	30/12/1899
+de_DE	dd/mm/yyyy	0.3333	30/12/1899
+de_DE	dd/mm/yyyy	1.5	31/12/1899
+de_DE	dd/mm/yyyy	-1.5	28/12/1899
+de_DE	dd/mm/yyyy	1234.5678	18/05/1903
+de_DE	dd/mm/yyyy	-1234.5678	12/08/1896
+de_DE	dd/mm/yyyy	1000000000.0	1000000000
+de_DE	dd/mm/yyyy	1e-7	30/12/1899
+de_DE	dd/mm/yyyy	45000.75	15/03/2023
+de_DE	dd/mm/yyyy	0.999	30/12/1899
+de_DE	dd/mm/yyyy	100.0	09/04/1900
+de_DE	dd/mm/yyyy	12345678.0	12345678
+de_DE	dd/mm/yyyy	-0.5	29/12/1899
+de_DE	dd/mm/yyyy	2.5	01/01/1900
+de_DE	dd/mm/yyyy	3.14159	02/01/1900
+de_DE	dd/mm/yyyy	60000.123456	08/04/2064
+de_DE	dd/mm/yyyy	text:abc	abc
+de_DE	dd/mm/yyyy	text:	
+de_DE	mmm d, yyyy	1234.5678	Mai 18, 1903
+de_DE	mmm d, yyyy	1000000000.0	1000000000
+de_DE	mmm d, yyyy	12345678.0	12345678
+de_DE	mmm d, yyyy	text:abc	abc
+de_DE	mmm d, yyyy	text:	
+de_DE	mmmm	0.0	Dezember
+de_DE	mmmm	-0.0001	Dezember
+de_DE	mmmm	1.0	Dezember
+de_DE	mmmm	-1.0	Dezember
+de_DE	mmmm	0.5	Dezember
+de_DE	mmmm	0.3333	Dezember
+de_DE	mmmm	1.5	Dezember
+de_DE	mmmm	-1.5	Dezember
+de_DE	mmmm	1234.5678	Mai
+de_DE	mmmm	-1234.5678	August
+de_DE	mmmm	1000000000.0	1000000000
+de_DE	mmmm	1e-7	Dezember
+de_DE	mmmm	45000.75	März
+de_DE	mmmm	0.999	Dezember
+de_DE	mmmm	100.0	April
+de_DE	mmmm	12345678.0	12345678
+de_DE	mmmm	-0.5	Dezember
+de_DE	mmmm	2.5	Januar
+de_DE	mmmm	3.14159	Januar
+de_DE	mmmm	60000.123456	April
+de_DE	mmmm	text:abc	abc
+de_DE	mmmm	text:	
+de_DE	dddd	0.0	Samstag
+de_DE	dddd	-0.0001	Freitag
+de_DE	dddd	1.0	Sonntag
+de_DE	dddd	-1.0	Freitag
+de_DE	dddd	0.5	Samstag
+de_DE	dddd	0.3333	Samstag
+de_DE	dddd	1.5	Sonntag
+de_DE	dddd	-1.5	Donnerstag
+de_DE	dddd	1234.5678	Montag
+de_DE	dddd	-1234.5678	Mittwoch
+de_DE	dddd	1000000000.0	1000000000
+de_DE	dddd	1e-7	Samstag
+de_DE	dddd	45000.75	Mittwoch
+de_DE	dddd	0.999	Samstag
+de_DE	dddd	100.0	Montag
+de_DE	dddd	12345678.0	12345678
+de_DE	dddd	-0.5	Freitag
+de_DE	dddd	2.5	Montag
+de_DE	dddd	3.14159	Dienstag
+de_DE	dddd	60000.123456	Dienstag
+de_DE	dddd	text:abc	abc
+de_DE	dddd	text:	
+de_DE	ddd	1000000000.0	1000000000
+de_DE	ddd	12345678.0	12345678
+de_DE	ddd	text:abc	abc
+de_DE	ddd	text:	
+de_DE	h:mm	0.0	0:00
+de_DE	h:mm	-0.0001	23:59
+de_DE	h:mm	1.0	0:00
+de_DE	h:mm	-1.0	0:00
+de_DE	h:mm	0.5	12:00
+de_DE	h:mm	0.3333	7:59
+de_DE	h:mm	1.5	12:00
+de_DE	h:mm	-1.5	12:00
+de_DE	h:mm	1234.5678	13:37
+de_DE	h:mm	-1234.5678	10:22
+de_DE	h:mm	1e-7	0:00
+de_DE	h:mm	45000.75	18:00
+de_DE	h:mm	0.999	23:58
+de_DE	h:mm	100.0	0:00
+de_DE	h:mm	-0.5	12:00
+de_DE	h:mm	2.5	12:00
+de_DE	h:mm	3.14159	3:23
+de_DE	h:mm	60000.123456	2:57
+de_DE	h:mm	text:abc	abc
+de_DE	h:mm	text:	
+de_DE	h:mm AM/PM	0.0	12:00 AM
+de_DE	h:mm AM/PM	-0.0001	11:59 PM
+de_DE	h:mm AM/PM	1.0	12:00 AM
+de_DE	h:mm AM/PM	-1.0	12:00 AM
+de_DE	h:mm AM/PM	0.5	12:00 PM
+de_DE	h:mm AM/PM	0.3333	7:59 AM
+de_DE	h:mm AM/PM	1.5	12:00 PM
+de_DE	h:mm AM/PM	-1.5	12:00 PM
+de_DE	h:mm AM/PM	1234.5678	1:37 PM
+de_DE	h:mm AM/PM	-1234.5678	10:22 AM
+de_DE	h:mm AM/PM	1e-7	12:00 AM
+de_DE	h:mm AM/PM	45000.75	6:00 PM
+de_DE	h:mm AM/PM	0.999	11:58 PM
+de_DE	h:mm AM/PM	100.0	12:00 AM
+de_DE	h:mm AM/PM	-0.5	12:00 PM
+de_DE	h:mm AM/PM	2.5	12:00 PM
+de_DE	h:mm AM/PM	3.14159	3:23 AM
+de_DE	h:mm AM/PM	60000.123456	2:57 AM
+de_DE	h:mm AM/PM	text:abc	abc
+de_DE	h:mm AM/PM	text:	
+de_DE	hh:mm:ss	0.0	00:00:00
+de_DE	hh:mm:ss	-0.0001	23:59:51
+de_DE	hh:mm:ss	1.0	00:00:00
+de_DE	hh:mm:ss	-1.0	00:00:00
+de_DE	hh:mm:ss	0.5	12:00:00
+de_DE	hh:mm:ss	0.3333	07:59:57
+de_DE	hh:mm:ss	1.5	12:00:00
+de_DE	hh:mm:ss	-1.5	12:00:00
+de_DE	hh:mm:ss	1234.5678	13:37:38
+de_DE	hh:mm:ss	-1234.5678	10:22:22
+de_DE	hh:mm:ss	1e-7	00:00:00
+de_DE	hh:mm:ss	45000.75	18:00:00
+de_DE	hh:mm:ss	0.999	23:58:34
+de_DE	hh:mm:ss	100.0	00:00:00
+de_DE	hh:mm:ss	-0.5	12:00:00
+de_DE	hh:mm:ss	2.5	12:00:00
+de_DE	hh:mm:ss	3.14159	03:23:53
+de_DE	hh:mm:ss	60000.123456	02:57:47
+de_DE	hh:mm:ss	text:abc	abc
+de_DE	hh:mm:ss	text:	
+de_DE	[h]:mm	0.0	0:00
+de_DE	[h]:mm	-0.0001	-0:00
+de_DE	[h]:mm	1.0	24:00
+de_DE	[h]:mm	-1.0	-24:00
+de_DE	[h]:mm	0.5	12:00
+de_DE	[h]:mm	0.3333	7:59
+de_DE	[h]:mm	1.5	36:00
+de_DE	[h]:mm	-1.5	-36:00
+de_DE	[h]:mm	1234.5678	29629:37
+de_DE	[h]:mm	-1234.5678	-29629:37
+de_DE	[h]:mm	1e-7	0:00
+de_DE	[h]:mm	45000.75	1080018:00
+de_DE	[h]:mm	0.999	23:58
+de_DE	[h]:mm	100.0	2400:00
+de_DE	[h]:mm	-0.5	-12:00
+de_DE	[h]:mm	2.5	60:00
+de_DE	[h]:mm	3.14159	75:23
+de_DE	[h]:mm	60000.123456	1440002:57
+de_DE	[h]:mm	text:abc	abc
+de_DE	[h]:mm	text:	
+de_DE	[mm]:ss	0.0	00:00
+de_DE	[mm]:ss	-0.0001	-00:09
+de_DE	[mm]:ss	1.0	1440:00
+de_DE	[mm]:ss	-1.0	-1440:00
+de_DE	[mm]:ss	0.5	720:00
+de_DE	[mm]:ss	0.3333	479:57
+de_DE	[mm]:ss	1.5	2160:00
+de_DE	[mm]:ss	-1.5	-2160:00
+de_DE	[mm]:ss	1234.5678	1777777:38
+de_DE	[mm]:ss	-1234.5678	-1777777:38
+de_DE	[mm]:ss	1e-7	00:00
+de_DE	[mm]:ss	45000.75	64801080:00
+de_DE	[mm]:ss	0.999	1438:34
+de_DE	[mm]:ss	100.0	144000:00
+de_DE	[mm]:ss	-0.5	-720:00
+de_DE	[mm]:ss	2.5	3600:00
+de_DE	[mm]:ss	3.14159	4523:53
+de_DE	[mm]:ss	60000.123456	86400177:47
+de_DE	[mm]:ss	text:abc	abc
+de_DE	[mm]:ss	text:	
+de_DE	mm:ss.00	0.0	00:00,00
+de_DE	mm:ss.00	-0.0001	59:51,36
+de_DE	mm:ss.00	1.0	00:00,00
+de_DE	mm:ss.00	-1.0	00:00,00
+de_DE	mm:ss.00	0.5	00:00,00
+de_DE	mm:ss.00	0.3333	59:57,12
+de_DE	mm:ss.00	1.5	00:00,00
+de_DE	mm:ss.00	-1.5	00:00,00
+de_DE	mm:ss.00	1234.5678	37:37,92
+de_DE	mm:ss.00	-1234.5678	22:22,08
+de_DE	mm:ss.00	1e-7	00:00,01
+de_DE	mm:ss.00	45000.75	00:00,00
+de_DE	mm:ss.00	0.999	58:33,60
+de_DE	mm:ss.00	100.0	00:00,00
+de_DE	mm:ss.00	-0.5	00:00,00
+de_DE	mm:ss.00	2.5	00:00,00
+de_DE	mm:ss.00	3.14159	23:53,38
+de_DE	mm:ss.00	60000.123456	57:46,60
+de_DE	mm:ss.00	text:abc	abc
+de_DE	mm:ss.00	text:	
+de_DE	s.000	0.0	0,000
+de_DE	s.000	-0.0001	51,360
+de_DE	s.000	1.0	0,000
+de_DE	s.000	-1.0	0,000
+de_DE	s.000	0.5	0,000
+de_DE	s.000	0.3333	57,120
+de_DE	s.000	1.5	0,000
+de_DE	s.000	-1.5	0,000
+de_DE	s.000	1234.5678	37,920
+de_DE	s.000	-1234.5678	22,080
+de_DE	s.000	1e-7	0,009
+de_DE	s.000	45000.75	0,000
+de_DE	s.000	0.999	33,600
+de_DE	s.000	100.0	0,000
+de_DE	s.000	-0.5	0,000
+de_DE	s.000	2.5	0,000
+de_DE	s.000	3.14159	53,376
+de_DE	s.000	60000.123456	46,598
+de_DE	s.000	text:abc	abc
+de_DE	s.000	text:	
+de_DE	yy	0.0	99
+de_DE	yy	-0.0001	99
+de_DE	yy	1.0	99
+de_DE	yy	-1.0	99
+de_DE	yy	0.5	99
+de_DE	yy	0.3333	99
+de_DE	yy	1.5	99
+de_DE	yy	-1.5	99
+de_DE	yy	1234.5678	03
+de_DE	yy	-1234.5678	96
+de_DE	yy	1000000000.0	1000000000
+de_DE	yy	1e-7	99
+de_DE	yy	45000.75	23
+de_DE	yy	0.999	99
+de_DE	yy	100.0	00
+de_DE	yy	12345678.0	12345678
+de_DE	yy	-0.5	99
+de_DE	yy	2.5	00
+de_DE	yy	3.14159	00
+de_DE	yy	60000.123456	64
+de_DE	yy	text:abc	abc
+de_DE	yy	text:	
+de_DE	m/d	0.0	12/30
+de_DE	m/d	-0.0001	12/29
+de_DE	m/d	1.0	12/31
+de_DE	m/d	-1.0	12/29
+de_DE	m/d	0.5	12/30
+de_DE	m/d	0.3333	12/30
+de_DE	m/d	1.5	12/31
+de_DE	m/d	-1.5	12/28
+de_DE	m/d	1234.5678	5/18
+de_DE	m/d	-1234.5678	8/12
+de_DE	m/d	1000000000.0	1000000000
+de_DE	m/d	1e-7	12/30
+de_DE	m/d	45000.75	3/15
+de_DE	m/d	0.999	12/30
+de_DE	m/d	100.0	4/9
+de_DE	m/d	12345678.0	12345678
+de_DE	m/d	-0.5	12/29
+de_DE	m/d	2.5	1/1
+de_DE	m/d	3.14159	1/2
+de_DE	m/d	60000.123456	4/8
+de_DE	m/d	text:abc	abc
+de_DE	m/d	text:	
+de_DE	General	0.0	0
+de_DE	General	-0.0001	-0,0001
+de_DE	General	1.0	1
+de_DE	General	-1.0	-1
+de_DE	General	0.5	0,5
+de_DE	General	0.3333	0,3333
+de_DE	General	1.5	1,5
+de_DE	General	-1.5	-1,5
+de_DE	General	1234.5678	1234,5678
+de_DE	General	-1234.5678	-1234,5678
+de_DE	General	1000000000.0	1000000000
+de_DE	General	1e-7	0,0000001
+de_DE	General	45000.75	45000,75
+de_DE	General	0.999	0,999
+de_DE	General	100.0	100
+de_DE	General	12345678.0	12345678
+de_DE	General	-0.5	-0,5
+de_DE	General	2.5	2,5
+de_DE	General	3.14159	3,14159
+de_DE	General	60000.123456	60000,12346
+de_DE	General	text:abc	abc
+de_DE	General	text:	
+de_DE	0.0_)	0.0	0,0 
+de_DE	0.0_)	1.0	1,0 
+de_DE	0.0_)	-1.0	-1,0 
+de_DE	0.0_)	0.5	0,5 
+de_DE	0.0_)	0.3333	0,3 
+de_DE	0.0_)	1.5	1,5 
+de_DE	0.0_)	-1.5	-1,5 
+de_DE	0.0_)	1234.5678	1234,6 
+de_DE	0.0_)	-1234.5678	-1234,6 
+de_DE	0.0_)	1000000000.0	1000000000,0 
+de_DE	0.0_)	1e-7	0,0 
+de_DE	0.0_)	45000.75	45000,8 
+de_DE	0.0_)	0.999	1,0 
+de_DE	0.0_)	100.0	100,0 
+de_DE	0.0_)	12345678.0	12345678,0 
+de_DE	0.0_)	-0.5	-0,5 
+de_DE	0.0_)	2.5	2,5 
+de_DE	0.0_)	3.14159	3,1 
+de_DE	0.0_)	60000.123456	60000,1 
+de_DE	0.0_)	text:abc	abc
+de_DE	0.0_)	text:	
+de_DE	#,##0.00_);(#,##0.00)	0.0	0,00 
+de_DE	#,##0.00_);(#,##0.00)	-0.0001	(0,00)
+de_DE	#,##0.00_);(#,##0.00)	1.0	1,00 
+de_DE	#,##0.00_);(#,##0.00)	-1.0	(1,00)
+de_DE	#,##0.00_);(#,##0.00)	0.5	0,50 
+de_DE	#,##0.00_);(#,##0.00)	0.3333	0,33 
+de_DE	#,##0.00_);(#,##0.00)	1.5	1,50 
+de_DE	#,##0.00_);(#,##0.00)	-1.5	(1,50)
+de_DE	#,##0.00_);(#,##0.00)	1234.5678	1.234,57 
+de_DE	#,##0.00_);(#,##0.00)	-1234.5678	(1.234,57)
+de_DE	#,##0.00_);(#,##0.00)	1000000000.0	1.000.000.000,00 
+de_DE	#,##0.00_);(#,##0.00)	1e-7	0,00 
+de_DE	#,##0.00_);(#,##0.00)	45000.75	45.000,75 
+de_DE	#,##0.00_);(#,##0.00)	0.999	1,00 
+de_DE	#,##0.00_);(#,##0.00)	100.0	100,00 
+de_DE	#,##0.00_);(#,##0.00)	12345678.0	12.345.678,00 
+de_DE	#,##0.00_);(#,##0.00)	-0.5	(0,50)
+de_DE	#,##0.00_);(#,##0.00)	2.5	2,50 
+de_DE	#,##0.00_);(#,##0.00)	3.14159	3,14 
+de_DE	#,##0.00_);(#,##0.00)	60000.123456	60.000,12 
+de_DE	#,##0.00_);(#,##0.00)	text:abc	abc
+de_DE	#,##0.00_);(#,##0.00)	text:	
+de_DE	* #,##0	0.0	0
+de_DE	* #,##0	1.0	1
+de_DE	* #,##0	-1.0	-1
+de_DE	* #,##0	0.5	1
+de_DE	* #,##0	0.3333	0
+de_DE	* #,##0	1.5	2
+de_DE	* #,##0	-1.5	-2
+de_DE	* #,##0	1234.5678	1.235
+de_DE	* #,##0	-1234.5678	-1.235
+de_DE	* #,##0	1000000000.0	1.000.000.000
+de_DE	* #,##0	1e-7	0
+de_DE	* #,##0	45000.75	45.001
+de_DE	* #,##0	0.999	1
+de_DE	* #,##0	100.0	100
+de_DE	* #,##0	12345678.0	12.345.678
+de_DE	* #,##0	-0.5	-1
+de_DE	* #,##0	2.5	3
+de_DE	* #,##0	3.14159	3
+de_DE	* #,##0	60000.123456	60.000
+de_DE	* #,##0	text:abc	abc
+de_DE	* #,##0	text:	
+de_DE	00000	0.0	00000
+de_DE	00000	1.0	00001
+de_DE	00000	-1.0	-00001
+de_DE	00000	0.5	00001
+de_DE	00000	0.3333	00000
+de_DE	00000	1.5	00002
+de_DE	00000	-1.5	-00002
+de_DE	00000	1234.5678	01235
+de_DE	00000	-1234.5678	-01235
+de_DE	00000	1000000000.0	1000000000
+de_DE	00000	1e-7	00000
+de_DE	00000	45000.75	45001
+de_DE	00000	0.999	00001
+de_DE	00000	100.0	00100
+de_DE	00000	12345678.0	12345678
+de_DE	00000	-0.5	-00001
+de_DE	00000	2.5	00003
+de_DE	00000	3.14159	00003
+de_DE	00000	60000.123456	60000
+de_DE	00000	text:abc	abc
+de_DE	00000	text:	
+de_DE	0.###	0.0	0,
+de_DE	0.###	1.0	1,
+de_DE	0.###	-1.0	-1,
+de_DE	0.###	0.5	0,5
+de_DE	0.###	0.3333	0,333
+de_DE	0.###	1.5	1,5
+de_DE	0.###	-1.5	-1,5
+de_DE	0.###	1234.5678	1234,568
+de_DE	0.###	-1234.5678	-1234,568
+de_DE	0.###	1000000000.0	1000000000,
+de_DE	0.###	1e-7	0,
+de_DE	0.###	45000.75	45000,75
+de_DE	0.###	0.999	0,999
+de_DE	0.###	100.0	100,
+de_DE	0.###	12345678.0	12345678,
+de_DE	0.###	-0.5	-0,5
+de_DE	0.###	2.5	2,5
+de_DE	0.###	3.14159	3,142
+de_DE	0.###	60000.123456	60000,123
+de_DE	0.###	text:abc	abc
+de_DE	0.###	text:	
+de_DE	#.##	0.0	,
+de_DE	#.##	1.0	1,
+de_DE	#.##	-1.0	-1,
+de_DE	#.##	0.5	,5
+de_DE	#.##	0.3333	,33
+de_DE	#.##	1.5	1,5
+de_DE	#.##	-1.5	-1,5
+de_DE	#.##	1234.5678	1234,57
+de_DE	#.##	-1234.5678	-1234,57
+de_DE	#.##	1000000000.0	1000000000,
+de_DE	#.##	1e-7	,
+de_DE	#.##	45000.75	45000,75
+de_DE	#.##	0.999	1,
+de_DE	#.##	100.0	100,
+de_DE	#.##	12345678.0	12345678,
+de_DE	#.##	-0.5	-,5
+de_DE	#.##	2.5	2,5
+de_DE	#.##	3.14159	3,14
+de_DE	#.##	60000.123456	60000,12
+de_DE	#.##	text:abc	abc
+de_DE	#.##	text:	
+de_DE	#	0.0	
+de_DE	#	1.0	1
+de_DE	#	-1.0	-1
+de_DE	#	0.5	1
+de_DE	#	0.3333	
+de_DE	#	1.5	2
+de_DE	#	-1.5	-2
+de_DE	#	1234.5678	1235
+de_DE	#	-1234.5678	-1235
+de_DE	#	1000000000.0	1000000000
+de_DE	#	1e-7	
+de_DE	#	45000.75	45001
+de_DE	#	0.999	1
+de_DE	#	100.0	100
+de_DE	#	12345678.0	12345678
+de_DE	#	-0.5	-1
+de_DE	#	2.5	3
+de_DE	#	3.14159	3
+de_DE	#	60000.123456	60000
+de_DE	#	text:abc	abc
+de_DE	#	text:	
+de_DE	.0	0.0	,0
+de_DE	.0	1.0	1,0
+de_DE	.0	-1.0	-1,0
+de_DE	.0	0.5	,5
+de_DE	.0	0.3333	,3
+de_DE	.0	1.5	1,5
+de_DE	.0	-1.5	-1,5
+de_DE	.0	1234.5678	1234,6
+de_DE	.0	-1234.5678	-1234,6
+de_DE	.0	1000000000.0	1000000000,0
+de_DE	.0	1e-7	,0
+de_DE	.0	45000.75	45000,8
+de_DE	.0	0.999	1,0
+de_DE	.0	100.0	100,0
+de_DE	.0	12345678.0	12345678,0
+de_DE	.0	-0.5	-,5
+de_DE	.0	2.5	2,5
+de_DE	.0	3.14159	3,1
+de_DE	.0	60000.123456	60000,1
+de_DE	.0	text:abc	abc
+de_DE	.0	text:	
+de_DE	0.0#	0.0	0,0
+de_DE	0.0#	1.0	1,0
+de_DE	0.0#	-1.0	-1,0
+de_DE	0.0#	0.5	0,5
+de_DE	0.0#	0.3333	0,33
+de_DE	0.0#	1.5	1,5
+de_DE	0.0#	-1.5	-1,5
+de_DE	0.0#	1234.5678	1234,57
+de_DE	0.0#	-1234.5678	-1234,57
+de_DE	0.0#	1000000000.0	1000000000,0
+de_DE	0.0#	1e-7	0,0
+de_DE	0.0#	45000.75	45000,75
+de_DE	0.0#	0.999	1,0
+de_DE	0.0#	100.0	100,0
+de_DE	0.0#	12345678.0	12345678,0
+de_DE	0.0#	-0.5	-0,5
+de_DE	0.0#	2.5	2,5
+de_DE	0.0#	3.14159	3,14
+de_DE	0.0#	60000.123456	60000,12
+de_DE	0.0#	text:abc	abc
+de_DE	0.0#	text:	
+de_DE	#,###	0.0	
+de_DE	#,###	1.0	1
+de_DE	#,###	-1.0	-1
+de_DE	#,###	0.5	1
+de_DE	#,###	0.3333	
+de_DE	#,###	1.5	2
+de_DE	#,###	-1.5	-2
+de_DE	#,###	1234.5678	1.235
+de_DE	#,###	-1234.5678	-1.235
+de_DE	#,###	1000000000.0	1.000.000.000
+de_DE	#,###	1e-7	
+de_DE	#,###	45000.75	45.001
+de_DE	#,###	0.999	1
+de_DE	#,###	100.0	100
+de_DE	#,###	12345678.0	12.345.678
+de_DE	#,###	-0.5	-1
+de_DE	#,###	2.5	3
+de_DE	#,###	3.14159	3
+de_DE	#,###	60000.123456	60.000
+de_DE	#,###	text:abc	abc
+de_DE	#,###	text:	
+de_DE	#,	0.0	
+de_DE	#,	1.0	
+de_DE	#,	0.5	
+de_DE	#,	0.3333	
+de_DE	#,	1.5	
+de_DE	#,	1234.5678	1
+de_DE	#,	-1234.5678	-1
+de_DE	#,	1000000000.0	1000000
+de_DE	#,	1e-7	
+de_DE	#,	45000.75	45
+de_DE	#,	0.999	
+de_DE	#,	100.0	
+de_DE	#,	12345678.0	12346
+de_DE	#,	2.5	
+de_DE	#,	3.14159	
+de_DE	#,	60000.123456	60
+de_DE	#,	text:abc	abc
+de_DE	#,	text:	
+de_DE	h AM/PM	0.0	12 AM
+de_DE	h AM/PM	-0.0001	11 PM
+de_DE	h AM/PM	1.0	12 AM
+de_DE	h AM/PM	-1.0	12 AM
+de_DE	h AM/PM	0.5	12 PM
+de_DE	h AM/PM	0.3333	7 AM
+de_DE	h AM/PM	1.5	12 PM
+de_DE	h AM/PM	-1.5	12 PM
+de_DE	h AM/PM	1234.5678	1 PM
+de_DE	h AM/PM	-1234.5678	10 AM
+de_DE	h AM/PM	1e-7	12 AM
+de_DE	h AM/PM	45000.75	6 PM
+de_DE	h AM/PM	0.999	11 PM
+de_DE	h AM/PM	100.0	12 AM
+de_DE	h AM/PM	-0.5	12 PM
+de_DE	h AM/PM	2.5	12 PM
+de_DE	h AM/PM	3.14159	3 AM
+de_DE	h AM/PM	60000.123456	2 AM
+de_DE	h AM/PM	text:abc	abc
+de_DE	h AM/PM	text:	
+de_DE	h a/p	0.0	12 a
+de_DE	h a/p	-0.0001	11 p
+de_DE	h a/p	1.0	12 a
+de_DE	h a/p	-1.0	12 a
+de_DE	h a/p	0.5	12 p
+de_DE	h a/p	0.3333	7 a
+de_DE	h a/p	1.5	12 p
+de_DE	h a/p	-1.5	12 p
+de_DE	h a/p	1234.5678	1 p
+de_DE	h a/p	-1234.5678	10 a
+de_DE	h a/p	1e-7	12 a
+de_DE	h a/p	45000.75	6 p
+de_DE	h a/p	0.999	11 p
+de_DE	h a/p	100.0	12 a
+de_DE	h a/p	-0.5	12 p
+de_DE	h a/p	2.5	12 p
+de_DE	h a/p	3.14159	3 a
+de_DE	h a/p	60000.123456	2 a
+de_DE	h a/p	text:abc	abc
+de_DE	h a/p	text:	
+de_DE	d-mmm	1234.5678	18-Mai
+de_DE	d-mmm	1000000000.0	1000000000
+de_DE	d-mmm	12345678.0	12345678
+de_DE	d-mmm	text:abc	abc
+de_DE	d-mmm	text:	
+de_DE	mmmmm	0.0	D
+de_DE	mmmmm	-0.0001	D
+de_DE	mmmmm	1.0	D
+de_DE	mmmmm	-1.0	D
+de_DE	mmmmm	0.5	D
+de_DE	mmmmm	0.3333	D
+de_DE	mmmmm	1.5	D
+de_DE	mmmmm	-1.5	D
+de_DE	mmmmm	1234.5678	M
+de_DE	mmmmm	-1234.5678	A
+de_DE	mmmmm	1000000000.0	1000000000
+de_DE	mmmmm	1e-7	D
+de_DE	mmmmm	45000.75	M
+de_DE	mmmmm	0.999	D
+de_DE	mmmmm	100.0	A
+de_DE	mmmmm	12345678.0	12345678
+de_DE	mmmmm	-0.5	D
+de_DE	mmmmm	2.5	J
+de_DE	mmmmm	3.14159	J
+de_DE	mmmmm	60000.123456	A
+de_DE	mmmmm	text:abc	abc
+de_DE	mmmmm	text:	
+de_DE	[$-409]mmmm d, yyyy	0.0	December 30, 1899
+de_DE	[$-409]mmmm d, yyyy	-0.0001	December 29, 1899
+de_DE	[$-409]mmmm d, yyyy	1.0	December 31, 1899
+de_DE	[$-409]mmmm d, yyyy	-1.0	December 29, 1899
+de_DE	[$-409]mmmm d, yyyy	0.5	December 30, 1899
+de_DE	[$-409]mmmm d, yyyy	0.3333	December 30, 1899
+de_DE	[$-409]mmmm d, yyyy	1.5	December 31, 1899
+de_DE	[$-409]mmmm d, yyyy	-1.5	December 28, 1899
+de_DE	[$-409]mmmm d, yyyy	1234.5678	May 18, 1903
+de_DE	[$-409]mmmm d, yyyy	-1234.5678	August 12, 1896
+de_DE	[$-409]mmmm d, yyyy	1000000000.0	1000000000
+de_DE	[$-409]mmmm d, yyyy	1e-7	December 30, 1899
+de_DE	[$-409]mmmm d, yyyy	45000.75	March 15, 2023
+de_DE	[$-409]mmmm d, yyyy	0.999	December 30, 1899
+de_DE	[$-409]mmmm d, yyyy	100.0	April 9, 1900
+de_DE	[$-409]mmmm d, yyyy	12345678.0	12345678
+de_DE	[$-409]mmmm d, yyyy	-0.5	December 29, 1899
+de_DE	[$-409]mmmm d, yyyy	2.5	January 1, 1900
+de_DE	[$-409]mmmm d, yyyy	3.14159	January 2, 1900
+de_DE	[$-409]mmmm d, yyyy	60000.123456	April 8, 2064
+de_DE	[$-409]mmmm d, yyyy	text:abc	abc
+de_DE	[$-409]mmmm d, yyyy	text:	
+de_DE	yyyy"年"m"月"d"日"	0.0	1899年12月30日
+de_DE	yyyy"年"m"月"d"日"	-0.0001	1899年12月29日
+de_DE	yyyy"年"m"月"d"日"	1.0	1899年12月31日
+de_DE	yyyy"年"m"月"d"日"	-1.0	1899年12月29日
+de_DE	yyyy"年"m"月"d"日"	0.5	1899年12月30日
+de_DE	yyyy"年"m"月"d"日"	0.3333	1899年12月30日
+de_DE	yyyy"年"m"月"d"日"	1.5	1899年12月31日
+de_DE	yyyy"年"m"月"d"日"	-1.5	1899年12月28日
+de_DE	yyyy"年"m"月"d"日"	1234.5678	1903年5月18日
+de_DE	yyyy"年"m"月"d"日"	-1234.5678	1896年8月12日
+de_DE	yyyy"年"m"月"d"日"	1000000000.0	1000000000
+de_DE	yyyy"年"m"月"d"日"	1e-7	1899年12月30日
+de_DE	yyyy"年"m"月"d"日"	45000.75	2023年3月15日
+de_DE	yyyy"年"m"月"d"日"	0.999	1899年12月30日
+de_DE	yyyy"年"m"月"d"日"	100.0	1900年4月9日
+de_DE	yyyy"年"m"月"d"日"	12345678.0	12345678
+de_DE	yyyy"年"m"月"d"日"	-0.5	1899年12月29日
+de_DE	yyyy"年"m"月"d"日"	2.5	1900年1月1日
+de_DE	yyyy"年"m"月"d"日"	3.14159	1900年1月2日
+de_DE	yyyy"年"m"月"d"日"	60000.123456	2064年4月8日
+de_DE	yyyy"年"m"月"d"日"	text:abc	abc
+de_DE	yyyy"年"m"月"d"日"	text:	
+de_DE	0000-00	0.0	0000-00
+de_DE	0000-00	1.0	0000-01
+de_DE	0000-00	-1.0	-0000-01
+de_DE	0000-00	0.5	0000-01
+de_DE	0000-00	0.3333	0000-00
+de_DE	0000-00	1.5	0000-02
+de_DE	0000-00	-1.5	-0000-02
+de_DE	0000-00	1234.5678	0012-35
+de_DE	0000-00	-1234.5678	-0012-35
+de_DE	0000-00	1000000000.0	10000000-00
+de_DE	0000-00	1e-7	0000-00
+de_DE	0000-00	45000.75	0450-01
+de_DE	0000-00	0.999	0000-01
+de_DE	0000-00	100.0	0001-00
+de_DE	0000-00	12345678.0	123456-78
+de_DE	0000-00	-0.5	-0000-01
+de_DE	0000-00	2.5	0000-03
+de_DE	0000-00	3.14159	0000-03
+de_DE	0000-00	60000.123456	0600-00
+de_DE	0000-00	text:abc	abc
+de_DE	0000-00	text:	
+de_DE	000-00-0000	0.0	000-00-0000
+de_DE	000-00-0000	1.0	000-00-0001
+de_DE	000-00-0000	-1.0	-000-00-0001
+de_DE	000-00-0000	0.5	000-00-0001
+de_DE	000-00-0000	0.3333	000-00-0000
+de_DE	000-00-0000	1.5	000-00-0002
+de_DE	000-00-0000	-1.5	-000-00-0002
+de_DE	000-00-0000	1234.5678	000-00-1235
+de_DE	000-00-0000	-1234.5678	-000-00-1235
+de_DE	000-00-0000	1000000000.0	1000-00-0000
+de_DE	000-00-0000	1e-7	000-00-0000
+de_DE	000-00-0000	45000.75	000-04-5001
+de_DE	000-00-0000	0.999	000-00-0001
+de_DE	000-00-0000	100.0	000-00-0100
+de_DE	000-00-0000	12345678.0	012-34-5678
+de_DE	000-00-0000	-0.5	-000-00-0001
+de_DE	000-00-0000	2.5	000-00-0003
+de_DE	000-00-0000	3.14159	000-00-0003
+de_DE	000-00-0000	60000.123456	000-06-0000
+de_DE	000-00-0000	text:abc	abc
+de_DE	000-00-0000	text:	
+de_DE	#?/#?	0.0	0/1 
+de_DE	#?/#?	1.0	1/1 
+de_DE	#?/#?	-1.0	-1/1 
+de_DE	#?/#?	0.5	1/2 
+de_DE	#?/#?	0.3333	1/3 
+de_DE	#?/#?	1.5	3/2 
+de_DE	#?/#?	-1.5	-3/2 
+de_DE	#?/#?	1234.5678	100000/81
+de_DE	#?/#?	-1234.5678	-100000/81
+de_DE	#?/#?	1000000000.0	1000000000/1 
+de_DE	#?/#?	1e-7	0/1 
+de_DE	#?/#?	45000.75	180003/4 
+de_DE	#?/#?	0.999	1/1 
+de_DE	#?/#?	100.0	100/1 
+de_DE	#?/#?	12345678.0	12345678/1 
+de_DE	#?/#?	-0.5	-1/2 
+de_DE	#?/#?	2.5	5/2 
+de_DE	#?/#?	3.14159	311/99
+de_DE	#?/#?	60000.123456	4860010/81
+de_DE	#?/#?	text:abc	abc
+de_DE	#?/#?	text:	
+de_DE	0 0/0	0.5	0 1/2
+de_DE	0 0/0	0.3333	0 1/3
+de_DE	0 0/0	1.5	1 1/2
+de_DE	0 0/0	-1.5	-1 1/2
+de_DE	0 0/0	1234.5678	1234 4/7
+de_DE	0 0/0	-1234.5678	-1234 4/7
+de_DE	0 0/0	45000.75	45000 3/4
+de_DE	0 0/0	-0.5	-0 1/2
+de_DE	0 0/0	2.5	2 1/2
+de_DE	0 0/0	3.14159	3 1/7
+de_DE	0 0/0	60000.123456	60000 1/8
+de_DE	0 0/0	text:abc	abc
+de_DE	0 0/0	text:	
+de_DE	h:mm:ss AM/PM	0.0	12:00:00 AM
+de_DE	h:mm:ss AM/PM	-0.0001	11:59:51 PM
+de_DE	h:mm:ss AM/PM	1.0	12:00:00 AM
+de_DE	h:mm:ss AM/PM	-1.0	12:00:00 AM
+de_DE	h:mm:ss AM/PM	0.5	12:00:00 PM
+de_DE	h:mm:ss AM/PM	0.3333	7:59:57 AM
+de_DE	h:mm:ss AM/PM	1.5	12:00:00 PM
+de_DE	h:mm:ss AM/PM	-1.5	12:00:00 PM
+de_DE	h:mm:ss AM/PM	1234.5678	1:37:38 PM
+de_DE	h:mm:ss AM/PM	-1234.5678	10:22:22 AM
+de_DE	h:mm:ss AM/PM	1e-7	12:00:00 AM
+de_DE	h:mm:ss AM/PM	45000.75	6:00:00 PM
+de_DE	h:mm:ss AM/PM	0.999	11:58:34 PM
+de_DE	h:mm:ss AM/PM	100.0	12:00:00 AM
+de_DE	h:mm:ss AM/PM	-0.5	12:00:00 PM
+de_DE	h:mm:ss AM/PM	2.5	12:00:00 PM
+de_DE	h:mm:ss AM/PM	3.14159	3:23:53 AM
+de_DE	h:mm:ss AM/PM	60000.123456	2:57:47 AM
+de_DE	h:mm:ss AM/PM	text:abc	abc
+de_DE	h:mm:ss AM/PM	text:	
+de_DE	[ss]	0.0	00
+de_DE	[ss]	-0.0001	-09
+de_DE	[ss]	1.0	86400
+de_DE	[ss]	-1.0	-86400
+de_DE	[ss]	0.5	43200
+de_DE	[ss]	0.3333	28797
+de_DE	[ss]	1.5	129600
+de_DE	[ss]	-1.5	-129600
+de_DE	[ss]	1234.5678	106666658
+de_DE	[ss]	-1234.5678	-106666658
+de_DE	[ss]	1e-7	00
+de_DE	[ss]	45000.75	3888064800
+de_DE	[ss]	0.999	86314
+de_DE	[ss]	100.0	8640000
+de_DE	[ss]	-0.5	-43200
+de_DE	[ss]	2.5	216000
+de_DE	[ss]	3.14159	271433
+de_DE	[ss]	60000.123456	5184010667
+de_DE	[ss]	text:abc	abc
+de_DE	[ss]	text:	
+de_DE	0.00E-00	0.0	0,00E00
+de_DE	0.00E-00	-0.0001	-1,00E-04
+de_DE	0.00E-00	1.0	1,00E00
+de_DE	0.00E-00	-1.0	-1,00E00
+de_DE	0.00E-00	0.5	5,00E-01
+de_DE	0.00E-00	0.3333	3,33E-01
+de_DE	0.00E-00	1.5	1,50E00
+de_DE	0.00E-00	-1.5	-1,50E00
+de_DE	0.00E-00	1234.5678	1,23E03
+de_DE	0.00E-00	-1234.5678	-1,23E03
+de_DE	0.00E-00	1000000000.0	1,00E09
+de_DE	0.00E-00	1e-7	1,00E-07
+de_DE	0.00E-00	45000.75	4,50E04
+de_DE	0.00E-00	0.999	9,99E-01
+de_DE	0.00E-00	100.0	1,00E02
+de_DE	0.00E-00	12345678.0	1,23E07
+de_DE	0.00E-00	-0.5	-5,00E-01
+de_DE	0.00E-00	2.5	2,50E00
+de_DE	0.00E-00	3.14159	3,14E00
+de_DE	0.00E-00	60000.123456	6,00E04
+de_DE	0.00E-00	text:abc	abc
+de_DE	0.00E-00	text:	
+de_DE	0E+0	0.0	0E+0
+de_DE	0E+0	-0.0001	-1E-4
+de_DE	0E+0	1.0	1E+0
+de_DE	0E+0	-1.0	-1E+0
+de_DE	0E+0	0.5	5E-1
+de_DE	0E+0	0.3333	3E-1
+de_DE	0E+0	1.5	2E+0
+de_DE	0E+0	-1.5	-2E+0
+de_DE	0E+0	1234.5678	1E+3
+de_DE	0E+0	-1234.5678	-1E+3
+de_DE	0E+0	1000000000.0	1E+9
+de_DE	0E+0	1e-7	1E-7
+de_DE	0E+0	45000.75	5E+4
+de_DE	0E+0	0.999	1E+0
+de_DE	0E+0	100.0	1E+2
+de_DE	0E+0	12345678.0	1E+7
+de_DE	0E+0	-0.5	-5E-1
+de_DE	0E+0	2.5	3E+0
+de_DE	0E+0	3.14159	3E+0
+de_DE	0E+0	60000.123456	6E+4
+de_DE	0E+0	text:abc	abc
+de_DE	0E+0	text:	
+de_DE	0.0.0	0.0	0,0.0
+de_DE	0.0.0	1.0	1,0.0
+de_DE	0.0.0	-1.0	-1,0.0
+de_DE	0.0.0	0.5	0,5.0
+de_DE	0.0.0	0.3333	0,3.3
+de_DE	0.0.0	1.5	1,5.0
+de_DE	0.0.0	-1.5	-1,5.0
+de_DE	0.0.0	1234.5678	1234,5.7
+de_DE	0.0.0	-1234.5678	-1234,5.7
+de_DE	0.0.0	1000000000.0	1000000000,0.0
+de_DE	0.0.0	1e-7	0,0.0
+de_DE	0.0.0	45000.75	45000,7.5
+de_DE	0.0.0	0.999	1,0.0
+de_DE	0.0.0	100.0	100,0.0
+de_DE	0.0.0	12345678.0	12345678,0.0
+de_DE	0.0.0	-0.5	-0,5.0
+de_DE	0.0.0	2.5	2,5.0
+de_DE	0.0.0	3.14159	3,1.4
+de_DE	0.0.0	60000.123456	60000,1.2
+de_DE	0.0.0	text:abc	abc
+de_DE	0.0.0	text:	
+de_DE	##%	0.0	%
+de_DE	##%	1.0	100%
+de_DE	##%	-1.0	-100%
+de_DE	##%	0.5	50%
+de_DE	##%	0.3333	33%
+de_DE	##%	1.5	150%
+de_DE	##%	-1.5	-150%
+de_DE	##%	1234.5678	123457%
+de_DE	##%	-1234.5678	-123457%
+de_DE	##%	1000000000.0	100000000000%
+de_DE	##%	1e-7	%
+de_DE	##%	45000.75	4500075%
+de_DE	##%	0.999	100%
+de_DE	##%	100.0	10000%
+de_DE	##%	12345678.0	1234567800%
+de_DE	##%	-0.5	-50%
+de_DE	##%	2.5	250%
+de_DE	##%	3.14159	314%
+de_DE	##%	60000.123456	6000012%
+de_DE	##%	text:abc	abc
+de_DE	##%	text:	
+de_DE	0%%	0.0	0%%
+de_DE	0%%	-0.0001	-1%%
+de_DE	0%%	1.0	10000%%
+de_DE	0%%	-1.0	-10000%%
+de_DE	0%%	0.5	5000%%
+de_DE	0%%	0.3333	3333%%
+de_DE	0%%	1.5	15000%%
+de_DE	0%%	-1.5	-15000%%
+de_DE	0%%	1234.5678	12345678%%
+de_DE	0%%	-1234.5678	-12345678%%
+de_DE	0%%	1000000000.0	10000000000000%%
+de_DE	0%%	1e-7	0%%
+de_DE	0%%	45000.75	450007500%%
+de_DE	0%%	0.999	9990%%
+de_DE	0%%	100.0	1000000%%
+de_DE	0%%	12345678.0	123456780000%%
+de_DE	0%%	-0.5	-5000%%
+de_DE	0%%	2.5	25000%%
+de_DE	0%%	3.14159	31416%%
+de_DE	0%%	60000.123456	600001235%%
+de_DE	0%%	text:abc	abc
+de_DE	0%%	text:	
+de_DE	0‰	0.0	0‰
+de_DE	0‰	1.0	1000‰
+de_DE	0‰	-1.0	-1000‰
+de_DE	0‰	0.5	500‰
+de_DE	0‰	0.3333	333‰
+de_DE	0‰	1.5	1500‰
+de_DE	0‰	-1.5	-1500‰
+de_DE	0‰	1234.5678	1234568‰
+de_DE	0‰	-1234.5678	-1234568‰
+de_DE	0‰	1000000000.0	1000000000000‰
+de_DE	0‰	1e-7	0‰
+de_DE	0‰	45000.75	45000750‰
+de_DE	0‰	0.999	999‰
+de_DE	0‰	100.0	100000‰
+de_DE	0‰	12345678.0	12345678000‰
+de_DE	0‰	-0.5	-500‰
+de_DE	0‰	2.5	2500‰
+de_DE	0‰	3.14159	3142‰
+de_DE	0‰	60000.123456	60000123‰
+de_DE	0‰	text:abc	abc
+de_DE	0‰	text:	
+de_DE	#,##0.00;[Red]-#,##0.00	0.0	0,00
+de_DE	#,##0.00;[Red]-#,##0.00	-0.0001	-0,00
+de_DE	#,##0.00;[Red]-#,##0.00	1.0	1,00
+de_DE	#,##0.00;[Red]-#,##0.00	-1.0	-1,00
+de_DE	#,##0.00;[Red]-#,##0.00	0.5	0,50
+de_DE	#,##0.00;[Red]-#,##0.00	0.3333	0,33
+de_DE	#,##0.00;[Red]-#,##0.00	1.5	1,50
+de_DE	#,##0.00;[Red]-#,##0.00	-1.5	-1,50
+de_DE	#,##0.00;[Red]-#,##0.00	1234.5678	1.234,57
+de_DE	#,##0.00;[Red]-#,##0.00	-1234.5678	-1.234,57
+de_DE	#,##0.00;[Red]-#,##0.00	1000000000.0	1.000.000.000,00
+de_DE	#,##0.00;[Red]-#,##0.00	1e-7	0,00
+de_DE	#,##0.00;[Red]-#,##0.00	45000.75	45.000,75
+de_DE	#,##0.00;[Red]-#,##0.00	0.999	1,00
+de_DE	#,##0.00;[Red]-#,##0.00	100.0	100,00
+de_DE	#,##0.00;[Red]-#,##0.00	12345678.0	12.345.678,00
+de_DE	#,##0.00;[Red]-#,##0.00	-0.5	-0,50
+de_DE	#,##0.00;[Red]-#,##0.00	2.5	2,50
+de_DE	#,##0.00;[Red]-#,##0.00	3.14159	3,14
+de_DE	#,##0.00;[Red]-#,##0.00	60000.123456	60.000,12
+de_DE	#,##0.00;[Red]-#,##0.00	text:abc	abc
+de_DE	#,##0.00;[Red]-#,##0.00	text:	
+de_DE	0.00;-0.00;0.00;@	0.0	0,00
+de_DE	0.00;-0.00;0.00;@	-0.0001	-0,00
+de_DE	0.00;-0.00;0.00;@	1.0	1,00
+de_DE	0.00;-0.00;0.00;@	-1.0	-1,00
+de_DE	0.00;-0.00;0.00;@	0.5	0,50
+de_DE	0.00;-0.00;0.00;@	0.3333	0,33
+de_DE	0.00;-0.00;0.00;@	1.5	1,50
+de_DE	0.00;-0.00;0.00;@	-1.5	-1,50
+de_DE	0.00;-0.00;0.00;@	1234.5678	1234,57
+de_DE	0.00;-0.00;0.00;@	-1234.5678	-1234,57
+de_DE	0.00;-0.00;0.00;@	1000000000.0	1000000000,00
+de_DE	0.00;-0.00;0.00;@	1e-7	0,00
+de_DE	0.00;-0.00;0.00;@	45000.75	45000,75
+de_DE	0.00;-0.00;0.00;@	0.999	1,00
+de_DE	0.00;-0.00;0.00;@	100.0	100,00
+de_DE	0.00;-0.00;0.00;@	12345678.0	12345678,00
+de_DE	0.00;-0.00;0.00;@	-0.5	-0,50
+de_DE	0.00;-0.00;0.00;@	2.5	2,50
+de_DE	0.00;-0.00;0.00;@	3.14159	3,14
+de_DE	0.00;-0.00;0.00;@	60000.123456	60000,12
+de_DE	0.00;-0.00;0.00;@	text:abc	abc
+de_DE	0.00;-0.00;0.00;@	text:	
+de_DE	"Total: "#,##0	0.0	Total: 0
+de_DE	"Total: "#,##0	1.0	Total: 1
+de_DE	"Total: "#,##0	-1.0	-Total: 1
+de_DE	"Total: "#,##0	0.5	Total: 1
+de_DE	"Total: "#,##0	0.3333	Total: 0
+de_DE	"Total: "#,##0	1.5	Total: 2
+de_DE	"Total: "#,##0	-1.5	-Total: 2
+de_DE	"Total: "#,##0	1234.5678	Total: 1.235
+de_DE	"Total: "#,##0	-1234.5678	-Total: 1.235
+de_DE	"Total: "#,##0	1000000000.0	Total: 1.000.000.000
+de_DE	"Total: "#,##0	1e-7	Total: 0
+de_DE	"Total: "#,##0	45000.75	Total: 45.001
+de_DE	"Total: "#,##0	0.999	Total: 1
+de_DE	"Total: "#,##0	100.0	Total: 100
+de_DE	"Total: "#,##0	12345678.0	Total: 12.345.678
+de_DE	"Total: "#,##0	-0.5	-Total: 1
+de_DE	"Total: "#,##0	2.5	Total: 3
+de_DE	"Total: "#,##0	3.14159	Total: 3
+de_DE	"Total: "#,##0	60000.123456	Total: 60.000
+de_DE	"Total: "#,##0	text:abc	abc
+de_DE	"Total: "#,##0	text:	
+de_DE	0 "units"	0.0	0 units
+de_DE	0 "units"	1.0	1 units
+de_DE	0 "units"	-1.0	-1 units
+de_DE	0 "units"	0.5	1 units
+de_DE	0 "units"	0.3333	0 units
+de_DE	0 "units"	1.5	2 units
+de_DE	0 "units"	-1.5	-2 units
+de_DE	0 "units"	1234.5678	1235 units
+de_DE	0 "units"	-1234.5678	-1235 units
+de_DE	0 "units"	1000000000.0	1000000000 units
+de_DE	0 "units"	1e-7	0 units
+de_DE	0 "units"	45000.75	45001 units
+de_DE	0 "units"	0.999	1 units
+de_DE	0 "units"	100.0	100 units
+de_DE	0 "units"	12345678.0	12345678 units
+de_DE	0 "units"	-0.5	-1 units
+de_DE	0 "units"	2.5	3 units
+de_DE	0 "units"	3.14159	3 units
+de_DE	0 "units"	60000.123456	60000 units
+de_DE	0 "units"	text:abc	abc
+de_DE	0 "units"	text:	
+de_DE	# ?/10	1.5	1 5/10
+de_DE	# ?/10	-1.5	-1 5/10
+de_DE	# ?/10	1234.5678	1234 6/10
+de_DE	# ?/10	-1234.5678	-1234 6/10
+de_DE	# ?/10	45000.75	45000 8/10
+de_DE	# ?/10	2.5	2 5/10
+de_DE	# ?/10	3.14159	3 1/10
+de_DE	# ?/10	60000.123456	60000 1/10
+de_DE	# ?/10	text:abc	abc
+de_DE	# ?/10	text:	
+de_DE	0.0000000000	0.0	0,0000000000
+de_DE	0.0000000000	-0.0001	-0,0001000000
+de_DE	0.0000000000	1.0	1,0000000000
+de_DE	0.0000000000	-1.0	-1,0000000000
+de_DE	0.0000000000	0.5	0,5000000000
+de_DE	0.0000000000	0.3333	0,3333000000
+de_DE	0.0000000000	1.5	1,5000000000
+de_DE	0.0000000000	-1.5	-1,5000000000
+de_DE	0.0000000000	1234.5678	1234,5678000000
+de_DE	0.0000000000	-1234.5678	-1234,5678000000
+de_DE	0.0000000000	1000000000.0	1000000000,0000000000
+de_DE	0.0000000000	1e-7	0,0000001000
+de_DE	0.0000000000	45000.75	45000,7500000000
+de_DE	0.0000000000	0.999	0,9990000000
+de_DE	0.0000000000	100.0	100,0000000000
+de_DE	0.0000000000	12345678.0	12345678,0000000000
+de_DE	0.0000000000	-0.5	-0,5000000000
+de_DE	0.0000000000	2.5	2,5000000000
+de_DE	0.0000000000	3.14159	3,1415900000
+de_DE	0.0000000000	60000.123456	60000,1234560000
+de_DE	0.0000000000	text:abc	abc
+de_DE	0.0000000000	text:	
+de_DE	#,##0.000000	0.0	0,000000
+de_DE	#,##0.000000	-0.0001	-0,000100
+de_DE	#,##0.000000	1.0	1,000000
+de_DE	#,##0.000000	-1.0	-1,000000
+de_DE	#,##0.000000	0.5	0,500000
+de_DE	#,##0.000000	0.3333	0,333300
+de_DE	#,##0.000000	1.5	1,500000
+de_DE	#,##0.000000	-1.5	-1,500000
+de_DE	#,##0.000000	1234.5678	1.234,567800
+de_DE	#,##0.000000	-1234.5678	-1.234,567800
+de_DE	#,##0.000000	1000000000.0	1.000.000.000,000000
+de_DE	#,##0.000000	1e-7	0,000000
+de_DE	#,##0.000000	45000.75	45.000,750000
+de_DE	#,##0.000000	0.999	0,999000
+de_DE	#,##0.000000	100.0	100,000000
+de_DE	#,##0.000000	12345678.0	12.345.678,000000
+de_DE	#,##0.000000	-0.5	-0,500000
+de_DE	#,##0.000000	2.5	2,500000
+de_DE	#,##0.000000	3.14159	3,141590
+de_DE	#,##0.000000	60000.123456	60.000,123456
+de_DE	#,##0.000000	text:abc	abc
+de_DE	#,##0.000000	text:	
+de_DE	dd mmm yyyy hh:mm	1234.5678	18 Mai 1903 13:37
+de_DE	dd mmm yyyy hh:mm	1000000000.0	1000000000
+de_DE	dd mmm yyyy hh:mm	12345678.0	12345678
+de_DE	dd mmm yyyy hh:mm	text:abc	abc
+de_DE	dd mmm yyyy hh:mm	text:	
+de_DE	ddd, mmm d	1000000000.0	1000000000
+de_DE	ddd, mmm d	12345678.0	12345678
+de_DE	ddd, mmm d	text:abc	abc
+de_DE	ddd, mmm d	text:	
+de_DE	[h]:mm:ss	0.0	0:00:00
+de_DE	[h]:mm:ss	-0.0001	-0:00:09
+de_DE	[h]:mm:ss	1.0	24:00:00
+de_DE	[h]:mm:ss	-1.0	-24:00:00
+de_DE	[h]:mm:ss	0.5	12:00:00
+de_DE	[h]:mm:ss	0.3333	7:59:57
+de_DE	[h]:mm:ss	1.5	36:00:00
+de_DE	[h]:mm:ss	-1.5	-36:00:00
+de_DE	[h]:mm:ss	1234.5678	29629:37:38
+de_DE	[h]:mm:ss	-1234.5678	-29629:37:38
+de_DE	[h]:mm:ss	1e-7	0:00:00
+de_DE	[h]:mm:ss	45000.75	1080018:00:00
+de_DE	[h]:mm:ss	0.999	23:58:34
+de_DE	[h]:mm:ss	100.0	2400:00:00
+de_DE	[h]:mm:ss	-0.5	-12:00:00
+de_DE	[h]:mm:ss	2.5	60:00:00
+de_DE	[h]:mm:ss	3.14159	75:23:53
+de_DE	[h]:mm:ss	60000.123456	1440002:57:47
+de_DE	[h]:mm:ss	text:abc	abc
+de_DE	[h]:mm:ss	text:	
+de_DE	mm/dd/yy	0.0	12/30/99
+de_DE	mm/dd/yy	-0.0001	12/29/99
+de_DE	mm/dd/yy	1.0	12/31/99
+de_DE	mm/dd/yy	-1.0	12/29/99
+de_DE	mm/dd/yy	0.5	12/30/99
+de_DE	mm/dd/yy	0.3333	12/30/99
+de_DE	mm/dd/yy	1.5	12/31/99
+de_DE	mm/dd/yy	-1.5	12/28/99
+de_DE	mm/dd/yy	1234.5678	05/18/03
+de_DE	mm/dd/yy	-1234.5678	08/12/96
+de_DE	mm/dd/yy	1000000000.0	1000000000
+de_DE	mm/dd/yy	1e-7	12/30/99
+de_DE	mm/dd/yy	45000.75	03/15/23
+de_DE	mm/dd/yy	0.999	12/30/99
+de_DE	mm/dd/yy	100.0	04/09/00
+de_DE	mm/dd/yy	12345678.0	12345678
+de_DE	mm/dd/yy	-0.5	12/29/99
+de_DE	mm/dd/yy	2.5	01/01/00
+de_DE	mm/dd/yy	3.14159	01/02/00
+de_DE	mm/dd/yy	60000.123456	04/08/64
+de_DE	mm/dd/yy	text:abc	abc
+de_DE	mm/dd/yy	text:	
+de_DE	yyyy	0.0	1899
+de_DE	yyyy	-0.0001	1899
+de_DE	yyyy	1.0	1899
+de_DE	yyyy	-1.0	1899
+de_DE	yyyy	0.5	1899
+de_DE	yyyy	0.3333	1899
+de_DE	yyyy	1.5	1899
+de_DE	yyyy	-1.5	1899
+de_DE	yyyy	1234.5678	1903
+de_DE	yyyy	-1234.5678	1896
+de_DE	yyyy	1000000000.0	1000000000
+de_DE	yyyy	1e-7	1899
+de_DE	yyyy	45000.75	2023
+de_DE	yyyy	0.999	1899
+de_DE	yyyy	100.0	1900
+de_DE	yyyy	12345678.0	12345678
+de_DE	yyyy	-0.5	1899
+de_DE	yyyy	2.5	1900
+de_DE	yyyy	3.14159	1900
+de_DE	yyyy	60000.123456	2064
+de_DE	yyyy	text:abc	abc
+de_DE	yyyy	text:	
+de_DE	d	0.0	30
+de_DE	d	-0.0001	29
+de_DE	d	1.0	31
+de_DE	d	-1.0	29
+de_DE	d	0.5	30
+de_DE	d	0.3333	30
+de_DE	d	1.5	31
+de_DE	d	-1.5	28
+de_DE	d	1234.5678	18
+de_DE	d	-1234.5678	12
+de_DE	d	1000000000.0	1000000000
+de_DE	d	1e-7	30
+de_DE	d	45000.75	15
+de_DE	d	0.999	30
+de_DE	d	100.0	9
+de_DE	d	12345678.0	12345678
+de_DE	d	-0.5	29
+de_DE	d	2.5	1
+de_DE	d	3.14159	2
+de_DE	d	60000.123456	8
+de_DE	d	text:abc	abc
+de_DE	d	text:	
+de_DE	hh	0.0	00
+de_DE	hh	-0.0001	23
+de_DE	hh	1.0	00
+de_DE	hh	-1.0	00
+de_DE	hh	0.5	12
+de_DE	hh	0.3333	07
+de_DE	hh	1.5	12
+de_DE	hh	-1.5	12
+de_DE	hh	1234.5678	13
+de_DE	hh	-1234.5678	10
+de_DE	hh	1e-7	00
+de_DE	hh	45000.75	18
+de_DE	hh	0.999	23
+de_DE	hh	100.0	00
+de_DE	hh	-0.5	12
+de_DE	hh	2.5	12
+de_DE	hh	3.14159	03
+de_DE	hh	60000.123456	02
+de_DE	hh	text:abc	abc
+de_DE	hh	text:	
+de_DE	m	0.0	12
+de_DE	m	-0.0001	12
+de_DE	m	1.0	12
+de_DE	m	-1.0	12
+de_DE	m	0.5	12
+de_DE	m	0.3333	12
+de_DE	m	1.5	12
+de_DE	m	-1.5	12
+de_DE	m	1234.5678	5
+de_DE	m	-1234.5678	8
+de_DE	m	1000000000.0	1000000000
+de_DE	m	1e-7	12
+de_DE	m	45000.75	3
+de_DE	m	0.999	12
+de_DE	m	100.0	4
+de_DE	m	12345678.0	12345678
+de_DE	m	-0.5	12
+de_DE	m	2.5	1
+de_DE	m	3.14159	1
+de_DE	m	60000.123456	4
+de_DE	m	text:abc	abc
+de_DE	m	text:	
+de_DE	mm	0.0	12
+de_DE	mm	-0.0001	12
+de_DE	mm	1.0	12
+de_DE	mm	-1.0	12
+de_DE	mm	0.5	12
+de_DE	mm	0.3333	12
+de_DE	mm	1.5	12
+de_DE	mm	-1.5	12
+de_DE	mm	1234.5678	05
+de_DE	mm	-1234.5678	08
+de_DE	mm	1000000000.0	1000000000
+de_DE	mm	1e-7	12
+de_DE	mm	45000.75	03
+de_DE	mm	0.999	12
+de_DE	mm	100.0	04
+de_DE	mm	12345678.0	12345678
+de_DE	mm	-0.5	12
+de_DE	mm	2.5	01
+de_DE	mm	3.14159	01
+de_DE	mm	60000.123456	04
+de_DE	mm	text:abc	abc
+de_DE	mm	text:	

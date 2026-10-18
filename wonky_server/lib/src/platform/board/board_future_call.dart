@@ -1,5 +1,6 @@
 import 'package:serverpod/serverpod.dart';
 
+import '../common/guarded.dart';
 import 'board_pipeline.dart';
 import 'board_sweep.dart';
 import 'board_tasks.dart';
@@ -34,16 +35,5 @@ class BoardFutureCall extends FutureCall {
     Session session,
     String name,
     Future<int> Function() job,
-  ) async {
-    try {
-      final count = await job();
-      if (count > 0) session.log('board.$name: $count');
-    } on Exception catch (e, st) {
-      session.log(
-        'board.$name failed: $e',
-        level: LogLevel.error,
-        stackTrace: st,
-      );
-    }
-  }
+  ) => runGuarded<int>(session, 'board.$name', job, describe: describeCount);
 }

@@ -154,7 +154,10 @@ void main() {
     await r.settle(tester, () => saved.isNotEmpty);
 
     expect(saved, ['Q3 review.pdf']);
-    expect(r.services.prefs.slidesDefaults['exportOptions'], isA<Map>());
+    expect(
+      r.services.prefs.slidesDefaults['exportOptions'],
+      isA<Map<Object?, Object?>>(),
+    );
     await settleTooltips(tester);
     await r.close(tester);
   });

@@ -1,0 +1,112 @@
+- id: left-two
+  formula: =LEFT("abc",2)
+  expect: {value: "ab"}
+  source: manual
+- id: right-default-one
+  formula: =RIGHT("abc")
+  expect: {value: "c"}
+  source: manual
+- id: mid-middle
+  formula: =MID("abcdef",2,3)
+  expect: {value: "bcd"}
+  source: manual
+- id: left-of-number
+  formula: =LEFT(1234,2)
+  expect: {value: "12"}
+  source: manual
+- id: len-accented
+  formula: =LEN("héllo")
+  expect: {value: 5}
+  source: manual
+- id: trim-inner-spaces
+  formula: =TRIM("  a   b  ")
+  expect: {value: "a b"}
+  source: manual
+- id: upper
+  formula: =UPPER("abc")
+  expect: {value: "ABC"}
+  source: manual
+- id: proper
+  formula: =PROPER("hello wORLD")
+  expect: {value: "Hello World"}
+  source: manual
+- id: substitute-all
+  formula: =SUBSTITUTE("a-b-c","-","+")
+  expect: {value: "a+b+c"}
+  source: manual
+- id: substitute-instance
+  formula: =SUBSTITUTE("a-b-c","-","+",2)
+  expect: {value: "a-b+c"}
+  source: manual
+- id: find-case-sensitive
+  formula: =FIND("b","abcb")
+  expect: {value: 2}
+  source: manual
+- id: find-not-found
+  formula: =FIND("B","abc")
+  expect: {value: "#VALUE!"}
+  source: manual
+- id: search-case-insensitive
+  formula: =SEARCH("B","abc")
+  expect: {value: 2}
+  source: manual
+- id: concatenate-mixed
+  formula: =CONCATENATE("a",1,TRUE)
+  expect: {value: "a1TRUE"}
+  source: manual
+- id: ampersand-decimal
+  formula: ="a"&1.5
+  expect: {value: "a1.5"}
+  source: manual
+- id: textjoin-ignore-empty
+  formula: =TEXTJOIN("-",TRUE,"a","","b")
+  expect: {value: "a-b"}
+  source: manual
+- id: textjoin-keep-empty
+  formula: =TEXTJOIN("-",FALSE,"a","","b")
+  expect: {value: "a--b"}
+  source: manual
+- id: rept
+  formula: =REPT("ab",3)
+  expect: {value: "ababab"}
+  source: manual
+- id: text-thousands-two-decimals
+  formula: =TEXT(1234.567,"#,##0.00")
+  expect: {value: "1,234.57"}
+  source: manual
+- id: text-percent
+  formula: =TEXT(0.25,"0%")
+  expect: {value: "25%"}
+  source: manual
+- id: text-iso-date
+  formula: =TEXT(45000,"yyyy-mm-dd")
+  expect: {value: "2023-03-15"}
+  source: manual
+- id: value-thousands
+  formula: =VALUE("1,234.5")
+  expect: {value: 1234.5}
+  source: manual
+- id: value-not-a-number
+  formula: =VALUE("abc")
+  expect: {value: "#VALUE!"}
+  source: manual
+- id: exact-case
+  formula: =EXACT("a","A")
+  expect: {value: false}
+  source: manual
+- id: char-code
+  formula: =CHAR(65)
+  expect: {value: "A"}
+  source: manual
+- id: code-char
+  formula: =CODE("A")
+  expect: {value: 65}
+  source: manual
+- id: number-plus-numeric-text
+  formula: =1+"2"
+  expect: {value: 3}
+  source: manual
+- id: number-plus-text
+  formula: =1+"a"
+  expect: {value: "#VALUE!"}
+  source: manual

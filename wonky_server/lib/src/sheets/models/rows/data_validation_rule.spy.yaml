@@ -1,0 +1,23 @@
+### A data validation rule (Sheets 07 §6).
+class: DataValidationRule
+table: data_validation_rule
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  sheet: Sheet?, relation(onDelete=Cascade, deferred)
+  rangesJson: String
+  criteriaJson: String
+  ### Reject invalid input instead of warning.
+  strict: bool, default=false
+  showDropdown: bool, default=true
+  ### chip, arrow or plainText.
+  displayStyle: String?
+  helpText: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  data_validation_rule_file_idx:
+    fields: fileId, id

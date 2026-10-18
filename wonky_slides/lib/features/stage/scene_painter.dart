@@ -28,6 +28,7 @@ class ScenePaintOptions {
     this.devicePixelRatio = 1,
     this.gpuCharts = false,
     this.chartGpu,
+    this.imagePixelsPerSu,
   });
 
   /// Element visual states (the edit frame by default).
@@ -55,6 +56,12 @@ class ScenePaintOptions {
   /// The ready GPU backend of 3D charts (`Chart3DBackends.active` when the
   /// stage was built), or null: software rendering.
   final Chart3DGpuRenderer? chartGpu;
+
+  /// Device pixels per slide unit at the top of the scene (the stage's
+  /// scale times the device pixel ratio), for sizing image decodes: images
+  /// decode at about the size they are drawn at (CQ-43). Null decodes them
+  /// at full size.
+  final double? imagePixelsPerSu;
 }
 
 /// Paints [SlideScene]s and their nodes on a canvas in slide units (the
@@ -149,6 +156,25 @@ abstract final class SlideScenePainter {
   // Groups, effects and visual states
 
   static void _group(
+    Canvas canvas,
+    GroupNode g,
+    ElementVisualState? inherited,
+    ScenePaintOptions options, {
+    required bool own,
+  }) {
+    final scale = _groupScale;
+    final state = own ? inherited : null;
+    _groupScale *=
+        _scaleOf(g.transform.storage) *
+        (state == null ? 1 : _scaleOf(state.transform.storage));
+    try {
+      _paintGroup(canvas, g, inherited, options, own: own);
+    } finally {
+      _groupScale = scale;
+    }
+  }
+
+  static void _paintGroup(
     Canvas canvas,
     GroupNode g,
     ElementVisualState? inherited,
@@ -428,8 +454,29 @@ abstract final class SlideScenePainter {
   // -------------------------------------------------------------------
   // Images
 
+  /// The device-pixel width the whole image of [n] is drawn at (null =
+  /// full size): its destination width at the scene's scale and the
+  /// enclosing groups' scales, divided by the cropped fraction.
+  static double? _drawnWidth(ImageNode n, ScenePaintOptions o) {
+    final px = o.imagePixelsPerSu;
+    if (px == null) return null;
+    final nw = n.image.naturalWidth;
+    final frac = nw == null || nw <= 0 ? n.src.width : n.src.width / nw;
+    if (frac <= 0) return null;
+    return n.dst.width * px * _groupScale / frac;
+  }
+
+  /// The scale of the groups being painted (their transforms and visual
+  /// states), for [_drawnWidth].
+  static double _groupScale = 1;
+
+  static double _scaleOf(Float64List m) => math.max(
+    math.sqrt(m[0] * m[0] + m[1] * m[1]),
+    math.sqrt(m[4] * m[4] + m[5] * m[5]),
+  );
+
   static void _image(Canvas canvas, ImageNode n, ScenePaintOptions o) {
-    final image = o.images?.imageOf(n.image);
+    final image = o.images?.imageOf(n.image, width: _drawnWidth(n, o));
     if (image == null) return;
     var src = Rect.fromLTWH(n.src.x, n.src.y, n.src.width, n.src.height);
     if (n.image.naturalWidth == null || n.image.naturalHeight == null) {

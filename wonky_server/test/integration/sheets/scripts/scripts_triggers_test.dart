@@ -1,23 +1,31 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
+import 'package:wonky_server/src/platform/common/errors.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
 import 'package:wonky_server/src/sheets/scripts/script_jobs.dart';
 import 'package:wonky_server/src/sheets/scripts/script_service.dart';
+import 'package:wonky_server/src/sheets/scripts/script_authorizations.dart';
 import 'package:wonky_server/src/sheets/scripts/script_triggers.dart';
 import 'package:wonky_server/src/sheets/scripts/url_fetch_proxy.dart';
-import 'package:wonky_server/src/sheets/sync/sync_db.dart';
+import 'package:wonky_server/src/sheets/revlog/sheets_server_writes.dart';
 import 'package:wonky_sheets_core/model.dart'
-    show ChangeSummary, GridRange, ChangeKinds;
+    show ChangeSummary, GridRange, ChangeKinds, RowChange, SheetsTables;
 import 'package:wonky_sheets_core/formula.dart' show GridRect;
+import 'package:wonky_sync_models/ids.dart' show SheetsIds;
 import 'package:wonky_sheets_script/wonky_sheets_script.dart'
     show EditEventData;
 
 import '../../../support/mcp_harness.dart';
 import '../../../support/sheets_fixtures.dart';
+import '../../../support/sheets_rev_device.dart';
 import '../../../support/test_users.dart';
 import '../../../support/wonky_serverpod.dart';
 import 'script_support.dart';
@@ -99,7 +107,7 @@ void main() {
     // The build needs both scopes (triggers and fetches); a run needs a
     // grant covering all of them (09 §11.2).
     Future<void> authorize(TestUser u, List<String> scopes) =>
-        ScriptService.authorize(u.session, u.actor, uuidOf(ss), [
+        ScriptAuthorizations.authorize(u.session, u.actor, uuidOf(ss), [
           ...scopes,
           'script.triggers',
           'external_request',
@@ -127,7 +135,7 @@ void main() {
           item.contentRef!,
         );
         final triggers = await ScriptTrigger.db.find(
-          syncSessionOf(anna.session),
+          anna.session,
           where: (t) => t.projectId.equals(project!.id),
         );
         expect(triggers.single.functionName, 'stamp');
@@ -202,25 +210,46 @@ void main() {
               c2: sheet.columns.idAt(1),
             ).toJson(),
           );
-        final now = DateTime.now().toUtc();
         final n = await ScriptTriggerService.fireForChange(
           anna.session,
           item,
-          ChangeLog(
-            spreadsheetId: item.contentRef!,
-            userId: anna.authUserId,
-            actorKind: ActorKind.user,
-            sessionId: 'test',
-            label: 'Edit',
-            summaryJson: summary.encode(),
-            at: now,
-            createdAt: now,
-          ),
+          summaryJson: summary.encode(),
+          actorKind: ActorKind.user,
+          offline: false,
         );
         expect(n, 1);
         expect(await SheetsFixtures.read(mcp, ss, 'Data!F2'), [
           ['edited B2'],
         ]);
+      },
+    );
+
+    test(
+      'when a user types through RevLog then the scripts hook runs the '
+      'onEdit trigger',
+      () async {
+        await authorize(anna, ['script.triggers']);
+        await mcp.call('sheets.run_function', {
+          'spreadsheet': ss,
+          'function': 'installEdit',
+        });
+        final device = await SheetsRevDevice.open(anna, item.contentRef!);
+        try {
+          await device.setCell(1, 1, '1200');
+        } finally {
+          await device.close();
+        }
+        await drainHooks(anna.session, item.contentRef!);
+        expect(await SheetsFixtures.read(mcp, ss, 'Data!F2'), [
+          ['edited B2'],
+        ]);
+        final ex = await ScriptExecution.db.find(
+          anna.session,
+          where: (t) =>
+              t.kind.equals(ScriptExecutionKind.installableOnEdit) &
+              t.spreadsheetUuid.equals(item.contentRef!),
+        );
+        expect(ex.single.status, ScriptExecutionStatus.completed);
       },
     );
 
@@ -232,27 +261,20 @@ void main() {
           'spreadsheet': ss,
           'function': 'installEdit',
         });
-        final now = DateTime.now().toUtc();
         final n = await ScriptTriggerService.fireForChange(
           anna.session,
           item,
-          ChangeLog(
-            spreadsheetId: item.contentRef!,
-            userId: anna.authUserId,
-            actorKind: ActorKind.mcp,
-            sessionId: 'test',
-            label: 'Edit',
-            summaryJson: (ChangeSummary()..kinds.add(ChangeKinds.values))
-                .encode(),
-            at: now,
-            createdAt: now,
-          ),
+          summaryJson: (ChangeSummary()..kinds.add(ChangeKinds.values))
+              .encode(),
+          actorKind: ActorKind.mcp,
+          offline: false,
         );
         expect(n, 0);
       },
     );
 
-    Future<ChangeLog> userEdit() async {
+    /// The summary of a user edit of Data!B2.
+    Future<String> userEdit() async {
       final model = (await HeadlessWorkbookProvider.open(
         anna.session,
         item.contentRef!,
@@ -269,17 +291,7 @@ void main() {
             c2: sheet.columns.idAt(1),
           ).toJson(),
         );
-      final now = DateTime.now().toUtc();
-      return ChangeLog(
-        spreadsheetId: item.contentRef!,
-        userId: anna.authUserId,
-        actorKind: ActorKind.user,
-        sessionId: 'test',
-        label: 'Edit',
-        summaryJson: summary.encode(),
-        at: now,
-        createdAt: now,
-      );
+      return summary.encode();
     }
 
     Future<ScriptTrigger> installed(String fn) async {
@@ -293,10 +305,92 @@ void main() {
         item.contentRef!,
       );
       return (await ScriptTrigger.db.find(
-        syncSessionOf(anna.session),
+        anna.session,
         where: (t) => t.projectId.equals(project!.id),
       )).single;
     }
+
+    test(
+      'when a trigger of an editor writes into a range protected by the '
+      'owner then the run fails and the cell is unchanged',
+      () async {
+        final bo = await TestUsers.create(sessionBuilder, name: 'Bo');
+        await SheetsFixtures.share(mcp, ss, bo.email, 'editor');
+        // Anna protects column F (where markEdit writes) for herself only.
+        final protect = await mcp.call('sheets.protect_range', {
+          'spreadsheet': ss,
+          'range': 'Data!F1:F20',
+          'description': 'Owner only',
+        });
+        expect(protect, isNotNull);
+        await authorize(bo, ['script.triggers']);
+        final boMcp = await McpHarness.forUser(bo);
+        await boMcp.call('sheets.run_function', {
+          'spreadsheet': ss,
+          'function': 'installEdit',
+        });
+        final n = await ScriptTriggerService.fireForChange(
+          anna.session,
+          item,
+          summaryJson: await userEdit(),
+          actorKind: ActorKind.user,
+          offline: false,
+        );
+        expect(n, 1);
+        expect(
+          '${await SheetsFixtures.read(mcp, ss, 'Data!F2')}',
+          isNot(
+            contains('edited'),
+          ),
+        );
+        final ex = await ScriptExecution.db.find(
+          anna.session,
+          where: (t) =>
+              t.kind.equals(ScriptExecutionKind.installableOnEdit) &
+              t.spreadsheetUuid.equals(item.contentRef!),
+        );
+        expect(ex.single.runAsUserId, bo.id);
+        expect(ex.single.status, ScriptExecutionStatus.failed);
+        expect(ex.single.errorMessage, contains('protected'));
+
+        // The sequencer enforces it too: script ops of the run-as user are
+        // checked (RevLog spec 05 §3.5), only system ops are exempt.
+        final model = (await HeadlessWorkbookProvider.open(
+          anna.session,
+          item.contentRef!,
+        )).model;
+        final sheet = model.sheetByName('Data')!;
+        final r = sheet.rows.idAt(1);
+        final c = sheet.columns.idAt(5);
+        await expectLater(
+          SheetsServerWrites.apply(
+            bo.session,
+            actor: bo.actor.copyWith(kind: ActorKind.script),
+            fileUuid: item.contentRef!,
+            changes: [
+              RowChange.insert(
+                SheetsTables.cell,
+                SheetsIds.cellId(sheet.id, r, c),
+                {
+                  'sheetId': sheet.id,
+                  'rowId': r,
+                  'columnId': c,
+                  'content': 's:sneaky',
+                },
+              ),
+            ],
+            label: 'Script: markEdit',
+          ),
+          throwsA(
+            isA<WonkyException>().having(
+              Errors.isProtectedRange,
+              'protected range',
+              isTrue,
+            ),
+          ),
+        );
+      },
+    );
 
     test('when run live on the server then log lines stream before the '
         'result', () async {
@@ -370,9 +464,9 @@ void main() {
               functionName: 'markEdit',
               payloadJson: '{"type":"open"}',
               status: ScriptExecutionStatus.running,
-              enqueuedAt: DateTime.now().toUtc(),
+              enqueuedAt: clock.now().toUtc(),
               leaseOwner: 'elsewhere',
-              leaseUntil: DateTime.now().toUtc().add(const Duration(hours: 1)),
+              leaseUntil: clock.now().toUtc().add(const Duration(hours: 1)),
               attempts: 1,
             ),
           );
@@ -391,7 +485,7 @@ void main() {
           await ScriptJob.db.updateRow(
             session,
             running.copyWith(
-              leaseUntil: DateTime.now().toUtc().subtract(
+              leaseUntil: clock.now().toUtc().subtract(
                 const Duration(minutes: 1),
               ),
             ),
@@ -429,7 +523,9 @@ void main() {
           final n = await ScriptTriggerService.fireForChange(
             anna.session,
             item,
-            await userEdit(),
+            summaryJson: await userEdit(),
+            actorKind: ActorKind.user,
+            offline: false,
           );
           expect(n, 1);
           final f2 = await SheetsFixtures.read(mcp, ss, 'Data!F2');
@@ -449,7 +545,9 @@ void main() {
             await ScriptTriggerService.fireForChange(
               anna.session,
               item,
-              await userEdit(),
+              summaryJson: await userEdit(),
+              actorKind: ActorKind.user,
+              offline: false,
             );
           }
           final notes = await UserNotification.db.find(
@@ -497,7 +595,7 @@ void main() {
             'args': ['http://api.test:${server.port}/rates'],
           });
           expect(r['result'], 'hello from /rates');
-          final usage = await ScriptService.usage(anna.session, anna.id);
+          final usage = await ScriptAuthorizations.usage(anna.session, anna.id);
           expect(usage.urlFetchCalls, 1);
         },
       );
@@ -564,7 +662,7 @@ void main() {
               runtime: ScriptRuntimeKind.clientWeb,
               status: ScriptExecutionStatus.completed,
               buildSourceHash: 'h',
-              startedAt: DateTime.now().toUtc(),
+              startedAt: clock.now().toUtc(),
               durationMs: 120,
               logs: '',
               cellsRead: 1,
@@ -590,7 +688,7 @@ Future<ScriptTriggerState> _makeDue(Session session, ScriptTriggerState s) =>
     ScriptTriggerState.db.updateRow(
       session,
       s.copyWith(
-        nextRunAt: DateTime.now().toUtc().subtract(const Duration(seconds: 5)),
+        nextRunAt: clock.now().toUtc().subtract(const Duration(seconds: 5)),
       ),
     );
 

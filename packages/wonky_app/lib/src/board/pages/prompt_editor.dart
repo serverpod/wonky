@@ -195,6 +195,7 @@ class _PromptEditorDialogState extends State<PromptEditorDialog> {
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.board.prompt'),
+        closeIcon: const WonkyDialogCloseButton(),
         constraints: BoxConstraints(
           maxWidth: (size.width - 48).clamp(320.0, 1100.0) + 48,
         ),

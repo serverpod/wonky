@@ -1,19 +1,41 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
-import 'package:wonky_client/wonky_client.dart'
-    show ActorKind, ChangeLog, Participant;
+import 'package:wonky_client/wonky_client.dart' show ActorKind, Participant;
 import 'package:wonky_sheets_core/model.dart' hide ActorKind;
 
 import '../collab/sheets_collab.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
-import '../sync/synced_workbook_session.dart';
+import '../revlog/logged_workbook_session.dart';
 import 'agent_highlight_layer.dart';
 
-/// Reads the synced `ChangeLog` rows of the open spreadsheet written at or
-/// after [since] (newest last is not required).
-typedef AgentChangeLogSource = Future<List<ChangeLog>> Function(DateTime since);
+/// A committed op as the agent highlight sees it (RevLog `RevOpMeta`).
+@immutable
+class AgentWrite {
+  const AgentWrite({
+    required this.id,
+    required this.at,
+    required this.sessionId,
+    required this.userUuid,
+    required this.actorKind,
+    required this.summaryJson,
+  });
+
+  /// Unique per op (the revision).
+  final String id;
+  final DateTime at;
+  final String sessionId;
+  final String userUuid;
+  final ActorKind actorKind;
+  final String summaryJson;
+}
+
+/// Reads the ops of the open spreadsheet committed at or after [since]
+/// (newest last is not required).
+typedef AgentChangeLogSource =
+    Future<List<AgentWrite>> Function(DateTime since);
 
 /// The agent presence highlight of headless writes (Sheets 12 §1.4): when
 /// remote changes arrive, the synced `ChangeLog` rows of server-side tool
@@ -56,12 +78,21 @@ class ExternalAgentWrites {
 
   static AgentChangeLogSource? _syncedSource(SheetEditorController editor) {
     final session = editor.session;
-    if (session is! SyncedWorkbookSession) return null;
-    return (since) => ChangeLog.db.find(
-      session.host.replica.session,
-      where: (t) => t.spreadsheetId.equals(session.spaceUuid) & (t.at >= since),
-      limit: 200,
-    );
+    if (session is! LoggedWorkbookSession) return null;
+    return (since) async => [
+      for (final m in await session.recentOps(
+        clock.now().difference(since) + const Duration(seconds: 1),
+      ))
+        if (!m.committedAt.isBefore(since))
+          AgentWrite(
+            id: '${m.revision}',
+            at: m.committedAt,
+            sessionId: m.sessionId ?? '',
+            userUuid: m.authorUuid ?? '',
+            actorKind: ActorKind.values.byName(m.actorKind),
+            summaryJson: jsonEncode(m.summary ?? const {}),
+          ),
+    ];
   }
 
   void _schedule() {
@@ -70,7 +101,7 @@ class ExternalAgentWrites {
     _timer = Timer(debounce, () => unawaited(poll()));
   }
 
-  /// Reads new `ChangeLog` rows and flashes the agent writes among them.
+  /// Reads new ops and flashes the agent writes among them.
   Future<void> poll() async {
     if (_disposed || source == null) return;
     // One read at a time; a burst during a read is caught by the next one.
@@ -81,7 +112,7 @@ class ExternalAgentWrites {
   }
 
   Future<void> _poll() async {
-    List<ChangeLog> rows;
+    List<AgentWrite> rows;
     try {
       rows = await source!(_since.subtract(const Duration(seconds: 5)));
     } catch (e) {
@@ -92,7 +123,7 @@ class ExternalAgentWrites {
     rows.sort((a, b) => a.at.compareTo(b.at));
     final now = clock.now();
     for (final r in rows) {
-      if (!_seen.add(r.id.uuid)) continue;
+      if (!_seen.add(r.id)) continue;
       if (r.at.isAfter(_since)) _since = r.at;
       if (now.difference(r.at) > maxAge) continue;
       final label = labelOf(r);
@@ -103,15 +134,15 @@ class ExternalAgentWrites {
   }
 
   /// The tag of [r], or null when it is not an agent write to flash.
-  String? labelOf(ChangeLog r) {
+  String? labelOf(AgentWrite r) {
     if (!r.sessionId.startsWith('server:')) return null;
-    final own = r.userId.uuid == editor.session.userId;
+    final own = r.userUuid == editor.session.userId;
     final participants =
         SheetsCollab.of(editor)?.presence.presence?.participants ??
         const <Participant>[];
     String? name(ActorKind kind) {
       for (final p in participants) {
-        if (p.userUuid.uuid == r.userId.uuid && p.actorKind == kind) {
+        if (p.userUuid.uuid == r.userUuid && p.actorKind == kind) {
           return p.displayName;
         }
       }
@@ -132,7 +163,7 @@ class ExternalAgentWrites {
     }
   }
 
-  void _flash(ChangeLog r, String label) {
+  void _flash(AgentWrite r, String label) {
     final ChangeSummary s;
     try {
       s = ChangeSummary.parse(r.summaryJson);

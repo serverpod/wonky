@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:qr/qr.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/slides_l10n.dart';
 
@@ -109,6 +110,7 @@ class _OpenOnDeviceDialogState extends State<OpenOnDeviceDialog>
     final l = slidesL10n(context);
     return ShadDialog(
       key: const ValueKey<String>('dialog.slides.openOnDevice'),
+      closeIcon: const WonkyDialogCloseButton(),
       constraints: const BoxConstraints(maxWidth: 440),
       title: Text(l.presentOpenOnDeviceTitle),
       description: Text(l.presentOpenOnDeviceBody),

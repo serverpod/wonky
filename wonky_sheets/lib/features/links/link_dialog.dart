@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_sheets_core/model.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/sheets_l10n.dart';
 
@@ -294,6 +295,7 @@ class _LinkEditorDialogState extends State<LinkEditorDialog>
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): _cancel},
       child: ShadDialog(
         key: const ValueKey<String>(_key),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.dialogLinkTitle),
         actions: [
           ShadButton.outline(

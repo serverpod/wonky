@@ -95,6 +95,7 @@ class _LanguageDialogState extends State<_LanguageDialog> {
     );
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.language'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.docDialogLanguageTitle),
       description: Text(l.docDialogLanguageDescription),
       constraints: const BoxConstraints(maxWidth: 420),
@@ -255,6 +256,7 @@ class _DetailsDialogState extends State<_DetailsDialog> {
     ];
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.properties'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.docDialogDetailsTitle),
       constraints: const BoxConstraints(maxWidth: 560),
       actions: [
@@ -358,6 +360,7 @@ class _GoToHeadingState extends State<_GoToHeading> {
         : widget.outline.map((e) => e.level).reduce((a, b) => a < b ? a : b);
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.goToHeading'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.docDialogGoToHeadingTitle),
       constraints: const BoxConstraints(maxWidth: 480),
       child: Focus(
@@ -482,6 +485,7 @@ Future<void> showMarkdownGuide(BuildContext context) => showShadDialog<void>(
     );
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.markdownGuide'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.docDialogGuideTitle),
       description: Text(l.docDialogGuideDescription),
       constraints: const BoxConstraints(maxWidth: 600),

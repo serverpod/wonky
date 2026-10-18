@@ -1,0 +1,18 @@
+### One op (RevLog spec 03 §2), sent once it is durable in the outbox.
+class: RevSubmit
+extends: RevClientMessage
+fields:
+  ### Idempotency key (the same on every resend).
+  clientOpId: UuidValue
+  baseRevision: int
+  ### Codec JSON incl. "sum"/"det" (exactly one of payload/payloadGz).
+  payload: String?
+  payloadGz: ByteData?
+  label: String
+  actorKind: ActorKind
+  groupId: String?
+  groupIndex: int
+  groupLast: bool
+  offline: bool
+  ### Client clock, display only.
+  createdAt: DateTime

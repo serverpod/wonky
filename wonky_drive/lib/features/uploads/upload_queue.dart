@@ -10,17 +10,34 @@ import 'upload_store.dart';
 import 'upload_task.dart';
 
 /// A file to upload (picked, dropped or pasted).
+///
+/// Its bytes may be read lazily ([UploadFile.lazy]): the pre-checks of
+/// `startUploadBatch` (count, size, quota) only need [size], and the queue
+/// reads the bytes of the files it accepts when they are enqueued, so a
+/// picked 2 GB video is refused without being loaded (DR-1).
 class UploadFile {
-  const UploadFile({
+  UploadFile({
     required this.name,
-    required this.bytes,
+    required Uint8List bytes,
+    this.mimeType,
+    this.lastModified,
+    this.folderPath = const [],
+  }) : size = bytes.length,
+       _bytes = bytes,
+       _read = null;
+
+  /// A file of [size] bytes (as the picker reports it) whose content
+  /// [read] loads on demand.
+  UploadFile.lazy({
+    required this.name,
+    required this.size,
+    required this._read,
     this.mimeType,
     this.lastModified,
     this.folderPath = const [],
   });
 
   final String name;
-  final Uint8List bytes;
   final String? mimeType;
   final DateTime? lastModified;
 
@@ -28,7 +45,14 @@ class UploadFile {
   /// (`['Holiday', 'Day 1']`); empty for single files.
   final List<String> folderPath;
 
-  int get size => bytes.length;
+  /// The size in bytes (known before the content is read).
+  final int size;
+
+  Uint8List? _bytes;
+  final Future<Uint8List> Function()? _read;
+
+  /// The content (read once, on first use).
+  Future<Uint8List> readBytes() async => _bytes ??= await _read!();
 }
 
 /// Something the panel announces (polite live region) and the shell
@@ -242,8 +266,24 @@ class UploadQueue extends ChangeNotifier {
     final batch = batchId ?? _newId().uuid;
     final added = <UploadTask>[];
     for (final f in files) {
+      // Only accepted files are read (DR-1); a file that can't be read any
+      // more (moved, no permission) becomes a failed row.
+      final Uint8List bytes;
+      try {
+        bytes = await f.readBytes();
+      } on Object catch (e) {
+        debugPrint('Reading ${f.name} failed: $e');
+        _addFailed(
+          f,
+          UploadFailure.notSaved,
+          parentUuid: parentUuid,
+          parentName: parentName,
+          error: '$e',
+        );
+        continue;
+      }
       final itemUuid = _newId();
-      final volatile = !storeAllBytes && f.size > storedBytesLimit;
+      final volatile = !storeAllBytes && bytes.length > storedBytesLimit;
       final t = UploadTask(
         id: itemUuid.uuid,
         batchId: batch,
@@ -252,7 +292,7 @@ class UploadQueue extends ChangeNotifier {
         parentUuid: parentUuid,
         parentName: parentName,
         fileName: f.name,
-        sizeBytes: f.size,
+        sizeBytes: bytes.length,
         mimeType: f.mimeType,
         lastModified: f.lastModified,
         createdAt: _nextCreatedAt(),
@@ -261,9 +301,9 @@ class UploadQueue extends ChangeNotifier {
             : UploadStatus.waitingForNetwork,
         volatile: volatile,
       );
-      _memory[t.id] = f.bytes;
+      _memory[t.id] = bytes;
       try {
-        await store.add(t, volatile ? null : f.bytes);
+        await store.add(t, volatile ? null : bytes);
       } on Object catch (e) {
         // Quota of the browser storage, …: keep it in memory.
         debugPrint('Storing an upload failed: $e');
@@ -300,25 +340,36 @@ class UploadQueue extends ChangeNotifier {
   }) {
     if (files.isEmpty) return;
     for (final f in files) {
-      final itemUuid = _newId();
-      _tasks.add(
-        UploadTask(
-          id: itemUuid.uuid,
-          batchId: itemUuid.uuid,
-          itemUuid: itemUuid,
-          fileUuid: _newId(),
-          parentUuid: parentUuid,
-          parentName: parentName,
-          fileName: f.name,
-          sizeBytes: f.size,
-          mimeType: f.mimeType,
-          createdAt: _nextCreatedAt(),
-          status: UploadStatus.failed,
-          failure: failure,
-        ),
-      );
+      _addFailed(f, failure, parentUuid: parentUuid, parentName: parentName);
     }
     notifyListeners();
+  }
+
+  void _addFailed(
+    UploadFile f,
+    UploadFailure failure, {
+    UuidValue? parentUuid,
+    String? parentName,
+    String? error,
+  }) {
+    final itemUuid = _newId();
+    _tasks.add(
+      UploadTask(
+        id: itemUuid.uuid,
+        batchId: itemUuid.uuid,
+        itemUuid: itemUuid,
+        fileUuid: _newId(),
+        parentUuid: parentUuid,
+        parentName: parentName,
+        fileName: f.name,
+        sizeBytes: f.size,
+        mimeType: f.mimeType,
+        createdAt: _nextCreatedAt(),
+        status: UploadStatus.failed,
+        failure: failure,
+        error: error,
+      ),
+    );
   }
 
   /// Bytes of uploads that haven't reached the server yet (not reserved),
@@ -339,6 +390,9 @@ class UploadQueue extends ChangeNotifier {
     final t = task(id);
     if (t == null || !t.status.isActive) return;
     if (byUndo) _cancelledByUndo.add(id);
+    // `completeFileUpload` in flight: releasing now would race it; the
+    // attempt settles the item when it returns (DR-2).
+    final completing = t.status == UploadStatus.verifying;
     t
       ..status = UploadStatus.cancelled
       ..bytesSent = 0;
@@ -346,7 +400,7 @@ class UploadQueue extends ChangeNotifier {
     _notBefore.remove(id);
     notifyListeners();
     await _save(t);
-    if (_created.remove(id)) {
+    if (!completing && _created.remove(id)) {
       try {
         await api.cancel(t.itemUuid);
       } on Object catch (e) {
@@ -499,18 +553,25 @@ class UploadQueue extends ChangeNotifier {
     while (true) {
       try {
         _set(t, UploadStatus.starting);
-        final start = await api.create(
-          FileUploadRequest(
-            itemUuid: t.itemUuid,
-            fileUuid: t.fileUuid,
-            parentUuid: t.parentUuid,
-            name: t.fileName,
-            sizeBytes: t.sizeBytes,
-            declaredMimeType: t.mimeType,
-            lastModified: t.lastModified?.toUtc(),
-            conflict: UploadConflictMode.keepBoth,
-          ),
+        final request = FileUploadRequest(
+          itemUuid: t.itemUuid,
+          fileUuid: t.fileUuid,
+          parentUuid: t.parentUuid,
+          name: t.fileName,
+          sizeBytes: t.sizeBytes,
+          declaredMimeType: t.mimeType,
+          lastModified: t.lastModified?.toUtc(),
+          conflict: UploadConflictMode.keepBoth,
         );
+        final start = await api.create(request);
+        if (abort.aborted && !_disposed) {
+          // Cancelled while `createFileUpload` was in flight: [cancel]
+          // found nothing to release, so release the reservation the
+          // server just made (by the requested ids: a retry may have
+          // rotated the task's ids meanwhile).
+          await _quietly(() => api.cancel(request.itemUuid));
+          return;
+        }
         _created.add(t.id);
         if (!_stillWanted(t, abort)) return;
         final description = start.ticket.uploadDescription;
@@ -536,7 +597,30 @@ class UploadQueue extends ChangeNotifier {
         }
         if (!_stillWanted(t, abort)) return;
         _set(t, UploadStatus.verifying);
-        var item = await api.complete(t.itemUuid);
+        DriveItemView item;
+        // The ids this attempt completes: an undo + redo while the call is in
+        // flight rotates the task's ids (and the redo reserves its own).
+        final itemUuid = t.itemUuid;
+        try {
+          item = await api.complete(itemUuid);
+        } on Object {
+          if (abort.aborted && !_disposed) {
+            // Cancelled while completing, and the completion failed: the
+            // reservation is still pending; release it (DR-2). [cancel]
+            // skips the release while completing, so this attempt owns it.
+            if (t.itemUuid == itemUuid) _created.remove(t.id);
+            await _quietly(() => api.cancel(itemUuid));
+            return;
+          }
+          rethrow;
+        }
+        if (abort.aborted && !_disposed && _tasks.contains(t)) {
+          // Cancelled while completing, but the file is stored: the row
+          // says so instead of "Cancelled" (DR-2; no conversion).
+          _created.remove(t.id);
+          await _finish(t, item);
+          return;
+        }
         if (!_stillWanted(t, abort)) return;
         _created.remove(t.id);
         final target = convertTo?.call(t);
@@ -550,17 +634,7 @@ class UploadQueue extends ChangeNotifier {
           }
           if (!_stillWanted(t, abort)) return;
         }
-        t
-          ..status = UploadStatus.done
-          ..result = item
-          ..failure = null
-          ..error = null
-          ..attempts = 0
-          ..bytesSent = t.sizeBytes;
-        notifyListeners();
-        await _save(t);
-        _forgetBytes(t);
-        if (!_events.isClosed) _events.add(UploadEvent(t, done: true));
+        await _finish(t, item);
         return;
       } on UploadAborted {
         return;
@@ -590,6 +664,21 @@ class UploadQueue extends ChangeNotifier {
         return;
       }
     }
+  }
+
+  /// The file is stored: the row is done.
+  Future<void> _finish(UploadTask t, DriveItemView item) async {
+    t
+      ..status = UploadStatus.done
+      ..result = item
+      ..failure = null
+      ..error = null
+      ..attempts = 0
+      ..bytesSent = t.sizeBytes;
+    notifyListeners();
+    await _save(t);
+    _forgetBytes(t);
+    if (!_events.isClosed) _events.add(UploadEvent(t, done: true));
   }
 
   UploadFailure _failureOf(WonkyException e) => switch (e.code) {

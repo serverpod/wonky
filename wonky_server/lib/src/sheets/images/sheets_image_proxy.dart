@@ -1,6 +1,7 @@
 import 'dart:collection';
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 
@@ -34,13 +35,14 @@ abstract final class SheetsImageProxy {
     String url,
   ) async {
     await SheetsService.byItemOrSpace(session, actor, itemUuid, Role.viewer);
-    final now = DateTime.now();
+    final now = clock.now();
     final hit = _cache.remove(url);
     if (hit != null && now.difference(hit.$1) < ttl) {
       _cache[url] = hit;
       return ByteData.sublistView(hit.$2);
     }
     if (hit != null) _bytes -= hit.$2.length;
+    await SafeImageFetcher.checkLimit(actor.userId);
     final bytes = await fetcher(url);
     _cache[url] = (now, bytes);
     _bytes += bytes.length;

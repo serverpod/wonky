@@ -1,0 +1,34 @@
+### A server-side change on a spreadsheet or deck that can be
+### reverted/reapplied (Sheets 12 §2.5, Slides 11 §1.4; undo domains
+### sheets.serverChange, slides.serverChange). `fileUuid` is the RevLog file
+### uuid (the item's `contentRef`) of either app.
+class: ServerChangeRecord
+table: server_change_record
+serverOnly: true
+fields:
+  changeId: UuidValue
+  fileUuid: UuidValue
+  userId: int
+  actorKind: ActorKind
+  label: String
+  ### gzip+base64 JSON list of row changes with before/after columns.
+  inverseJson: String?
+  inverseFileId: UuidValue?
+  forwardFileId: UuidValue?
+  ### RevLog files: the ops of the change are the rev_op rows with this
+  ### recordId; revert/reapply read their applied forms (RevLog spec 05
+  ### §8.2) and the inverse fields stay null (legacy records only).
+  recordId: UuidValue?
+  cellsAffected: int
+  createdAt: DateTime
+  expiresAt: DateTime
+  revertedAt: DateTime?
+  revertChangeId: UuidValue?
+indexes:
+  server_change_record_idx:
+    fields: recordId
+  server_change_file_idx:
+    fields: fileUuid, createdAt
+  server_change_id_idx:
+    fields: changeId
+    unique: true

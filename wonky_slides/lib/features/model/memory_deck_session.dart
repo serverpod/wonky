@@ -8,7 +8,7 @@ import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/planner.dart' show SlidesPlanner;
 import 'package:wonky_slides_core/session.dart';
-import 'package:wonky_sync_kit/rows.dart' show RowChange;
+import 'package:wonky_revlog/rows.dart' show RowChange;
 import 'package:wonky_sync_models/ids.dart' show IdGenerator, UuidV7IdGenerator;
 import 'package:wonky_ui/wonky_ui.dart' show SyncStatus;
 

@@ -5,10 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart';
-import 'package:wonky_write_core/wonky_write_core.dart'
-    hide DeltaSelection, ThemeCatalog;
+import 'package:wonky_write_core/wonky_write_core.dart' hide ThemeCatalog;
 
-import '../features/editor/applier/delta_applier.dart' show DeltaSelection;
 import '../features/editor/commands/editor_command_catalog.dart';
 import '../features/editor/commands/write_editor_commands.dart';
 import '../features/editor/controller/editor_types.dart';

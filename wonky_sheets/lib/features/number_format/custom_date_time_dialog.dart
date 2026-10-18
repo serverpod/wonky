@@ -196,6 +196,7 @@ class _CustomDateTimeDialogState extends McpDialogState<CustomDateTimeDialog> {
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.customDateTime'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.dtDialogTitle),
         actions: [
           ShadButton.outline(

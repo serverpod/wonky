@@ -149,7 +149,7 @@ void main() {
     await tester.pump();
 
     final bg = data(r).columnJson(DeckThemeColumn.backgroundJson)!;
-    expect(bg['fillDark'], isA<Map>());
+    expect(bg['fillDark'], isA<Map<Object?, Object?>>());
     expect(r.h.undoLabels, hasLength(1));
     await settleTooltips(tester);
     await r.close(tester);

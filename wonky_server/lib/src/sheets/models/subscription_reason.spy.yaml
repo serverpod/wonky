@@ -1,9 +1,0 @@
-### Why a user is a member of a spreadsheet space (suite 12 §2.3).
-enum: SubscriptionReason
-serialized: byName
-values:
-  - open
-  - pinned
-  - recent
-  - mcp
-  - script

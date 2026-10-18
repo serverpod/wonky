@@ -31,11 +31,20 @@
 ///      the package itself). Exceptions: `lib/driver.dart` (development entry
 ///      point) may import `dev_dependencies`, and files written by
 ///      `serverpod generate` are skipped for this one check.
+/// 3. **Unused dependencies** (CQ-64i): every entry under `dependencies:` is
+///    imported somewhere in `lib/` or `bin/` (one that only tests import
+///    belongs under `dev_dependencies:`), and every `dev_dependencies:` entry
+///    is imported by a test, tool or benchmark file, `lib/driver.dart`, or
+///    named in `analysis_options.yaml` (`wonky_lints`). Packages that work
+///    without an import are listed in [_usedWithoutImport] with the reason.
+/// 4. **Test imports**: files under `test/`, `integration_test/`,
+///    `test_driver/`, `tool/` and `benchmark/` import only declared packages
+///    (`dependencies:` or `dev_dependencies:`).
 ///
 /// `third_party/*` packages are external packages and are not checked
 /// (01 §2.3 rule 7), also when they are workspace members (as the vendored
-/// `serverpod_offline_sync` is, so Serverpod Cloud uploads it). Whether an external package depends on Flutter is read
-/// from `.dart_tool/package_graph.json` (written by `pub get`); without it the
+/// `dart_eval` is, so Serverpod Cloud uploads it). Whether an external package
+/// depends on Flutter is read from `.dart_tool/package_graph.json` (written by `pub get`); without it the
 /// script falls back to the package name and says so.
 ///
 /// Output: one line per violation, `package: file:line: message`. Exit code 1
@@ -154,10 +163,10 @@ const rules = <String, PackageRule>{
     kind: Kind.pureDart,
     family: Family.sheets,
     spec: {
+      'wonky_revlog',
       'wonky_core',
       'wonky_charts',
       'wonky_numfmt',
-      'wonky_sync_kit',
       'wonky_sync_models',
       'petitparser',
       'intl',
@@ -201,6 +210,16 @@ const rules = <String, PackageRule>{
     spec: {'wonky_core', 'dart_quill_delta', 'markdown'},
     forbiddenImports: _sharedLeafForbidden,
   ),
+  // Shared analysis options (CQ-64e): only YAML files that include the lint
+  // sets; every package lists it under dev_dependencies.
+  'wonky_lints': PackageRule(
+    kind: Kind.pureDart,
+    spec: {},
+    exceptions: {
+      'lints': 'lib/dart.yaml includes lints/recommended.yaml',
+      'flutter_lints': 'lib/flutter.yaml includes flutter_lints/flutter.yaml',
+    },
+  ),
   'wonky_fonts': PackageRule(
     kind: Kind.pureDart,
     spec: {},
@@ -230,54 +249,15 @@ const rules = <String, PackageRule>{
     exceptions: {'flutter_test': 'enterMarkdown in lib/testing.dart (15 §7)'},
     forbiddenImports: _sharedLeafForbidden,
   ),
-  // Shared offline-sync kit (v2; Slides 12 §5.1–5.2, suite 12 §2.6, Drive 05
-  // D-6), extracted from Sheets: the pure half (row changes, plans, undo)
-  // and the client half (replica, journal, writer, sync controller). Below
-  // the app families; the pure half never imports the Flutter half.
-  'wonky_sync_kit': PackageRule(
-    kind: Kind.pureDart,
-    spec: {
-      'wonky_core',
-      'wonky_sync_models',
-      'serverpod_database',
-      'serverpod_serialization',
-    },
-    forbiddenImports: [
-      ..._appFamilyForbidden,
-      'package:wonky_app',
-      'package:wonky_client',
-      'package:wonky_server',
-      'package:wonky_sync_kit_flutter',
-    ],
-  ),
-  'wonky_sync_kit_flutter': PackageRule(
-    kind: Kind.flutter,
-    spec: {
-      'wonky_sync_kit',
-      'wonky_app',
-      'wonky_ui',
-      'wonky_client',
-      'wonky_sync_models',
-      'serverpod_offline_sync_client',
-      'serverpod_database',
-    },
-    exceptions: {
-      'wonky_core': 'roles and id generators (pure Dart)',
-      'path_provider': 'desktop location of the replica files (12 §2.5)',
-      'sqlite3':
-          'read-only recovery read of a replica that cannot be opened (12 §2.5)',
-    },
-    forbiddenImports: [..._appFamilyForbidden, 'package:wonky_server'],
-  ),
   // Slides core (v2; Slides 01 §7): pure Dart, never imports Write or Sheets
   // packages (v2 review Q4); the family rule enforces that.
   'wonky_slides_core': PackageRule(
     kind: Kind.pureDart,
     family: Family.slides,
     spec: {
+      'wonky_revlog',
       'wonky_core',
       'wonky_sync_models',
-      'wonky_sync_kit',
       'wonky_charts',
       'wonky_numfmt',
       'wonky_code',
@@ -314,14 +294,48 @@ const rules = <String, PackageRule>{
           'subset lint and exports of the server-only compiler (compiler.dart)',
     },
   ),
+  // Pure-Dart id helpers of Sheets and Slides (UUIDv5 ids, generators,
+  // fractional indexes).
   'wonky_sync_models': PackageRule(
     kind: Kind.pureDart,
+    spec: {'wonky_revlog', 'uuid'},
+  ),
+  // RevLog (Sheets sync migration spec 02): the server-sequenced op log's
+  // shared core (schema, codec, apply rules, client state machine). Pure
+  // Dart, below the app cores and the server.
+  'wonky_revlog': PackageRule(
+    kind: Kind.pureDart,
+    spec: {'wonky_core', 'archive', 'collection', 'meta', 'uuid'},
+    forbiddenImports: [
+      ..._appFamilyForbidden,
+      'package:wonky_app',
+      'package:wonky_client',
+      'package:wonky_server',
+      'package:wonky_sync_models',
+    ],
+  ),
+  // The RevLog client (Sheets sync migration spec 06): local cache,
+  // transport and per-file connection, shared by the apps.
+  'wonky_revlog_flutter': PackageRule(
+    kind: Kind.flutter,
     spec: {
-      'serverpod_database',
-      'serverpod_offline_sync',
-      'serverpod_serialization',
+      'wonky_revlog',
+      'wonky_app',
+      'wonky_ui',
+      'wonky_client',
+      'sqlite_async',
+      'clock',
+      'collection',
+      'meta',
       'uuid',
+      'web',
     },
+    exceptions: {'wonky_core': 'roles (pure Dart)'},
+    forbiddenImports: [
+      ..._appFamilyForbidden,
+      'package:wonky_server',
+      'package:wonky_sync_models',
+    ],
   ),
   'wonky_mcp_stdio': PackageRule(kind: Kind.pureDart, spec: {'args', 'http'}),
   'wonky_server': PackageRule(
@@ -329,15 +343,13 @@ const rules = <String, PackageRule>{
     spec: {
       'serverpod',
       'serverpod_auth_idp_server',
-      'serverpod_offline_sync',
-      'serverpod_offline_sync_server',
       'serverpod_cloud_storage',
       'wonky_core',
       'wonky_write_core',
       'wonky_sheets_core',
       'wonky_sheets_script',
       'wonky_slides_core',
-      'wonky_sync_kit',
+      'wonky_revlog',
       'wonky_sync_models',
       'wonky_code',
       'mcp_dart',
@@ -359,9 +371,7 @@ const rules = <String, PackageRule>{
       'serverpod_client',
       'serverpod_auth_idp_client',
       'serverpod_auth_core_client',
-      'serverpod_offline_sync_client',
       'serverpod_database',
-      'wonky_sync_models',
     },
   ),
   'wonky_ui': PackageRule(
@@ -451,8 +461,8 @@ const rules = <String, PackageRule>{
       'wonky_app',
       'wonky_ui',
       'wonky_slides_core',
-      'wonky_sync_kit',
-      'wonky_sync_kit_flutter',
+      'wonky_revlog',
+      'wonky_revlog_flutter',
       'wonky_charts',
       'wonky_charts_flutter',
       'wonky_code_flutter',
@@ -468,11 +478,7 @@ const rules = <String, PackageRule>{
     },
     exceptions: {
       ..._appExceptions,
-      'wonky_sync_models':
-          'synced ORM classes and the table codec of the replica (Slides 02)',
-      'serverpod_offline_sync_client':
-          'offline-sync client: deck sync sessions (Slides 02 §9)',
-      'serverpod_database': 'ORM types of the local replica (Slides 02 §9)',
+      'wonky_sync_models': 'id generators and fractional indexes (pure Dart)',
       'http': 'downloading uploaded images from signed URLs (Slides 03 §6.5)',
       'flutter_svg': 'rasterizing SVG images on insert (Slides 03 §6.5.1)',
       'qr': 'QR code of the presentation audience link (Slides 10 §5.2)',
@@ -487,24 +493,18 @@ const rules = <String, PackageRule>{
       'wonky_sheets_core',
       'wonky_sheets_script',
       'wonky_charts_flutter',
-      'wonky_sync_kit',
-      'wonky_sync_kit_flutter',
+      'wonky_revlog',
+      'wonky_revlog_flutter',
       'two_dimensional_scrollables',
       'super_clipboard',
       're_editor',
       'printing',
       'file_saver',
       'file_picker',
-      'path_provider',
     },
     exceptions: {
       ..._appExceptions,
-      'wonky_sync_models':
-          'synced ORM classes and the table codec of the replica (12 §2)',
-      'serverpod_offline_sync_client':
-          'offline-sync client: sync sessions on the custom endpoint (12 §2.5)',
-      'serverpod_database':
-          'ORM types (Transaction, ColumnValue) of the local replica (12 §2)',
+      'wonky_sync_models': 'id generators and fractional indexes (pure Dart)',
       'timezone': 'IANA time zone list of the spreadsheet settings (06 §5.8)',
       'desktop_drop': 'file drops on the grid on desktop (Sheets 11 §2)',
       'http': 'fetching XLSX images and URL imports (Sheets 11 §2)',
@@ -512,9 +512,7 @@ const rules = <String, PackageRule>{
       're_highlight':
           'Dart grammar for the script editor (re_editor, Sheets 09 §14.2)',
       'crypto': 'ScriptFile.contentHash sha256 (Sheets 09 A-09-2)',
-      'archive':
-          'ZIP of the unsynced spreadsheets of a replica that cannot be '
-          'opened (12 §2.5)',
+      'archive': 'gunzip of version snapshots (Sheets 10 §5.1.2)',
       'flutter_svg': 'rasterizing SVG images on insert (Sheets 08 §10.1)',
     },
     // The script compiler (and the analyzer) is server only (01 A8, Sheets
@@ -562,6 +560,32 @@ const _appFamilyForbidden = [
 /// Entry points run only in development (`target: lib/driver.dart` under
 /// `serverpod: flutter_apps:`), which may import `dev_dependencies`.
 const _devEntryPoints = {'lib/driver.dart'};
+
+/// Folders of test, tool and benchmark code: their imports must be declared
+/// (`dependencies:` or `dev_dependencies:`), and they are what uses the
+/// `dev_dependencies:`.
+const _devFolders = [
+  'test',
+  'integration_test',
+  'test_driver',
+  'tool',
+  'benchmark',
+];
+
+/// Dependencies a package needs although no file imports them, per package,
+/// with the reason (check 3). Keep this short: a dependency nobody imports is
+/// usually dead.
+const _usedWithoutImport = <String, Map<String, String>>{
+  'wonky_lints': {
+    'lints': 'included by lib/dart.yaml',
+    'flutter_lints': 'included by lib/flutter.yaml',
+  },
+  'wonky_revlog_flutter': {
+    'sqlite3':
+        'pins the sqlite3 version whose build hook provides the native '
+        'library the store tests open through sqlite_async',
+  },
+};
 
 /// The first lines of files written by `serverpod generate`. Generated code
 /// may import packages that the generator's runtime packages provide
@@ -646,17 +670,12 @@ void main(List<String> args) {
       }
     }
 
+    // Packages imported by lib/ and bin/ (minus lib/driver.dart), and by
+    // the development code (tests, tools, benchmarks, lib/driver.dart).
+    final libUsed = <String>{};
+    final devUsed = <String>{};
     for (final sub in ['lib', 'bin']) {
-      final d = Directory('${dir.path}/$sub');
-      if (!d.existsSync()) continue;
-      final files =
-          d
-              .listSync(recursive: true, followLinks: false)
-              .whereType<File>()
-              .where((f) => f.path.endsWith('.dart'))
-              .toList()
-            ..sort((a, b) => a.path.compareTo(b.path));
-      for (final file in files) {
+      for (final file in _dartFiles(Directory('${dir.path}/$sub'))) {
         _checkFile(
           root: root,
           packageDir: dir,
@@ -667,8 +686,50 @@ void main(List<String> args) {
           graph: graph,
           file: file,
           violations: violations,
+          used: libUsed,
+          devUsed: devUsed,
         );
       }
+    }
+    for (final sub in _devFolders) {
+      for (final file in _dartFiles(Directory('${dir.path}/$sub'))) {
+        _checkDevFile(
+          root: root,
+          packageName: name,
+          declared: {...spec.dependencies.keys, ...spec.devDependencies.keys},
+          file: file,
+          violations: violations,
+          used: devUsed,
+        );
+      }
+    }
+
+    final options = File('${dir.path}/analysis_options.yaml');
+    final optionsText = options.existsSync() ? options.readAsStringSync() : '';
+    final allowed = _usedWithoutImport[name] ?? const {};
+    for (final MapEntry(key: dep, value: line) in spec.dependencies.entries) {
+      if (dep == 'flutter' || allowed.containsKey(dep)) continue;
+      if (libUsed.contains(dep)) continue;
+      violations.add(
+        devUsed.contains(dep)
+            ? '$name: $memberPath/pubspec.yaml:$line: dependency "$dep" '
+                  'is only imported by tests or tools; move it to '
+                  '`dev_dependencies:`'
+            : '$name: $memberPath/pubspec.yaml:$line: dependency "$dep" '
+                  'is not imported by lib/ or bin/; remove it (or list it '
+                  'in _usedWithoutImport with the reason)',
+      );
+    }
+    for (final MapEntry(key: dep, value: line)
+        in spec.devDependencies.entries) {
+      if (allowed.containsKey(dep)) continue;
+      if (devUsed.contains(dep) || libUsed.contains(dep)) continue;
+      if (optionsText.contains('package:$dep/')) continue;
+      violations.add(
+        '$name: $memberPath/pubspec.yaml:$line: dev dependency "$dep" is '
+        'not imported by any test, tool or benchmark; remove it (or list '
+        'it in _usedWithoutImport with the reason)',
+      );
     }
   }
 
@@ -694,7 +755,8 @@ Usage: dart run tool/check_dependencies.dart [--help]
 Checks every workspace member's pubspec `dependencies` against its allowed
 list and scans lib/ and bin/ imports for forbidden edges (Flutter in pure-Dart
 packages, client/server code in wonky_ui, Write <-> Sheets, wonky_server
-outside the server, undeclared packages). Prints `package: file:line: message`
+outside the server, undeclared packages), unused dependencies and the imports
+of tests and tools. Prints `package: file:line: message`
 per violation; exits 1 on violations, 0 otherwise.''';
 
 void _checkFile({
@@ -707,9 +769,13 @@ void _checkFile({
   required _PackageGraph graph,
   required File file,
   required List<String> violations,
+  required Set<String> used,
+  required Set<String> devUsed,
 }) {
   final rel = file.path.substring(root.path.length + 1);
-  final packageRel = file.path.substring(packageDir.path.length + 1);
+  final packageRel = file.path
+      .substring(packageDir.path.length + 1)
+      .replaceAll(r'\', '/');
   final lines = file.readAsLinesSync();
   final generated = lines.take(5).any((l) => l.contains(_generatedMarker));
   final devEntryPoint = _devEntryPoints.contains(packageRel);
@@ -719,6 +785,9 @@ void _checkFile({
         violations.add('$packageName: $rel:${directive.line}: $message');
 
     if (uri.startsWith('dart:')) continue;
+    if (_importedPackage(uri) case final p?) {
+      (devEntryPoint ? devUsed : used).add(p);
+    }
     if (!uri.startsWith('package:')) {
       if (uri.contains(':')) continue; // Other schemes; not ours to judge.
       final target = File(file.parent.uri.resolve(uri).toFilePath());
@@ -775,6 +844,52 @@ void _checkFile({
       }
     }
   }
+}
+
+/// Checks the imports of a test, tool or benchmark [file] (check 4) and adds
+/// the packages it imports to [used].
+void _checkDevFile({
+  required Directory root,
+  required String packageName,
+  required Set<String> declared,
+  required File file,
+  required List<String> violations,
+  required Set<String> used,
+}) {
+  final rel = file.path.substring(root.path.length + 1).replaceAll(r'\', '/');
+  final lines = file.readAsLinesSync();
+  // The generated test tools import the generator's runtime packages.
+  final generated = lines.take(5).any((l) => l.contains(_generatedMarker));
+  for (final directive in _directives(lines)) {
+    final imported = _importedPackage(directive.uri);
+    if (imported == null || imported == packageName) continue;
+    used.add(imported);
+    if (!declared.contains(imported) && !generated) {
+      violations.add(
+        '$packageName: $rel:${directive.line}: imports '
+        '"${directive.uri}" but "$imported" is not under `dependencies:` or '
+        '`dev_dependencies:` in pubspec.yaml',
+      );
+    }
+  }
+}
+
+/// The package of a `package:` [uri], or null for other URIs.
+String? _importedPackage(String uri) {
+  if (!uri.startsWith('package:')) return null;
+  final slash = uri.indexOf('/');
+  return uri.substring('package:'.length, slash < 0 ? null : slash);
+}
+
+/// The `.dart` files under [dir] (none when it doesn't exist), sorted.
+List<File> _dartFiles(Directory dir) {
+  if (!dir.existsSync()) return const [];
+  return dir
+      .listSync(recursive: true, followLinks: false)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
 }
 
 /// An `import`/`export` URI and the line its directive starts on.

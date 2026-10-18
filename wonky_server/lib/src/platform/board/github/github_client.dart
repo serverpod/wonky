@@ -372,8 +372,12 @@ class GithubClient implements GithubApi {
   @override
   Future<GithubPullRequest> getPullRequest(int number) async {
     final j = _json(await _call('GET', '/repos/$_repo/pulls/$number')) as Map;
-    final head = j['head'] is Map ? j['head'] as Map : const {};
-    final user = j['user'] is Map ? j['user'] as Map : const {};
+    final head = j['head'] is Map
+        ? j['head'] as Map
+        : const <Object?, Object?>{};
+    final user = j['user'] is Map
+        ? j['user'] as Map
+        : const <Object?, Object?>{};
     return GithubPullRequest(
       number: number,
       title: '${j['title'] ?? ''}',

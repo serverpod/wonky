@@ -9,8 +9,7 @@ import 'package:analyzer/source/line_info.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dart_eval/dart_eval.dart';
 import 'package:dart_eval/dart_eval_bridge.dart';
-// ignore: implementation_imports
-import 'package:dart_eval/src/eval/compiler/errors.dart';
+import 'package:dart_eval/dart_eval_internals.dart' show CompileError;
 import 'package:wonky_sheets_core/formula.dart' show FunctionRegistry;
 
 import '../api/api_source.dart';

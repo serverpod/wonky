@@ -1,19 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
-import 'package:wonky_client/wonky_client.dart' show DeckChangeLog, Participant;
+import 'package:wonky_client/wonky_client.dart' show Participant;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart' show RevOpMeta;
 
 import '../features/collab/slides_collab.dart';
 import '../features/editor_screen/deck_editor_controller.dart';
-import '../features/model/synced_deck_session.dart';
+import '../features/revlog/logged_deck_session.dart';
 import '../l10n/slides_l10n.dart';
 import 'agent_flash.dart';
 
-/// Reads the deck's `DeckChangeLog` rows written at or after a time.
-typedef DeckChangeLogSource =
-    Future<List<DeckChangeLog>> Function(DateTime since);
+/// Reads the deck's op metadata committed at or after a time.
+typedef DeckChangeLogSource = Future<List<RevOpMeta>> Function(DateTime since);
 
 /// Flashes the elements that headless agent writes touched (Slides 11 §1.3,
 /// AC 5: "live editors see headless writes … with the agent flash on
@@ -59,12 +58,9 @@ class SlidesAgentWrites {
 
   static DeckChangeLogSource? _syncedSource(DeckEditorController editor) {
     final session = editor.session;
-    if (session is! SyncedDeckSession) return null;
-    return (since) => DeckChangeLog.db.find(
-      session.host.replica.session,
-      where: (t) => t.deckId.equals(session.spaceUuid) & (t.at >= since),
-      limit: 200,
-    );
+    if (session is! LoggedDeckSession) return null;
+    return (since) =>
+        session.client.store.recentOps(session.fileUuid.uuid, since);
   }
 
   void _schedule() {
@@ -83,7 +79,7 @@ class SlidesAgentWrites {
   }
 
   Future<void> _poll() async {
-    List<DeckChangeLog> rows;
+    List<RevOpMeta> rows;
     try {
       rows = await source!(_since.subtract(const Duration(seconds: 5)));
     } catch (e) {
@@ -91,12 +87,12 @@ class SlidesAgentWrites {
       return;
     }
     if (_disposed) return;
-    rows.sort((a, b) => a.at.compareTo(b.at));
+    rows.sort((a, b) => a.revision.compareTo(b.revision));
     final now = clock.now();
     for (final r in rows) {
-      if (!_seen.add(r.id.uuid)) continue;
-      if (r.at.isAfter(_since)) _since = r.at;
-      if (now.difference(r.at) > maxAge) continue;
+      if (!_seen.add('${r.revision}')) continue;
+      if (r.committedAt.isAfter(_since)) _since = r.committedAt;
+      if (now.difference(r.committedAt) > maxAge) continue;
       final label = labelOf(r);
       if (label == null) continue;
       _flash(r, label);
@@ -106,14 +102,14 @@ class SlidesAgentWrites {
 
   /// The tag of [r], or null when it is not an agent write to flash
   /// (user edits; the user's own AI runs, which the app previews itself).
-  String? labelOf(DeckChangeLog r) {
-    if (!r.sessionId.startsWith('server:')) return null;
-    final own = r.userId.uuid == editor.session.userId;
+  String? labelOf(RevOpMeta r) {
+    if (!(r.sessionId ?? '').startsWith('server:')) return null;
+    final own = r.authorUuid == editor.session.userId;
     final collab = SlidesCollab.of(editor);
     final participants = collab?.session?.participants ?? const <Participant>[];
     String? name(String kind) {
       for (final p in participants) {
-        if (p.userUuid.uuid == r.userId.uuid && p.actorKind.name == kind) {
+        if (p.userUuid.uuid == r.authorUuid && p.actorKind.name == kind) {
           return p.displayName;
         }
       }
@@ -124,7 +120,7 @@ class SlidesAgentWrites {
     final user =
         name('user') ??
         (own ? editor.services.currentUser.value?.summary.displayName : null);
-    switch (r.actorKind.name) {
+    switch (r.actorKind) {
       case 'mcp':
         return name('mcp') ?? l.actorViaMcp(user ?? 'MCP');
       case 'ai':
@@ -135,13 +131,9 @@ class SlidesAgentWrites {
     }
   }
 
-  void _flash(DeckChangeLog r, String label) {
-    Map<String, Object?> s;
-    try {
-      s = (jsonDecode(r.summaryJson) as Map).cast<String, Object?>();
-    } on Object {
-      return;
-    }
+  void _flash(RevOpMeta r, String label) {
+    final s = r.summary;
+    if (s == null) return;
     final model = editor.model;
     final elements = [
       for (final id in (s['elements'] as List? ?? const []).whereType<String>())

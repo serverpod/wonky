@@ -88,7 +88,7 @@ void main() {
         _pass(tester, 'sheets.grid.overlay'),
         paints..something(_drawsRect(tokens.headerBg)),
       );
-      expect(s.editor.lastGeometry!.panes, hasLength(4));
+      expect(s.editor.geometry!.panes, hasLength(4));
       await tester.pump(const Duration(seconds: 1));
     });
   }
@@ -116,12 +116,12 @@ void main() {
   testWidgets('Given the grid when zooming to 200 % then cells are twice as '
       'large', (tester) async {
     await pumpSheets(tester, s);
-    final w100 = s.editor.lastGeometry!.main.cellRect(2, 2).width;
+    final w100 = s.editor.geometry!.main.cellRect(2, 2).width;
 
     s.editor.setZoom(2);
     await tester.pump();
 
-    expect(s.editor.lastGeometry!.main.cellRect(2, 2).width, w100 * 2);
+    expect(s.editor.geometry!.main.cellRect(2, 2).width, w100 * 2);
     await tester.pump(const Duration(seconds: 1));
   });
 }

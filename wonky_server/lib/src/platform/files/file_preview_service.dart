@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
@@ -7,6 +6,7 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/files.dart';
 
 import '../../generated/future_calls.dart';
+import '../common/isolate_runner.dart';
 import '../common/models.dart';
 import '../drive/drive_events.dart';
 import '../drive/drive_file_service.dart';
@@ -150,6 +150,15 @@ abstract final class FilePreviewService {
       item.fileCategory == FileCategory.image &&
       FileTypes.isRenderableImage(item.mimeType ?? '');
 
+  /// [FilePreviews.render] in its own isolate, killed after [timeLimit]
+  /// (a helper, so the closure captures only the bytes and the type).
+  static Future<RenderedPreview?> _render(Uint8List bytes, String mime) =>
+      IsolateRunner.run(
+        () => FilePreviews.render(bytes, mime),
+        name: 'file-preview',
+        timeout: timeLimit,
+      );
+
   /// Generates the preview and thumbnail of file item [itemId]. Returns
   /// whether a preview was stored.
   static Future<bool> generate(Session session, int itemId) async {
@@ -164,9 +173,7 @@ abstract final class FilePreviewService {
     final mime = item.mimeType!;
     RenderedPreview? rendered;
     try {
-      rendered = await Isolate.run(
-        () => FilePreviews.render(bytes, mime),
-      ).timeout(timeLimit);
+      rendered = await _render(bytes, mime);
     } on Object catch (e) {
       session.log(
         'Preview of item $itemId failed: $e',

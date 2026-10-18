@@ -2,6 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_slides/features/thumbnails/slide_thumbnail.dart';
 import 'package:wonky_slides/features/thumbnails/slide_thumbnail_cache.dart';
+import 'package:wonky_revlog/rows.dart';
+import 'package:wonky_slides_core/schema.dart';
+import 'package:wonky_slides_core/testing.dart' show deltaOf;
 
 import '../stage/stage_fixture.dart';
 
@@ -35,6 +38,54 @@ void main() {
 
       expect(identical(a, b), isFalse);
       expect(r.thumbnails.debugRecords, 2);
+    });
+
+    testWidgets('when a slide changes repeatedly then its entry is replaced '
+        'in place and the old picture is disposed after the frame', (
+      tester,
+    ) async {
+      final f = StageFixture();
+      final id = f.shape();
+      final r = f.renderer();
+      addTearDown(r.dispose);
+
+      final a = r.thumbnail(f.slideId, width: 240)!;
+      for (var i = 0; i < 5; i++) {
+        f.moveElement(id, 100.0 + i);
+        r.thumbnail(f.slideId, width: 240);
+      }
+
+      expect(r.thumbnails.length, 1);
+      expect(a.disposed, isFalse, reason: 'painters may still draw it');
+      await tester.pump();
+      expect(a.disposed, isTrue);
+    });
+
+    testWidgets('when speaker notes are typed or the deck is renamed then no '
+        'thumbnail is recorded again', (tester) async {
+      final f = StageFixture();
+      f.shape(text: 'Thumb');
+      final r = f.renderer();
+      addTearDown(r.dispose);
+      final a = r.thumbnail(f.slideId, width: 240);
+
+      f.model.applyChanges([
+        RowChange.update(
+          SlidesTables.slide,
+          f.slideId,
+          {SlideCols.notes: null},
+          {SlideCols.notes: deltaOf('Notes')},
+        ),
+        RowChange.update(
+          SlidesTables.deck,
+          f.model.deck!.id,
+          {DeckCols.title: f.model.deck!.title},
+          {DeckCols.title: 'Renamed'},
+        ),
+      ]);
+
+      expect(identical(r.thumbnail(f.slideId, width: 240), a), isTrue);
+      expect(r.thumbnails.debugRecords, 1);
     });
 
     testWidgets('when a slide has an undecoded image then the thumbnail is '

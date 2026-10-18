@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:wonky_sheets_core/formula.dart' show RecalcBatch;
 import 'package:wonky_sheets_core/model.dart';
 
+import '../history/change_labels.dart';
 import '../charts/controller/chart_controller.dart';
 import '../collab/sheets_collab.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
@@ -371,7 +372,10 @@ class ObjectsController extends ChangeNotifier {
     }
     if (changes.isEmpty) return 0;
     try {
-      editor.session.applyChanges(changes, label: 'Maintenance');
+      editor.session.applyChanges(
+        changes,
+        label: SheetsChangeLabels.maintenance,
+      );
     } catch (e) {
       debugPrint('Object anchor maintenance failed: $e');
       return 0;

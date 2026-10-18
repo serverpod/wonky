@@ -1,9 +1,10 @@
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
-    show OfflineSyncSpace;
+@Tags(['integration'])
+library;
+
+import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
-import 'package:wonky_server/src/sheets/sync/sync_db.dart';
 
 import '../../../support/mcp_harness.dart';
 import '../../../support/sheets_fixtures.dart';
@@ -28,7 +29,7 @@ Object? forget() {
 ''';
 
 /// `PropertiesService.userProperties` of server runs: `ScriptUserProperty`
-/// rows in the run-as user's personal space (Sheets 09 §6.9, A-09-4).
+/// rows of the run-as user (RevLog spec 02 §2.4, Sheets 09 §6.9).
 void main() {
   withWonkyServerpod('Given a script that keeps a per-user counter', (
     sessionBuilder,
@@ -71,23 +72,44 @@ void main() {
           'function': fn,
         }))['result'];
 
-    test('when it runs twice then the value persists between runs in the '
-        "user's personal space", () async {
+    Future<UuidValue> fileOf(String itemUuid) async =>
+        (await DriveItem.db.findFirstRow(
+          anna.session,
+          where: (t) => t.uuid.equals(uuidOf(itemUuid)),
+        ))!.contentRef!;
+
+    test('when it runs twice then the value persists between runs as a '
+        "row of the user's", () async {
       expect(await run(annaMcp, 'bump'), 1);
       expect(await run(annaMcp, 'bump'), 2);
 
-      final session = sessionBuilder.build();
+      final file = await fileOf(ss);
       final rows = await ScriptUserProperty.db.find(
-        syncSessionOf(session),
-        where: (t) => t.spreadsheetId.equals(uuidOf(ss)),
+        sessionBuilder.build(),
+        where: (t) => t.fileUuid.equals(file),
       );
       expect(rows.single.key, 'n');
       expect(rows.single.value, '2');
-      final space = await OfflineSyncSpace.db.findById(
-        session,
-        rows.single.spaceId!,
+      expect(rows.single.userId, anna.id);
+    });
+
+    test('when the client sets a property then server runs see it, and '
+        'the server writes reach the client', () async {
+      final file = await fileOf(ss);
+      await endpoints.sheets.setUserProperties(anna.endpointSession, file, {
+        'n': '41',
+      });
+      expect(await run(annaMcp, 'bump'), 42);
+      expect(
+        await endpoints.sheets.getUserProperties(anna.endpointSession, file),
+        {'n': '42'},
       );
-      expect(space?.uuidSpaceId, anna.authUserId);
+      // Private per user.
+      await SheetsFixtures.share(annaMcp, ss, bo.email, 'viewer');
+      expect(
+        await endpoints.sheets.getUserProperties(bo.endpointSession, file),
+        isEmpty,
+      );
     });
 
     test('when another user runs it then they get their own value', () async {

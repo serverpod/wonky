@@ -1,0 +1,78 @@
+### Any object on a slide, layout or master (Slides 02 §3.5). Exactly one
+### owner FK (slide, layout, master: optional relations) is set; a child of
+### an element group has the owner of its group.
+class: SlideElement
+table: slide_element
+serverOnly: true
+fields:
+  ### SlidesIds.placeholderInstanceId for placeholder instances,
+  ### SlidesIds.themePartId for elements of copied themes.
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  slide: Slide?, relation(optional, onDelete=Cascade, deferred)
+  layout: SlideLayout?, relation(optional, onDelete=Cascade, deferred)
+  master: SlideMaster?, relation(optional, onDelete=Cascade, deferred)
+  ### Element group (kind group) this element belongs to. Deleting a group
+  ### deletes its children.
+  parent: SlideElement?, relation(optional, onDelete=Cascade, deferred)
+  kind: SlideElementKind
+  ### Layers panel / animation pane label; null = generated ("Shape 3").
+  name: String?
+  ### Frame (02 §2.2) in su; x/y top-left of the unrotated box. Nullable only
+  ### on placeholder instances (null = inherit). Coupled columns (P4).
+  x: double?
+  y: double?
+  width: double?
+  height: double?
+  ### Degrees clockwise about the center; null = 0 (placeholders: inherit).
+  rotation: double?
+  flipH: bool, default=false
+  flipV: bool, default=false
+  ### Stacking order among siblings (same owner and parent).
+  zKey: String
+  ### Reading order override (03 §17); null = automatic.
+  readingKey: String?
+  ### Not selectable by click/marquee, can't move (03 §8.2).
+  locked: bool, default=false
+  ### Not drawn (still in the Layers panel); hidden in present/PDF.
+  hidden: bool, default=false
+  ### On layouts/masters: defines a placeholder; on slides: an instance.
+  placeholderType: PlaceholderType?
+  ### Instance -> the layout (or master) placeholder it inherits from (plain UUID).
+  placeholderOf: UuidValue?
+  ### Magic Move key (06 §8.2): 22-character key generated on create.
+  matchKey: String
+  ### Rich text Delta (02 §4) of text/shape/placeholder; null for code.
+  text: String?
+  ### Box-level text properties (02 §5.1).
+  textStyleJson: String?
+  ### Fill (02 §5.2); null = inherit/none per kind.
+  fillJson: String?
+  ### Stroke (02 §5.3).
+  strokeJson: String?
+  ### Shadow, glow, blur, reflection (02 §5.4).
+  effectsJson: String?
+  ### 0..1; null = 1.
+  opacity: double?
+  ### Kind-specific payload (02 §6), always with "v".
+  dataJson: String?
+  ### Click action when presenting: {url} | {slideId} | {action} (03 §6.9).
+  linkJson: String?
+  altText: String?
+  ### Excluded from alt-text checks and screen readers.
+  decorative: bool, default=false
+  createdAt: DateTime, defaultModel=now
+indexes:
+  slide_element_file_idx:
+    fields: fileId, id
+  slide_element_slide_idx:
+    fields: slideId, zKey
+  slide_element_layout_idx:
+    fields: layoutId
+  slide_element_master_idx:
+    fields: masterId
+  slide_element_parent_idx:
+    fields: parentId

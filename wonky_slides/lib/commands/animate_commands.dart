@@ -382,7 +382,11 @@ List<Command<CommandArgs>> animateCommands(ShellServices s) {
           AnimateView.of(ed).copied!,
           _elements(ed, a),
         );
-        if (op == null) return const CommandResult.failed('Nothing to paste');
+        if (op == null) {
+          return CommandResult.failed(
+            slidesL10nOf(ed.services).errorNothingToPaste,
+          );
+        }
         final plan = ed.apply(ctx, op);
         final ids = (plan.result['buildIds'] as List?)?.cast<String>() ?? [];
         AnimateView.of(ed).selectBuilds(ids, selectElements: false);

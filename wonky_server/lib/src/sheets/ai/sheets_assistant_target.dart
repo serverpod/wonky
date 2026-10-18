@@ -15,7 +15,7 @@ import '../headless/headless_workbook.dart';
 import '../headless/headless_workbook_provider.dart';
 import '../mcp/sheets_changes.dart';
 import '../mcp/sheets_shadow.dart';
-import 'sheets_ai_service.dart';
+import 'sheets_ai_preview_service.dart';
 import 'sheets_context_builder.dart';
 
 /// The assistant bound to a spreadsheet (Sheets 12 §6): `sheets.*` tools
@@ -286,7 +286,7 @@ class SheetsAssistantTarget extends AssistantTarget {
   }) async {
     final shadow = SheetsShadows.end(runId);
     if (shadow != null) {
-      await SheetsAiService.persistPreview(session, shadow, item.uuid);
+      await SheetsAiPreviews.persistPreview(session, shadow, item.uuid);
       done.previewId = shadow.previewId;
       emit(
         AssistantEvent(

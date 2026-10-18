@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
@@ -10,14 +13,14 @@ import '../../support/wonky_serverpod.dart';
 void main() {
   withWonkyServerpod('Given the meta endpoint', (sessionBuilder, endpoints) {
     test(
-      'when getting info unauthenticated then versions, flags and the sync hash are returned',
+      'when getting info unauthenticated then versions, flags and the schema hashes are returned',
       () async {
         final info = await endpoints.meta.getInfo(
           TestUsers.unauthenticated(sessionBuilder),
         );
 
         expect(info.minClientVersion, isNotEmpty);
-        expect(info.syncTablesHash, contains(':'));
+        expect(info.revSchemaHash, startsWith('sheets:'));
         expect(info.runMode, ServerpodRunMode.test);
         expect(info.limits.maxDocumentChars, 2000000);
         // Tests run without Redis.

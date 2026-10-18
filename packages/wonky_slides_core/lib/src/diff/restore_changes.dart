@@ -1,4 +1,4 @@
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 import '../schema/slides_schema.dart';
 import '../snapshot/slides_snapshot.dart';

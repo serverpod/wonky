@@ -2,10 +2,14 @@ import 'package:serverpod/serverpod.dart';
 
 import '../common/errors.dart';
 import '../common/models.dart';
+import '../common/rate_limiter.dart';
 import '../common/time.dart';
 import '../users/user_service.dart';
 
 /// "Report a problem" and client error reports (specs/03, 11 §5).
+///
+/// Public (error reports are sent before sign-in too), so calls are rate
+/// limited per signed-in user, or per client address when signed out.
 class FeedbackEndpoint extends Endpoint {
   static const maxMessage = 20000;
   static const maxStack = 50000;
@@ -22,6 +26,18 @@ class FeedbackEndpoint extends Endpoint {
     int? userId;
     if (session.authenticated != null) {
       userId = (await UserService.actorOf(session)).userId;
+    }
+    final retry = userId != null
+        ? await FeedbackLimits.limiter.check(
+            'user:$userId',
+            limit: FeedbackLimits.userPerHour,
+          )
+        : await FeedbackLimits.limiter.check(
+            'ip:${_clientAddress(session)}',
+            limit: FeedbackLimits.anonymousPerHour,
+          );
+    if (retry != null) {
+      throw Errors.limit('Too many reports for now. Try again later.');
     }
     String cap(String s, int n) => s.length > n ? s.substring(0, n) : s;
     await FeedbackReport.db.insertRow(
@@ -48,4 +64,26 @@ class FeedbackEndpoint extends Endpoint {
           : LogLevel.info,
     );
   }
+
+  static String _clientAddress(Session session) {
+    try {
+      return session.request?.remoteInfo ?? 'unknown';
+    } on Object {
+      return 'unknown';
+    }
+  }
+}
+
+/// Rate limits of [FeedbackEndpoint] (specs/13 §4).
+abstract final class FeedbackLimits {
+  /// Reports per signed-in user and hour.
+  static const userPerHour = 60;
+
+  /// Reports per client address and hour when signed out.
+  static const anonymousPerHour = 10;
+
+  static final limiter = RateLimiter(
+    name: 'feedback',
+    window: const Duration(hours: 1),
+  );
 }

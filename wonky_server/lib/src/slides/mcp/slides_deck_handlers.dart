@@ -28,9 +28,6 @@ abstract final class SlidesDeckHandlers {
   /// Slides per outline (11 §3.13).
   static const maxOutlineSlides = 200;
 
-  static Future<SlidesTarget> _edit(ToolContext ctx, ToolArgs a) =>
-      SlidesMcp.open(ctx, a, min: Role.editor);
-
   static String _plural(int n, String one, [String? many]) =>
       '$n ${n == 1 ? one : (many ?? '${one}s')}';
 
@@ -96,19 +93,19 @@ abstract final class SlidesDeckHandlers {
 
   static DeckOutline _parseOutline(String markdown) {
     if (utf8.encode(markdown).length > 200 * 1024) {
-      throw McpToolException(
-        SlidesErrorCode.limitExceeded,
+      throw McpToolException.limit(
         'The outline can have at most 200 KB.',
-        details: {'limit': 'markdown_bytes', 'max': 200 * 1024},
+        limit: 'markdown_bytes',
+        max: 200 * 1024,
       );
     }
     final outline = DeckOutlineCodec.parse(markdown);
     if (outline.slides.length > maxOutlineSlides) {
-      throw McpToolException(
-        SlidesErrorCode.limitExceeded,
+      throw McpToolException.limit(
         'An outline can add at most $maxOutlineSlides slides '
         '(${outline.slides.length} given).',
-        details: {'limit': 'slides', 'max': maxOutlineSlides},
+        limit: 'slides',
+        max: maxOutlineSlides,
       );
     }
     return outline;
@@ -199,7 +196,7 @@ abstract final class SlidesDeckHandlers {
         'url': SlidesReadHandlers.urlOf(t),
         'slide_ids': [for (final s in model.slides) s.id],
         'change_id': o?.write.changeId?.uuid,
-        'sync_version': o?.write.syncVersion?.uuid,
+        'sync_version': o?.write.syncVersion,
         'warnings': [for (final w in o?.warnings ?? const []) w.toJson()],
         if (copied || template != null)
           'storage': await DriveToolHandlers.storageJson(ctx),
@@ -216,7 +213,7 @@ abstract final class SlidesDeckHandlers {
     ToolContext ctx,
     ToolArgs a,
   ) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final sizeArg = a.object('size');
     final size = _size(sizeArg, pointer: '/size');
     final numbers = a.object('slide_numbers');
@@ -275,7 +272,7 @@ abstract final class SlidesDeckHandlers {
   // --------------------------------------------------------------- themes
 
   static Future<ToolResult> applyTheme(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final theme = a.values['theme'];
     final slideRefs = a.list('slides');
     final mapping = a.object('layout_mapping') ?? const {};
@@ -410,7 +407,7 @@ abstract final class SlidesDeckHandlers {
   // --------------------------------------------------------------- slides
 
   static Future<ToolResult> addSlides(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final list = a.list('slides')!;
     final group = a.values['group'];
     final warnings = <SlidesWarning>[];
@@ -495,7 +492,7 @@ abstract final class SlidesDeckHandlers {
     ToolContext ctx,
     ToolArgs a,
   ) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final outline = _parseOutline(a.requireString('markdown'));
     if (outline.slides.isEmpty) {
       throw SlidesMcp.invalid(
@@ -530,7 +527,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> updateSlide(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final warnings = <SlidesWarning>[];
     final o = await SlidesWrites.run(
       ctx,
@@ -614,7 +611,7 @@ abstract final class SlidesDeckHandlers {
     ToolContext ctx,
     ToolArgs a,
   ) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final list = a.list('notes')!;
     final warnings = <SlidesWarning>[];
     final o = await SlidesWrites.run(
@@ -658,7 +655,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> moveSlides(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final to = a.object('to')!;
     late List<String> ids;
     final o = await SlidesWrites.run(
@@ -749,7 +746,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> duplicateSlides(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     var n = 0;
     final o = await SlidesWrites.run(
       ctx,
@@ -765,7 +762,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> deleteSlides(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     var n = 0;
     final o = await SlidesWrites.run(
       ctx,
@@ -784,7 +781,7 @@ abstract final class SlidesDeckHandlers {
   // --------------------------------------------------------------- groups
 
   static Future<ToolResult> createGroup(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     String? groupId;
     final o = await SlidesWrites.run(
       ctx,
@@ -809,7 +806,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> updateGroup(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final o = await SlidesWrites.run(
       ctx,
       t,
@@ -830,7 +827,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> moveGroup(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final to = a.object('to')!;
     final o = await SlidesWrites.run(
       ctx,
@@ -891,7 +888,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> duplicateGroup(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final o = await SlidesWrites.run(
       ctx,
       t,
@@ -904,7 +901,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> ungroup(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final o = await SlidesWrites.run(
       ctx,
       t,
@@ -916,7 +913,7 @@ abstract final class SlidesDeckHandlers {
   }
 
   static Future<ToolResult> deleteGroup(ToolContext ctx, ToolArgs a) async {
-    final t = await _edit(ctx, a);
+    final t = await SlidesMcp.edit(ctx, a);
     final withSlides = a.boolean('delete_slides') ?? false;
     final o = await SlidesWrites.run(
       ctx,

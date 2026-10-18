@@ -11,8 +11,8 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
 import '../../platform/activity/activity_type.dart' as _ib69qjv6;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 /// Activity log of an item (specs/05 §5). Edits are aggregated to one event
 /// per (user, item) per 10 minutes.
@@ -32,7 +32,7 @@ abstract class ActivityEvent
     int? id,
     required int itemId,
     int? actorId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required _ib69qjv6.ActivityType type,
     required String summary,
     required DateTime at,
@@ -43,7 +43,7 @@ abstract class ActivityEvent
       id: jsonSerialization['id'] as int?,
       itemId: jsonSerialization['itemId'] as int,
       actorId: jsonSerialization['actorId'] as int?,
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       type: _ib69qjv6.ActivityType.fromJson(
@@ -63,7 +63,7 @@ abstract class ActivityEvent
 
   int? actorId;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   _ib69qjv6.ActivityType type;
 
@@ -79,7 +79,7 @@ abstract class ActivityEvent
     int? id,
     int? itemId,
     int? actorId,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     _ib69qjv6.ActivityType? type,
     String? summary,
     DateTime? at,
@@ -125,7 +125,7 @@ class _ActivityEventImpl extends ActivityEvent {
     int? id,
     required int itemId,
     int? actorId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required _ib69qjv6.ActivityType type,
     required String summary,
     required DateTime at,
@@ -147,7 +147,7 @@ class _ActivityEventImpl extends ActivityEvent {
     Object? id = _Undefined,
     int? itemId,
     Object? actorId = _Undefined,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     _ib69qjv6.ActivityType? type,
     String? summary,
     DateTime? at,

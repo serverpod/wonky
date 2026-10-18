@@ -4,11 +4,12 @@ class: CellHistory
 table: cell_history
 serverOnly: true
 fields:
-  spreadsheetUuid: UuidValue
+  fileUuid: UuidValue
   sheetId: UuidValue
   rowId: UuidValue
   colId: UuidValue
-  changeLogId: UuidValue
+  ### The op that wrote the value.
+  revision: int
   userUuid: UuidValue
   actorKind: ActorKind
   label: String
@@ -17,7 +18,7 @@ fields:
   after: String?
 indexes:
   cell_history_cell_idx:
-    fields: spreadsheetUuid, sheetId, rowId, colId, at
+    fields: fileUuid, sheetId, rowId, colId, at
   cell_history_change_idx:
-    fields: changeLogId, rowId, colId
+    fields: fileUuid, revision, rowId, colId
     unique: true

@@ -124,7 +124,8 @@ class TextDragController implements ContentDragDelegate {
     if (fragment.isEmpty) return false;
     if (copy) fragment = _withNewEmbedIds(fragment);
     final length = source.end - source.start;
-    final label = copy ? 'Copy text' : 'Move text';
+    final l = controller.strings();
+    final label = copy ? l.undoCopyText : l.undoMoveText;
     LocalDeltaChange? inserted;
     var at = target;
     controller.group(label, () {
@@ -168,7 +169,10 @@ class TextDragController implements ContentDragDelegate {
     ]);
   }
 
-  static Map<String, dynamic> _renew(Map value, String Function() ids) {
+  static Map<String, dynamic> _renew(
+    Map<Object?, Object?> value,
+    String Function() ids,
+  ) {
     final type = value.keys.first as String;
     final inner = value[type];
     if (inner is! Map) return value.cast<String, dynamic>();

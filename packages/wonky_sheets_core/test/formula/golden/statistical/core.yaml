@@ -1,0 +1,90 @@
+# Data set 2, 4, 4, 4, 5, 5, 7, 9 in A1:A8 (population standard deviation 2).
+- id: average-data-set
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =AVERAGE(A1:A8)
+  expect: {value: 5}
+  source: manual
+- id: median-even-count
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =MEDIAN(A1:A8)
+  expect: {value: 4.5}
+  source: manual
+- id: stdev-population
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =STDEV.P(A1:A8)
+  expect: {value: 2}
+  source: manual
+- id: stdev-sample
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =STDEV.S(A1:A8)
+  expect: {value: 2.138089935299395}
+  source: manual
+  note: sqrt(32/7)
+- id: var-population
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =VAR.P(A1:A8)
+  expect: {value: 4}
+  source: manual
+- id: var-sample
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =VAR.S(A1:A8)
+  expect: {value: 4.571428571428571}
+  source: manual
+- id: mode-single
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =MODE.SNGL(A1:A8)
+  expect: {value: 4}
+  source: manual
+- id: large-second
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =LARGE(A1:A8,2)
+  expect: {value: 7}
+  source: manual
+- id: small-third
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =SMALL(A1:A8,3)
+  expect: {value: 4}
+  source: manual
+- id: percentile-inclusive-median
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =PERCENTILE.INC(A1:A8,0.5)
+  expect: {value: 4.5}
+  source: manual
+- id: percentile-inclusive-interpolated
+  formula: =PERCENTILE.INC({1,2,3,4},0.4)
+  expect: {value: 2.2}
+  source: manual
+  note: position 1 + 0.4 * 3 = 2.2
+- id: quartile-first
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =QUARTILE.INC(A1:A8,1)
+  expect: {value: 4}
+  source: manual
+- id: rank-descending
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =RANK.EQ(5,A1:A8)
+  expect: {value: 3}
+  source: manual
+- id: rank-ascending
+  setup: {A1: 2, A2: 4, A3: 4, A4: 4, A5: 5, A6: 5, A7: 7, A8: 9}
+  formula: =RANK.EQ(5,A1:A8,1)
+  expect: {value: 5}
+  source: manual
+- id: correl-perfect
+  formula: =CORREL({1,2,3},{2,4,6})
+  expect: {value: 1}
+  source: manual
+- id: average-ignores-text-in-range
+  setup: {A1: 1, A2: x, A3: 3}
+  formula: =AVERAGE(A1:A3)
+  expect: {value: 2}
+  source: manual
+- id: averagea-counts-text-as-zero
+  setup: {A1: 1, A2: x, A3: 3}
+  formula: =AVERAGEA(A1:A3)
+  expect: {value: 1.3333333333333333}
+  source: manual
+- id: average-of-nothing
+  formula: =AVERAGE(A1:A3)
+  expect: {value: "#DIV/0!"}
+  source: manual

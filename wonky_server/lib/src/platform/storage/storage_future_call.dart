@@ -1,5 +1,6 @@
 import 'package:serverpod/serverpod.dart';
 
+import '../common/guarded.dart';
 import 'content_sizes.dart';
 import 'storage_maintenance.dart';
 
@@ -8,34 +9,25 @@ import 'storage_maintenance.dart';
 class StorageFutureCall extends FutureCall {
   /// Backfill of users without reconciled counters (idempotent,
   /// resumable; serialized across instances).
-  Future<void> backfill(Session session) async {
-    try {
-      final n = await StorageMaintenance.backfillPending(session);
-      if (n > 0) session.log('storage.backfill: $n users');
-    } on Exception catch (e, st) {
-      session.log(
-        'storage.backfill failed: $e',
-        level: LogLevel.error,
-        stackTrace: st,
-      );
-    }
-  }
+  Future<void> backfill(Session session) => runGuarded<int>(
+    session,
+    'storage.backfill',
+    () => StorageMaintenance.backfillPending(session),
+    describe: (n) => n > 0 ? '$n users' : null,
+  );
 
   /// Nightly: recomputes every user's counters from the sources.
-  Future<void> reconcile(Session session) async {
-    try {
-      final n = await StorageMaintenance.reconcileAll(session);
-      if (n > 0) session.log('storage.reconcile: $n users with drift');
-    } on Exception catch (e, st) {
-      session.log(
-        'storage.reconcile failed: $e',
-        level: LogLevel.error,
-        stackTrace: st,
-      );
-    }
-  }
+  Future<void> reconcile(Session session) => runGuarded<int>(
+    session,
+    'storage.reconcile',
+    () => StorageMaintenance.reconcileAll(session),
+    describe: (n) => n > 0 ? '$n users with drift' : null,
+  );
 
   /// The trailing size estimate of a space item (Drive 03 §2 cadence).
-  Future<void> refreshItemSize(Session session, int itemId) =>
-      ContentSizes.refreshById(session, itemId);
+  Future<void> refreshItemSize(Session session, int itemId) => runGuarded(
+    session,
+    'storage.refreshItemSize $itemId',
+    () => ContentSizes.refreshById(session, itemId),
+  );
 }

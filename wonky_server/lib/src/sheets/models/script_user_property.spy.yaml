@@ -1,0 +1,16 @@
+### Per-user script properties of a spreadsheet (RevLog spec 02 §2.4,
+### Sheets 09 §6.9): private to the user, read and written by the user's
+### scripts through `sheets.getUserProperties`/`setUserProperties`.
+class: ScriptUserProperty
+table: script_user_property
+serverOnly: true
+fields:
+  user: UserProfile?, relation(onDelete=Cascade)
+  fileUuid: UuidValue
+  key: String
+  value: String
+  updatedAt: DateTime
+indexes:
+  script_user_property_idx:
+    fields: userId, fileUuid, key
+    unique: true

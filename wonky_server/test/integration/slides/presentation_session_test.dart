@@ -6,6 +6,8 @@ import 'dart:async';
 
 import 'package:async/async.dart';
 import 'package:test/test.dart';
+import 'package:wonky_server/src/platform/cluster/cluster.dart';
+import 'package:wonky_server/src/platform/cluster/cluster_bus.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/slides/present/presentation_service.dart';
 
@@ -249,6 +251,34 @@ void main() {
       await eveFollower.close();
     });
 
+    test('when a follower loses access then the next presenter state ends '
+        'its session with noAccess', () async {
+      PresentationService.memberAccessRecheck = Duration.zero;
+      addTearDown(
+        () => PresentationService.memberAccessRecheck = const Duration(
+          seconds: 5,
+        ),
+      );
+      final bo = await TestUsers.create(sessionBuilder, name: 'Bo');
+      await TestDrive.share(endpoints, deck, anna, bo, AccessRole.viewer);
+      final presenter = connect(anna, PresentationRole.presenter);
+      final welcome = await presenter.next<PresentationWelcome>();
+      final follower = connect(
+        bo,
+        PresentationRole.follower,
+        sessionId: welcome.sessionId,
+      );
+      await follower.next<PresentationWelcome>();
+
+      await endpoints.sharing.remove(anna.endpointSession, deck.uuid, bo.id);
+      presenter.updates.add(PresentationStateUpdate(state: _state(1, 's1')));
+      final ended = await follower.next<PresentationEndedEvent>();
+
+      expect(ended.reason, 'noAccess');
+      await follower.close();
+      await presenter.close();
+    });
+
     test(
       'when an unknown session is joined then it ends with notFound',
       () async {
@@ -380,6 +410,118 @@ void main() {
       }
       expect(count, PresentationService.maxCommandsPerSecond);
       await audience.close();
+      await presenter.close();
+    });
+  });
+
+  withWonkyServerpod('Given a presenter here and an audience on another '
+      'instance (CQ-59)', (sessionBuilder, endpoints) {
+    late TestUser anna;
+    late DriveItemView deck;
+    final published = <ClusterBusBatch>[];
+    late Duration interval;
+
+    setUp(() async {
+      Cluster.debugDistributed = true;
+      published.clear();
+      interval = ClusterBus.flushInterval;
+      ClusterBus.flushInterval = const Duration(minutes: 1);
+      ClusterBus.debugPublish = (batch) async => published.add(batch);
+      anna = await TestUsers.create(sessionBuilder, name: 'Anna');
+      deck = await endpoints.drive.createPresentation(
+        anna.endpointSession,
+        null,
+        'Remote',
+        null,
+      );
+    });
+    tearDown(() {
+      Cluster.debugDistributed = null;
+      ClusterBus.debugPublish = null;
+      ClusterBus.flushInterval = interval;
+    });
+
+    Future<(_Client, PresentationWelcome)> present() async {
+      final updates = StreamController<PresentationUpdate>();
+      final client = _Client(
+        updates,
+        StreamQueue(
+          endpoints.presentation.join(
+            anna.endpointSession,
+            deck.uuid,
+            PresentationJoin(
+              role: PresentationRole.presenter,
+              deviceLabel: 'Laptop',
+            ),
+            updates.stream,
+          ),
+        ),
+      );
+      return (client, await client.next<PresentationWelcome>());
+    }
+
+    test('when the presenter changes the state then it leaves this instance '
+        'for the other ones', () async {
+      final (presenter, welcome) = await present();
+      final pod = sessionBuilder.build().serverpod;
+
+      presenter.updates.add(PresentationStateUpdate(state: _state(1, 's1')));
+      final channel = PresentationService.channel(welcome.sessionId);
+      Future<List<PresentationBusMessage>> sent() async {
+        await ClusterBus.flush(pod);
+        return [
+          for (final b in published)
+            for (var i = 0; i < b.channels.length; i++)
+              if (b.channels[i] == channel)
+                pod.serializationManager.decodeWithType(b.messages[i])
+                    as PresentationBusMessage,
+        ];
+      }
+
+      var messages = await sent();
+      for (var i = 0; i < 100 && !messages.any((m) => m.type == 'state'); i++) {
+        await pumpEventQueue();
+        messages = await sent();
+      }
+
+      final state = messages.lastWhere((m) => m.type == 'state');
+      expect(state.state?.slideId, 's1');
+      expect(
+        published.every((b) => b.originInstance == Cluster.instanceId),
+        isTrue,
+      );
+      await presenter.close();
+    });
+
+    test('when an audience on another instance sends a command then it '
+        'reaches the presenter here', () async {
+      final (presenter, welcome) = await present();
+      final pod = sessionBuilder.build().serverpod;
+
+      ClusterBus.receive(
+        pod,
+        ClusterBusBatch(
+          originInstance: 'another-instance',
+          channels: [PresentationService.channel(welcome.sessionId)],
+          messages: [
+            pod.serializationManager.encodeWithType(
+              PresentationBusMessage(
+                type: 'command',
+                connectionId: 'remote-audience',
+                sessionId: welcome.sessionId,
+                deckUuid: deck.uuid.uuid,
+                userId: anna.id,
+                role: PresentationRole.audience,
+                command: 'next',
+              ),
+            ),
+          ],
+        ),
+      );
+      final command = await presenter.next<PresentationCommandEvent>();
+
+      expect(command.command, 'next');
+      expect(command.fromConnectionId, 'remote-audience');
       await presenter.close();
     });
   });

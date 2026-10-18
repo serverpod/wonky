@@ -158,7 +158,7 @@ List<Command<CommandArgs>> historyCommands(ShellServices s) {
           );
         }
         return id == null
-            ? const CommandResult.failed('Copy failed')
+            ? CommandResult.failed(slidesL10nOf(s).errorCopyFailed)
             : ok({'itemUuid': id.uuid});
       },
     ),
@@ -302,7 +302,9 @@ List<Command<CommandArgs>> historyCommands(ShellServices s) {
           done.add(c.id);
         }
         if (done.isEmpty) {
-          return const CommandResult.failed('Nothing to restore');
+          return CommandResult.failed(
+            slidesL10nOf(ed.services).errorNothingToRestore,
+          );
         }
         await conflicts.dismiss(done);
         return ok({'restored': done.length});

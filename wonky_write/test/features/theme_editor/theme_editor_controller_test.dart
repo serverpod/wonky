@@ -6,8 +6,7 @@ import 'package:wonky_write/features/theme_editor/theme_editor_controller.dart';
 import 'package:wonky_write/features/theme_editor/theme_editor_model.dart';
 import 'package:wonky_write/features/theme_editor/theme_undo.dart';
 import 'package:wonky_write/features/themes/document_theme.dart';
-import 'package:wonky_write_core/wonky_write_core.dart'
-    hide ThemeCatalog, DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart' hide ThemeCatalog;
 
 import 'support/fake_theme_repository.dart';
 

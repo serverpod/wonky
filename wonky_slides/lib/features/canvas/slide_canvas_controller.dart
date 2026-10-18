@@ -323,7 +323,7 @@ class SlideCanvasController extends ChangeNotifier {
       final parent = parents[key];
       if (parent != null) {
         final inv = Matrix4.zero()..copyInverse(parent);
-        m = inv * m * parent;
+        m = inv.multiplied(m).multiplied(parent);
       }
       states[key] = ElementVisualState(transform: m);
     }
@@ -351,7 +351,10 @@ class SlideCanvasController extends ChangeNotifier {
         }
         // Only element groups that contain a moving element are entered.
         if (n is GroupNode && ancestors.contains(id)) {
-          walk(n.children, acc == null ? n.transform : acc * n.transform);
+          walk(
+            n.children,
+            acc == null ? n.transform : acc.multiplied(n.transform),
+          );
         }
       }
     }

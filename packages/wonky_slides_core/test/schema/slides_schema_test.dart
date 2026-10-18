@@ -1,7 +1,7 @@
 import 'package:test/test.dart';
 import 'package:wonky_slides_core/schema.dart';
-import 'package:wonky_sync_kit/rows.dart';
-import 'package:wonky_sync_models/tables.dart';
+import 'package:wonky_revlog/rows.dart';
+import 'package:wonky_slides_core/revlog.dart';
 
 /// Current rows for the inverter: table → id → columns.
 final class _Rows implements CurrentRowReader {
@@ -16,20 +16,22 @@ final class _Rows implements CurrentRowReader {
 
 void main() {
   group('Given the Slides schema names', () {
-    test('when compared with the generated tables then every table and '
-        'column matches (spaceId excluded)', () {
+    test('when compared with the RevLog tables then every table and column '
+        'matches (the change log is not a table any more)', () {
       expect(
-        SlidesTables.dependencyOrder,
-        SlidesSyncedTables.all.map((s) => s.name).toList(),
+        SlidesTables.dependencyOrder.where(
+          (t) => t != SlidesTables.deckChangeLog,
+        ),
+        slidesSchema.tables.map((t) => t.name).toList(),
       );
       expect(SlidesTables.columns.keys.toSet(), {
         ...SlidesTables.dependencyOrder,
       });
-      for (final spec in SlidesSyncedTables.all) {
-        expect(SlidesTables.columns[spec.name], {
-          for (final c in spec.table.columns)
-            if (c.columnName != SyncedTableSpec.spaceIdColumn) c.columnName,
-        }, reason: spec.name);
+      for (final t in slidesSchema.tables) {
+        expect(SlidesTables.columns[t.name], {
+          SlidesCols.id,
+          for (final c in t.columns) c.name,
+        }, reason: t.name);
       }
     });
 
@@ -60,20 +62,6 @@ void main() {
           in SlidesUndoHooks.columnwise.tables.entries) {
         expect(SlidesTables.columns[table], containsAll(identity));
       }
-    });
-  });
-
-  group('Given the Slides table set', () {
-    final set = SlidesTableSet.tables;
-
-    test('when reading it then the deck is the root and the change log is '
-        'not a model table', () {
-      expect(set.rootTable, 'deck');
-      expect(set.all, hasLength(13));
-      expect(set.modelTableNames, isNot(contains('deck_change_log')));
-      expect(set.modelTables, hasLength(12));
-      expect(set.of('slide_element').column('parentId'), isNotNull);
-      expect(set.rank('deck_theme'), lessThan(set.rank('slide_master')));
     });
   });
 

@@ -24,13 +24,13 @@ geometry,connectors,clipboard}/`.
 
 | Object | Package | Responsibility |
 |--------|---------|----------------|
-| `DeckSession` | app `features/sync` (contract in [12 §5.3](12-implementation-plan.md)) | `DeckModel`, `execute(op)`, `applyChanges`, remote batches, load state, role |
+| `DeckSession` | app `features/model` (contract in [12 §5.3](12-implementation-plan.md); RevLog implementation `features/revlog/logged_deck_session.dart`) | `DeckModel`, `execute(op)`, `applyChanges`, remote batches, load state, role |
 | `DeckEditorController` (`DocumentController`) | app `features/editor_screen` | Current slide, view mode, active tool, panels; implements shell hooks (cut/copy/paste, selection snapshot, comment anchors, presence cursor JSON) |
 | `CanvasController` | app `features/canvas` | Zoom, fit, scroll offset, su ↔ screen mapping, hit testing, viewport rect |
 | `SelectionController` | app `features/selection` | Selected element ids, focus (canvas/text/table/crop), group entry path, marquee |
 | `TransformSession` | app `features/selection` | Live drag/resize/rotate state, ghost frames, writes one plan on drop |
 | `SnapEngine` | core `geometry/snapping.dart` (pure Dart) | Snap targets and results for a moving box; equal-spacing detection |
-| `ElementKindRegistry` | app `features/elements` | Per-kind `ElementKindHandler` (§1.3) |
+| Per-kind behavior | app `features/elements/<kind>/`, core `scene/` | Scene nodes in core (`SlideSceneBuilder`); hit tests, handles, activation and inspector sections per kind in the canvas, selection and inspector (§1.3 as built) |
 | `SlideTextEditor` | app `features/text_editing` | The single active rich-text editor (super_editor) for the body being edited |
 | `SlideStage` | app `features/stage` (owned by 06 §12.1) | Paints `SlideScene` (02 §11) in the **edit frame** (06 §9.6) with per-element `RepaintBoundary`s; shared by canvas, thumbnails and presenting |
 
@@ -72,6 +72,14 @@ abstract class ElementKindHandler {
 ```
 
 Handlers are registered by each `elements/<kind>/` folder; the canvas never switches on kind.
+
+**As built (CQ-56):** this registry was never wired up: scene nodes are built in core
+(`SlideSceneBuilder`, one function per kind), and hit tests, extra handles, activation, minimum
+sizes and inspector sections are switches on the element kind in the canvas, selection and
+inspector code. The unused `ElementKindHandler`/`ElementKindRegistry` (and the
+`CoreSceneBuilding` mixin) were deleted rather than half-adopted; a new kind adds its cases there
+(and its scene builder in core). Moving per-kind behavior behind handlers remains a possible
+refactor (slides M6), not a contract.
 
 ---
 
@@ -122,13 +130,38 @@ Zoom and scroll are per-user view state (`LocalViewState`, not undoable, suite 0
 ### 2.4 Rendering
 
 - The current slide is painted from its `SlideScene` (02 §11): one `RepaintBoundary` per
-  top-level element, a background layer, a master/layout layer (cached picture, invalidated by
-  layout revision), an **overlay layer** for selection chrome, guides, remote selections and
-  comment pins (repaints without touching content).
+  top-level element, a background layer, an **overlay layer** for selection chrome, guides,
+  remote selections and comment pins (repaints without touching content).
+- **Incremental rendering (as built, CQ-43).** Resolved elements keep their identity while
+  their inputs are unchanged (the row, the rows of the placeholder chain, the theme, the slide
+  size and the group context), so an edit rebuilds and repaints only the changed elements'
+  nodes and layers. Master and layout decorations resolve once and are shared by every slide
+  that draws them (instead of a separately cached master/layout picture). Scene nodes are
+  cached per resolved element and context (canvas, thumbnail, present), keyed by the
+  element's revision of dependent rows (table cells, code states, chart links). Render
+  revisions (`DeckIndexes.revision`) change only with what a slide draws from: its
+  render-relevant columns, its elements and builds, its effective layout, master and theme
+  (rows and elements), and the deck's size, appearance, theme, numbering and footer — not
+  speaker notes, timings, the deck title, guides or present settings; a change to a layout
+  re-renders only the slides that use it. (Known edge: an instance whose `placeholderOf`
+  points into another layout than its slide's is not invalidated by that layout; repair
+  re-links such instances.)
 - Text is laid out by the Flutter `TextLayoutEngine` (same metrics as thumbnails/presenting);
   fonts load on demand (05 §3.3); until loaded, fallback metrics then re-layout (max 1.5 s).
-- During a drag, only the moving elements' boundaries repaint (transform layer), never relayout.
-- Off-slide content is drawn at 40 % opacity; hidden elements are not drawn (§8.2).
+- During a drag, only the moving elements' boundaries repaint, never relayout. As built: a
+  top-level element that only moves and stays inside the slide is moved as a composited layer
+  (`SlideLiveTransforms`, no repaint and no stage rebuild per pointer move); nested elements,
+  resizes, rotations and elements crossing the slide edge repaint through the frame. The
+  stage widget and the per-element semantics nodes are reused between pointer moves.
+- Off-slide content is drawn at 40 % opacity; hidden elements are not drawn (§8.2). Only
+  elements whose painted bounds (strokes, shadows, blur) cross the slide edge are painted
+  twice (dimmed outside, full inside); others are painted once.
+- Images decode at about the size they are drawn at (power-of-two width buckets, never above
+  the natural size) into one cache per open deck shared by the canvas, thumbnails, previews
+  and presenting, bounded by bytes (256 MB native, 160 MB web). A missing image stays blank;
+  a transient failure (offline, server error) is retried with backoff and when the
+  connection comes back. Polling for another user's pending upload stops when the deck
+  closes.
 - Empty placeholders draw a dashed outline (token `placeholderBorder`) and their prompt text
   (§6.2) — only in the editor (never thumbnails, presenting or PDF).
 
@@ -453,7 +486,7 @@ super_editor patch needed). The fallback is not needed. How the overlay matches 
   coalesce by **composing** updates of the same row: the kit's `RowsUndoEntry.coalesce` appends
   changes, and the rows undo inverts each change against the current model, skipping columns whose
   value isn't the change's `after`, so two appended writes of one `text` column undid only the last
-  one — fixed since in `wonky_sync_kit` (`composeRowChanges`), and `SlidesTypingUndoEntry` now
+  one — fixed since in `wonky_revlog` (`composeRowChanges`), and `SlidesTypingUndoEntry` now
   uses the kit's coalescing. Undo, redo and collaborators' changes of the body are
   patched into the document (SE-2 `ApplyDocumentPatchRequest`, caret clamped); unwritten local
   edits win (LWW, soft lock).
@@ -1538,10 +1571,30 @@ re-checks 400 ms after each change while open.
 | Drag/resize 50 selected elements | 60 fps desktop, ≥ 45 fps web |
 | Typing latency in a text box | < 16 ms p95 |
 | Enter text editing (editor overlay ready) | < 50 ms |
-| Thumbnail render (navigator, 240 px wide) | ≤ 8 ms each, off the critical path, cached by slide revision |
+| Thumbnail render (navigator, 240 px wide) | ≤ 8 ms each, off the critical path; one cache entry per slide, width and appearance, re-recorded when its render revision changes |
 | Snap computation per pointer move (500 elements) | < 2 ms |
 | Paste 50 slides cross-deck | < 1 s local apply (file copies async) |
-| Remote change visible (other device) | < 300 ms via hints, < 3 s via sync |
+| Remote change visible (other device) | < 300 ms via hints; committed edits p95 < 250 ms via sync (RevLog gate P1, [17](../17-revlog-sync.md) part 7) |
+
+**Perf suite (CQ-38, as built).** `wonky_slides/test/perf/slides_perf_test.dart` (tag `perf`,
+skipped by default: `flutter test -t perf --run-skipped test/perf`) counts what one edit costs
+through the editor screen of a 40-slide deck (25 elements per slide, ten navigator thumbnails)
+and fails on count regressions. Before → after CQ-43 (counts per edit; times are debug JIT
+medians on one machine, comparable only with each other):
+
+| Scenario | Nodes built | Layers painted | Stage builds | Thumbnails recorded |
+|----------|-------------|----------------|--------------|---------------------|
+| Move one element on the current slide | 50 → 2 | 25 → 1 | 1 → 1 | 1 → 1 |
+| Speaker notes commit | 50 → 0 | 25 → 0 | 1 → 0 | 1 → 0 |
+| Deck rename / guide move | 275 → 0 | 25 → 0 | 1 → 0 | 10 → 0 |
+| A collaborator moves an element on another slide | 25 → 1 | 0 → 0 | 1 → 0 | 1 → 1 |
+| Drag: per pointer move | 0 → 0 | 0.7 → 0 | 1 → 0 | — |
+
+Scenes of 100 slides × 30 elements: cold 169 → 172 ms; one slide after one edit 1.5 → 0.3 ms
+(30 → 1 nodes built); a deck rename, a notes commit or an edit of an unused layout re-rendered
+100 / 1 / 100 → 0 / 0 / 0 slides. Thumbnail cache after 20 commits on one of 10 slides:
+30 → 10 entries. A 3000 × 2000 photo drawn 640 logical px wide (DPR 3) decodes to 10.7 MB
+instead of 22.9 MB.
 
 ---
 

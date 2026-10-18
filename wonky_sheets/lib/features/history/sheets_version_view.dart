@@ -18,6 +18,7 @@ import 'package:wonky_sheets_core/formula.dart' show GridRect;
 import 'package:wonky_sheets_core/model.dart';
 import 'package:wonky_ui/wonky_ui.dart';
 
+import 'change_labels.dart';
 import '../../l10n/sheets_l10n.dart';
 import '../export/sheets_downloads.dart';
 import '../grid/grid_area.dart';
@@ -62,7 +63,7 @@ class SheetsVersionRenderer extends VersionRenderer {
       ? null
       : SheetsServerChangeEntry(
           changeId: result.changeId!.uuid,
-          label: 'Restore version',
+          label: SheetsChangeLabels.restoreVersion,
         );
 }
 

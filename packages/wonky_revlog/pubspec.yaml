@@ -1,0 +1,20 @@
+name: wonky_revlog
+description: "Pure-Dart core of RevLog, the server-sequenced change log of Wonky Sheets and Wonky Slides: row changes, mutation plans, undo, table schemas, change-set codec, apply rules, overlay and the client sync state machine."
+publish_to: none
+
+environment:
+  sdk: '^3.12.2'
+
+resolution: workspace
+
+dependencies:
+  archive: ^4.0.0
+  collection: ^1.19.1
+  uuid: ^4.6.0
+  wonky_core:
+    path: ../wonky_core
+
+dev_dependencies:
+  wonky_lints:
+    path: ../wonky_lints
+  test: ^1.25.5

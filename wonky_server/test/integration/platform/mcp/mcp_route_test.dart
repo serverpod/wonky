@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -93,6 +96,42 @@ void main() {
       },
     );
 
+    test('when a request without a token is over the size cap then it is '
+        'refused from its headers (401, not 413: the body is never '
+        'read)', () async {
+      final req = await http.postUrl(url);
+      req.headers.contentType = ContentType.json;
+      req.add(List<int>.filled(McpHttpHandler.maxBodyChars + 1, 0x20));
+      final res = await req.close();
+      await res.drain<void>();
+
+      expect(res.statusCode, 401);
+    });
+
+    Future<int> postLarge(String token) async {
+      final req = await http.postUrl(url);
+      req.headers
+        ..set('authorization', 'Bearer $token')
+        ..contentType = ContentType.json;
+      req.add(List<int>.filled(McpHttpHandler.maxBodyChars + 1, 0x20));
+      final res = await req.close();
+      await res.drain<void>();
+      return res.statusCode;
+    }
+
+    test('when a request with a valid token sends a body over the cap then '
+        'it is refused with 413', () async {
+      final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
+      final h = await McpHarness.forUser(anna);
+
+      expect(await postLarge(h.secret), 413);
+    });
+
+    test('when a request with an invalid token sends a large body then it is '
+        'refused with 401 before the body is read (CQ-13)', () async {
+      expect(await postLarge('wkpat_x'), 401);
+    });
+
     test('when a revoked token is sent then it is rejected', () async {
       final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
       final h = await McpHarness.forUser(anna);
@@ -129,7 +168,7 @@ void main() {
           token: h.secret,
           body: rpc(1, 'initialize', {
             'protocolVersion': '2025-06-18',
-            'capabilities': {},
+            'capabilities': <String, Object?>{},
             'clientInfo': {'name': 'curl', 'version': '1'},
           }),
         );
@@ -232,7 +271,7 @@ void main() {
           token: a.secret,
           body: rpc(1, 'initialize', {
             'protocolVersion': '2025-06-18',
-            'capabilities': {},
+            'capabilities': <String, Object?>{},
             'clientInfo': {'name': 'x', 'version': '1'},
           }),
         );
@@ -261,7 +300,7 @@ void main() {
           token: h.secret,
           body: rpc(1, 'initialize', {
             'protocolVersion': '2025-06-18',
-            'capabilities': {},
+            'capabilities': <String, Object?>{},
             'clientInfo': {'name': 'x', 'version': '1'},
           }),
         );
@@ -316,7 +355,7 @@ void main() {
         send(
           rpc(1, 'initialize', {
             'protocolVersion': '2025-06-18',
-            'capabilities': {},
+            'capabilities': <String, Object?>{},
             'clientInfo': {'name': 'stdio-test', 'version': '1'},
           }),
         );

@@ -1,12 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
-    show OfflineSyncSpace, OfflineSyncDatabaseAccess;
 import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_sheets_core/wonky_sheets_core.dart'
     hide ActorKind, CellInput, TriggerKind;
@@ -16,6 +13,7 @@ import 'package:wonky_sync_models/ids.dart';
 
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
+import '../../platform/common/isolate_runner.dart';
 import '../../platform/common/models.dart';
 import '../../platform/config/wonky_config.dart';
 import '../../platform/files/file_service.dart';
@@ -23,11 +21,10 @@ import '../../platform/sharing/access_service.dart';
 import '../headless/headless_workbook_provider.dart';
 import '../mcp/sheets_bulk_writer.dart';
 import '../sheets_service.dart';
-import '../../platform/spaces/space_service.dart';
-import '../sync/server_sheets_writer.dart';
-import '../sync/sync_db.dart';
-import '../sync/synced_tables.dart' show deleteSyncedRow, updateSyncedRow;
+import '../revlog/sheets_server_writes.dart';
+import 'script_authorizations.dart';
 import 'script_limits.dart';
+import 'script_user_properties.dart';
 import 'script_runner_pool.dart';
 import 'url_fetch_proxy.dart';
 
@@ -76,7 +73,7 @@ abstract final class ScriptService {
   /// The script project of [space], if any.
   static Future<ScriptProject?> project(Session session, UuidValue space) =>
       ScriptProject.db.findFirstRow(
-        syncSessionOf(session),
+        session,
         where: (t) => t.spreadsheetId.equals(space),
         orderBy: (t) => t.id,
       );
@@ -84,7 +81,7 @@ abstract final class ScriptService {
   /// The files of [project] in order.
   static Future<List<ScriptFile>> files(Session session, UuidValue project) =>
       ScriptFile.db.find(
-        syncSessionOf(session),
+        session,
         where: (t) => t.projectId.equals(project),
         orderBy: (t) => t.sortKey,
       );
@@ -92,7 +89,7 @@ abstract final class ScriptService {
   /// The build row of [project].
   static Future<ScriptBuild?> build(Session session, UuidValue project) =>
       ScriptBuild.db.findById(
-        syncSessionOf(session),
+        session,
         UuidValue.fromString(SheetsIds.scriptBuildId(project.uuid)),
       );
 
@@ -124,6 +121,34 @@ abstract final class ScriptService {
       () => _compile(session, actor, item, p, force: force),
     );
   }
+
+  /// Time limits of a compile and an analysis (the isolate is killed).
+  static const compileTimeout = Duration(seconds: 60);
+  static const analyzeTimeout = Duration(seconds: 20);
+
+  /// Compiles [sources] with the shared `IsolateRunner` (helpers, so the
+  /// closures capture only their arguments).
+  static Future<ScriptCompileResult> _compileIn(
+    List<ScriptSourceFile> sources,
+  ) => IsolateRunner.run(
+    () => const ScriptCompiler().compile(sources),
+    name: 'wonky-script-compiler',
+    timeout: compileTimeout,
+  );
+
+  static Future<List<ScriptDiagnostic>> _analyzeIn(
+    String fileName,
+    String source,
+    Set<String> names,
+  ) => IsolateRunner.run(
+    () => const ScriptCompiler().analyze(
+      fileName,
+      source,
+      projectFiles: names,
+    ),
+    name: 'wonky-script-analyzer',
+    timeout: analyzeTimeout,
+  );
 
   static Future<ScriptCompileResponse> _compile(
     Session session,
@@ -157,10 +182,15 @@ abstract final class ScriptService {
         detailsJson: jsonEncode({'retryAfterSeconds': wait?.inSeconds ?? 60}),
       );
     }
-    final result = await Isolate.run(
-      () => const ScriptCompiler().compile(sources),
-      debugName: 'wonky-script-compiler',
-    ).timeout(const Duration(seconds: 60));
+    final ScriptCompileResult result;
+    try {
+      result = await _compileIn(sources);
+    } on TimeoutException {
+      throw Errors.unavailable(
+        'Building the script took too long. Try splitting it into smaller '
+        'files.',
+      );
+    }
     final now = clock.now().toUtc();
     final buildId = UuidValue.fromString(SheetsIds.scriptBuildId(p.id.uuid));
     UuidValue? fileUuid;
@@ -180,37 +210,31 @@ abstract final class ScriptService {
     final diagnosticsJson = ScriptDiagnostic.encodeList(result.diagnostics);
     final exportsJson = result.exports.encode();
     final columns = <String, Object?>{
-      'projectId': p.id,
       'status':
           (result.ok ? ScriptBuildStatus.ok : ScriptBuildStatus.errors).name,
       'sourceHash': hash,
-      'bytecodeFileUuid': fileUuid,
+      'bytecodeFileUuid': fileUuid?.uuid,
       'diagnosticsJson': diagnosticsJson,
       'exportsJson': exportsJson,
       'apiVersion': wonkyApiVersion,
       'compilerVersion': ScriptCompiler.compilerVersion,
-      'requestedBy': actor.authUserId,
+      'requestedBy': actor.authUserId.uuid,
       'builtAt': now,
       if (result.ok) ...{
         'lastGoodSourceHash': hash,
-        'lastGoodBytecodeFileUuid': fileUuid,
+        'lastGoodBytecodeFileUuid': fileUuid?.uuid,
         'lastGoodExportsJson': exportsJson,
         'lastGoodBuiltAt': now,
       },
     };
-    await SpaceService.ensureWriter(
-      session,
-      actor,
-      item,
-      reason: SubscriptionReason.script,
-    );
-    await ServerSheetsWriter.apply(
+    await SheetsServerWrites.apply(
       session,
       actor: actor.copyWith(kind: ActorKind.system),
-      spaceUuid: space,
+      fileUuid: space,
       changes: [
         if (existing == null)
           RowChange.insert(SheetsTables.scriptBuild, buildId.uuid, {
+            'projectId': p.id.uuid,
             ...columns,
             'createdAt': now,
           })
@@ -259,7 +283,7 @@ abstract final class ScriptService {
       projectId = const Uuid().v7obj();
       changes.add(
         RowChange.insert(SheetsTables.scriptProject, projectId.uuid, {
-          'spreadsheetId': space,
+          'spreadsheetId': space.uuid,
           'name': '${item.name} script',
           'settingsJson': '{}',
           'createdAt': now,
@@ -277,14 +301,14 @@ abstract final class ScriptService {
       }
       changes.add(
         RowChange.insert(SheetsTables.scriptFile, const Uuid().v7(), {
-          'projectId': projectId,
+          'projectId': projectId.uuid,
           'name': name,
           'sortKey': FractionalIndex.after(
             existing.isEmpty ? null : existing.last.sortKey,
           ),
           'source': source,
           'contentHash': hash,
-          'updatedBy': actor.authUserId,
+          'updatedBy': actor.authUserId.uuid,
           'updatedAt': now,
           'createdAt': now,
         }),
@@ -303,28 +327,22 @@ abstract final class ScriptService {
           {
             'source': file.source,
             'contentHash': file.contentHash,
-            'updatedBy': file.updatedBy,
+            'updatedBy': file.updatedBy.uuid,
             'updatedAt': file.updatedAt,
           },
           {
             'source': source,
             'contentHash': hash,
-            'updatedBy': actor.authUserId,
+            'updatedBy': actor.authUserId.uuid,
             'updatedAt': now,
           },
         ),
       );
     }
-    await SpaceService.ensureWriter(
-      session,
-      actor,
-      item,
-      reason: SubscriptionReason.script,
-    );
-    await ServerSheetsWriter.apply(
+    await SheetsServerWrites.apply(
       session,
       actor: actor,
-      spaceUuid: space,
+      fileUuid: space,
       changes: changes,
       label: 'Edit script',
       kinds: const {ChangeKinds.scripts},
@@ -345,18 +363,21 @@ abstract final class ScriptService {
         ? null
         : (await files(session, p.id)).where((f) => f.name == name).firstOrNull;
     if (file == null) throw Errors.notFound('Script file $name');
-    await SpaceService.ensureWriter(
-      session,
-      actor,
-      item,
-      reason: SubscriptionReason.script,
-    );
-    await ServerSheetsWriter.apply(
+    await SheetsServerWrites.apply(
       session,
       actor: actor,
-      spaceUuid: item.contentRef!,
+      fileUuid: item.contentRef!,
       changes: [
-        RowChange.delete(SheetsTables.scriptFile, file.id.uuid, file.toJson()),
+        RowChange.delete(SheetsTables.scriptFile, file.id.uuid, {
+          'projectId': file.projectId.uuid,
+          'name': file.name,
+          'sortKey': file.sortKey,
+          'source': file.source,
+          'contentHash': file.contentHash,
+          'updatedBy': file.updatedBy.uuid,
+          'updatedAt': file.updatedAt,
+          'createdAt': file.createdAt,
+        }),
       ],
       label: 'Delete $name',
       kinds: const {ChangeKinds.scripts},
@@ -387,13 +408,12 @@ abstract final class ScriptService {
     final names = p == null
         ? <String>{}
         : {for (final f in await files(session, p.id)) f.name};
-    final diagnostics = await Isolate.run(
-      () => const ScriptCompiler().analyze(
-        fileName,
-        source,
-        projectFiles: names,
-      ),
-    );
+    final List<ScriptDiagnostic> diagnostics;
+    try {
+      diagnostics = await _analyzeIn(fileName, source, names);
+    } on TimeoutException {
+      throw Errors.unavailable('Checking the script took too long.');
+    }
     return ScriptDiagnostic.encodeList(diagnostics);
   }
 
@@ -444,209 +464,6 @@ abstract final class ScriptService {
     return ByteData.sublistView(program.bytecode);
   }
 
-  // -------------------------------------------------------- authorization
-
-  static Future<ScriptAuthorization?> _authorizationOf(
-    Session session,
-    int userId,
-    UuidValue space,
-  ) => ScriptAuthorization.db.findFirstRow(
-    session,
-    where: (t) =>
-        t.userId.equals(userId) &
-        t.spreadsheetUuid.equals(space) &
-        t.revokedAt.equals(null),
-  );
-
-  /// The scopes [actor] granted for the spreadsheet.
-  static Future<ScriptAuthorizationView> authorization(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-  ) async {
-    final item = await SheetsService.byItemOrSpace(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    final a = await _authorizationOf(session, actor.userId, item.contentRef!);
-    return ScriptAuthorizationView(
-      scopes: a?.scopes ?? const [],
-      grantedAt: a?.grantedAt,
-    );
-  }
-
-  /// Grants [scopes] (the authorization dialog's *Allow*, 09 §11.2).
-  static Future<ScriptAuthorizationView> authorize(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-    List<String> scopes,
-  ) async {
-    requireEnabled();
-    if (actor.kind != ActorKind.user) {
-      throw Errors.forbidden('Only people can authorize scripts.');
-    }
-    final item = await SheetsService.byItemOrSpace(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    final unknown = scopes.where(
-      (s) => !ScriptScopes.authorizable.contains(s),
-    );
-    if (unknown.isNotEmpty) {
-      throw Errors.invalid('Unknown scope ${unknown.first}');
-    }
-    final space = item.contentRef!;
-    final now = clock.now().toUtc();
-    final existing = await ScriptAuthorization.db.findFirstRow(
-      session,
-      where: (t) =>
-          t.userId.equals(actor.userId) & t.spreadsheetUuid.equals(space),
-    );
-    final merged = {
-      if (existing != null && existing.revokedAt == null) ...existing.scopes,
-      ...scopes,
-    }.toList()..sort();
-    if (existing == null) {
-      await ScriptAuthorization.db.insertRow(
-        session,
-        ScriptAuthorization(
-          userId: actor.userId,
-          spreadsheetUuid: space,
-          scopes: merged,
-          grantedAt: now,
-        ),
-      );
-    } else {
-      await ScriptAuthorization.db.updateRow(
-        session,
-        existing.copyWith(scopes: merged, grantedAt: now, revokedAt: null),
-      );
-    }
-    return ScriptAuthorizationView(scopes: merged, grantedAt: now);
-  }
-
-  /// *Revoke my authorization*: removes the grant and disables the user's
-  /// installable triggers of the spreadsheet (09 §11.2).
-  static Future<void> revokeAuthorization(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-  ) async {
-    final item = await SheetsService.byItemOrSpace(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    final space = item.contentRef!;
-    final existing = await _authorizationOf(session, actor.userId, space);
-    if (existing != null) {
-      await ScriptAuthorization.db.updateRow(
-        session,
-        existing.copyWith(revokedAt: clock.now().toUtc()),
-      );
-    }
-    final p = await project(session, space);
-    if (p == null) return;
-    final triggers = await ScriptTrigger.db.find(
-      syncSessionOf(session),
-      where: (t) =>
-          t.projectId.equals(p.id) & t.runAsUserId.equals(actor.authUserId),
-    );
-    for (final t in triggers) {
-      await _disableTrigger(session, t.id, space, 'Authorization revoked.');
-    }
-  }
-
-  static Future<void> _disableTrigger(
-    Session session,
-    UuidValue triggerId,
-    UuidValue space,
-    String reason,
-  ) async {
-    final state = await ScriptTriggerState.db.findFirstRow(
-      session,
-      where: (t) => t.triggerId.equals(triggerId),
-    );
-    if (state == null) {
-      await ScriptTriggerState.db.insertRow(
-        session,
-        ScriptTriggerState(
-          triggerId: triggerId,
-          spreadsheetUuid: space,
-          disabledReason: reason,
-        ),
-      );
-    } else {
-      await ScriptTriggerState.db.updateRow(
-        session,
-        state.copyWith(disabledReason: reason, nextRunAt: null),
-      );
-    }
-  }
-
-  // ---------------------------------------------------------------- quotas
-
-  static DateTime _today() {
-    final n = clock.now().toUtc();
-    return DateTime.utc(n.year, n.month, n.day);
-  }
-
-  /// Today's usage of [userId] (created on demand).
-  static Future<ScriptQuotaUsage> usage(Session session, int userId) async {
-    final day = _today();
-    final found = await ScriptQuotaUsage.db.findFirstRow(
-      session,
-      where: (t) => t.userId.equals(userId) & t.day.equals(day),
-    );
-    if (found != null) return found;
-    try {
-      return await ScriptQuotaUsage.db.insertRow(
-        session,
-        ScriptQuotaUsage(userId: userId, day: day),
-      );
-    } on DatabaseQueryException {
-      return (await ScriptQuotaUsage.db.findFirstRow(
-        session,
-        where: (t) => t.userId.equals(userId) & t.day.equals(day),
-      ))!;
-    }
-  }
-
-  static Future<void> _addUsage(
-    Session session,
-    int userId, {
-    int serverMs = 0,
-    int clientMs = 0,
-    int fetchCalls = 0,
-    int fetchBytes = 0,
-    int triggerRuns = 0,
-  }) async {
-    final u = await usage(session, userId);
-    await session.db.unsafeExecute(
-      'UPDATE "script_quota_usage" SET '
-      '"serverRuntimeMs" = "serverRuntimeMs" + @server, '
-      '"clientRuntimeMs" = "clientRuntimeMs" + @client, '
-      '"urlFetchCalls" = "urlFetchCalls" + @calls, '
-      '"urlFetchBytes" = "urlFetchBytes" + @bytes, '
-      '"triggerRuns" = "triggerRuns" + @runs '
-      'WHERE "id" = @id',
-      parameters: QueryParameters.named({
-        'server': serverMs,
-        'client': clientMs,
-        'calls': fetchCalls,
-        'bytes': fetchBytes,
-        'runs': triggerRuns,
-        'id': u.id,
-      }),
-    );
-  }
-
   // ------------------------------------------------------------ fetching
 
   static List<String> _allowlist(ScriptProject? p) {
@@ -669,7 +486,7 @@ abstract final class ScriptService {
     FetchRequestData request, {
     required bool customFunction,
   }) async {
-    final u = await usage(session, userId);
+    final u = await ScriptAuthorizations.usage(session, userId);
     if (u.urlFetchCalls >= dailyFetchCalls) {
       throw const FetchFailure(
         'URL fetch quota exceeded (20,000 per day); it resets at midnight UTC.',
@@ -695,7 +512,7 @@ abstract final class ScriptService {
         customFunction: customFunction,
       );
       if (customFunction) ScriptFetchCache.instance.put(request, r);
-      await _addUsage(
+      await ScriptAuthorizations.addUsage(
         session,
         userId,
         fetchCalls: 1,
@@ -703,7 +520,7 @@ abstract final class ScriptService {
       );
       return r;
     } on FetchFailure {
-      await _addUsage(session, userId, fetchCalls: 1);
+      await ScriptAuthorizations.addUsage(session, userId, fetchCalls: 1);
       rethrow;
     }
   }
@@ -727,7 +544,11 @@ abstract final class ScriptService {
     );
     final space = item.contentRef!;
     if (!customFunction) {
-      final a = await _authorizationOf(session, actor.userId, space);
+      final a = await ScriptAuthorizations.authorizationOf(
+        session,
+        actor.userId,
+        space,
+      );
       if (a == null || !a.scopes.contains(ScriptScopes.externalRequest)) {
         throw Errors.forbidden(
           'authorization_required: the script needs permission to connect '
@@ -770,8 +591,9 @@ abstract final class ScriptService {
   /// MCP `sheets.run_function`, installable triggers.
   ///
   /// The function runs against a private copy of the headless workbook;
-  /// its writes are committed afterwards in one recorded change (revertible
-  /// with `changes.revert`) and written through to the cache.
+  /// its writes are committed afterwards as RevLog ops of [actor] (the
+  /// run-as user; role and protected ranges are checked by the sequencer)
+  /// in one recorded change, revertible with `changes.revert`.
   static Future<ScriptRunResponse> run(
     Session session,
     Actor actor,
@@ -804,7 +626,11 @@ abstract final class ScriptService {
     if (program.exports.function(functionName) == null) {
       throw Errors.notFound('Script function "$functionName"');
     }
-    final grant = await _authorizationOf(session, actor.userId, space);
+    final grant = await ScriptAuthorizations.authorizationOf(
+      session,
+      actor.userId,
+      space,
+    );
     final granted = {...?grant?.scopes};
     final missing = [
       for (final s in program.exports.scopes)
@@ -825,7 +651,7 @@ abstract final class ScriptService {
 
     final started = clock.now().toUtc();
     final quota = WonkyConfig.current.scriptDailyQuotaMs;
-    final today = await usage(session, actor.userId);
+    final today = await ScriptAuthorizations.usage(session, actor.userId);
     if (today.serverRuntimeMs >= quota) {
       final skipped = await _log(
         session,
@@ -864,7 +690,7 @@ abstract final class ScriptService {
     // The headless workbook holds the grid; the script tables the API
     // touches (project, triggers, document properties) come from the
     // database.
-    final db = syncSessionOf(session);
+    final db = session;
     model.upsertRow(SheetsTables.scriptProject, p.id.uuid, p.toJson());
     for (final t in await ScriptTrigger.db.find(
       db,
@@ -948,20 +774,15 @@ abstract final class ScriptService {
           ScriptExecutionKind.ai => ActorKind.ai,
           _ => ActorKind.script,
         };
-        changeId = await HeadlessWorkbookProvider.withWriteLock(
-          space,
-          () async {
-            final (id, applied) = await SheetsBulkWriter.applyRecorded(
-              session,
-              actor: actor.copyWith(kind: commitKind),
-              item: item,
-              changes: changes,
-              label: 'Script: $functionName',
-              plans: [for (final a in result.applied) a.plan],
-            );
-            HeadlessWorkbookProvider.writeThrough(space, applied.applied);
-            return id;
-          },
+        // Committed as the run-as user (RevLog spec 05 §3.5): the
+        // sequencer checks their role and protected ranges.
+        (changeId, _) = await SheetsBulkWriter.applyRecorded(
+          session,
+          actor: actor.copyWith(kind: commitKind),
+          item: item,
+          changes: changes,
+          label: 'Script: $functionName',
+          plans: [for (final a in result.applied) a.plan],
         );
       } on Exception catch (e) {
         status = ExecutionStatus.failed;
@@ -972,7 +793,7 @@ abstract final class ScriptService {
       }
     }
     final duration = result.duration;
-    await _addUsage(
+    await ScriptAuthorizations.addUsage(
       session,
       actor.userId,
       serverMs: duration.inMilliseconds - result.counters.uiWait.inMilliseconds,
@@ -1064,7 +885,7 @@ abstract final class ScriptService {
       buildSourceHash: buildHash,
       startedAt: started,
       durationMs: duration.inMilliseconds,
-      logs: _truncate(logs),
+      logs: truncateLogs(logs),
       errorMessage: error,
       errorStackJson: errorStackJson,
       changeId: changeId,
@@ -1074,112 +895,12 @@ abstract final class ScriptService {
     ),
   );
 
-  static String _truncate(String logs) {
+  /// [logs] cut to the stored maximum, with a closing system line.
+  static String truncateLogs(String logs) {
     const max = 100 * 1024;
     if (logs.length <= max) return logs;
     return '${logs.substring(0, max)}\n'
         '${jsonEncode({'t': clock.now().toUtc().toIso8601String(), 'level': 'system', 'msg': 'Log truncated.'})}';
-  }
-
-  // ----------------------------------------------------------- executions
-
-  /// The executions of a spreadsheet, newest first (09 §13.3): editors see
-  /// all, others their own.
-  static Future<List<ScriptExecution>> executions(
-    Session session,
-    Actor actor,
-    UuidValue uuid, {
-    String? functionName,
-    ScriptExecutionStatus? status,
-    DateTime? before,
-    int limit = 50,
-  }) async {
-    final item = await SheetsService.byItemOrSpace(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    final role = await AccessService.effectiveRole(
-      session,
-      actor.userId,
-      item,
-    );
-    final space = item.contentRef!;
-    final all = role != null && role >= Role.editor;
-    return ScriptExecution.db.find(
-      session,
-      where: (t) {
-        Expression e = t.spreadsheetUuid.equals(space);
-        if (!all) e = e & t.userId.equals(actor.userId);
-        if (functionName != null) e = e & t.functionName.equals(functionName);
-        if (status != null) e = e & t.status.equals(status);
-        if (before != null) e = e & (t.startedAt < before);
-        return e;
-      },
-      orderBy: (t) => t.startedAt.desc(),
-      limit: limit.clamp(1, 200),
-    );
-  }
-
-  /// Client executions uploaded in batches (09 §13.1). The server owns the
-  /// user and the runtime fields; client runtime counts toward the (soft)
-  /// client quota.
-  static Future<int> reportExecutions(
-    Session session,
-    Actor actor,
-    UuidValue uuid,
-    List<ScriptExecution> executions,
-  ) async {
-    requireEnabled();
-    if (executions.length > 1000) {
-      throw Errors.invalid('At most 1,000 executions per report.');
-    }
-    final item = await SheetsService.byItemOrSpace(
-      session,
-      actor,
-      uuid,
-      Role.viewer,
-    );
-    final space = item.contentRef!;
-    var clientMs = 0;
-    final rows = [
-      for (final e in executions)
-        e.copyWith(
-          id: null,
-          spreadsheetUuid: space,
-          userId: actor.userId,
-          runAsUserId: actor.userId,
-          runtime: e.runtime == ScriptRuntimeKind.server
-              ? ScriptRuntimeKind.clientDesktop
-              : e.runtime,
-          logs: _truncate(e.logs),
-          changeId: null,
-        ),
-    ];
-    for (final r in rows) {
-      clientMs += r.durationMs.clamp(0, 6 * 3600 * 1000);
-    }
-    await ScriptExecution.db.insert(session, rows);
-    await _addUsage(session, actor.userId, clientMs: clientMs);
-    return rows.length;
-  }
-
-  /// Daily pruning: executions older than 30 days and beyond 10,000 per
-  /// spreadsheet.
-  static Future<int> pruneExecutions(Session session) async {
-    final cutoff = clock.now().toUtc().subtract(executionRetention);
-    final old = await ScriptExecution.db.deleteWhere(
-      session,
-      where: (t) => t.startedAt < cutoff,
-    );
-    final extra = await session.db.unsafeExecute(
-      'DELETE FROM "script_execution" WHERE "id" IN ('
-      'SELECT "id" FROM (SELECT "id", row_number() OVER '
-      '(PARTITION BY "spreadsheetUuid" ORDER BY "startedAt" DESC) AS n '
-      'FROM "script_execution") ranked WHERE n > $maxExecutionsPerSpreadsheet)',
-    );
-    return old.length + extra;
   }
 }
 
@@ -1206,47 +927,40 @@ final class _ServerFetcher implements UrlFetcher {
 }
 
 /// `PropertiesService.userProperties` of server runs (09 §6.9, A-09-4): the
-/// run-as user's `ScriptUserProperty` rows for one spreadsheet, stored in the
-/// user's **personal space** (space UUID = auth user id, implicit in the
-/// sync engine). The rows are loaded before the run (scripts read them
-/// synchronously) and the changes are written by [flush] after it, in one
-/// transaction of that user, so they sync to the user's clients.
+/// run-as user's properties of one spreadsheet (RevLog spec 02 §2.4). They
+/// are loaded before the run (scripts read them synchronously) and the
+/// changes are written by [flush] after it, in one transaction.
 final class ServerUserProperties implements PropertyStore {
-  ServerUserProperties._(this.user, this.spreadsheet, this._rows)
-    : _values = {for (final e in _rows.entries) e.key: e.value.value};
+  ServerUserProperties._(this.userId, this.spreadsheet, this._values);
 
-  /// Loads the properties of [user] for [spreadsheet] (space uuid).
+  /// Loads the properties of [user] (auth user id) for [spreadsheet].
   static Future<ServerUserProperties> load(
     Session session, {
     required UuidValue user,
     required UuidValue spreadsheet,
   }) async {
-    final rows = <String, ScriptUserProperty>{};
-    final space = await OfflineSyncSpace.db.findFirstRow(
+    final profile = await UserProfile.db.findFirstRow(
       session,
-      where: (t) => t.uuidSpaceId.equals(user),
+      where: (t) => t.authUserId.equals(user),
     );
-    if (space != null) {
-      final found = await ScriptUserProperty.db.find(
-        syncSessionOf(session),
-        where: (t) =>
-            t.spaceId.equals(space.id) & t.spreadsheetId.equals(spreadsheet),
-        orderBy: (t) => t.createdAt,
-      );
-      for (final r in found) {
-        rows[r.key] = r;
-      }
-    }
-    return ServerUserProperties._(user, spreadsheet, rows);
+    if (profile == null) return ServerUserProperties._(null, spreadsheet, {});
+    return ServerUserProperties._(
+      profile.id,
+      spreadsheet,
+      await ScriptUserProperties.load(
+        session,
+        userId: profile.id!,
+        fileUuid: spreadsheet,
+      ),
+    );
   }
 
-  /// The run-as user (auth user id = personal space uuid).
-  final UuidValue user;
+  /// The run-as user's profile id (null: unknown user, nothing persists).
+  final int? userId;
 
-  /// The spreadsheet (space uuid).
+  /// The spreadsheet (file uuid).
   final UuidValue spreadsheet;
 
-  final Map<String, ScriptUserProperty> _rows;
   final Map<String, String> _values;
   final Set<String> _changed = {};
 
@@ -1268,41 +982,17 @@ final class ServerUserProperties implements PropertyStore {
     if (_values.remove(key) != null) _changed.add(key);
   }
 
-  /// Writes the changed properties into the personal space.
+  /// Writes the changed properties.
   Future<void> flush(Session session) async {
-    if (_changed.isEmpty) return;
-    final db = syncSessionOf(session);
-    final keys = _changed.toList();
+    final id = userId;
+    if (_changed.isEmpty || id == null) return;
+    final changes = {for (final k in _changed) k: _values[k]};
     _changed.clear();
-    await db.offlineSyncDb.transactionForUser(user, (tx) async {
-      for (final key in keys) {
-        final row = _rows[key];
-        final value = _values[key];
-        if (value == null) {
-          if (row != null) await deleteSyncedRow(db, row, transaction: tx);
-          _rows.remove(key);
-        } else if (row == null) {
-          _rows[key] = await ScriptUserProperty.db.insertRow(
-            db,
-            ScriptUserProperty(
-              spreadsheetId: spreadsheet,
-              key: key,
-              value: value,
-              createdAt: clock.now().toUtc(),
-            ),
-            transaction: tx,
-          );
-        } else {
-          final next = row.copyWith(value: value);
-          await updateSyncedRow(
-            db,
-            next,
-            columns: [ScriptUserProperty.t.value],
-            transaction: tx,
-          );
-          _rows[key] = next;
-        }
-      }
-    }, spaceId: user);
+    await ScriptUserProperties.apply(
+      session,
+      userId: id,
+      fileUuid: spreadsheet,
+      changes: changes,
+    );
   }
 }

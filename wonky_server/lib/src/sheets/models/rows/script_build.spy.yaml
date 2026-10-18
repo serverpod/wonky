@@ -1,0 +1,30 @@
+### Compilation result, written by the server; id = SheetsIds.scriptBuildId(projectId).
+class: ScriptBuild
+table: script_build
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  project: ScriptProject?, relation(onDelete=Cascade, deferred)
+  status: ScriptBuildStatus, default=ok
+  sourceHash: String
+  ### EVC bytecode in cloud storage (null if errors).
+  bytecodeFileUuid: UuidValue?
+  diagnosticsJson: String
+  exportsJson: String
+  apiVersion: int, default=1
+  compilerVersion: String, default=''
+  requestedBy: UuidValue?
+  lastGoodSourceHash: String?
+  lastGoodBytecodeFileUuid: UuidValue?
+  lastGoodExportsJson: String?
+  lastGoodBuiltAt: DateTime?
+  positionsFileUuid: UuidValue?
+  builtAt: DateTime
+  createdAt: DateTime, defaultModel=now
+indexes:
+  script_build_file_idx:
+    fields: fileId, id

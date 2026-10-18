@@ -188,13 +188,135 @@ final class WonkyDeltaNormalizer {
     );
   }
 
+  /// `normalizeChange(docBefore, change).change` for a normalized
+  /// [docBefore] (a server document), computed from the lines the change
+  /// touches instead of the whole document (the Write client predicts the
+  /// committed form of each acknowledged op, Write 03 §3; CQ-49).
+  ///
+  /// Normalization is per line, given the list indent of the line before
+  /// and whether the lines are the document's last; the only rule across
+  /// lines is embed identity, so a change that inserts an embed is
+  /// normalized against the whole document.
+  Delta normalizedChange(Delta docBefore, Delta change) {
+    Delta whole() => normalizeChange(docBefore, change).change;
+    // The base range the change touches.
+    var offset = 0;
+    int? lo;
+    var hi = 0;
+    for (final op in change.operations) {
+      final length = op.length!;
+      if (op.isInsert) {
+        if (op.data is! String) return whole();
+        lo ??= offset;
+        if (offset > hi) hi = offset;
+        continue;
+      }
+      final attributes = op.attributes;
+      if (op.isRetain && (attributes == null || attributes.isEmpty)) {
+        offset += length;
+        continue;
+      }
+      lo ??= offset;
+      offset += length;
+      if (offset > hi) hi = offset;
+    }
+    if (lo == null) return whole();
+
+    // The lines from the one containing `lo` to the one containing `hi`
+    // (a deleted or reformatted line end touches the next line too), and
+    // the list indent of the line before them.
+    var position = 0;
+    var start = 0;
+    int? end;
+    Map<String, dynamic>? before;
+    Map<String, dynamic>? last;
+    for (final op in docBefore.operations) {
+      if (!op.isInsert) return whole();
+      final data = op.data;
+      final length = op.length!;
+      if (data is String) {
+        var i = data.indexOf('\n');
+        while (i >= 0) {
+          final at = position + i;
+          if (at < lo) {
+            start = at + 1;
+            before = op.attributes;
+          } else if (at >= hi) {
+            end = at + 1;
+            last = op.attributes;
+            break;
+          }
+          i = data.indexOf('\n', i + 1);
+        }
+      }
+      if (end != null) break;
+      position += length;
+    }
+    final docLength = DeltaUtils.documentLength(docBefore);
+    end ??= docLength;
+    if (end <= start) return whole();
+    int? listIndent(Map<String, dynamic>? attributes) {
+      final format = BlockFormat.fromAttributes(attributes);
+      return format.isList ? format.indent : null;
+    }
+
+    final window = _Window(
+      startsDocument: start == 0,
+      endsDocument: end == docLength,
+      prevListIndent: listIndent(before),
+    );
+
+    // The change within the window.
+    final local = Delta();
+    var skip = start;
+    var taken = 0;
+    for (final op in change.operations) {
+      if (skip > 0) {
+        // Plain retains before `lo`.
+        final length = op.length!;
+        if (length <= skip) {
+          skip -= length;
+          continue;
+        }
+        local.retain(length - skip, op.attributes);
+        taken += length - skip;
+        skip = 0;
+        continue;
+      }
+      if (!op.isInsert && taken >= end - start) break;
+      local.push(op);
+      if (!op.isInsert) taken += op.length!;
+    }
+    local.trim();
+    final after = docBefore.slice(start, end).compose(local);
+    if (after.isEmpty) return whole();
+    final r = _normalize(
+      after,
+      preferredEmbedOffsets: const {},
+      stampAt: null,
+      window: window,
+    );
+    // A list indent clamped differently from here on (the change removed or
+    // re-indented a list item) cascades to the next lines.
+    if (!window.endsDocument &&
+        listIndent(r.document.operations.last.attributes) != listIndent(last)) {
+      return whole();
+    }
+    final fixup = Delta()..retain(start);
+    for (final op in r.fixup.operations) {
+      fixup.push(op);
+    }
+    return DeltaUtils.canonical(change.compose(fixup));
+  }
+
   NormalizeResult _normalize(
     Delta input, {
     required Set<int> preferredEmbedOffsets,
     required ({Set<int> offsets, int at})? stampAt,
+    _Window window = const _Window.whole(),
   }) {
     final doc = WonkyDocument(input);
-    final b = _Builder();
+    final b = _Builder()..newlines = window.startsDocument ? 0 : 1;
     final fixes = <NormalizationFix>{};
 
     // Pre-pass: embed identity (which duplicate occurrences to remove).
@@ -219,9 +341,9 @@ final class WonkyDeltaNormalizer {
       fixes.add(NormalizationFix.removedDuplicateEmbed);
     }
 
-    int? prevListIndent;
+    int? prevListIndent = window.prevListIndent;
     for (final line in doc.lines) {
-      final isLast = line.index == doc.lines.length - 1;
+      final isLast = window.endsDocument && line.index == doc.lines.length - 1;
       final blockIn = line.attributes;
       final blockOut = _normalizeBlockAttributes(
         blockIn,
@@ -823,4 +945,28 @@ final class _Builder {
     out.add(Operation.insert(data, a));
     if (data == '\n') newlines++;
   }
+}
+
+/// The lines [WonkyDeltaNormalizer._normalize] works on: the whole
+/// document, or a run of its lines (`normalizedChange`).
+final class _Window {
+  const _Window({
+    required this.startsDocument,
+    required this.endsDocument,
+    required this.prevListIndent,
+  });
+
+  const _Window.whole()
+    : startsDocument = true,
+      endsDocument = true,
+      prevListIndent = null;
+
+  /// Whether the first line is the document's first.
+  final bool startsDocument;
+
+  /// Whether the last line is the document's last.
+  final bool endsDocument;
+
+  /// List indent of the line before the first (null: not a list line).
+  final int? prevListIndent;
 }

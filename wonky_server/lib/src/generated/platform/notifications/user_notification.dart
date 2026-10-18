@@ -28,7 +28,8 @@ abstract class UserNotification
     required this.createdAt,
     this.readAt,
     this.emailedAt,
-  });
+    bool? emailPending,
+  }) : emailPending = emailPending ?? false;
 
   factory UserNotification({
     int? id,
@@ -40,6 +41,7 @@ abstract class UserNotification
     required DateTime createdAt,
     DateTime? readAt,
     DateTime? emailedAt,
+    bool? emailPending,
   }) = _UserNotificationImpl;
 
   factory UserNotification.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -61,6 +63,9 @@ abstract class UserNotification
       emailedAt: jsonSerialization['emailedAt'] == null
           ? null
           : _is.DateTimeJsonExtension.fromJson(jsonSerialization['emailedAt']),
+      emailPending: jsonSerialization['emailPending'] == null
+          ? null
+          : _is.BoolJsonExtension.fromJson(jsonSerialization['emailPending']),
     );
   }
 
@@ -89,6 +94,12 @@ abstract class UserNotification
   /// When it was included in an email digest.
   DateTime? emailedAt;
 
+  /// Waiting to be emailed: set when its kind was set to email at creation,
+  /// cleared when an email claims it (before sending), when it was read, or
+  /// after the 2-day email window. Keeps the digest scan to the rows that
+  /// still need an email.
+  bool? emailPending;
+
   @override
   _is.Table<int?> get table => t;
 
@@ -105,6 +116,7 @@ abstract class UserNotification
     DateTime? createdAt,
     DateTime? readAt = const _is.$UndefinedDateTime(),
     DateTime? emailedAt = const _is.$UndefinedDateTime(),
+    bool? emailPending,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -119,6 +131,7 @@ abstract class UserNotification
       'createdAt': createdAt.toJson(),
       if (readAt != null) 'readAt': readAt?.toJson(),
       if (emailedAt != null) 'emailedAt': emailedAt?.toJson(),
+      if (emailPending != null) 'emailPending': emailPending,
     };
   }
 
@@ -178,6 +191,7 @@ class _UserNotificationImpl extends UserNotification {
     required DateTime createdAt,
     DateTime? readAt,
     DateTime? emailedAt,
+    bool? emailPending,
   }) : super._(
          id: id,
          userId: userId,
@@ -188,6 +202,7 @@ class _UserNotificationImpl extends UserNotification {
          createdAt: createdAt,
          readAt: readAt,
          emailedAt: emailedAt,
+         emailPending: emailPending,
        );
 
   /// Returns a shallow copy of this [UserNotification]
@@ -204,6 +219,7 @@ class _UserNotificationImpl extends UserNotification {
     DateTime? createdAt,
     DateTime? readAt = const _is.$UndefinedDateTime(),
     DateTime? emailedAt = const _is.$UndefinedDateTime(),
+    Object? emailPending = _Undefined,
   }) {
     return UserNotification(
       id: id is int? ? id : this.id,
@@ -217,6 +233,7 @@ class _UserNotificationImpl extends UserNotification {
       emailedAt: emailedAt is _is.UndefinedSentinel
           ? this.emailedAt
           : emailedAt,
+      emailPending: emailPending is bool? ? emailPending : this.emailPending,
     );
   }
 }
@@ -269,6 +286,11 @@ class UserNotificationUpdateTable
         table.emailedAt,
         value,
       );
+
+  _is.ColumnValue<bool, bool> emailPending(bool? value) => _is.ColumnValue(
+    table.emailPending,
+    value,
+  );
 }
 
 class UserNotificationTable extends _is.Table<int?> {
@@ -308,6 +330,11 @@ class UserNotificationTable extends _is.Table<int?> {
       'emailedAt',
       this,
     );
+    emailPending = _is.ColumnBool(
+      'emailPending',
+      this,
+      hasDefault: true,
+    );
   }
 
   late final UserNotificationUpdateTable updateTable;
@@ -330,6 +357,12 @@ class UserNotificationTable extends _is.Table<int?> {
   /// When it was included in an email digest.
   late final _is.ColumnDateTime emailedAt;
 
+  /// Waiting to be emailed: set when its kind was set to email at creation,
+  /// cleared when an email claims it (before sending), when it was read, or
+  /// after the 2-day email window. Keeps the digest scan to the rows that
+  /// still need an email.
+  late final _is.ColumnBool emailPending;
+
   @override
   List<_is.Column> get columns => [
     id,
@@ -341,6 +374,7 @@ class UserNotificationTable extends _is.Table<int?> {
     createdAt,
     readAt,
     emailedAt,
+    emailPending,
   ];
 }
 

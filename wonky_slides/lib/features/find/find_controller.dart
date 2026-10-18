@@ -18,7 +18,7 @@ import '../text_editing/text_editing_host.dart';
 /// shown) and replacing (one undo step; bodies soft-locked by others are
 /// skipped). The find bar and the *Find and replace* panel are views of
 /// it. View state, not undoable.
-class DeckFindController extends ChangeNotifier {
+class DeckFindController extends ChangeNotifier implements FindBarModel {
   DeckFindController._(this.editor) {
     editor.session.model.addListener(_onModel);
   }
@@ -44,6 +44,7 @@ class DeckFindController extends ChangeNotifier {
   Timer? _debounce;
 
   /// Asks the find bar to focus and select its query.
+  @override
   final ValueNotifier<int> focusRequest = ValueNotifier(0);
 
   /// The replacement text of the panel (kept while it is closed).
@@ -52,9 +53,12 @@ class DeckFindController extends ChangeNotifier {
   bool get barOpen => _barOpen;
   bool get panelOpen => _panelOpen;
   bool get isOpen => _barOpen || _panelOpen;
+  @override
   String get query => _query;
   DeckFindOptions get options => _options;
   List<DeckFindMatch> get matches => _matches;
+  @override
+  bool get hasResults => _matches.isNotEmpty;
 
   /// The index of the current match (-1 = none yet).
   int get currentIndex => _current;
@@ -93,6 +97,9 @@ class DeckFindController extends ChangeNotifier {
   }
 
   /// Sets the query and options and searches again.
+  @override
+  void setQuery(String query) => search(query);
+
   void search(String query, {DeckFindOptions? options}) {
     final o = options ?? _options;
     if (query == _query && o == _options) return;

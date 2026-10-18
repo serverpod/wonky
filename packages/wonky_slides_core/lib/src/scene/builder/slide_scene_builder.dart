@@ -50,7 +50,11 @@ final class SlideSceneBuilder {
   /// Resolves cell text styles.
   final TextStyleResolver textStyles;
 
-  final Expando<_CacheEntry> _cache = Expando('sceneNode');
+  final Expando<_Slots> _cache = Expando('sceneNode');
+
+  /// Element nodes built (cache misses) by every builder so far (perf
+  /// tests, CQ-38).
+  static int debugNodeBuilds = 0;
 
   /// The scene of [slide].
   SlideScene build(ResolvedSlide slide, SceneContext context) {
@@ -120,7 +124,7 @@ final class SlideSceneBuilder {
     );
   }
 
-  /// The node of one element (03 §1.3 `ElementKindHandler.buildScene`);
+  /// The node of one element (03 §1.3, built per kind here);
   /// [lookup] finds glued connector targets. Null for hidden elements.
   SceneNode? buildElement(
     ResolvedElement element,
@@ -178,9 +182,10 @@ final class _Build {
 
   ResolvedTheme get theme => ctx.theme;
 
-  /// The cache key of [e]'s node besides its identity: resolved elements
-  /// are memoized per slide revision (which table cells, code states and
-  /// chart links bump), so only the context and glued targets matter.
+  /// The cache key of [e]'s node besides its identity. Resolved elements
+  /// keep their identity while only their dependent rows change (table
+  /// cells, code states, chart links), so the element's revision is part
+  /// of the key, with the context and the glued targets.
   String _key(ResolvedElement e) => [
     theme.contentHash,
     theme.appearance.name,
@@ -191,6 +196,7 @@ final class _Build {
     identityHashCode(ctx.charts),
     identityHashCode(ctx.code),
     identityHashCode(ctx.deck),
+    _revisionOf(e.id),
     ctx.codeStates[e.id] ?? '',
     ctx.codeSteps[e.id] ?? '',
     ctx.generation,
@@ -199,13 +205,20 @@ final class _Build {
       background ?? '',
   ].join('|');
 
+  String _revisionOf(String elementId) {
+    final deck = ctx.deck;
+    return deck is DeckModel ? deck.indexes.elementRevision(elementId) : '';
+  }
+
   String _glueKey(ResolvedElement line) {
     final d = LineData.fromJson(line.data);
     String part(LineEndpoint p) {
       final id = p.elementId;
       if (id == null) return '';
       final t = lookup(id);
-      return t == null ? 'x' : '${identityHashCode(t)}';
+      // Derived frames (grown tables, auto-fit text) follow the target's
+      // dependent rows.
+      return t == null ? 'x' : '${identityHashCode(t)}.${_revisionOf(id)}';
     }
 
     return '${part(d.start)}/${part(d.end)}';
@@ -213,28 +226,40 @@ final class _Build {
 
   SceneNode? element(ResolvedElement e) {
     if (e.hidden) return null;
+    // One element is built for several contexts (the canvas's edit scene
+    // and the thumbnails share a renderer): a few entries per element.
+    final slots = owner._cache[e] ??= _Slots();
     if (e.record.kind == ElementKind.group) {
-      return GroupNode(
-        elementId: e.id,
-        children: [for (final c in e.children) ?element(c)],
-      );
+      final children = [for (final c in e.children) ?element(c)];
+      // The group node is reused while its children nodes are.
+      final gk = 'group|${ctx.purpose.name}|${ctx.editing}';
+      final hit = slots.get(gk);
+      final g = hit?.node;
+      if (g is GroupNode && _sameNodes(g.children, children)) return g;
+      final node = GroupNode(elementId: e.id, children: children);
+      slots.put(gk, _CacheEntry(gk, node, null, null));
+      return node;
     }
     final key = _key(e);
-    final hit = owner._cache[e];
-    if (hit != null && hit.key == key) {
+    final hit = slots.get(key);
+    if (hit != null) {
       if (hit.frame != null) frames[e.id] = hit.frame!;
       if (hit.route != null) routes[e.id] = hit.route!;
       return hit.node;
     }
     final before = (frames[e.id], routes[e.id]);
+    SlideSceneBuilder.debugNodeBuilds++;
     final node = _build(e);
     final frame = frames[e.id];
     final route = routes[e.id];
-    owner._cache[e] = _CacheEntry(
+    slots.put(
       key,
-      node,
-      identical(frame, before.$1) ? null : frame,
-      identical(route, before.$2) ? null : route,
+      _CacheEntry(
+        key,
+        node,
+        identical(frame, before.$1) ? null : frame,
+        identical(route, before.$2) ? null : route,
+      ),
     );
     return node;
   }
@@ -1200,4 +1225,30 @@ final class _CellText {
   final List<double> pad;
   final String vAlign;
   String? partId;
+}
+
+bool _sameNodes(List<SceneNode> a, List<SceneNode> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (!identical(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+/// The cached nodes of one element, most recently used last.
+final class _Slots {
+  static const capacity = 4;
+  final Map<String, _CacheEntry> _entries = {};
+
+  _CacheEntry? get(String key) {
+    final hit = _entries.remove(key);
+    if (hit != null) _entries[key] = hit;
+    return hit;
+  }
+
+  void put(String key, _CacheEntry entry) {
+    _entries.remove(key);
+    _entries[key] = entry;
+    if (_entries.length > capacity) _entries.remove(_entries.keys.first);
+  }
 }

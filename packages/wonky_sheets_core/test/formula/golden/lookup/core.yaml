@@ -1,0 +1,87 @@
+- id: vlookup-exact
+  setup: {A1: 1, A2: 2, A3: 3, B1: a, B2: b, B3: c}
+  formula: =VLOOKUP(2,A1:B3,2,FALSE)
+  expect: {value: "b"}
+  source: manual
+- id: vlookup-exact-not-found
+  setup: {A1: 1, A2: 2, A3: 3, B1: a, B2: b, B3: c}
+  formula: =VLOOKUP(9,A1:B3,2,FALSE)
+  expect: {value: "#N/A"}
+  source: manual
+- id: vlookup-approx-sorted
+  setup: {A1: 1, A2: 2, A3: 3, B1: a, B2: b, B3: c}
+  formula: =VLOOKUP(2.5,A1:B3,2)
+  expect: {value: "b"}
+  source: manual
+- id: vlookup-approx-unsorted
+  setup: {A1: 1, A2: 3, A3: 2, B1: a, B2: b, B3: c}
+  formula: =VLOOKUP(2.5,A1:B3,2)
+  expect: {value: "a"}
+  source: manual
+  note: the spec's example (05 §22.4); approximate match is a binary search
+- id: vlookup-exact-text-case-insensitive
+  setup: {A1: Apple, A2: Pear, B1: 1, B2: 2}
+  formula: =VLOOKUP("pear",A1:B2,2,FALSE)
+  expect: {value: 2}
+  source: manual
+- id: vlookup-column-out-of-range
+  setup: {A1: 1, B1: a}
+  formula: =VLOOKUP(1,A1:B1,3,FALSE)
+  expect: {value: "#REF!"}
+  source: manual
+- id: hlookup-exact
+  setup: {A1: 1, B1: 2, C1: 3, A2: a, B2: b, C2: c}
+  formula: =HLOOKUP(3,A1:C2,2,FALSE)
+  expect: {value: "c"}
+  source: manual
+- id: index-match-exact
+  setup: {A1: 1, A2: 2, A3: 3, B1: a, B2: b, B3: c}
+  formula: =INDEX(B1:B3,MATCH(3,A1:A3,0))
+  expect: {value: "c"}
+  source: manual
+- id: match-approx-ascending
+  setup: {A1: 1, A2: 2, A3: 3}
+  formula: =MATCH(2.5,A1:A3,1)
+  expect: {value: 2}
+  source: manual
+- id: match-approx-descending
+  formula: =MATCH(2.5,{3,2,1},-1)
+  expect: {value: 1}
+  source: manual
+- id: match-wildcard
+  formula: =MATCH("b*",{"apple","banana","cherry"},0)
+  expect: {value: 2}
+  source: manual
+- id: index-two-dimensional
+  formula: =INDEX({1,2;3,4},2,1)
+  expect: {value: 3}
+  source: manual
+- id: xlookup-found
+  setup: {A1: 1, A2: 2, A3: 3, B1: a, B2: b, B3: c}
+  formula: =XLOOKUP(2,A1:A3,B1:B3)
+  expect: {value: "b"}
+  source: manual
+- id: xlookup-if-not-found
+  setup: {A1: 1, A2: 2, A3: 3, B1: a, B2: b, B3: c}
+  formula: =XLOOKUP(9,A1:A3,B1:B3,"none")
+  expect: {value: "none"}
+  source: manual
+- id: xlookup-next-smaller
+  setup: {A1: 1, A2: 2, A3: 3, B1: a, B2: b, B3: c}
+  formula: =XLOOKUP(2.5,A1:A3,B1:B3,,-1)
+  expect: {value: "b"}
+  source: manual
+- id: lookup-vector-form
+  setup: {A1: 1, A2: 2, A3: 3, B1: a, B2: b, B3: c}
+  formula: =LOOKUP(2.5,A1:A3,B1:B3)
+  expect: {value: "b"}
+  source: manual
+- id: choose-index
+  formula: =CHOOSE(2,"a","b","c")
+  expect: {value: "b"}
+  source: manual
+- id: choose-out-of-range
+  formula: =CHOOSE(4,"a","b","c")
+  expect: {value: "#NUM!"}
+  source: manual
+  note: Google Sheets behavior (the reference); Excel returns #VALUE!

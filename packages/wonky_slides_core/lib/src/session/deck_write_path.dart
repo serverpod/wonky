@@ -1,7 +1,7 @@
 import 'package:clock/clock.dart';
 import 'package:meta/meta.dart';
-import 'package:wonky_sync_kit/rows.dart';
-import 'package:wonky_sync_kit/undo.dart' show RowsUndoTarget;
+import 'package:wonky_revlog/rows.dart';
+import 'package:wonky_revlog/undo.dart' show RowsUndoTarget;
 import 'package:wonky_sync_models/ids.dart' show IdGenerator, UuidV7IdGenerator;
 
 import '../model/api/deck_model.dart';
@@ -49,7 +49,11 @@ mixin DeckWritePath implements RowsUndoTarget {
   /// A planning context for operations built outside [execute] (previews).
   SlidesPlanContext planContext() => SlidesPlanContext(
     userId: userId,
-    now: clock.now().toUtc(),
+    // Millisecond precision, as stored and synced (RevLog codec).
+    now: DateTime.fromMillisecondsSinceEpoch(
+      clock.now().millisecondsSinceEpoch,
+      isUtc: true,
+    ),
     ids: ids,
     limits: limits,
     isOwner: isOwner,
@@ -62,6 +66,7 @@ mixin DeckWritePath implements RowsUndoTarget {
     final plan = planner.plan(op, model, planContext());
     if (plan.isEmpty) return plan;
     checkPlan(op, plan);
+    beforeApply(plan.changes);
     model.applyPlan(plan);
     persist(plan.changes, plan: plan, label: plan.label, actorKind: actorKind);
     return plan;
@@ -74,6 +79,7 @@ mixin DeckWritePath implements RowsUndoTarget {
     String actorKind = 'user',
   }) {
     if (changes.isEmpty) return;
+    beforeApply(changes);
     model.applyChanges(changes);
     persist(changes, label: label, actorKind: actorKind);
   }
@@ -86,6 +92,12 @@ mixin DeckWritePath implements RowsUndoTarget {
   /// `PlanException` (role checks, rows still loading).
   @protected
   void checkPlan(SlidesOperation op, SlidesPlan plan) {}
+
+  /// Called with local [changes] just before they are applied to [model]
+  /// (the RevLog session remembers the server version of the rows they
+  /// touch, RevLog spec 06 §3.1).
+  @protected
+  void beforeApply(List<RowChange> changes) {}
 
   /// Stores [changes] (already applied to [model]). [plan] is set for
   /// planned operations (its summary/detail feed the `DeckChangeLog` row).

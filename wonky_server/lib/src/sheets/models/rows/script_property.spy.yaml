@@ -1,0 +1,17 @@
+### A script property shared by all users of the spreadsheet.
+class: ScriptProperty
+table: script_property
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  project: ScriptProject?, relation(onDelete=Cascade, deferred)
+  key: String
+  value: String
+  createdAt: DateTime, defaultModel=now
+indexes:
+  script_property_file_idx:
+    fields: fileId, id

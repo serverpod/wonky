@@ -1,0 +1,22 @@
+### Cursors and lease of the durable post-commit hooks of a file (RevLog
+### spec 05 §6).
+class: RevHookState
+table: rev_hook_state
+serverOnly: true
+fields:
+  file: RevFile?, relation(onDelete=Cascade)
+  ### {"<hookId>": <last processed revision>, …}
+  cursorsJson: String
+  ### Instance id draining this file.
+  leaseOwner: String?
+  leaseUntil: DateTime?
+  attempts: int, default=0
+  lastError: String?
+  nextAttemptAt: DateTime?
+  updatedAt: DateTime
+indexes:
+  rev_hook_state_file_idx:
+    fields: fileId
+    unique: true
+  rev_hook_state_due_idx:
+    fields: nextAttemptAt

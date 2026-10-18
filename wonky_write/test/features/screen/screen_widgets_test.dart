@@ -1,12 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wonky_write/features/editor/applier/delta_applier.dart'
-    show DeltaSelection;
 import 'package:wonky_write/features/editor/controller/editor_types.dart';
 import 'package:wonky_write/features/find_replace/find_panel.dart';
 import 'package:wonky_write/features/outline/outline_panel.dart';
 import 'package:wonky_write/features/screen/write_toolbar.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 import 'support/screen_harness.dart';
 

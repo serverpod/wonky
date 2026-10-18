@@ -301,6 +301,44 @@ abstract final class BoardGithub {
 
   // ---------------------------------------------------------------- sweep
 
+  /// Deliveries still unhandled after this long lost their scheduled run
+  /// (scheduling failed, or the instance stopped): the sweep runs them again.
+  static const lostAfter = Duration(minutes: 30);
+
+  /// Schedules deliveries older than [lostAfter] that were never handled
+  /// (CQ-34: a delivery whose scheduling failed is otherwise lost, and
+  /// GitHub's redelivery is deduplicated). Each pass counts as an attempt,
+  /// so a delivery that keeps failing is dropped after [maxAttempts].
+  static Future<int> rescheduleLost(Session session) async {
+    final lost = await BoardGithubDelivery.db.find(
+      session,
+      where: (t) =>
+          t.processedAt.equals(null) &
+          (t.receivedAt < nowUtc().subtract(lostAfter)),
+      orderBy: (t) => t.receivedAt,
+      limit: 100,
+    );
+    for (final row in lost) {
+      final attempts = row.attempts + 1;
+      if (attempts > maxAttempts) {
+        session.log(
+          'board.github: delivery ${row.deliveryId} dropped after '
+          '${row.attempts} attempts',
+          level: LogLevel.error,
+        );
+        await _finish(session, row);
+        continue;
+      }
+      await BoardGithubDelivery.db.updateRow(
+        session,
+        row.copyWith(attempts: attempts),
+        columns: (t) => [t.attempts],
+      );
+      await deliveryScheduler(session, row.deliveryId, Duration.zero);
+    }
+    return lost.length;
+  }
+
   /// The GitHub part of `wonky.boardSweep`: delivery purge, auto-close,
   /// postponed and lost reviews. Returns the rows touched.
   static Future<int> sweep(Session session) async {
@@ -310,6 +348,7 @@ abstract final class BoardGithub {
     );
     if (!BoardConfig.current.github.enabled) return purged.length;
     var count = purged.length;
+    count += await rescheduleLost(session);
     count += await GithubGate.autoClose(session);
     count += await GithubReview.runDue(session);
     return count;

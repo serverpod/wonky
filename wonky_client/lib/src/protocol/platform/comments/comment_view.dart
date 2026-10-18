@@ -12,8 +12,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'package:wonky_client/src/protocol/protocol.dart' as _i8pkqg1o;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
 import '../../platform/comments/comment_system_event.dart' as _ikzs0dm0;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 import '../../platform/users/user_summary.dart' as _itg9e9ms;
 
 abstract class CommentView
@@ -38,7 +38,7 @@ abstract class CommentView
     _isc.UuidValue? uuid,
     required _isc.UuidValue threadUuid,
     _itg9e9ms.UserSummary? author,
-    required _i810rwvy.ActorKind authorKind,
+    required _ipbpecg8.ActorKind authorKind,
     required String body,
     required List<_itg9e9ms.UserSummary> mentions,
     required Map<String, List<int>> reactions,
@@ -62,7 +62,7 @@ abstract class CommentView
           : _i8pkqg1o.Protocol().deserialize<_itg9e9ms.UserSummary>(
               jsonSerialization['author'],
             ),
-      authorKind: _i810rwvy.ActorKind.fromJson(
+      authorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['authorKind'] as String),
       ),
       body: jsonSerialization['body'] as String,
@@ -95,7 +95,7 @@ abstract class CommentView
 
   _itg9e9ms.UserSummary? author;
 
-  _i810rwvy.ActorKind authorKind;
+  _ipbpecg8.ActorKind authorKind;
 
   /// Empty when deleted.
   String body;
@@ -121,7 +121,7 @@ abstract class CommentView
     _isc.UuidValue? uuid = const _isc.$UndefinedUuidValue(),
     _isc.UuidValue? threadUuid,
     _itg9e9ms.UserSummary? author = const _UndefinedCommentView$author(),
-    _i810rwvy.ActorKind? authorKind,
+    _ipbpecg8.ActorKind? authorKind,
     String? body,
     List<_itg9e9ms.UserSummary>? mentions,
     Map<String, List<int>>? reactions,
@@ -187,7 +187,7 @@ class _CommentViewImpl extends CommentView {
     _isc.UuidValue? uuid,
     required _isc.UuidValue threadUuid,
     _itg9e9ms.UserSummary? author,
-    required _i810rwvy.ActorKind authorKind,
+    required _ipbpecg8.ActorKind authorKind,
     required String body,
     required List<_itg9e9ms.UserSummary> mentions,
     required Map<String, List<int>> reactions,
@@ -219,7 +219,7 @@ class _CommentViewImpl extends CommentView {
     _isc.UuidValue? uuid = const _isc.$UndefinedUuidValue(),
     _isc.UuidValue? threadUuid,
     _itg9e9ms.UserSummary? author = const _UndefinedCommentView$author(),
-    _i810rwvy.ActorKind? authorKind,
+    _ipbpecg8.ActorKind? authorKind,
     String? body,
     List<_itg9e9ms.UserSummary>? mentions,
     Map<String, List<int>>? reactions,

@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 import 'package:wonky_write_core/wonky_write_core.dart' hide ThemeCatalog;
 
 import '../../l10n/write_l10n.dart';
@@ -65,6 +66,7 @@ class ThemePickerDialog extends StatelessWidget {
     final l = writeL10n(context);
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.themePicker'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.themePickerTitle),
       description: Text(
         readOnly ? l.themePickerDescriptionReadOnly : l.themePickerDescription,

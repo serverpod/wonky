@@ -1,0 +1,159 @@
+/* AUTOMATICALLY GENERATED CODE DO NOT MODIFY */
+/*   To generate run: "serverpod generate"    */
+
+// ignore_for_file: implementation_imports
+// ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: public_member_api_docs
+// ignore_for_file: type_literal_in_constant_pattern
+// ignore_for_file: use_super_parameters
+// ignore_for_file: invalid_use_of_internal_member
+
+// ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:serverpod_client/serverpod_client.dart' as _isc;
+import 'package:wonky_client/src/protocol/protocol.dart' as _i8pkqg1o;
+import '../../../platform/revlog/models/rev_page_kind.dart' as _icfciep6;
+
+/// A bootstrap page request (RevLog spec 04 §3).
+abstract class RevPageRequest
+    implements _isc.SerializableModel, _isc.ProtocolSerialization {
+  RevPageRequest._({
+    required this.kind,
+    this.cursor,
+    this.table,
+    this.sheetId,
+    this.rowIds,
+    required this.maxRows,
+  });
+
+  factory RevPageRequest({
+    required _icfciep6.RevPageKind kind,
+    String? cursor,
+    String? table,
+    _isc.UuidValue? sheetId,
+    List<_isc.UuidValue>? rowIds,
+    required int maxRows,
+  }) = _RevPageRequestImpl;
+
+  factory RevPageRequest.fromJson(Map<String, dynamic> jsonSerialization) {
+    return RevPageRequest(
+      kind: _icfciep6.RevPageKind.fromJson(
+        (jsonSerialization['kind'] as String),
+      ),
+      cursor: jsonSerialization['cursor'] as String?,
+      table: jsonSerialization['table'] as String?,
+      sheetId: jsonSerialization['sheetId'] == null
+          ? null
+          : _isc.UuidValueJsonExtension.fromJson(jsonSerialization['sheetId']),
+      rowIds: jsonSerialization['rowIds'] == null
+          ? null
+          : _i8pkqg1o.Protocol().deserialize<List<_isc.UuidValue>>(
+              jsonSerialization['rowIds'],
+            ),
+      maxRows: jsonSerialization['maxRows'] as int,
+    );
+  }
+
+  _icfciep6.RevPageKind kind;
+
+  /// structure/rows: cursor of the previous page; null = start.
+  String? cursor;
+
+  /// kind == rows: the table.
+  String? table;
+
+  /// kind == cells (Sheets).
+  _isc.UuidValue? sheetId;
+
+  List<_isc.UuidValue>? rowIds;
+
+  int maxRows;
+
+  /// Returns a shallow copy of this [RevPageRequest]
+  /// with some or all fields replaced by the given arguments.
+  @_isc.useResult
+  RevPageRequest copyWith({
+    _icfciep6.RevPageKind? kind,
+    String? cursor,
+    String? table,
+    _isc.UuidValue? sheetId = const _isc.$UndefinedUuidValue(),
+    List<_isc.UuidValue>? rowIds = const _isc.$UndefinedList<_isc.UuidValue>(),
+    int? maxRows,
+  });
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      '__className__': 'RevPageRequest',
+      'kind': kind.toJson(),
+      if (cursor != null) 'cursor': cursor,
+      if (table != null) 'table': table,
+      if (sheetId != null) 'sheetId': sheetId?.toJson(),
+      if (rowIds != null)
+        'rowIds': rowIds?.toJson(valueToJson: (v) => v.toJson()),
+      'maxRows': maxRows,
+    };
+  }
+
+  @override
+  Map<String, dynamic> toJsonForProtocol() {
+    return {
+      '__className__': 'RevPageRequest',
+      'kind': kind.toJson(),
+      if (cursor != null) 'cursor': cursor,
+      if (table != null) 'table': table,
+      if (sheetId != null) 'sheetId': sheetId?.toJson(),
+      if (rowIds != null)
+        'rowIds': rowIds?.toJson(valueToJson: (v) => v.toJson()),
+      'maxRows': maxRows,
+    };
+  }
+
+  @override
+  String toString() {
+    return _isc.SerializationManager.encode(this);
+  }
+}
+
+class _Undefined {}
+
+class _RevPageRequestImpl extends RevPageRequest {
+  _RevPageRequestImpl({
+    required _icfciep6.RevPageKind kind,
+    String? cursor,
+    String? table,
+    _isc.UuidValue? sheetId,
+    List<_isc.UuidValue>? rowIds,
+    required int maxRows,
+  }) : super._(
+         kind: kind,
+         cursor: cursor,
+         table: table,
+         sheetId: sheetId,
+         rowIds: rowIds,
+         maxRows: maxRows,
+       );
+
+  /// Returns a shallow copy of this [RevPageRequest]
+  /// with some or all fields replaced by the given arguments.
+  @_isc.useResult
+  @override
+  RevPageRequest copyWith({
+    _icfciep6.RevPageKind? kind,
+    Object? cursor = _Undefined,
+    Object? table = _Undefined,
+    _isc.UuidValue? sheetId = const _isc.$UndefinedUuidValue(),
+    List<_isc.UuidValue>? rowIds = const _isc.$UndefinedList<_isc.UuidValue>(),
+    int? maxRows,
+  }) {
+    return RevPageRequest(
+      kind: kind ?? this.kind,
+      cursor: cursor is String? ? cursor : this.cursor,
+      table: table is String? ? table : this.table,
+      sheetId: sheetId is _isc.UndefinedSentinel ? this.sheetId : sheetId,
+      rowIds: rowIds is _isc.UndefinedSentinel
+          ? this.rowIds?.map((e0) => e0).toList()
+          : rowIds,
+      maxRows: maxRows ?? this.maxRows,
+    );
+  }
+}

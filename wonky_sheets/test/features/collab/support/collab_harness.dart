@@ -182,7 +182,12 @@ class CollabHarness {
     this.collab,
   );
 
-  static Future<CollabHarness> open({Role role = Role.owner}) async {
+  /// Opens the harness on a blank in-memory spreadsheet, or on [session]
+  /// (item [collabItemUuid]).
+  static Future<CollabHarness> open({
+    Role role = Role.owner,
+    WorkbookSessionBase? session,
+  }) async {
     final presenceRepo = FakePresenceRepository();
     final commentRepo = FakeCommentRepository();
     final h = CommandTestHarness(
@@ -193,7 +198,7 @@ class CollabHarness {
     final uuid = UuidValue.fromString(collabItemUuid);
     final item = h.drive.seed(name: 'Budget', uuid: uuid);
     h.services.currentItem.value = item;
-    final session = MemoryWorkbookSession.blank(itemUuid: uuid, role: role);
+    session ??= MemoryWorkbookSession.blank(itemUuid: uuid, role: role);
     final doc = SheetsDocumentController(
       services: h.services,
       itemUuid: uuid,
@@ -230,7 +235,7 @@ class CollabHarness {
   final CommandTestHarness h;
   final FakePresenceRepository presenceRepo;
   final FakeCommentRepository commentRepo;
-  final MemoryWorkbookSession session;
+  final WorkbookSessionBase session;
   final SheetsDocumentController doc;
   final SheetEditorController editor;
   final PresenceSession presence;

@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_slides_core/schema.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 import '../../platform/cluster/cluster_bus.dart';
 import '../../platform/common/models.dart';

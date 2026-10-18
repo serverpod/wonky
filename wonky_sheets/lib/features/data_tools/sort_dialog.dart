@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/sheets_l10n.dart';
 
@@ -204,6 +205,7 @@ class _SortRangeDialogState extends State<SortRangeDialog>
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.sortRange'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.sortDialogTitle(widget.rangeA1)),
         actions: [
           ShadButton.outline(

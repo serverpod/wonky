@@ -4359,6 +4359,287 @@ class WriteLocalizationsEn extends WriteLocalizations {
 
   @override
   String get printUpdatingPreview => 'Updating the preview';
+
+  @override
+  String get undoTyping => 'Typing';
+
+  @override
+  String get undoDelete => 'Delete';
+
+  @override
+  String get undoEdit => 'Edit';
+
+  @override
+  String get undoSlashCommand => 'Slash command';
+
+  @override
+  String get undoClearFormatting => 'Clear formatting';
+
+  @override
+  String get undoIndent => 'Indent';
+
+  @override
+  String get undoOutdent => 'Outdent';
+
+  @override
+  String get undoCheckItem => 'Check item';
+
+  @override
+  String get undoUncheckItem => 'Uncheck item';
+
+  @override
+  String get undoInsertLink => 'Insert link';
+
+  @override
+  String get undoEditLink => 'Edit link';
+
+  @override
+  String get undoRemoveLink => 'Remove link';
+
+  @override
+  String get undoInsertDivider => 'Insert divider';
+
+  @override
+  String get undoInsertImage => 'Insert image';
+
+  @override
+  String get undoInsertTable => 'Insert table';
+
+  @override
+  String get undoInsertText => 'Insert text';
+
+  @override
+  String get undoSetCodeLanguage => 'Set code language';
+
+  @override
+  String get undoExitCodeBlock => 'Exit code block';
+
+  @override
+  String get undoMoveBlock => 'Move block';
+
+  @override
+  String get undoDuplicate => 'Duplicate';
+
+  @override
+  String get undoAltText => 'Alt text';
+
+  @override
+  String get undoReplaceImage => 'Replace image';
+
+  @override
+  String get undoEditTable => 'Edit table';
+
+  @override
+  String get undoInsertRow => 'Insert row';
+
+  @override
+  String get undoInsertColumn => 'Insert column';
+
+  @override
+  String get undoDeleteRow => 'Delete row';
+
+  @override
+  String get undoDeleteColumn => 'Delete column';
+
+  @override
+  String get undoMoveRow => 'Move row';
+
+  @override
+  String get undoMoveColumn => 'Move column';
+
+  @override
+  String get undoColumnAlignment => 'Column alignment';
+
+  @override
+  String get undoPaste => 'Paste';
+
+  @override
+  String get undoReplace => 'Replace';
+
+  @override
+  String announceFormatOn(String format) {
+    return '$format on';
+  }
+
+  @override
+  String announceFormatOff(String format) {
+    return '$format off';
+  }
+
+  @override
+  String announceListLevel(int level) {
+    return 'Level $level';
+  }
+
+  @override
+  String get editorDocumentTitle => 'Document';
+
+  @override
+  String get editorHint => 'Type / for commands, or just start writing';
+
+  @override
+  String get editorImageNoDescription => 'image, no description';
+
+  @override
+  String get editorImageUnavailable => 'Image unavailable';
+
+  @override
+  String get editorImageWaitingForUpload => 'Waiting for upload';
+
+  @override
+  String editorImageWaitingForUploadFrom(String name) {
+    return 'Waiting for upload from $name';
+  }
+
+  @override
+  String get editorCancelUpload => 'Cancel upload';
+
+  @override
+  String get editorUploadFailed => 'Upload failed';
+
+  @override
+  String editorTableLabel(int columns, int rows) {
+    return 'table, $columns columns, $rows rows';
+  }
+
+  @override
+  String get editorEditTable => 'Edit table';
+
+  @override
+  String get editorQuoteLabel => 'quote';
+
+  @override
+  String editorCodeBlockLabel(String language) {
+    return 'code block, $language';
+  }
+
+  @override
+  String get editorCodeLanguage => 'Code language';
+
+  @override
+  String get editorCopyCode => 'Copy code';
+
+  @override
+  String get editorCheckboxLabel => 'checkbox';
+
+  @override
+  String editorUnsupportedContent(String type) {
+    return 'Unsupported content ($type)';
+  }
+
+  @override
+  String get editorSeparatorLabel => 'separator';
+
+  @override
+  String get undoCut => 'Cut';
+
+  @override
+  String get undoEditCell => 'Edit cell';
+
+  @override
+  String get undoCopyText => 'Copy text';
+
+  @override
+  String get undoMoveText => 'Move text';
+
+  @override
+  String get editorPasteTooLarge => 'This paste is too large';
+
+  @override
+  String get editorFormattingDropped =>
+      'Some formatting wasn\'t kept — Markdown supports bold, italic, strikethrough, code and links';
+
+  @override
+  String get editorUnderlineHint =>
+      'Underline isn\'t available in Markdown — use italic or bold.';
+
+  @override
+  String get editorUnderlineHintTheme =>
+      'Underline isn\'t available in Markdown — use italic or bold, or change how emphasis looks in Format › Theme.';
+
+  @override
+  String get editorTableDeleted => 'This table was deleted';
+
+  @override
+  String get editorCellRemoved =>
+      'This cell was removed while you were editing';
+
+  @override
+  String get editorNoResults => 'No results';
+
+  @override
+  String get editorNoPeopleFound => 'No people found';
+
+  @override
+  String get editorWonkyDocument => 'Wonky document';
+
+  @override
+  String get editorLinkOpen => 'Open';
+
+  @override
+  String get editorLinkCopy => 'Copy link';
+
+  @override
+  String get editorLinkEdit => 'Edit';
+
+  @override
+  String get editorLinkRemove => 'Remove';
+
+  @override
+  String get slashText => 'Text';
+
+  @override
+  String slashHeading(int level) {
+    return 'Heading $level';
+  }
+
+  @override
+  String get slashBulletedList => 'Bulleted list';
+
+  @override
+  String get slashNumberedList => 'Numbered list';
+
+  @override
+  String get slashChecklist => 'Checklist';
+
+  @override
+  String get slashQuote => 'Quote';
+
+  @override
+  String get slashCodeBlock => 'Code block';
+
+  @override
+  String get slashDivider => 'Divider';
+
+  @override
+  String get slashImage => 'Image';
+
+  @override
+  String get slashImageFromUrl => 'Image from URL';
+
+  @override
+  String get slashTable => 'Table';
+
+  @override
+  String get slashLink => 'Link';
+
+  @override
+  String get slashMentionPerson => 'Mention person';
+
+  @override
+  String get slashComment => 'Comment';
+
+  @override
+  String get slashEmoji => 'Emoji…';
+
+  @override
+  String get slashSpecialCharacters => 'Special characters…';
+
+  @override
+  String get slashAskAi => 'Ask AI…';
+
+  @override
+  String get slashContinueWriting => 'Continue writing';
 }
 
 /// The translations for English (`en_XA`).
@@ -8774,4 +9055,286 @@ class WriteLocalizationsEnXa extends WriteLocalizationsEn {
 
   @override
   String get printUpdatingPreview => '[Ûþðåţîñĝ ţĥé þŕéṽîéŵ one two]';
+
+  @override
+  String get undoTyping => '[Ţýþîñĝ one]';
+
+  @override
+  String get undoDelete => '[Ðéļéţé one]';
+
+  @override
+  String get undoEdit => '[Éðîţ on]';
+
+  @override
+  String get undoSlashCommand => '[Šļåšĥ çöɱɱåñð one t]';
+
+  @override
+  String get undoClearFormatting => '[Çļéåŕ ƒöŕɱåţţîñĝ one tw]';
+
+  @override
+  String get undoIndent => '[Îñðéñţ one]';
+
+  @override
+  String get undoOutdent => '[Öûţðéñţ one]';
+
+  @override
+  String get undoCheckItem => '[Çĥéçķ îţéɱ one]';
+
+  @override
+  String get undoUncheckItem => '[Ûñçĥéçķ îţéɱ one]';
+
+  @override
+  String get undoInsertLink => '[Îñšéŕţ ļîñķ one]';
+
+  @override
+  String get undoEditLink => '[Éðîţ ļîñķ one]';
+
+  @override
+  String get undoRemoveLink => '[Ŕéɱöṽé ļîñķ one]';
+
+  @override
+  String get undoInsertDivider => '[Îñšéŕţ ðîṽîðéŕ one t]';
+
+  @override
+  String get undoInsertImage => '[Îñšéŕţ îɱåĝé one]';
+
+  @override
+  String get undoInsertTable => '[Îñšéŕţ ţåƀļé one]';
+
+  @override
+  String get undoInsertText => '[Îñšéŕţ ţéẋţ one]';
+
+  @override
+  String get undoSetCodeLanguage => '[Šéţ çöðé ļåñĝûåĝé one tw]';
+
+  @override
+  String get undoExitCodeBlock => '[Éẋîţ çöðé ƀļöçķ one t]';
+
+  @override
+  String get undoMoveBlock => '[Ṁöṽé ƀļöçķ one]';
+
+  @override
+  String get undoDuplicate => '[Ðûþļîçåţé one]';
+
+  @override
+  String get undoAltText => '[Åļţ ţéẋţ one]';
+
+  @override
+  String get undoReplaceImage => '[Ŕéþļåçé îɱåĝé one t]';
+
+  @override
+  String get undoEditTable => '[Éðîţ ţåƀļé one]';
+
+  @override
+  String get undoInsertRow => '[Îñšéŕţ ŕöŵ one]';
+
+  @override
+  String get undoInsertColumn => '[Îñšéŕţ çöļûɱñ one t]';
+
+  @override
+  String get undoDeleteRow => '[Ðéļéţé ŕöŵ one]';
+
+  @override
+  String get undoDeleteColumn => '[Ðéļéţé çöļûɱñ one t]';
+
+  @override
+  String get undoMoveRow => '[Ṁöṽé ŕöŵ one]';
+
+  @override
+  String get undoMoveColumn => '[Ṁöṽé çöļûɱñ one]';
+
+  @override
+  String get undoColumnAlignment => '[Çöļûɱñ åļîĝñɱéñţ one tw]';
+
+  @override
+  String get undoPaste => '[Þåšţé on]';
+
+  @override
+  String get undoReplace => '[Ŕéþļåçé one]';
+
+  @override
+  String announceFormatOn(String format) {
+    return '[$format öñ o]';
+  }
+
+  @override
+  String announceFormatOff(String format) {
+    return '[$format öƒƒ on]';
+  }
+
+  @override
+  String announceListLevel(int level) {
+    return '[Ļéṽéļ $level on]';
+  }
+
+  @override
+  String get editorDocumentTitle => '[Ðöçûɱéñţ one]';
+
+  @override
+  String get editorHint =>
+      '[Ţýþé / ƒöŕ çöɱɱåñðš, öŕ ĵûšţ šţåŕţ ŵŕîţîñĝ one two three]';
+
+  @override
+  String get editorImageNoDescription => '[îɱåĝé, ñö ðéšçŕîþţîöñ one two]';
+
+  @override
+  String get editorImageUnavailable => '[Îɱåĝé ûñåṽåîļåƀļé one tw]';
+
+  @override
+  String get editorImageWaitingForUpload => '[Ŵåîţîñĝ ƒöŕ ûþļöåð one tw]';
+
+  @override
+  String editorImageWaitingForUploadFrom(String name) {
+    return '[Ŵåîţîñĝ ƒöŕ ûþļöåð ƒŕöɱ $name one two]';
+  }
+
+  @override
+  String get editorCancelUpload => '[Çåñçéļ ûþļöåð one t]';
+
+  @override
+  String get editorUploadFailed => '[Ûþļöåð ƒåîļéð one t]';
+
+  @override
+  String editorTableLabel(int columns, int rows) {
+    return '[ţåƀļé, $columns çöļûɱñš, $rows ŕöŵš one two]';
+  }
+
+  @override
+  String get editorEditTable => '[Éðîţ ţåƀļé one]';
+
+  @override
+  String get editorQuoteLabel => '[ǫûöţé on]';
+
+  @override
+  String editorCodeBlockLabel(String language) {
+    return '[çöðé ƀļöçķ, $language one]';
+  }
+
+  @override
+  String get editorCodeLanguage => '[Çöðé ļåñĝûåĝé one t]';
+
+  @override
+  String get editorCopyCode => '[Çöþý çöðé one]';
+
+  @override
+  String get editorCheckboxLabel => '[çĥéçķƀöẋ one]';
+
+  @override
+  String editorUnsupportedContent(String type) {
+    return '[Ûñšûþþöŕţéð çöñţéñţ ($type) one two]';
+  }
+
+  @override
+  String get editorSeparatorLabel => '[šéþåŕåţöŕ one]';
+
+  @override
+  String get undoCut => '[Çûţ on]';
+
+  @override
+  String get undoEditCell => '[Éðîţ çéļļ one]';
+
+  @override
+  String get undoCopyText => '[Çöþý ţéẋţ one]';
+
+  @override
+  String get undoMoveText => '[Ṁöṽé ţéẋţ one]';
+
+  @override
+  String get editorPasteTooLarge => '[Ţĥîš þåšţé îš ţöö ļåŕĝé one two]';
+
+  @override
+  String get editorFormattingDropped =>
+      '[Šöɱé ƒöŕɱåţţîñĝ ŵåšñ\'ţ ķéþţ — Ṁåŕķðöŵñ šûþþöŕţš ƀöļð, îţåļîç, šţŕîķéţĥŕöûĝĥ, çöðé åñð ļîñķš one two three four five six]';
+
+  @override
+  String get editorUnderlineHint =>
+      '[Ûñðéŕļîñé îšñ\'ţ åṽåîļåƀļé îñ Ṁåŕķðöŵñ — ûšé îţåļîç öŕ ƀöļð. one two three four]';
+
+  @override
+  String get editorUnderlineHintTheme =>
+      '[Ûñðéŕļîñé îšñ\'ţ åṽåîļåƀļé îñ Ṁåŕķðöŵñ — ûšé îţåļîç öŕ ƀöļð, öŕ çĥåñĝé ĥöŵ éɱþĥåšîš ļööķš îñ Ƒöŕɱåţ › Ţĥéɱé. one two three four five six seve]';
+
+  @override
+  String get editorTableDeleted => '[Ţĥîš ţåƀļé ŵåš ðéļéţéð one two]';
+
+  @override
+  String get editorCellRemoved =>
+      '[Ţĥîš çéļļ ŵåš ŕéɱöṽéð ŵĥîļé ýöû ŵéŕé éðîţîñĝ one two three]';
+
+  @override
+  String get editorNoResults => '[Ñö ŕéšûļţš one]';
+
+  @override
+  String get editorNoPeopleFound => '[Ñö þéöþļé ƒöûñð one t]';
+
+  @override
+  String get editorWonkyDocument => '[Ŵöñķý ðöçûɱéñţ one t]';
+
+  @override
+  String get editorLinkOpen => '[Öþéñ on]';
+
+  @override
+  String get editorLinkCopy => '[Çöþý ļîñķ one]';
+
+  @override
+  String get editorLinkEdit => '[Éðîţ on]';
+
+  @override
+  String get editorLinkRemove => '[Ŕéɱöṽé one]';
+
+  @override
+  String get slashText => '[Ţéẋţ on]';
+
+  @override
+  String slashHeading(int level) {
+    return '[Ĥéåðîñĝ $level one]';
+  }
+
+  @override
+  String get slashBulletedList => '[Ɓûļļéţéð ļîšţ one t]';
+
+  @override
+  String get slashNumberedList => '[Ñûɱƀéŕéð ļîšţ one t]';
+
+  @override
+  String get slashChecklist => '[Çĥéçķļîšţ one]';
+
+  @override
+  String get slashQuote => '[Ǫûöţé on]';
+
+  @override
+  String get slashCodeBlock => '[Çöðé ƀļöçķ one]';
+
+  @override
+  String get slashDivider => '[Ðîṽîðéŕ one]';
+
+  @override
+  String get slashImage => '[Îɱåĝé on]';
+
+  @override
+  String get slashImageFromUrl => '[Îɱåĝé ƒŕöɱ ÛŔĻ one t]';
+
+  @override
+  String get slashTable => '[Ţåƀļé on]';
+
+  @override
+  String get slashLink => '[Ļîñķ on]';
+
+  @override
+  String get slashMentionPerson => '[Ṁéñţîöñ þéŕšöñ one t]';
+
+  @override
+  String get slashComment => '[Çöɱɱéñţ one]';
+
+  @override
+  String get slashEmoji => '[Éɱöĵî… one]';
+
+  @override
+  String get slashSpecialCharacters => '[Šþéçîåļ çĥåŕåçţéŕš… one two]';
+
+  @override
+  String get slashAskAi => '[Åšķ ÅÎ… one]';
+
+  @override
+  String get slashContinueWriting => '[Çöñţîñûé ŵŕîţîñĝ one tw]';
 }

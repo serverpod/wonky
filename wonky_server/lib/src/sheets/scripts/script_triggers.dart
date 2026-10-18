@@ -12,9 +12,7 @@ import '../../platform/common/actor.dart';
 import '../../platform/common/models.dart';
 import '../../platform/notifications/notification_service.dart';
 import '../../platform/sharing/access_service.dart';
-import '../changelog/change_log_consumer.dart';
 import '../headless/headless_workbook_provider.dart';
-import '../sync/sync_db.dart';
 import 'script_jobs.dart';
 import 'script_service.dart';
 
@@ -133,7 +131,7 @@ abstract final class ScriptTriggerService {
   static Future<int> tick(Session session) async {
     if (!_enabled) return 0;
     final now = clock.now().toUtc();
-    final db = syncSessionOf(session);
+    final db = session;
     final triggers = await ScriptTrigger.db.find(
       db,
       where: (t) => t.kind.equals(TriggerKind.timeDriven),
@@ -233,6 +231,9 @@ abstract final class ScriptTriggerService {
     return runInline ? ran : enqueued;
   }
 
+  /// Whether scripts are enabled on this server.
+  static bool get enabled => _enabled;
+
   static bool get _enabled {
     try {
       ScriptService.requireEnabled();
@@ -253,7 +254,7 @@ abstract final class ScriptTriggerService {
         ? const <String, Object?>{}
         : (jsonDecode(t.scheduleJson!) as Map).cast<String, Object?>();
     final spreadsheet = await Spreadsheet.db.findById(
-      syncSessionOf(session),
+      session,
       space,
     );
     return ScriptSchedule.next(
@@ -355,7 +356,7 @@ abstract final class ScriptTriggerService {
         triggerId: t.id,
       );
       failed = response.status != ScriptExecutionStatus.completed;
-    } on Exception catch (e) {
+    } on Object catch (e) {
       session.log('Script trigger ${t.id} failed: $e', level: LogLevel.warning);
       failed = true;
     }
@@ -487,7 +488,7 @@ abstract final class ScriptTriggerService {
     final p = await ScriptService.project(session, item.contentRef!);
     if (p == null) return const [];
     return ScriptTrigger.db.find(
-      syncSessionOf(session),
+      session,
       where: (t) =>
           t.projectId.equals(p.id) &
           t.kind.equals(kind) &
@@ -527,13 +528,17 @@ abstract final class ScriptTriggerService {
     }
   }
 
-  /// Fires installable `onEdit`/`onChange` triggers for a synced change.
+  /// Fires installable `onEdit`/`onChange` triggers for a committed op
+  /// (RevLog `scripts` hook): its summary, actor kind and whether it was
+  /// made offline.
   static Future<int> fireForChange(
     Session session,
-    DriveItem item,
-    ChangeLog change,
-  ) async {
-    final summary = ChangeSummary.parse(change.summaryJson);
+    DriveItem item, {
+    required String summaryJson,
+    required ActorKind actorKind,
+    required bool offline,
+  }) async {
+    final summary = ChangeSummary.parse(summaryJson);
     var n = 0;
     final edits = summary.kinds.contains(ChangeKinds.values)
         ? await triggersOf(session, item, TriggerKind.onEdit)
@@ -556,15 +561,13 @@ abstract final class ScriptTriggerService {
         editEvent = EditEventData(
           sheetId: r.sheetId,
           range: r.rect,
-          offline:
-              change.createdAt.difference(change.at).abs() >
-              const Duration(minutes: 1),
+          offline: offline,
         );
         break;
       }
     }
     for (final t in edits) {
-      if (editEvent == null || !_fireFor(t, change.actorKind)) continue;
+      if (editEvent == null || !_fireFor(t, actorKind)) continue;
       await ScriptJobQueue.enqueue(
         session,
         item: item,
@@ -589,7 +592,7 @@ abstract final class ScriptTriggerService {
         ? 'EDIT'
         : 'OTHER';
     for (final t in changes) {
-      if (!_fireFor(t, change.actorKind)) continue;
+      if (!_fireFor(t, actorKind)) continue;
       await ScriptJobQueue.enqueue(
         session,
         item: item,
@@ -602,60 +605,5 @@ abstract final class ScriptTriggerService {
     if (n == 0) return 0;
     final ran = await ScriptJobQueue.kick(session);
     return runInline ? ran : n;
-  }
-}
-
-/// Change-log hook (09 §8.7.3, §9.1): compiles projects whose files changed
-/// (offline saves, MCP) and fires installable edit/change triggers.
-final class ScriptChangeLogPlugin implements ChangeLogPlugin {
-  @override
-  Future<void> consume(
-    Session session,
-    DriveItem item,
-    ChangeLog change,
-    Actor actor,
-  ) async {
-    if (!ScriptTriggerService._enabled) return;
-    if (change.actorKind == ActorKind.system ||
-        change.actorKind == ActorKind.script) {
-      return;
-    }
-    final summary = ChangeSummary.parse(change.summaryJson);
-    Future<void> work(Session s) async {
-      if (summary.kinds.contains(ChangeKinds.scripts)) {
-        try {
-          final role = await AccessService.effectiveRole(
-            s,
-            actor.userId,
-            item,
-          );
-          if (role != null && role >= Role.editor) {
-            await ScriptService.compile(s, actor, item.uuid);
-          }
-        } on Exception catch (e) {
-          s.log('Script compile after sync failed: $e', level: LogLevel.info);
-        }
-      }
-      await ScriptTriggerService.fireForChange(s, item, change);
-    }
-
-    if (ScriptTriggerService.runInline) {
-      await work(session);
-      return;
-    }
-    unawaited(() async {
-      final s = await session.serverpod.createSession(enableLogging: false);
-      try {
-        await work(s);
-      } on Object catch (e, st) {
-        s.log(
-          'Script triggers failed: $e',
-          level: LogLevel.error,
-          stackTrace: st,
-        );
-      } finally {
-        await s.close();
-      }
-    }());
   }
 }

@@ -262,7 +262,7 @@ List<Command<CommandArgs>> objectCommands(ShellServices s) {
           }
         }
         if (char.runes.length > 16) {
-          return const CommandResult.failed('One emoji is expected');
+          return CommandResult.failed(slidesL10nOf(ed.services).errorOneEmoji);
         }
         // While text is edited the emoji is typed into it (it stays text,
         // 03 §6.7; SL-44); otherwise it becomes an emoji object.

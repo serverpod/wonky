@@ -13,6 +13,9 @@ fields:
   editorsSinceLastVersion: List<int>
   ### Write: head revision at the last edit.
   lastRevision: int?
+  ### When a capture run claimed the item (`VersionService.captureDue`):
+  ### overlapping runs skip it; a claim older than 10 minutes is taken over.
+  capturingSince: DateTime?
 indexes:
   item_version_state_item_idx:
     fields: itemId

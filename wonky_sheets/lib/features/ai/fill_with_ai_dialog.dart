@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/sheets_l10n.dart';
 import 'sheets_ai_controller.dart';
@@ -224,6 +225,7 @@ class _FillWithAiDialogState extends State<FillWithAiDialog>
     final n = _acceptedRows.length;
     return ShadDialog(
       key: const ValueKey<String>('dialog.fillWithAi'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.aiFillTitle),
       description: Text(l.aiFillDescription(widget.range)),
       actions: [

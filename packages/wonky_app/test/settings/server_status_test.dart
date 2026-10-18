@@ -23,7 +23,7 @@ ProtocolInfo _info({required bool enabled, bool connected = false}) =>
     ProtocolInfo(
       serverVersion: '1',
       minClientVersion: '1',
-      syncTablesHash: '',
+      revSchemaHash: '',
       runMode: 'development',
       features: FeatureFlags(
         ai: false,
@@ -33,7 +33,6 @@ ProtocolInfo _info({required bool enabled, bool connected = false}) =>
       ),
       limits: ServerLimits(
         maxCellsPerSpreadsheet: 1,
-        maxActiveSpacesPerUser: 1,
         maxSheetsPerSpreadsheet: 1,
         maxDocumentChars: 1,
         maxImageUploadBytes: 1,

@@ -24,7 +24,7 @@ import 'package:wonky_slides/features/undo/server_change_undo.dart';
 import 'package:wonky_slides_core/history.dart';
 import 'package:wonky_slides_core/schema.dart';
 import 'package:wonky_slides_core/testing.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 import '../../support/slides_harness.dart';
 

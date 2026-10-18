@@ -16,7 +16,6 @@ import '../formatting/formula_field.dart';
 import '../formatting/panel_widgets.dart';
 import '../formatting/sheets_colors.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
-import '../toolbar/command_ui.dart' show invoke;
 import 'cf_controller.dart';
 import 'cf_date_field.dart';
 import 'cf_edit_state.dart';
@@ -97,8 +96,7 @@ class _CfPanelState extends State<CfPanel> {
   // List actions.
 
   Future<bool> _run(String id, Map<String, Object?> args) async {
-    final r = await invoke(
-      s,
+    final r = await s.invokeWithToasts(
       id,
       args: args,
       source: InvocationSource.ui,

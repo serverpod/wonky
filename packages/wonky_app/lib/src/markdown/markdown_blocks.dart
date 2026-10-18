@@ -208,14 +208,32 @@ abstract final class MarkdownBlocks {
       if (trimmed.startsWith('>')) {
         flushPara();
         stack.clear();
+        // An empty `>` line separates the paragraphs of a quote (the
+        // composer writes consecutive quote paragraphs that way): each
+        // paragraph is a quote block of its own.
         final q = <String>[];
         final src = <String>[];
+        void flushQuote() {
+          if (q.isNotEmpty) {
+            out.add(
+              MdBlock(MdKind.quote, q.join(joiner), source: src.join('\n')),
+            );
+          }
+          q.clear();
+          src.clear();
+        }
+
         while (i < lines.length && lines[i].trimLeft().startsWith('>')) {
-          src.add(lines[i]);
-          q.add(lines[i].trimLeft().substring(1).trim());
+          final content = lines[i].trimLeft().substring(1).trim();
+          if (content.isEmpty) {
+            flushQuote();
+          } else {
+            src.add(lines[i]);
+            q.add(content);
+          }
           i++;
         }
-        out.add(MdBlock(MdKind.quote, q.join(joiner), source: src.join('\n')));
+        flushQuote();
         continue;
       }
       if (trimmed.startsWith('|')) {

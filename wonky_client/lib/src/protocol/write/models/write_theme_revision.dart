@@ -11,7 +11,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 /// The last 50 saved versions of a theme.
 abstract class WriteThemeRevision
@@ -32,7 +32,7 @@ abstract class WriteThemeRevision
     required int version,
     required String json,
     int? savedById,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required DateTime createdAt,
   }) = _WriteThemeRevisionImpl;
 
@@ -43,7 +43,7 @@ abstract class WriteThemeRevision
       version: jsonSerialization['version'] as int,
       json: jsonSerialization['json'] as String,
       savedById: jsonSerialization['savedById'] as int?,
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       createdAt: _isc.DateTimeJsonExtension.fromJson(
@@ -65,7 +65,7 @@ abstract class WriteThemeRevision
 
   int? savedById;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   DateTime createdAt;
 
@@ -78,7 +78,7 @@ abstract class WriteThemeRevision
     int? version,
     String? json,
     int? savedById,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     DateTime? createdAt,
   });
   @override
@@ -124,7 +124,7 @@ class _WriteThemeRevisionImpl extends WriteThemeRevision {
     required int version,
     required String json,
     int? savedById,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required DateTime createdAt,
   }) : super._(
          id: id,
@@ -146,7 +146,7 @@ class _WriteThemeRevisionImpl extends WriteThemeRevision {
     int? version,
     String? json,
     Object? savedById = _Undefined,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     DateTime? createdAt,
   }) {
     return WriteThemeRevision(

@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_app/uploads.dart' show MemoryPendingUploadStore;
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_slides/features/canvas/slide_canvas_controller.dart';
@@ -103,7 +104,7 @@ void main() {
     files = FakeFiles();
     net = ConnectivityService(ping: () async {});
     queue = SlidesPendingUploads(
-      store: MemorySlidesUploadStore(),
+      store: MemoryPendingUploadStore(),
       files: files,
       connectivity: net,
     );

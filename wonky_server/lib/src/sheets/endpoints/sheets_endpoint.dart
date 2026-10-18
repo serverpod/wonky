@@ -6,56 +6,35 @@ import '../../platform/common/models.dart';
 import '../../platform/users/user_service.dart';
 import '../images/sheets_image_proxy.dart';
 import '../sheets_service.dart';
-import '../spaces/sheets_spaces.dart';
+import '../scripts/script_user_properties.dart';
 
 /// Online-only Sheets operations (suite 12 §2, Sheets 10, 12 §2.5).
 class SheetsEndpoint extends Endpoint {
   @override
   bool get requireLogin => true;
 
-  /// Reserves up to [count] (≤ 5) empty spaces for offline creation.
-  Future<List<UuidValue>> reserveSpaces(Session session, int count) async =>
-      SheetsSpaces.reserveSpaces(
-        session,
-        await UserService.actorOf(session),
-        count,
-      );
-
-  /// Grants membership of the spreadsheet's space (role mirrored from the
-  /// ACL) and adds it to the caller's active set.
-  Future<SubscribeResult> subscribe(
+  /// The caller's script user properties of a spreadsheet (RevLog spec
+  /// 02 §2.4, Sheets 09 §6.9). Viewer+; private per user.
+  Future<Map<String, String>> getUserProperties(
     Session session,
-    UuidValue itemUuid,
-  ) async => SheetsSpaces.subscribe(
+    UuidValue fileUuid,
+  ) async => ScriptUserProperties.read(
     session,
     await UserService.actorOf(session),
-    itemUuid,
+    fileUuid,
   );
 
-  Future<void> unsubscribe(Session session, UuidValue itemUuid) async =>
-      SheetsSpaces.unsubscribe(
-        session,
-        await UserService.actorOf(session),
-        itemUuid,
-      );
-
-  /// Pending-change guard: re-grants spaces with unsynced local changes.
-  Future<List<UuidValue>> ensureSubscribed(
+  /// Writes the caller's script user properties (null = delete). Viewer+.
+  Future<void> setUserProperties(
     Session session,
-    List<UuidValue> spaces,
-  ) async => SheetsSpaces.ensureSubscribed(
+    UuidValue fileUuid,
+    Map<String, String?> changes,
+  ) async => ScriptUserProperties.write(
     session,
     await UserService.actorOf(session),
-    spaces,
+    fileUuid,
+    changes,
   );
-
-  /// Row counts for download progress.
-  Future<SpaceStats> spaceStats(Session session, UuidValue itemUuid) async =>
-      SheetsSpaces.statsFor(
-        session,
-        await UserService.actorOf(session),
-        itemUuid,
-      );
 
   /// Named functions of another spreadsheet for *Import function*
   /// (Sheets 07 §9.4): JSON list of `{name, formula, comment, metaJson}`.

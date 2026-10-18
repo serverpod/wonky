@@ -94,6 +94,7 @@ abstract final class BoardVotes {
         session,
         existing.copyWith(value: value, createdAt: nowUtc()),
         transaction: tx,
+        columns: (t) => [t.value, t.createdAt],
       );
     } else {
       await BoardVote.db.insertRow(

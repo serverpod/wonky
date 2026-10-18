@@ -1,0 +1,5 @@
+### An op committed by another connection (RevLog spec 04 §2.2).
+class: RevRemoteOp
+extends: RevServerMessage
+fields:
+  op: RevOpView

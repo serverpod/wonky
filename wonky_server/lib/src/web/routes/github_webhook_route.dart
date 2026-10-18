@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:serverpod/serverpod.dart';
 
 import '../../platform/board/github/github_webhook.dart';
@@ -10,19 +12,26 @@ class GithubWebhookRoute extends Route {
 
   @override
   Future<Result> handleCall(Session session, Request request) async {
-    final List<int> body;
+    final headers = {
+      for (final e in request.headers.entries) e.key: e.value.join(', '),
+    };
+    // Disabled, unsigned or incomplete deliveries are answered from the
+    // headers alone, without reading the body.
+    final refused = GithubWebhook.precheck(session, headers);
+    if (refused != null) return _status(refused);
+    final Uint8List body;
     try {
-      body = await request
+      final builder = BytesBuilder(copy: false);
+      await request
           .read(maxLength: GithubWebhook.maxBodyBytes)
-          .fold<List<int>>(<int>[], (all, chunk) => all..addAll(chunk));
+          .forEach(builder.add);
+      body = builder.takeBytes();
     } on MaxBodySizeExceeded {
       return _status(413);
     }
     final status = await GithubWebhook.receive(
       session,
-      headers: {
-        for (final e in request.headers.entries) e.key: e.value.join(', '),
-      },
+      headers: headers,
       body: body,
     );
     return _status(status);

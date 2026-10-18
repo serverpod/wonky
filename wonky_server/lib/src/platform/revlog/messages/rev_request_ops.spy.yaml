@@ -1,0 +1,6 @@
+### Gap fill: ops in [fromRevision, toRevision].
+class: RevRequestOps
+extends: RevClientMessage
+fields:
+  fromRevision: int
+  toRevision: int

@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/slides_l10n.dart';
 import '../canvas/slide_canvas_controller.dart';
@@ -334,6 +335,7 @@ class _NotesDialogState extends State<NotesDialog>
     final la = WonkyAppLocalizations.of(context);
     final notes = _notes;
     return ShadDialog(
+      closeIcon: const WonkyDialogCloseButton(),
       constraints: const BoxConstraints(maxWidth: 680),
       key: NotesDialogKeys.dialog,
       title: Text(notes == null ? l.aiNotesTitle : l.aiNotesReviewTitle),

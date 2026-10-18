@@ -157,7 +157,7 @@ abstract final class GithubReview {
       try {
         await run(session, r.prNumber, r.reviewPendingSha!);
         count++;
-      } on Exception catch (e) {
+      } on Object catch (e) {
         session.log(
           'board.github: review of #${r.prNumber} failed: $e',
           level: LogLevel.warning,

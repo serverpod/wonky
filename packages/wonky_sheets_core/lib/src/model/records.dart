@@ -378,6 +378,11 @@ final class CellRecord extends SyncRecord {
   CellContent? _decoded;
   bool _decodedSet = false;
 
+  /// Cache slot of the formula-engine bridge (`cellInputOf`): the engine input built
+  /// from [content] (records are immutable, so it never goes stale). Not part of the
+  /// record's data.
+  Object? engineInput;
+
   /// Creation time.
   DateTime get createdAt => _createdAt ?? kEpochUtc;
 

@@ -92,6 +92,18 @@ abstract final class Cluster {
   /// Runs [action] while holding the cluster-wide lock [name]: a Postgres
   /// transaction-level advisory lock held by an otherwise idle transaction,
   /// so [action] itself runs on other pool connections.
+  /// Takes the cluster-wide lock [name] inside [transaction] (released
+  /// with it): check-then-act decisions made after it are serialized.
+  static Future<void> lockIn(
+    Session session,
+    String name,
+    Transaction transaction,
+  ) => session.db.unsafeQuery(
+    'SELECT pg_advisory_xact_lock(hashtext(@name))',
+    parameters: QueryParameters.named({'name': name}),
+    transaction: transaction,
+  );
+
   static Future<T> withLock<T>(
     Session session,
     String name,

@@ -1,6 +1,7 @@
 class: CellHistoryEntry
 fields:
-  changeLogId: UuidValue
+  ### The op (file revision) that wrote the value.
+  revision: int
   user: UserSummary?
   actorKind: ActorKind
   label: String

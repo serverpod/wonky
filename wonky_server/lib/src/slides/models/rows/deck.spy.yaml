@@ -1,0 +1,43 @@
+### A presentation (Slides 02 §3.1). Its id is always the RevLog file uuid
+### and the UUID of its drive item (one deck per file, P1).
+class: Deck
+table: deck
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  ### Mirrored to DriveItem.name by the server (both ways).
+  title: String
+  ### Design size in slide units (su); 1920 x 1080 for 16:9 (02 §2.2).
+  width: double, default=1920.0
+  height: double, default=1080.0
+  sizePreset: SlideSizePreset, default=widescreen16x9
+  ### Default DeckTheme for new slides (same space; plain UUID, not an FK).
+  ### Missing = the theme with the smallest id (02 §10).
+  themeId: UuidValue?
+  ### Which color scheme of the themes is used (05 §2.4).
+  appearance: DeckAppearance, default=light
+  ### BCP-47 for spelling / hyphenation; null = the user's locale.
+  language: String?
+  ### Master slide-number placeholders visible.
+  showSlideNumbers: bool, default=false
+  ### No number on slides whose layout key is `title`.
+  hideNumberOnTitle: bool, default=true
+  firstSlideNumber: int, default=1
+  ### Master footer placeholders' text; null = hidden.
+  footerText: String?
+  ### {transition, build, codeFontSize, ...}; keys owned by 06/07 (A-06-7).
+  defaultsJson: String?
+  ### User guides [{"axis":"v"|"h","at":<su>}], whole-value LWW (03 A-03-1).
+  guidesJson: String?
+  ### Presenting options (10 A-10-1, schema 10 §3); null = defaults.
+  presentJson: String?
+  ### Auth user UUID of the creator.
+  createdBy: UuidValue
+  createdAt: DateTime, defaultModel=now
+indexes:
+  deck_file_idx:
+    fields: fileId, id

@@ -10,7 +10,6 @@ import 'package:wonky_sheets_script/wonky_sheets_script.dart';
 
 import '../../platform/common/models.dart';
 import '../../platform/config/wonky_config.dart';
-import '../sync/sync_db.dart';
 import 'script_triggers.dart';
 
 /// Wire form of the events of queued jobs.
@@ -236,13 +235,33 @@ abstract final class ScriptJobQueue {
     }
   }
 
+  /// The lease outlasts the longest possible run (the script timeout plus
+  /// 2 minutes), so a running job needs no heartbeat (CQ-9).
   static Duration get _lease => Duration(
     milliseconds: WonkyConfig.current.scriptServerTimeoutMs + 120000,
   );
 
-  /// Claims the oldest runnable queued job.
+  /// Claims the oldest runnable queued job. Claims are serialized across
+  /// instances by a transaction-scoped advisory lock, so the per-user and
+  /// per-trigger limits (subqueries the claim doesn't lock) hold (CQ-9).
   static Future<ScriptJob?> _claim(Session session) async {
-    final rows = await session.db.unsafeQuery(
+    final id = await session.db.transaction((tx) async {
+      await session.db.unsafeExecute(
+        "SELECT pg_advisory_xact_lock(hashtext('script_job_claim'))",
+        transaction: tx,
+      );
+      final rows = await _claimIn(session, tx);
+      return rows.isEmpty ? null : rows.first[0]! as int;
+    });
+    if (id == null) return null;
+    return ScriptJob.db.findById(session, id);
+  }
+
+  static Future<DatabaseResult> _claimIn(
+    Session session,
+    Transaction tx,
+  ) async {
+    return session.db.unsafeQuery(
       r'''
       UPDATE script_job SET status = 'running', "leaseOwner" = @owner,
         "leaseUntil" = @until, attempts = attempts + 1
@@ -265,9 +284,8 @@ abstract final class ScriptJobQueue {
         'until': clock.now().toUtc().add(_lease),
         'perUser': WonkyConfig.current.scriptUserConcurrency,
       }),
+      transaction: tx,
     );
-    if (rows.isEmpty) return null;
-    return ScriptJob.db.findById(session, rows.first[0]! as int);
   }
 
   static Future<void> _run(Session session, ScriptJob job) async {
@@ -281,7 +299,7 @@ abstract final class ScriptJobQueue {
       final trigger = job.triggerId == null
           ? null
           : await ScriptTrigger.db.findById(
-              syncSessionOf(session),
+              session,
               job.triggerId!,
             );
       if (item != null && trigger != null && item.trashedAt == null) {
@@ -311,15 +329,22 @@ abstract final class ScriptJobQueue {
         stackTrace: st,
       );
     }
-    await ScriptJob.db.updateRow(
+    // Only while this instance still holds the lease (CQ-9): a job whose
+    // lease expired was re-queued by `recoverStale` and belongs to its new
+    // runner.
+    await ScriptJob.db.updateWhere(
       session,
-      job.copyWith(
-        status: status,
-        resultJson: result,
-        finishedAt: clock.now().toUtc(),
-        leaseOwner: null,
-        leaseUntil: null,
-      ),
+      columnValues: (t) => [
+        t.status(status),
+        t.resultJson(result),
+        t.finishedAt(clock.now().toUtc()),
+        t.leaseOwner(null),
+        t.leaseUntil(null),
+      ],
+      where: (t) =>
+          t.id.equals(job.id!) &
+          t.status.equals(ScriptExecutionStatus.running) &
+          t.leaseOwner.equals(job.leaseOwner),
     );
   }
 
@@ -332,23 +357,33 @@ abstract final class ScriptJobQueue {
           j.status.equals(ScriptExecutionStatus.running) &
           (j.leaseUntil < clock.now().toUtc()),
     );
+    var recovered = 0;
     for (final j in stale) {
-      await ScriptJob.db.updateRow(
+      final failed = j.attempts >= maxAttempts;
+      // Conditional on the lease still being the expired one (CQ-9): two
+      // sweeping instances, or a runner finishing late, never overwrite
+      // each other.
+      final rows = await ScriptJob.db.updateWhere(
         session,
-        j.attempts >= maxAttempts
-            ? j.copyWith(
-                status: ScriptExecutionStatus.failed,
-                finishedAt: clock.now().toUtc(),
-                resultJson: jsonEncode({'error': 'lease expired'}),
-              )
-            : j.copyWith(
-                status: ScriptExecutionStatus.queued,
-                leaseOwner: null,
-                leaseUntil: null,
-              ),
+        columnValues: (t) => [
+          if (failed) ...[
+            t.status(ScriptExecutionStatus.failed),
+            t.finishedAt(clock.now().toUtc()),
+            t.resultJson(jsonEncode({'error': 'lease expired'})),
+          ] else
+            t.status(ScriptExecutionStatus.queued),
+          t.leaseOwner(null),
+          t.leaseUntil(null),
+        ],
+        where: (t) =>
+            t.id.equals(j.id!) &
+            t.status.equals(ScriptExecutionStatus.running) &
+            t.leaseOwner.equals(j.leaseOwner) &
+            t.leaseUntil.equals(j.leaseUntil),
       );
+      recovered += rows.length;
     }
-    return stale.length;
+    return recovered;
   }
 
   /// Drops finished jobs older than [retention].

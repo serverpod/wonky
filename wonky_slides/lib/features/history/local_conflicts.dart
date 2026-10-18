@@ -5,15 +5,16 @@ import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart'
-    show DeckChangeLog, PresenceNotice;
+    show Participant, PresenceNotice;
+import 'package:wonky_revlog/rows.dart' show RowOp;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart' show RevOpMeta;
 import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/schema.dart';
-import 'package:wonky_sync_kit/rows.dart' show RowOp;
 
 import '../../l10n/slides_l10n.dart';
 import '../editor_screen/deck_editor_controller.dart';
-import '../model/synced_deck_session.dart';
+import '../revlog/logged_deck_session.dart';
 
 /// A text body (Slides 09 §6.3): an element's text, a table cell's text or
 /// a slide's speaker notes.
@@ -229,7 +230,7 @@ class SlidesConflicts extends ChangeNotifier {
     DeckEditorController editor, {
     PresenceSession? presence,
     LocalStore? store,
-    Future<List<DeckChangeLog>> Function()? changeLogs,
+    Future<List<RevOpMeta>> Function()? changeLogs,
     bool Function()? isOffline,
     String? Function(String authUserId)? names,
   }) {
@@ -248,7 +249,7 @@ class SlidesConflicts extends ChangeNotifier {
   final LocalStore store;
 
   /// The local change log (overrides the replica's; tests).
-  final Future<List<DeckChangeLog>> Function()? changeLogs;
+  final Future<List<RevOpMeta>> Function()? changeLogs;
 
   /// Whether writes count as offline (overrides connectivity; tests).
   final bool Function()? isOffline;
@@ -457,49 +458,32 @@ class SlidesConflicts extends ChangeNotifier {
     _wasOnline = online;
   }
 
-  /// Waits until the sync after reconnecting wrote our pending changes and
-  /// merged the remote ones, then [check]s.
+  /// Waits until the outbox drained after reconnecting (our pending writes
+  /// are committed and the remote ops before them applied), then [check]s.
   void _afterSync() {
     _settle?.cancel();
     final session = editor.session;
-    var tries = 0;
-    var merged = false;
-    StreamSubscription<Object?>? sub;
-    if (session is SyncedDeckSession) {
-      sub = session.host.merges
-          .where((s) => s == session.spaceUuid)
-          .listen((_) => merged = true);
-    }
-    _settle = Timer.periodic(const Duration(seconds: 1), (t) async {
-      tries++;
-      final pending = session is SyncedDeckSession ? session.pendingChanges : 0;
-      if (_disposed || _offline) {
-        t.cancel();
-        unawaited(sub?.cancel());
-        return;
+    if (session is! LoggedDeckSession) return;
+    // A timer only marks that a check is pending (dispose cancels it).
+    _settle = Timer(const Duration(days: 1), () {});
+    unawaited(() async {
+      try {
+        await session.whenSynced(timeout: const Duration(seconds: 90));
+      } catch (_) {
+        // Check what arrived anyway.
       }
-      if ((pending == 0 && (merged || tries >= 5)) || tries >= 90) {
-        t.cancel();
-        unawaited(sub?.cancel());
-        // Give the remote patch a moment to reach the model.
-        await Future<void>.delayed(const Duration(milliseconds: 800));
-        if (!_disposed) await check();
-      }
-    });
+      if (_disposed || _offline || !(_settle?.isActive ?? false)) return;
+      _settle?.cancel();
+      if (!_disposed) await check();
+    }());
   }
 
-  Future<List<DeckChangeLog>> _logs() async {
+  Future<List<RevOpMeta>> _logs() async {
     final f = changeLogs;
     if (f != null) return f();
     final session = editor.session;
-    if (session is! SyncedDeckSession) return const [];
-    return DeckChangeLog.db.find(
-      session.host.replica.session,
-      where: (t) =>
-          t.deckId.equals(session.spaceUuid) &
-          (t.at > clock.now().subtract(const Duration(days: 30))),
-      limit: 20000,
-    );
+    if (session is! LoggedDeckSession) return const [];
+    return session.recentOps(const Duration(days: 30));
   }
 
   /// Compares the tracked bodies with the merged deck and records the
@@ -507,14 +491,14 @@ class SlidesConflicts extends ChangeNotifier {
   Future<List<SlidesLocalConflict>> check() async {
     if (_tracked.isEmpty) return const [];
     final me = editor.session.userId;
-    List<DeckChangeLog> logs;
+    List<RevOpMeta> logs;
     try {
       logs = await _logs();
     } catch (e) {
       debugPrint('Reading the deck change log failed: $e');
       logs = const [];
     }
-    logs = [...logs]..sort((a, b) => b.at.compareTo(a.at));
+    logs = [...logs]..sort((a, b) => b.revision.compareTo(a.revision));
     final model = editor.model;
     final found = <SlidesLocalConflict>[];
     final now = clock.now().toUtc();
@@ -527,7 +511,7 @@ class SlidesConflicts extends ChangeNotifier {
         logs,
         (l) => _touched(l, t.ref, deleted: current == null),
       );
-      if (by != null && by.userId.uuid == me) continue;
+      if (by != null && by.authorUuid == me) continue;
       if (by == null && current != null) continue; // not someone else's
       found.add(
         SlidesLocalConflict(
@@ -536,9 +520,9 @@ class SlidesConflicts extends ChangeNotifier {
           myText: t.text,
           theirText: current,
           slideId: t.ref.slideIn(model),
-          theirUserId: by?.userId.uuid,
-          theirName: by == null ? null : nameOf(by.userId.uuid),
-          changeLogId: by?.id.uuid,
+          theirUserId: by?.authorUuid,
+          theirName: by == null ? null : nameOf(by.authorUuid ?? ''),
+          changeLogId: by == null ? null : '${by.revision}',
           detectedAt: now,
         ),
       );
@@ -560,10 +544,7 @@ class SlidesConflicts extends ChangeNotifier {
     return (a ?? '') == (b ?? '') || plain(a) == plain(b);
   }
 
-  static DeckChangeLog? _firstWhere(
-    List<DeckChangeLog> l,
-    bool Function(DeckChangeLog) f,
-  ) {
+  static RevOpMeta? _firstWhere(List<RevOpMeta> l, bool Function(RevOpMeta) f) {
     for (final x in l) {
       if (f(x)) return x;
     }
@@ -572,21 +553,13 @@ class SlidesConflicts extends ChangeNotifier {
 
   /// Whether change-log row [l] touched [ref] (its summary's elements or
   /// slides; with [deleted], its deleted lists).
-  static bool _touched(
-    DeckChangeLog l,
-    TextBodyRef ref, {
-    required bool deleted,
-  }) {
-    Map<String, Object?> s;
-    try {
-      s = (jsonDecode(l.summaryJson) as Map).cast<String, Object?>();
-    } on Object {
-      return false;
-    }
+  static bool _touched(RevOpMeta l, TextBodyRef ref, {required bool deleted}) {
+    final s = l.summary;
+    if (s == null) return false;
     List<Object?> list(Object? v) => v is List ? v : const [];
     final del = s['deleted'];
     if (deleted) {
-      final d = del is Map ? del : const {};
+      final d = del is Map ? del : const <Object?, Object?>{};
       return switch (ref.kind) {
         'notes' => list(d['slides']).contains(ref.slideId),
         _ =>
@@ -606,7 +579,7 @@ class SlidesConflicts extends ChangeNotifier {
     if (me != null && me.uuid.uuid == authUserId) return me.displayName;
     final named = names?.call(authUserId);
     if (named != null) return named;
-    for (final p in _presence?.participants ?? const []) {
+    for (final p in _presence?.participants ?? const <Participant>[]) {
       if (p.userUuid.uuid == authUserId) return p.displayName;
     }
     return services.l10n?.someone ?? 'Someone';

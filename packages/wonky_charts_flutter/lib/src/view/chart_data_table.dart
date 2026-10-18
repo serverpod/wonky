@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_charts/wonky_charts.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 /// Header and formatted rows of [data] (domain + series columns; table
 /// charts: their own columns).
@@ -99,6 +100,7 @@ class ChartDataTableDialog extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     return ShadDialog(
       key: dialogKey,
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(strings.title),
       constraints: BoxConstraints(
         maxWidth: width < 672 ? width - 32 : 640,

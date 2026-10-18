@@ -39,6 +39,13 @@ abstract final class GithubLifecycle {
           reviewDueAt: null,
           updatedAt: now,
         ),
+        columns: (t) => [
+          t.state,
+          t.mergeCommitSha,
+          t.reviewPendingSha,
+          t.reviewDueAt,
+          t.updatedAt,
+        ],
       );
     }
     final task = await _linkedTask(session, pr.number);
@@ -74,6 +81,7 @@ abstract final class GithubLifecycle {
         doneAt: task.doneAt ?? now,
         mergeCommitSha: pr.mergeCommitSha,
       ),
+      columns: (t) => [t.status, t.doneAt, t.mergeCommitSha],
     );
     await BoardComments.systemRow(
       session,
@@ -116,6 +124,17 @@ abstract final class GithubLifecycle {
         prNumber: null,
         prAuthorLogin: null,
       ),
+      columns: (t) => [
+        t.status,
+        t.claimedById,
+        t.claimedAt,
+        t.claimExpiresAt,
+        t.claimWarnedAt,
+        t.claimCode,
+        t.pullRequestUrl,
+        t.prNumber,
+        t.prAuthorLogin,
+      ],
     );
     await BoardComments.systemRow(
       session,
@@ -158,6 +177,7 @@ abstract final class GithubLifecycle {
         gateFirstFailedAt: null,
         updatedAt: nowUtc(),
       ),
+      columns: (t) => [t.state, t.gateFirstFailedAt, t.updatedAt],
     );
   }
 
@@ -224,6 +244,7 @@ abstract final class GithubLifecycle {
         shippedAt: now,
         shippedDeploySha: deploySha,
       ),
+      columns: (t) => [t.status, t.shippedAt, t.shippedDeploySha],
     );
     await BoardComments.systemRow(
       session,

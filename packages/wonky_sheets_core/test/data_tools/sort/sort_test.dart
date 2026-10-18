@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:wonky_sheets_core/src/data_tools/data_tools.dart';
+import 'package:wonky_sheets_core/src/formula/values/collation.dart';
 
 import '../../rules/support/core.dart';
 import '../../rules/support/rule_fixtures.dart';
@@ -81,7 +82,7 @@ void main() {
     ];
     for (final (a, b, sign) in textVectors) {
       test('when comparing "$a" with "$b" then the sign is $sign', () {
-        expect(SortKeys.compareText(a, b).sign, sign);
+        expect(Collation.compare(a, b).sign, sign);
         expect(SortKeys.compare(TextValue(a), TextValue(b)).sign, sign);
       });
     }

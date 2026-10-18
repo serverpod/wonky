@@ -236,8 +236,9 @@ class FakePreviewApi implements FilePreviewApi {
   }
 
   @override
-  Future<Uint8List> fetch(String url, {int? maxBytes}) async {
+  Future<Uint8List> fetch(String url, {int? maxBytes, int? firstBytes}) async {
     _check('fetch');
+    if (firstBytes != null) calls.add('fetch.firstBytes:$firstBytes');
     await fetchGate?.future;
     final f = fetchFailsWith;
     if (f != null) throw f;
@@ -245,6 +246,9 @@ class FakePreviewApi implements FilePreviewApi {
     final id = UuidValue.fromString(u.pathSegments.last);
     final data = u.pathSegments.first == 's' ? previewBytes[id] : bytes[id];
     if (data == null) throw const PreviewFetchException('HTTP 404');
+    if (firstBytes != null && data.length > firstBytes) {
+      return Uint8List.sublistView(data, 0, firstBytes);
+    }
     return data;
   }
 

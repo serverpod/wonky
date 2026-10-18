@@ -237,6 +237,27 @@ void main() {
       );
       expect(span.toPlainText(), '*not italic* snake_case_name a`b');
     });
+
+    // CQ-50: found by the composer round trip (markdown_round_trip_test).
+    final composerCases = <(String, String, String)>[
+      ('an escaped star closes no italic', r'*2 \** 3', '2 * 3'),
+      ('entities are decoded', '&#96;x&#96; R&amp;D &lt;T&gt;', '`x` R&D <T>'),
+      ('an unknown entity stays text', '&nope;', '&nope;'),
+      ('an HTML comment is invisible', '`a`<!-- -->`b`', 'ab'),
+      ('a triple star is bold italic', '***x***', 'x'),
+      ('a link text may hold escaped brackets', r'[\[x\]](https://a.b)', '[x]'),
+    ];
+    for (final (name, markdown, plain) in composerCases) {
+      test('when rendering composer output: $name', () {
+        final span = MarkdownInline.spans(
+          markdown,
+          const TextStyle(fontSize: 14),
+          const ShadSlateColorScheme.light(),
+        );
+
+        expect(span.toPlainText(), plain);
+      });
+    }
   });
 
   group('Given the block parser', () {
@@ -246,6 +267,16 @@ void main() {
         '1. a\n   1. b\n      - c\n- d\n  - e\n    - f\n - g',
       );
       expect(blocks.map((b) => b.level), [0, 1, 2, 0, 1, 2, 0]);
+    });
+
+    test('when a quote has an empty line then its paragraphs are separate '
+        'quotes', () {
+      final blocks = MarkdownBlocks.parse('> a\n> b\n>\n> c');
+
+      expect(blocks.map((b) => (b.kind, b.text)), [
+        (MdKind.quote, 'a b'),
+        (MdKind.quote, 'c'),
+      ]);
     });
 
     test('when an item has an indented line then it continues the item', () {

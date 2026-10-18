@@ -1,0 +1,40 @@
+### A theme copied into the deck (Slides 02 §3.2, 05). A deck has at least one
+### theme; slides pasted with "keep source formatting" bring their own. Copies
+### of built-in or library themes use SlidesIds.themeCopyId.
+class: DeckTheme
+table: deck_theme
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  deck: Deck?, relation(onDelete=Cascade, deferred)
+  name: String
+  ### Provenance: builtin:<key>@<v> | deck:<itemUuid>:<themeId> | null (created here).
+  sourceKey: String?
+  ### {light:{bg1,text1,...,accent1-6,link}, dark:{...}} (05 §2.2).
+  colorsJson: String
+  ### {heading, body, mono, sizes?} (05 §2.3).
+  fontsJson: String
+  ### Named text styles (05 §2.5).
+  textStylesJson: String
+  ### Default background (05 §2.6).
+  backgroundJson: String
+  ### Default fill/stroke/text of new shapes, lines, text boxes (05 §2.7).
+  shapeStyleJson: String?
+  ### Default table style (05 §2.8).
+  tableStyleJson: String?
+  ### Code palettes light/dark + chrome (05 §2.9, 07).
+  codeStyleJson: String?
+  ### Series palette order, fonts, gridlines (05 §2.10, 08).
+  chartStyleJson: String?
+  ### Order in the Themes panel (fractional index; ties by id).
+  sortKey: String
+  createdAt: DateTime, defaultModel=now
+indexes:
+  deck_theme_file_idx:
+    fields: fileId, id
+  deck_theme_deck_idx:
+    fields: deckId

@@ -342,15 +342,16 @@ void repairAfterDelete(
   final allDeleted = {...deletedRows, ...deletedCols};
   final hooks = b.ctx.formulas;
   if (hooks == null) return;
+  final deletedTokens = StoredFormula.idTokens(allDeleted);
   for (final other in b.model.sheets) {
-    for (final cell in other.cells.all) {
+    for (final cell in other.cells.formulaCells) {
       final content = cell.content;
       if (content == null || !content.startsWith('=')) continue;
       if (allDeleted.contains(cell.rowId) ||
           allDeleted.contains(cell.columnId)) {
         continue;
       }
-      if (!StoredFormula.mayReference(content, allDeleted)) continue;
+      if (!StoredFormula.referencesAny(content, deletedTokens)) continue;
       final repaired = hooks.repairBoundaries(
         content,
         deletedRowIds: deletedRows,
@@ -373,7 +374,7 @@ void repairAfterDelete(
   }
   for (final n in b.model.namedRanges) {
     final f = n.formula;
-    if (f == null || !StoredFormula.mayReference(f, allDeleted)) continue;
+    if (f == null || !StoredFormula.referencesAny(f, deletedTokens)) continue;
     final r = hooks.repairBoundaries(
       f,
       deletedRowIds: deletedRows,
@@ -393,9 +394,10 @@ void _repairRuleFormulas(
   Set<String> ids,
   String? Function(String) rewrite,
 ) {
+  final tokens = StoredFormula.idTokens(ids);
   void apply(String table, SyncRecord rec, String column) {
     final json = rec.column(column) as String?;
-    if (json == null || !StoredFormula.mayReference(json, ids)) return;
+    if (json == null || !StoredFormula.referencesAny(json, tokens)) return;
     Object? decoded;
     try {
       decoded = jsonDecode(json);

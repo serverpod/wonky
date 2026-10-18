@@ -4,8 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:wonky_app/wonky_app.dart' show UndoService, UndoStackKey;
 import 'package:wonky_core/wonky_core.dart';
-import 'package:wonky_write_core/wonky_write_core.dart'
-    hide ThemeCatalog, DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart' hide ThemeCatalog;
 
 import '../../l10n/write_l10n.dart';
 import '../themes/document_theme.dart';
@@ -232,7 +231,7 @@ class ThemeEditorController extends ChangeNotifier implements ThemeDraftHost {
   /// Whether [node] has overrides in the draft (tree dot).
   bool hasOverrides(ThemeNode node) {
     final j = _draftJson;
-    Map? m(Object? v) => v is Map ? v : null;
+    Map<Object?, Object?>? m(Object? v) => v is Map ? v : null;
     final dark = m(j['dark']);
     switch (node.kind) {
       case ThemeNodeKind.element:

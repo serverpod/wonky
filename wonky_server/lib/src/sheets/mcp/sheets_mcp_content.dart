@@ -7,6 +7,7 @@ import 'package:wonky_sheets_core/formula.dart' show GridRect;
 import '../../platform/common/models.dart';
 import '../../platform/drive/drive_service.dart';
 import '../../platform/mcp/tool_support.dart';
+import '../../platform/mcp/mcp_errors.dart';
 import '../../platform/mcp/wonky_mcp_server.dart';
 import 'sheets_mcp_support.dart';
 import 'sheets_read_handlers.dart';
@@ -36,7 +37,7 @@ abstract final class SheetsMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx);
-        final r = await _guard(
+        final r = await McpErrors.guardResource(
           () => SheetsReadHandlers.getSpreadsheet(
             ctx,
             ToolArgs({'spreadsheet': '${vars['uuid']}'}),
@@ -70,7 +71,7 @@ abstract final class SheetsMcpContent {
         _scope(ctx);
         final sheet = Uri.decodeComponent('${vars['sheet']}');
         final range = Uri.decodeComponent('${vars['range']}');
-        final csv = await _guard(
+        final csv = await McpErrors.guardResource(
           () => sheetCsv(ctx, '${vars['uuid']}', sheet, range: range),
         );
         return _csv(uri, csv);
@@ -94,7 +95,7 @@ abstract final class SheetsMcpContent {
         _scope(ctx);
         final sheet = Uri.decodeComponent('${vars['sheet']}');
         if (sheet == 'meta') {
-          final r = await _guard(
+          final r = await McpErrors.guardResource(
             () => SheetsReadHandlers.getSpreadsheet(
               ctx,
               ToolArgs({'spreadsheet': '${vars['uuid']}'}),
@@ -110,7 +111,9 @@ abstract final class SheetsMcpContent {
             ],
           );
         }
-        final csv = await _guard(() => sheetCsv(ctx, '${vars['uuid']}', sheet));
+        final csv = await McpErrors.guardResource(
+          () => sheetCsv(ctx, '${vars['uuid']}', sheet),
+        );
         return _csv(uri, csv);
       },
     );
@@ -198,29 +201,6 @@ abstract final class SheetsMcpContent {
       throw mcp.McpError(
         mcp.ErrorCode.invalidRequest.value,
         'The access token lacks the ${McpScope.sheetsRead} scope.',
-      );
-    }
-  }
-
-  static Future<T> _guard<T>(Future<T> Function() body) async {
-    try {
-      return await body();
-    } on McpToolException catch (e) {
-      throw mcp.McpError(
-        e.code == McpErrorCode.notFound
-            ? mcp.ErrorCode.resourceNotFound.value
-            : mcp.ErrorCode.invalidParams.value,
-        e.message,
-        e.toJson(),
-      );
-    } on WonkyException catch (e) {
-      final m = McpToolException.fromWonky(e);
-      throw mcp.McpError(
-        m.code == McpErrorCode.notFound
-            ? mcp.ErrorCode.resourceNotFound.value
-            : mcp.ErrorCode.invalidParams.value,
-        m.message,
-        m.toJson(),
       );
     }
   }

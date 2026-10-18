@@ -310,9 +310,9 @@ void main() {
     var d = dialog(r);
     var desc = d.describe();
     expect(desc['step'], 'options');
-    final insert = (desc['fields']! as List).cast<Map>().firstWhere(
-      (f) => f['id'] == 'insert',
-    );
+    final insert = (desc['fields']! as List)
+        .cast<Map<Object?, Object?>>()
+        .firstWhere((f) => f['id'] == 'insert');
     expect(insert['options'], ['newDeck', 'afterCurrent', 'end']);
     expect(insert['value'], 'afterCurrent');
     expect(d.press('createOutline'), isFalse);
@@ -360,7 +360,8 @@ void main() {
     );
     await settle(tester);
     expect(res.isOk, isTrue);
-    final ideas = ((res.data! as Map)['ideas'] as List).cast<Map>();
+    final ideas = ((res.data! as Map)['ideas'] as List)
+        .cast<Map<Object?, Object?>>();
     expect(ideas.length, greaterThanOrEqualTo(4));
     expect(api.rankRequests, hasLength(1));
     expect(
@@ -422,7 +423,7 @@ void main() {
     await settle(tester);
     final d = dialog(r);
     final desc = d.describe();
-    final calls = (desc['calls']! as List).cast<Map>();
+    final calls = (desc['calls']! as List).cast<Map<Object?, Object?>>();
     expect(calls.first['slides'], [
       {'slide_id': slide, 'before_position': 2, 'after_position': 2},
     ]);

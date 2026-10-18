@@ -45,6 +45,10 @@ final class _CellDep extends _Dep {
   final String rowId;
   final String colId;
   final String key;
+
+  /// Registration order of the registered instance (the one in the engine's
+  /// per-sheet key set): ascending along that set's iteration order.
+  int seq = 0;
   _CellDep(this.sheetId, this.rowId, this.colId)
     : key = '$sheetId\u0001$rowId\u0001$colId';
   @override
@@ -81,6 +85,9 @@ final class _Node {
   bool cyclic = false;
   bool hasValue = false;
   bool removed = false;
+
+  /// Stamp of the node's live entry in the engine's dirty queue.
+  int dirtyStamp = 0;
 
   /// A cycle closed at this node during its evaluation (it was re-entered while on the
   /// evaluation chain); its strongly connected component is resolved when it completes.
@@ -152,6 +159,12 @@ final class FormulaEngine implements EvalHost, CellSource {
   final Map<String, Set<_Node>> _nodesBySheet = {};
   final Map<String, Set<_Node>> _cellDeps = {};
   final Map<String, Set<_CellDep>> _cellDepKeysBySheet = {};
+
+  /// The registered cell dependencies by row id and by column id (structural
+  /// edits find the references on deleted or inserted ids without a scan).
+  final Map<String, Set<_CellDep>> _cellDepsByRow = {};
+  final Map<String, Set<_CellDep>> _cellDepsByCol = {};
+  int _cellDepSeq = 0;
   final Map<String, RangeIndex<IdRange, _Node>> _rangeIndexes = {};
   final Map<String, Set<_Node>> _nameDeps = {};
   final Map<String, Set<_Node>> _axisDeps = {};
@@ -165,7 +178,20 @@ final class FormulaEngine implements EvalHost, CellSource {
   final Map<String, NamedRangeView> _namesCache = {};
   bool _namesDirty = true;
 
-  final LinkedHashSet<_Node> _dirty = LinkedHashSet();
+  /// Dirty nodes (membership only). The order is kept by [_dirtyQueue]: a
+  /// `LinkedHashSet` drained through `first` leaves tombstones that `first`
+  /// skips again on every call, which made a full recalc quadratic.
+  final Set<_Node> _dirty = HashSet<_Node>();
+
+  /// Dirty nodes in the order they became dirty, as `(node, stamp)`: an
+  /// entry is live while the node is dirty and its [_Node.dirtyStamp] is
+  /// still that stamp (stale entries are skipped).
+  final Queue<(_Node, int)> _dirtyQueue = Queue();
+  int _dirtyStamps = 0;
+
+  /// Stamps of entries put back at the front of the queue count down from -1,
+  /// so stamps ascend along the whole queue.
+  int _frontStamps = 0;
   final List<_Node> _evalStack = [];
   final List<_Node> _waitStack = [];
   int _depth = 0;
@@ -202,7 +228,7 @@ final class FormulaEngine implements EvalHost, CellSource {
   }) : registry = registry ?? FunctionRegistry.standard,
        clock = clock ?? SystemEngineClock(),
        timeZones = timeZones ?? const TzDatabaseResolver(),
-       textFormatter = textFormatter ?? const BuiltinNumberTextFormatter(),
+       textFormatter = textFormatter ?? const NumberFormatTextFormatter(),
        compiler = FormulaCompiler(
          registry ?? FunctionRegistry.standard,
          templateCapacity: config.templateCapacity,
@@ -224,9 +250,9 @@ final class FormulaEngine implements EvalHost, CellSource {
   /// Releases stream subscriptions.
   void dispose() {
     for (final s in _subscriptions) {
-      s.cancel();
+      unawaited(s.cancel());
     }
-    _changes.close();
+    unawaited(_changes.close());
   }
 
   // ====================================================================== EvalHost
@@ -570,14 +596,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     if (vp != null) {
       final sheet = workbook.sheetById(vp.sheetId);
       if (sheet != null) {
-        final inView = <_Node>[];
-        for (final n in _dirty) {
-          if (n.sheetId != vp.sheetId) continue;
-          final r = sheet.rows.indexOf(n.rowId),
-              c = sheet.columns.indexOf(n.colId);
-          if (vp.rect.contains(r, c)) inView.add(n);
-        }
-        for (final n in inView) {
+        for (final n in _dirtyInView(sheet, vp.rect)) {
           _ensureClean(n);
           evaluated++;
           if (evaluated % config.budgetCheckInterval == 0 &&
@@ -593,12 +612,66 @@ final class FormulaEngine implements EvalHost, CellSource {
           sw.elapsed > budget) {
         break;
       }
-      final n = _dirty.first;
+      final n = _nextDirty();
+      if (n == null) break;
       _ensureClean(n);
+      // Still dirty (e.g. waiting on its chain): it stays first, as before.
+      if (_dirty.contains(n) && n.dirtyStamp == 0) {
+        _dirtyQueue.addFirst((n, n.dirtyStamp = --_frontStamps));
+      }
       evaluated++;
     }
+    if (_dirty.isEmpty) _dirtyQueue.clear();
     _emit();
     return RecalcBudgetResult(evaluated, _dirty.length);
+  }
+
+  /// The dirty formula nodes inside [rect] of [sheet], in queue order (stamps
+  /// ascend along the queue). A viewport smaller than the queue is looked up
+  /// cell by cell (O(visible cells)) instead of scanning the dirty nodes.
+  List<_Node> _dirtyInView(SheetView sheet, GridRect rect) {
+    final inView = <_Node>[];
+    if (_dirty.isEmpty) return inView;
+    final rows = rect.bottom - rect.top + 1, cols = rect.right - rect.left + 1;
+    if (rows <= 0 || cols <= 0) return inView;
+    if (rows * cols > _dirtyQueue.length) {
+      for (final (n, stamp) in _dirtyQueue) {
+        if (n.dirtyStamp != stamp || !_dirty.contains(n)) continue;
+        if (n.sheetId != sheet.id) continue;
+        final r = sheet.rows.indexOf(n.rowId),
+            c = sheet.columns.indexOf(n.colId);
+        if (rect.contains(r, c)) inView.add(n);
+      }
+      return inView;
+    }
+    sheet.forEachInput(rect, (r, c, input) {
+      if (!input.isFormula) return;
+      final n =
+          _nodes['${sheet.id}\u0001${sheet.rows.idAt(r)}\u0001${sheet.columns.idAt(c)}'];
+      if (n != null && n.dirtyStamp != 0 && _dirty.contains(n)) inView.add(n);
+    });
+    inView.sort((a, b) => a.dirtyStamp.compareTo(b.dirtyStamp));
+    return inView;
+  }
+
+  void _addDirty(_Node n) {
+    if (_dirty.add(n)) _dirtyQueue.add((n, n.dirtyStamp = ++_dirtyStamps));
+  }
+
+  /// Takes the oldest dirty node off the queue (its stamp becomes 0: it has
+  /// no queue entry until it is queued again), or null.
+  _Node? _nextDirty() {
+    while (_dirtyQueue.isNotEmpty) {
+      final (n, stamp) = _dirtyQueue.removeFirst();
+      if (n.dirtyStamp != stamp || !_dirty.contains(n)) continue;
+      n.dirtyStamp = 0;
+      return n;
+    }
+    // Not reached while every dirty node has a queue entry; never strand one.
+    if (_dirty.isEmpty) return null;
+    final n = _dirty.first;
+    n.dirtyStamp = 0;
+    return n;
   }
 
   /// Evaluates everything that is dirty (unbounded).
@@ -845,14 +918,16 @@ final class FormulaEngine implements EvalHost, CellSource {
     Set<String> ids,
     Queue<_Node> work,
   ) {
-    final keys = _cellDepKeysBySheet[sheetId];
-    if (keys != null) {
-      for (final d in keys.toList()) {
-        if (ids.contains(dim == GridDimension.rows ? d.rowId : d.colId)) {
-          for (final n in _cellDeps[d.key]?.toList() ?? const <_Node>[]) {
-            _markDirty(n, work);
-          }
-        }
+    // In the order of the sheet's key set, as a scan of it would visit them.
+    final byId = dim == GridDimension.rows ? _cellDepsByRow : _cellDepsByCol;
+    final hits = <_CellDep>[
+      for (final id in ids)
+        for (final d in byId[id] ?? const <_CellDep>{})
+          if (d.sheetId == sheetId) d,
+    ]..sort((a, b) => a.seq.compareTo(b.seq));
+    for (final d in hits) {
+      for (final n in _cellDeps[d.key]?.toList() ?? const <_Node>[]) {
+        _markDirty(n, work);
       }
     }
     final idx = _rangeIndexes[sheetId];
@@ -1064,7 +1139,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     input.engineData = n;
     _compileNode(n);
     _registerStatic(n);
-    _dirty.add(n);
+    _addDirty(n);
     return n;
   }
 
@@ -1222,7 +1297,11 @@ final class FormulaEngine implements EvalHost, CellSource {
     switch (d) {
       case _CellDep():
         (_cellDeps[d.key] ??= {}).add(n);
-        (_cellDepKeysBySheet[d.sheetId] ??= {}).add(d);
+        if ((_cellDepKeysBySheet[d.sheetId] ??= {}).add(d)) {
+          d.seq = ++_cellDepSeq;
+          (_cellDepsByRow[d.rowId] ??= {}).add(d);
+          (_cellDepsByCol[d.colId] ??= {}).add(d);
+        }
       case _RangeDep(:final range):
         _rangeIndex(range.sheetId).add(range, n);
     }
@@ -1237,11 +1316,24 @@ final class FormulaEngine implements EvalHost, CellSource {
           if (s.isEmpty) {
             _cellDeps.remove(d.key);
             _cellDepKeysBySheet[d.sheetId]?.remove(d);
+            _unindexCellDep(_cellDepsByRow, d.rowId, d);
+            _unindexCellDep(_cellDepsByCol, d.colId, d);
           }
         }
       case _RangeDep(:final range):
         _rangeIndexes[range.sheetId]?.remove(range, n);
     }
+  }
+
+  static void _unindexCellDep(
+    Map<String, Set<_CellDep>> byId,
+    String id,
+    _CellDep d,
+  ) {
+    final set = byId[id];
+    if (set == null) return;
+    set.remove(d);
+    if (set.isEmpty) byId.remove(id);
   }
 
   void _registerStatic(_Node n) {
@@ -1357,7 +1449,7 @@ final class FormulaEngine implements EvalHost, CellSource {
     if (!n.dirty) n.seed = n.hasValue && !n.cyclic ? n.value : null;
     n.dirty = true;
     n.cyclic = false;
-    _dirty.add(n);
+    _addDirty(n);
     work?.add(n);
   }
 
@@ -1634,7 +1726,7 @@ final class FormulaEngine implements EvalHost, CellSource {
           if (m.removed) continue;
           final old = m.value;
           m.dirty = true;
-          _dirty.add(m);
+          _addDirty(m);
           _evaluateNode(m);
           final nv = m.value;
           final d = (old is FNumber && nv is FNumber)
@@ -1654,7 +1746,7 @@ final class FormulaEngine implements EvalHost, CellSource {
       for (final m in members) {
         if (m.removed) continue;
         m.dirty = true;
-        _dirty.add(m);
+        _addDirty(m);
       }
       root.cycleRoot = true;
       rethrow;
@@ -2093,6 +2185,27 @@ final class FormulaEngine implements EvalHost, CellSource {
     final (compiled, slots) = compiler.compileStored(
       stored.startsWith('=') ? stored.substring(1) : stored,
     );
+    return _evaluateCompiled(
+      compiled,
+      slots,
+      sheet,
+      row,
+      col,
+      rowOffset,
+      colOffset,
+    );
+  }
+
+  /// Evaluates a compiled stored formula at a cell of [sheet] (detached).
+  FValue _evaluateCompiled(
+    CompiledFormula compiled,
+    List<StoredRef> slots,
+    SheetView sheet,
+    int row,
+    int col,
+    int rowOffset,
+    int colOffset,
+  ) {
     final ctx =
         EvalContext(
             host: this,
@@ -2178,12 +2291,11 @@ final class FormulaEngine implements EvalHost, CellSource {
     String stored, {
     required String sheetId,
     required CellPos anchor,
-  }) => CompiledRelative._(
-    this,
-    stored.startsWith('=') ? stored.substring(1) : stored,
-    sheetId,
-    anchor,
-  );
+  }) {
+    final body = stored.startsWith('=') ? stored.substring(1) : stored;
+    final (compiled, slots) = compiler.compileStored(body);
+    return CompiledRelative._(this, body, sheetId, anchor, compiled, slots);
+  }
 
   /// Compiles [formula] once for evaluation with values bound to [names] (pivot
   /// calculated fields, 07 §7.4; the binding is LET-like). In the formula a binding is
@@ -2527,17 +2639,35 @@ final class CompiledRelative {
   final String stored;
   final String sheetId;
   final CellPos anchor;
-  CompiledRelative._(this._engine, this.stored, this.sheetId, this.anchor);
+  final CompiledFormula _compiled;
+  final List<StoredRef> _slots;
+  CompiledRelative._(
+    this._engine,
+    this.stored,
+    this.sheetId,
+    this.anchor,
+    this._compiled,
+    this._slots,
+  );
 
   /// Evaluates the formula as if written at ([row], [col]).
-  FValue evaluate(int row, int col) => _engine.evaluateStored(
-    stored,
-    sheetId: sheetId,
-    row: row,
-    col: col,
-    rowOffset: row - anchor.row,
-    colOffset: col - anchor.col,
-  );
+  FValue evaluate(int row, int col) {
+    final e = _engine;
+    e._ensureLoaded();
+    final sheet = e.workbook.sheetById(sheetId);
+    if (sheet == null) {
+      return const FError(ErrorKind.ref, ErrorMessages.referenceDoesNotExist);
+    }
+    return e._evaluateCompiled(
+      _compiled,
+      _slots,
+      sheet,
+      row,
+      col,
+      row - anchor.row,
+      col - anchor.col,
+    );
+  }
 
   /// Truthiness for conditions: TRUE or a non-zero number (06 §15.3).
   bool test(int row, int col) {

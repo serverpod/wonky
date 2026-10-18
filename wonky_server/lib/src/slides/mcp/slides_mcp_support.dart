@@ -17,8 +17,8 @@ import '../headless/headless_deck.dart';
 /// [McpErrorCode].
 abstract final class SlidesErrorCode {
   static const invalidTarget = 'invalid_target';
-  static const beingEdited = 'being_edited';
-  static const limitExceeded = 'limit_exceeded';
+  static const beingEdited = McpErrorCode.beingEdited;
+  static const limitExceeded = McpErrorCode.limitExceeded;
   static const chartNoAccess = 'chart_no_access';
   static const chartExportDisabled = 'chart_export_disabled';
   static const chartNotFound = 'chart_not_found';
@@ -121,6 +121,10 @@ abstract final class SlidesMcp {
     ToolArgs a, {
     Role min = Role.viewer,
   }) => openRef(ctx, a.requireString('deck'), min: min);
+
+  /// [open] for a tool that edits the deck (Editor+).
+  static Future<SlidesTarget> edit(ToolContext ctx, ToolArgs a) =>
+      open(ctx, a, min: Role.editor);
 
   // ------------------------------------------------------------- slides
 
@@ -381,7 +385,7 @@ abstract final class SlidesMcp {
         return McpToolException(
           SlidesErrorCode.beingEdited,
           e.message,
-          details: {'targets': d['targets'] ?? const []},
+          details: {'targets': d['targets'] ?? const <Object?>[]},
         );
       }
     } on FormatException {

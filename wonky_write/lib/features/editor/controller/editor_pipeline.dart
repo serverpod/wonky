@@ -1,4 +1,5 @@
 import 'package:dart_quill_delta/dart_quill_delta.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:super_editor/super_editor.dart';
 
 import '../applier/delta_applier.dart';
@@ -25,6 +26,7 @@ class EditorPipeline {
     )
     onTransaction,
   }) : _newNodeId = newNodeId ?? Editor.createNodeId {
+    verifyInvariants ??= debugVerifyInvariants;
     document = mapper.documentFromDelta(initialDelta, newNodeId: _newNodeId);
     composer = MutableDocumentComposer();
     mirror = DocumentMirror(serializer: mapper.serializer)..rebuild(document);
@@ -36,7 +38,11 @@ class EditorPipeline {
     );
     editor = Editor(
       editables: {Editor.documentKey: document, Editor.composerKey: composer},
-      requestHandlers: [...requestHandlers, ...defaultRequestHandlers],
+      requestHandlers: [
+        ...requestHandlers,
+        // super_editor builds the list with an untyped List.unmodifiable.
+        ...defaultRequestHandlers.cast<EditRequestHandler>(),
+      ],
       reactionPipeline: [],
       // REQUIRED (Write 03 §4): undo is ours, never super_editor's.
       isHistoryEnabled: false,
@@ -55,6 +61,12 @@ class EditorPipeline {
       }),
     );
   }
+
+  /// Overrides the default of `verifyInvariants` (debug builds: on) for
+  /// pipelines created without it — the perf suite turns the full-document
+  /// checks off so it measures the editor, not the checks.
+  @visibleForTesting
+  static bool? debugVerifyInvariants;
 
   final DeltaDocumentMapper mapper;
   final String Function() _newNodeId;

@@ -140,9 +140,9 @@ void main() {
         // The watchdog reads the process RSS, and the killed guest's memory
         // goes back to the OS some time after the kill: until then, any run
         // would be stopped too. Wait for it, then the runner recovers.
-        final deadline = DateTime.now().add(const Duration(seconds: 30));
+        final watch = Stopwatch()..start();
         while (ProcessInfo.currentRss > limit &&
-            DateTime.now().isBefore(deadline)) {
+            watch.elapsed < const Duration(seconds: 30)) {
           await Future<void>.delayed(const Duration(milliseconds: 100));
         }
         final hello = await bench.run(program, 'hello');

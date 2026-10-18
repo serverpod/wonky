@@ -67,8 +67,21 @@ abstract final class BoardPosts {
     );
   }
 
+  /// Longest search text used (`list` query; `similar` title).
+  static const maxQueryLength = 200;
+
+  static String _clip(String s, int max) =>
+      s.length <= max ? s : s.substring(0, max);
+
   static Future<BoardPostPage> list(Session session, BoardListQuery q) async {
     final c = await BoardAccess.caller(session);
+    final query = q.query;
+    if (query != null && query.trim().isNotEmpty) {
+      if (!c.signedIn) await BoardRateLimits.checkSignedOut(session);
+      if (query.length > maxQueryLength) {
+        q = q.copyWith(query: _clip(query, maxQueryLength));
+      }
+    }
     final offset = int.tryParse(q.cursor ?? '')?.clamp(0, 1 << 30) ?? 0;
     final limit = q.limit <= 0
         ? defaultPageSize
@@ -103,7 +116,12 @@ abstract final class BoardPosts {
     final c = await BoardAccess.caller(session);
     if (c.signedIn) {
       await BoardRateLimits.check(BoardLimit.similarPerMinute, c);
+    } else {
+      await BoardRateLimits.checkSignedOut(session);
     }
+    // A draft's title and body: longer text adds nothing to the search.
+    title = _clip(title, maxQueryLength);
+    body = _clip(body, BoardText.maxBodyLength);
     final text = '$title ${BoardText.plain(body, max: 2000)}'.trim();
     if (text.isEmpty) return const [];
     var posts = await BoardSearch.similarPosts(
@@ -358,6 +376,8 @@ abstract final class BoardPosts {
     if (cleanTitle == post.title && cleanBody == post.body) {
       return BoardViews.post(session, c, post);
     }
+    // Every edit is triaged by Jev (shared daily budget).
+    await BoardRateLimits.check(BoardLimit.editsPerHour, c);
     var updated = await BoardPost.db.updateRow(
       session,
       post.copyWith(
@@ -367,6 +387,13 @@ abstract final class BoardPosts {
         summary: BoardText.plain(cleanBody),
         suggestedTitle: null,
       ),
+      columns: (t) => [
+        t.title,
+        t.body,
+        t.editedAt,
+        t.summary,
+        t.suggestedTitle,
+      ],
     );
     final wasVisible = updated.moderation == BoardModeration.visible;
     updated = await BoardPipeline.afterEdit(session, updated);

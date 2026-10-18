@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
@@ -61,6 +62,7 @@ class RenderGridPass extends RenderBox {
   set controller(SheetEditorController v) {
     if (v == _controller) return;
     _controller = v;
+    markNeedsLayout();
     markNeedsPaint();
   }
 
@@ -73,6 +75,7 @@ class RenderGridPass extends RenderBox {
 
   List<GridLayer> _layers;
   set layers(List<GridLayer> v) {
+    if (listEquals(v, _layers)) return;
     _layers = v;
     markNeedsPaint();
   }
@@ -92,6 +95,7 @@ class RenderGridPass extends RenderBox {
   set devicePixelRatio(double v) {
     if (v == _dpr) return;
     _dpr = v;
+    markNeedsLayout();
     markNeedsPaint();
   }
 
@@ -120,17 +124,16 @@ class RenderGridPass extends RenderBox {
   bool hitTestSelf(Offset position) => false;
 
   @override
+  void performLayout() {
+    // The viewport of the shared geometry (S-06): widgets and both passes
+    // read `controller.geometry`; nothing is written during paint.
+    if (overlay) _controller.setViewport(size, _dpr);
+  }
+
+  @override
   void paint(PaintingContext context, Offset offset) {
     final g = _controller.geometryFor(size, _dpr);
     if (g == null) return;
-    if (overlay) {
-      _controller.lastGeometry = g;
-      _controller.scroll.updateLimits(
-        maxX: g.maxScrollX,
-        maxY: g.maxScrollY,
-        viewport: g.main.rect.size,
-      );
-    }
     final canvas = context.canvas;
     canvas.save();
     canvas.translate(offset.dx, offset.dy);

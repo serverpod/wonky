@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'wonky_app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -574,6 +575,9 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get cmdSelectAll => 'Select all';
+
+  @override
+  String get cmdSetDescription => 'Edit description';
 
   @override
   String get cmdSetTheme => 'App theme';
@@ -5097,6 +5101,9 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get cmdSelectAll => '[Šéļéçţ åļļ one]';
+
+  @override
+  String get cmdSetDescription => '[Éðîţ ðéšçŕîþţîöñ one tw]';
 
   @override
   String get cmdSetTheme => '[Åþþ ţĥéɱé one]';

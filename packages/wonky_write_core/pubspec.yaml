@@ -9,7 +9,6 @@ resolution: workspace
 
 dependencies:
   archive: ^4.5.1
-  clock: ^1.1.3
   collection: ^1.19.1
   crypto: ^3.0.7
   dart_quill_delta: ^9.6.0
@@ -21,8 +20,6 @@ dependencies:
   uuid: ^4.6.0
   wonky_code:
     path: ../wonky_code
-  wonky_core:
-    path: ../wonky_core
   wonky_fonts:
     path: ../wonky_fonts
   wonky_rich_text:
@@ -30,5 +27,6 @@ dependencies:
   xml: ^7.0.1
 
 dev_dependencies:
-  lints: '>=3.0.0 <7.0.0'
+  wonky_lints:
+    path: ../wonky_lints
   test: ^1.25.5

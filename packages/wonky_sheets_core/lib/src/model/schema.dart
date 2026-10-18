@@ -2,7 +2,7 @@
 ///
 /// Row changes ([RowChange]) and the generic ingestion API of the
 /// `WorkbookModel` use these names. Column names equal the Serverpod field
-/// names of the `database: sync` models (relations become `<name>Id`).
+/// names of the RevLog table models (relations become `<name>Id`).
 ///
 /// Value types in column maps:
 /// - UUID columns (`id`, `…Id`, `createdBy`, …): canonical lower-case `String`

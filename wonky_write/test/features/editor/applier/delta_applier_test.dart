@@ -171,8 +171,8 @@ void main() {
               )!;
               final maxOffset = pipeline.mirror.length - 1;
               expect(actual, (
-                transformed.base.clamp(0, maxOffset),
-                transformed.extent.clamp(0, maxOffset),
+                transformed.anchor.clamp(0, maxOffset),
+                transformed.head.clamp(0, maxOffset),
               ), reason: reason);
             }
             pipeline.dispose();

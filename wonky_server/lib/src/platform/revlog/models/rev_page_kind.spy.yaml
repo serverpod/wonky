@@ -1,0 +1,6 @@
+enum: RevPageKind
+serialized: byName
+values:
+  - structure
+  - rows
+  - cells

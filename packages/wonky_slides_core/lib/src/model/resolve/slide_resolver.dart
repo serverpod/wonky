@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import '../../theme/builtins/builtin_themes.dart';
 import '../../theme/json/json_util.dart';
+import '../../theme/layout/placeholder_resolver.dart' show EffectivePlaceholder;
 import '../../theme/layout/placeholder_type.dart';
 import '../../theme/model/background.dart';
 import '../../theme/model/common.dart';
@@ -126,8 +128,17 @@ final class ResolvedSlide {
 }
 
 /// Resolves slides (02 §11 `SlideResolver`), memoized per slide revision
-/// (`DeckIndexes.revision`: a change to a layout, master, theme or the deck
-/// invalidates every slide) and appearance.
+/// (`DeckIndexes.revision`: a change to the slide's layout, master or
+/// theme or to a render-relevant deck column invalidates it) and
+/// appearance.
+///
+/// Resolved elements keep their identity across resolutions (CQ-43): an
+/// element whose inputs are unchanged — its row, the rows of its
+/// placeholder chain, the theme, the slide bounds and its group context —
+/// resolves to the identical [ResolvedElement], so the scene builder's node
+/// cache and the stage's per-element repaint boundaries survive edits of
+/// other elements. Master and layout decorations are shared by every slide
+/// that draws them.
 final class SlideResolver {
   /// Creates a resolver over [model].
   SlideResolver(
@@ -147,6 +158,14 @@ final class SlideResolver {
   final TextStyleResolver textStyles;
 
   final Map<String, (String, ResolvedSlide)> _memo = {};
+
+  /// Resolved elements by `<id>|<inherited>|<appearance>` (and field
+  /// placeholders by their own keys), reused while their inputs match.
+  final Map<String, _ElementMemo> _elements = {};
+  int _pruneAt = 4096;
+
+  /// Resolved elements created (memo misses) so far (tests).
+  int debugElementResolves = 0;
 
   static final Expando<DeckThemeData> _themeData = Expando('deckThemeData');
 
@@ -204,7 +223,52 @@ final class SlideResolver {
         : _resolveSurface(layout, master ?? _ix.themes.masterOf(layout!), app);
     if (r == null) return null;
     _memo[slideId] = (rev, r);
+    if (_elements.length > _pruneAt) _prune();
     return r;
+  }
+
+  /// Drops memoized elements whose row changed or is gone.
+  void _prune() {
+    _elements.removeWhere((_, m) => !identical(model.element(m.id), m.record));
+    _pruneAt = math.max(4096, _elements.length * 2);
+  }
+
+  /// [build]'s element, or the memoized one of [key] when [inputs] are
+  /// the same (identical objects, equal values).
+  ResolvedElement _memoized(
+    String key,
+    SlideElementRec record,
+    List<Object?> inputs,
+    ResolvedElement Function() build,
+  ) {
+    final hit = _elements[key];
+    if (hit != null &&
+        identical(hit.record, record) &&
+        _sameInputs(hit.inputs, inputs)) {
+      return hit.value;
+    }
+    debugElementResolves++;
+    final value = build();
+    _elements[key] = _ElementMemo(record, inputs, value);
+    return value;
+  }
+
+  static bool _sameInputs(List<Object?> a, List<Object?> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final x = a[i], y = b[i];
+      if (identical(x, y)) continue;
+      // Values (frames, numbers, strings, records of them) compare by
+      // value; rows, themes and resolved elements by identity.
+      if (x is SlidesRecord ||
+          x is ResolvedTheme ||
+          x is ResolvedElement ||
+          x is List) {
+        return false;
+      }
+      if (x != y) return false;
+    }
+    return true;
   }
 
   /// A layout ([layout] non-null) or master surface (05 §8.1).
@@ -239,27 +303,32 @@ final class SlideResolver {
     ResolvedElement withField(ResolvedElement e) {
       final field = e.parentId == null ? fieldOf(e.placeholderType) : null;
       if (field == null) return e;
-      return ResolvedElement(
-        record: e.record,
-        frame: e.frame,
-        rotation: e.rotation,
-        flipH: e.flipH,
-        flipV: e.flipV,
-        opacity: e.opacity,
-        inherited: e.inherited,
-        children: e.children,
-        placeholderType: e.placeholderType,
-        dangling: e.dangling,
-        fill: e.fill,
-        stroke: e.stroke,
-        effects: e.effects,
-        data: e.data,
-        textStyle: e.textStyle,
-        styleKey: e.styleKey,
-        textStyles: e.textStyles,
-        prompt: e.prompt,
-        fieldText: field,
-        parentId: e.parentId,
+      return _memoized(
+        'field|surface|${e.id}|${e.inherited}|${app.name}',
+        e.record,
+        [e, field],
+        () => ResolvedElement(
+          record: e.record,
+          frame: e.frame,
+          rotation: e.rotation,
+          flipH: e.flipH,
+          flipV: e.flipV,
+          opacity: e.opacity,
+          inherited: e.inherited,
+          children: e.children,
+          placeholderType: e.placeholderType,
+          dangling: e.dangling,
+          fill: e.fill,
+          stroke: e.stroke,
+          effects: e.effects,
+          data: e.data,
+          textStyle: e.textStyle,
+          styleKey: e.styleKey,
+          textStyles: e.textStyles,
+          prompt: e.prompt,
+          fieldText: field,
+          parentId: e.parentId,
+        ),
       );
     }
 
@@ -414,26 +483,32 @@ final class SlideResolver {
     final deck = model.deck;
     if (deck == null) return const [];
     final out = <ResolvedElement>[];
+    final box = bounds;
     void add(SlidePlaceholderType type, String text) {
       final def = _ix.placeholders.layoutPlaceholder(layout.id, type);
       if (def == null) return;
-      final r = _resolveOne(def, theme, null, inherited: true, children: []);
+      final r = _element(def, theme, box, inherited: true);
       out.add(
-        ResolvedElement(
-          record: r.record,
-          frame: r.frame,
-          rotation: r.rotation,
-          opacity: r.opacity,
-          inherited: true,
-          placeholderType: type,
-          fill: r.fill,
-          stroke: r.stroke,
-          effects: r.effects,
-          data: r.data,
-          textStyle: r.textStyle,
-          styleKey: r.styleKey,
-          textStyles: r.textStyles,
-          fieldText: text,
+        _memoized(
+          'field|${slide.id}|${type.name}|${theme.appearance.name}',
+          def,
+          [r, text],
+          () => ResolvedElement(
+            record: r.record,
+            frame: r.frame,
+            rotation: r.rotation,
+            opacity: r.opacity,
+            inherited: true,
+            placeholderType: type,
+            fill: r.fill,
+            stroke: r.stroke,
+            effects: r.effects,
+            data: r.data,
+            textStyle: r.textStyle,
+            styleKey: r.styleKey,
+            textStyles: r.textStyles,
+            fieldText: text,
+          ),
         ),
       );
     }
@@ -457,76 +532,124 @@ final class SlideResolver {
     required bool inherited,
     required bool Function(SlideElementRec) include,
   }) {
+    final box = bounds;
     List<ResolvedElement> level(
       String? parent,
       ElementFrame Function(ElementFrame)? toSlide,
       double parentOpacity,
-    ) {
-      final out = <ResolvedElement>[];
-      for (final e in tree.childrenOf(parent)) {
-        if (parent == null && !include(e)) continue;
-        final local = _resolveOne(
-          e,
-          theme,
-          slideId,
-          inherited: inherited,
-          children: const [],
-        );
-        final localFrame = ElementFrame.of(
-          local.frame,
-          rotation: local.rotation,
-          flipH: local.flipH,
-          flipV: local.flipV,
-        );
-        final f = toSlide == null ? localFrame : toSlide(localFrame);
-        var children = const <ResolvedElement>[];
-        if (e.kind == ElementKind.group) {
-          final cb = childBoundsOf(local.data) ?? local.frame;
-          ElementFrame map(ElementFrame c) {
-            final inParent = GroupSpace.toParent(c, localFrame, cb);
-            return toSlide == null ? inParent : toSlide(inParent);
-          }
-
-          children = level(e.id, map, parentOpacity * local.opacity);
-        }
-        out.add(
-          ResolvedElement(
-            record: e,
-            frame: f.rect,
-            rotation: f.rotation,
-            flipH: f.flipH,
-            flipV: f.flipV,
-            opacity: parentOpacity * local.opacity,
+      Object? context,
+    ) => [
+      for (final e in tree.childrenOf(parent))
+        if (parent != null || include(e))
+          _element(
+            e,
+            theme,
+            box,
             inherited: inherited,
-            children: children,
-            placeholderType: local.placeholderType,
-            dangling: local.dangling,
-            fill: local.fill,
-            stroke: local.stroke,
-            effects: local.effects,
-            data: local.data,
-            textStyle: local.textStyle,
-            styleKey: local.styleKey,
-            textStyles: local.textStyles,
-            prompt: local.prompt,
-            parentId: parent,
+            parent: parent,
+            toSlide: toSlide,
+            parentOpacity: parentOpacity,
+            context: context,
+            children: level,
           ),
-        );
-      }
-      return out;
-    }
+    ];
 
-    return level(null, null, 1);
+    return level(null, null, 1, null);
   }
 
+  /// Resolves [e] in its group context (memoized, see [SlideResolver]):
+  /// [toSlide] maps its local frame to slide space, [parentOpacity] is the
+  /// product of its ancestors' opacities and [context] describes both for
+  /// the memo (null at the top level). [children] resolves a group's
+  /// children.
+  ResolvedElement _element(
+    SlideElementRec e,
+    ResolvedTheme theme,
+    SuRect bounds, {
+    required bool inherited,
+    String? parent,
+    ElementFrame Function(ElementFrame)? toSlide,
+    double parentOpacity = 1,
+    Object? context,
+    List<ResolvedElement> Function(
+      String parent,
+      ElementFrame Function(ElementFrame) toSlide,
+      double parentOpacity,
+      Object? context,
+    )?
+    children,
+  }) {
+    final eff = _ix.placeholders.effective(e, bounds: bounds);
+    final opacity = eff.opacity.clamp(0, 1).toDouble();
+    final localFrame = ElementFrame.of(
+      eff.frame,
+      rotation: normalizeRotation(eff.rotation),
+      flipH: e.flipH,
+      flipV: e.flipV,
+    );
+    var kids = const <ResolvedElement>[];
+    if (e.kind == ElementKind.group && children != null) {
+      final cb = childBoundsOf(eff.data) ?? eff.frame;
+      ElementFrame map(ElementFrame c) {
+        final inParent = GroupSpace.toParent(c, localFrame, cb);
+        return toSlide == null ? inParent : toSlide(inParent);
+      }
+
+      kids = children(e.id, map, parentOpacity * opacity, (
+        context,
+        localFrame,
+        cb,
+        parentOpacity * opacity,
+      ));
+    }
+    return _memoized(
+      '${e.id}|$inherited|${theme.appearance.name}',
+      e,
+      [
+        theme,
+        bounds,
+        parent,
+        context,
+        parentOpacity,
+        eff.chain.length,
+        for (final id in eff.chain.skip(1)) model.element(id),
+        kids.length,
+        ...kids,
+      ],
+      () {
+        final f = toSlide == null ? localFrame : toSlide(localFrame);
+        final local = _resolveOne(e, theme, eff);
+        return ResolvedElement(
+          record: e,
+          frame: f.rect,
+          rotation: f.rotation,
+          flipH: f.flipH,
+          flipV: f.flipV,
+          opacity: parentOpacity * opacity,
+          inherited: inherited,
+          children: kids,
+          placeholderType: local.placeholderType,
+          dangling: local.dangling,
+          fill: local.fill,
+          stroke: local.stroke,
+          effects: local.effects,
+          data: local.data,
+          textStyle: local.textStyle,
+          styleKey: local.styleKey,
+          textStyles: local.textStyles,
+          prompt: local.prompt,
+          parentId: parent,
+        );
+      },
+    );
+  }
+
+  /// The element-local values of [e] from its placeholder chain [eff].
   ResolvedElement _resolveOne(
     SlideElementRec e,
     ResolvedTheme theme,
-    String? slideId, {
-    required bool inherited,
-    required List<ResolvedElement> children,
-  }) {
-    final eff = _ix.placeholders.effective(e, bounds: bounds);
+    EffectivePlaceholder eff,
+  ) {
     final holdsText = e.kind.hasText || (e.placeholderType?.holdsText ?? false);
     String? prompt;
     if (e.placeholderType != null &&
@@ -547,8 +670,7 @@ final class SlideResolver {
       flipH: e.flipH,
       flipV: e.flipV,
       opacity: eff.opacity.clamp(0, 1).toDouble(),
-      inherited: inherited,
-      children: children,
+      inherited: false,
       placeholderType: eff.type,
       dangling: eff.dangling,
       fill: eff.fill,
@@ -587,4 +709,15 @@ final class SlideResolver {
       return null;
     }
   }
+}
+
+/// A memoized resolved element and the inputs it was resolved from.
+final class _ElementMemo {
+  _ElementMemo(this.record, this.inputs, this.value);
+
+  final SlideElementRec record;
+  final List<Object?> inputs;
+  final ResolvedElement value;
+
+  String get id => record.id;
 }

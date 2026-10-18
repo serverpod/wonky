@@ -133,6 +133,7 @@ class _IoReportDialogState extends State<_IoReportDialog>
 
     return ShadDialog(
       key: const ValueKey<String>('dialog.ioReport'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(widget.title),
       description: Text(widget.summary),
       actions: [

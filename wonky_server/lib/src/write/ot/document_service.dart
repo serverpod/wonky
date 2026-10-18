@@ -21,6 +21,17 @@ abstract final class DocumentService {
   static const maxOpsPerRequest = 1000;
   static const opRetention = Duration(days: 30);
 
+  /// Below Editor, only the ops of the last this many revisions can be
+  /// read (catching up); older ops are history (Editor+).
+  static const recentOpWindow = 1000;
+
+  /// The oldest revision whose op [role] may read at [headRevision].
+  static int oldestOpFor(Role role, int headRevision) {
+    if (role >= Role.editor) return 1;
+    final oldest = headRevision - recentOpWindow + 1;
+    return oldest < 1 ? 1 : oldest;
+  }
+
   static Future<(Document, DriveItem, Role)> require(
     Session session,
     Actor actor,
@@ -84,8 +95,12 @@ abstract final class DocumentService {
     int fromRevision,
     int toRevision,
   ) async {
-    final (doc, _, _) = await require(session, actor, documentUuid);
+    final (doc, _, role) = await require(session, actor, documentUuid);
     if (toRevision < fromRevision) return const [];
+    if ((fromRevision < 1 ? 1 : fromRevision) <
+        oldestOpFor(role, doc.headRevision)) {
+      throw Errors.forbidden('Viewing history requires edit access.');
+    }
     final to = toRevision.clamp(0, fromRevision + maxOpsPerRequest - 1);
     final ops = await DocumentOp.db.find(
       session,
@@ -163,12 +178,11 @@ abstract final class DocumentService {
     } on FormatException {
       throw Errors.invalid('The value is not valid JSON.');
     }
-    late Document updated;
     late String beforeJson;
     late String afterJson;
+    UuidValue? themeId;
     switch (patch.field) {
       case 'themeId':
-        UuidValue? themeId;
         if (value != null) {
           if (value is! String) throw Errors.invalid('themeId must be a UUID.');
           themeId = UuidValue.withValidation(value);
@@ -187,12 +201,10 @@ abstract final class DocumentService {
           afterJson = jsonEncode({'themeId': null});
         }
         beforeJson = jsonEncode({'themeId': doc.themeId?.uuid});
-        updated = _withMeta(doc, themeId: themeId, clearTheme: themeId == null);
       case 'pageSetup':
         if (value is! Map) throw Errors.invalid('pageSetup must be an object.');
         beforeJson = doc.pageSetupJson;
         afterJson = canonicalJsonEncode(value);
-        updated = doc.copyWith(pageSetupJson: afterJson);
       case 'language':
         if (value != null &&
             (value is! String ||
@@ -203,11 +215,6 @@ abstract final class DocumentService {
         }
         beforeJson = jsonEncode(doc.language);
         afterJson = jsonEncode(value);
-        updated = _withMeta(
-          doc,
-          language: value as String?,
-          clearLanguage: value == null,
-        );
       case 'frontMatter':
         if (value != null && value is! String) {
           throw Errors.invalid('frontMatter must be a string.');
@@ -217,33 +224,50 @@ abstract final class DocumentService {
         }
         beforeJson = jsonEncode(doc.frontMatter);
         afterJson = jsonEncode(value);
-        updated = _withMeta(
-          doc,
-          frontMatter: value as String?,
-          clearFrontMatter: value == null,
-        );
     }
-    await session.db.transaction((tx) async {
-      await Document.db.updateRow(
-        session,
-        updated.copyWith(updatedAt: nowUtc()),
-        transaction: tx,
-      );
-      await DocumentMetaChange.db.insertRow(
-        session,
-        DocumentMetaChange(
-          documentId: doc.id!,
-          field: patch.field,
-          clientOpId: clientOpId,
-          beforeJson: beforeJson,
-          afterJson: afterJson,
-          authorId: actor.userId,
-          actorKind: actor.kind,
-          createdAt: nowUtc(),
-        ),
-        transaction: tx,
-      );
-    });
+    final now = nowUtc();
+    try {
+      await session.db.transaction((tx) async {
+        // Only the changed column: the row read above is stale as soon as
+        // an op commits (a full-row write would roll back headRevision).
+        await Document.db.updateWhere(
+          session,
+          columnValues: (t) => [
+            switch (patch.field) {
+              'themeId' => t.themeId(themeId),
+              'pageSetup' => t.pageSetupJson(afterJson),
+              'language' => t.language(value as String?),
+              _ => t.frontMatter(value as String?),
+            },
+            t.updatedAt(now),
+          ],
+          where: (t) => t.id.equals(doc.id!),
+          transaction: tx,
+        );
+        await DocumentMetaChange.db.insertRow(
+          session,
+          DocumentMetaChange(
+            documentId: doc.id!,
+            field: patch.field,
+            clientOpId: clientOpId,
+            beforeJson: beforeJson,
+            afterJson: afterJson,
+            authorId: actor.userId,
+            actorKind: actor.kind,
+            createdAt: now,
+          ),
+          transaction: tx,
+        );
+      });
+    } on DatabaseQueryException catch (e) {
+      // A concurrent resend of the same change won the race.
+      if (e.code == '23505' &&
+          (e.constraintName == 'document_meta_change_client_idx' ||
+              e.message.contains('document_meta_change_client_idx'))) {
+        return;
+      }
+      rethrow;
+    }
     await DocumentBus.metaChanged(
       session,
       doc.uuid,
@@ -255,56 +279,97 @@ abstract final class DocumentService {
     );
   }
 
-  static Document _withMeta(
-    Document d, {
-    UuidValue? themeId,
-    bool clearTheme = false,
-    String? language,
-    bool clearLanguage = false,
-    String? frontMatter,
-    bool clearFrontMatter = false,
-  }) => Document(
-    id: d.id,
-    uuid: d.uuid,
-    itemId: d.itemId,
-    headRevision: d.headRevision,
-    latestSnapshotRevision: d.latestSnapshotRevision,
-    themeId: clearTheme ? null : (themeId ?? d.themeId),
-    pageSetupJson: d.pageSetupJson,
-    language: clearLanguage ? null : (language ?? d.language),
-    frontMatter: clearFrontMatter ? null : (frontMatter ?? d.frontMatter),
-    charCount: d.charCount,
-    wordCount: d.wordCount,
-    createdAt: d.createdAt,
-    updatedAt: d.updatedAt,
-  );
+  /// Documents handled per round of [pruneOps].
+  static const pruneBatch = 100;
 
   /// Daily job: deletes ops older than [opRetention], after making sure a
   /// snapshot exists at the newest pruned revision (materialization of later
-  /// revisions and versions keeps working).
-  static Future<int> pruneOps(Session session, {DateTime? now}) async {
+  /// revisions and versions keeps working), and the snapshots below that
+  /// revision except those of versions (Write 02 §3). Works in rounds of
+  /// [pruneBatch] documents until nothing is left or [budget] is spent.
+  static Future<int> pruneOps(
+    Session session, {
+    DateTime? now,
+    Duration budget = const Duration(minutes: 5),
+  }) async {
     final cutoff = (now ?? nowUtc()).subtract(opRetention);
-    final rows = await session.db.unsafeQuery(
-      r'''
-      SELECT "documentId", max(revision) FROM document_op
-      WHERE "createdAt" < @cutoff GROUP BY "documentId" LIMIT 500
-      ''',
-      parameters: QueryParameters.named({'cutoff': cutoff}),
-    );
+    final watch = Stopwatch()..start();
+    // Documents that failed this run (not offered again).
+    final skip = <int>{};
     var pruned = 0;
-    for (final row in rows) {
-      final doc = await Document.db.findById(session, row[0] as int);
-      if (doc == null) continue;
-      final upTo = row[1] as int;
-      final content = await DocumentStore.contentAt(session, doc, upTo);
-      await DocumentStore.writeSnapshot(session, doc, upTo, content);
-      pruned += await DocumentOp.db
-          .deleteWhere(
+    while (watch.elapsed < budget) {
+      final rows = await session.db.unsafeQuery(
+        '''
+        SELECT "documentId", max(revision) FROM document_op
+        WHERE "createdAt" < @cutoff
+        ${skip.isEmpty ? '' : 'AND "documentId" NOT IN (${skip.join(',')})'}
+        GROUP BY "documentId" LIMIT $pruneBatch
+        ''',
+        parameters: QueryParameters.named({'cutoff': cutoff}),
+      );
+      if (rows.isEmpty) break;
+      for (final row in rows) {
+        final documentId = row[0] as int;
+        try {
+          final count = await _pruneDocument(
             session,
-            where: (t) => t.documentId.equals(doc.id!) & (t.revision <= upTo),
-          )
-          .then((r) => r.length);
+            documentId,
+            row[1] as int,
+          );
+          if (count == 0) skip.add(documentId);
+          pruned += count;
+        } on Object catch (e, st) {
+          skip.add(documentId);
+          session.log(
+            'Pruning the ops of document $documentId failed: $e',
+            level: LogLevel.error,
+            stackTrace: st,
+          );
+        }
+        if (watch.elapsed >= budget) break;
+      }
     }
     return pruned;
+  }
+
+  /// Prunes the ops of one document up to [upTo]; returns their number.
+  static Future<int> _pruneDocument(
+    Session session,
+    int documentId,
+    int upTo,
+  ) async {
+    final doc = await Document.db.findById(session, documentId);
+    if (doc == null) return 0;
+    final content = await DocumentStore.contentAt(session, doc, upTo);
+    await DocumentStore.writeSnapshot(session, doc, upTo, content);
+    return session.db.transaction((tx) async {
+      final count = await session.db.unsafeExecute(
+        r'''
+        DELETE FROM document_op
+        WHERE "documentId" = @doc AND revision <= @upTo
+        ''',
+        parameters: QueryParameters.named({'doc': documentId, 'upTo': upTo}),
+        transaction: tx,
+      );
+      // Below upTo a snapshot only serves its own revision: keep those of
+      // versions (restores, diffs), drop the rest.
+      await session.db.unsafeExecute(
+        r'''
+        DELETE FROM document_snapshot s
+        WHERE s."documentId" = @doc AND s.revision < @upTo
+          AND NOT EXISTS (
+            SELECT 1 FROM item_version v
+            WHERE v."itemId" = @item AND v.revision = s.revision
+          )
+        ''',
+        parameters: QueryParameters.named({
+          'doc': documentId,
+          'upTo': upTo,
+          'item': doc.itemId,
+        }),
+        transaction: tx,
+      );
+      return count;
+    });
   }
 }

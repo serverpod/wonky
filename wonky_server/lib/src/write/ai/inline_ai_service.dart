@@ -4,12 +4,9 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_write_core/wonky_write_core.dart';
 
-import '../../platform/ai/ai_keys.dart';
+import '../../platform/ai/ai_call.dart';
 import '../../platform/ai/ai_models.dart';
-import '../../platform/ai/ai_usage_service.dart';
 import '../../platform/ai/llm/ai_client.dart';
-import '../../platform/ai/assistant_service.dart'
-    show AssistantErrors, AssistantService;
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
 import '../../platform/common/models.dart';
@@ -41,6 +38,30 @@ abstract final class InlineAiService {
   /// Words of context before the caret for continue writing.
   static const continueContextWords = 3000;
 
+  /// Most characters of one text field of a request (CQ-31: client text
+  /// goes into the prompt, so it is capped on the server).
+  static const maxFieldChars = 50000;
+
+  /// Throws `tooLarge` when a text field of [req] is longer than
+  /// [maxFieldChars].
+  static void checkInputSizes(InlineAiRequest req) {
+    for (final (name, value) in [
+      ('selectedMarkdown', req.selectedMarkdown),
+      ('contextBefore', req.contextBefore),
+      ('contextAfter', req.contextAfter),
+      ('instruction', req.instruction),
+      ('previousOutput', req.previousOutput),
+      ('tone', req.tone),
+      ('targetLanguage', req.targetLanguage),
+    ]) {
+      if ((value?.length ?? 0) > maxFieldChars) {
+        throw Errors.tooLarge(
+          'The text is too long for AI ($name). Select less text.',
+        );
+      }
+    }
+  }
+
   static Future<Stream<InlineAiEvent>> run(
     Session session,
     Actor actor,
@@ -53,68 +74,37 @@ abstract final class InlineAiService {
     if (!isRewrite && !isContinue && !panelActions.contains(action)) {
       throw Errors.invalid('Unknown AI action "$action".');
     }
-    await AiUsageService.requireAvailable(session, actor.userId);
+    checkInputSizes(req);
+    final ai = await AiCall.open(session, actor);
     final target = await HeadlessDocumentEditor.resolve(
       session,
       actor,
       req.itemUuid,
       min: isRewrite || isContinue ? Role.commenter : Role.viewer,
     );
-    final backend = await AiKeys.backendFor(session, actor.userId);
-    if (backend == null) {
-      throw WonkyException(
-        code: WonkyErrorCode.unavailable,
-        message: AiUsageService.notConfiguredMessage,
-      );
-    }
-    final quality = await AiUsageService.quality(session, actor.userId);
+    final quality = await ai.quality(session);
     final ctx = await WriteContextBuilder.load(session, target);
-    final release = AiUsageService.acquire(actor.userId);
     final request = build(
       req,
       ctx,
       quality,
-      model: backend.model,
+      model: ai.model,
       userId: actor.userId,
     );
-    final client = backend.client;
-    final cancel = AiCancelToken();
-    final out = StreamController<InlineAiEvent>();
-    out.onCancel = cancel.cancel;
-    Future<void> body() async {
-      final s = runSession == null
-          ? await session.serverpod.createSession(enableLogging: false)
-          : await runSession();
-      try {
-        final msg = await client.send(
+    // Last, right before the run starts: the run holds the slot until it
+    // ends.
+    return ai.stream(
+      session,
+      runSession: runSession,
+      (s, cancel, emit) async {
+        final msg = await ai.send(
+          s,
           request,
           cancel: cancel,
-          onText: (t) {
-            if (!out.isClosed) {
-              out.add(
-                InlineAiEvent(type: InlineAiEventType.textDelta, text: t),
-              );
-            }
-          },
+          onText: (t) =>
+              emit(InlineAiEvent(type: InlineAiEventType.textDelta, text: t)),
         );
-        await AiUsageService.record(
-          s,
-          userId: actor.userId,
-          model: msg.model ?? request.model,
-          feature: request.feature,
-          usage: msg.usage,
-        );
-        if (out.isClosed) return;
-        if (msg.stopReason == AiStopReason.refusal) {
-          out.add(
-            InlineAiEvent(
-              type: InlineAiEventType.refusal,
-              error: AssistantService.refusalText,
-            ),
-          );
-          return;
-        }
-        out.add(
+        emit(
           InlineAiEvent(
             type: InlineAiEventType.done,
             markdown: clean(msg.text, keepLeadingSpace: isContinue),
@@ -123,49 +113,9 @@ abstract final class InlineAiService {
                 : null,
           ),
         );
-      } on AiCancelledException {
-        // Discarded by the user.
-      } on AiApiException catch (e) {
-        if (!out.isClosed && e.type == 'refusal') {
-          out.add(
-            InlineAiEvent(
-              type: InlineAiEventType.refusal,
-              error: AssistantService.refusalText,
-            ),
-          );
-        } else if (!out.isClosed) {
-          out.add(
-            InlineAiEvent(
-              type: InlineAiEventType.error,
-              error: AssistantErrors.message(e),
-              errorCode: AssistantErrors.code(e),
-            ),
-          );
-        }
-      } finally {
-        if (runSession == null) await s.close();
-      }
-    }
-
-    unawaited(
-      body()
-          .catchError((Object e) {
-            if (!out.isClosed) {
-              out.add(
-                InlineAiEvent(
-                  type: InlineAiEventType.error,
-                  error: 'Something went wrong. Please try again.',
-                  errorCode: 'internal',
-                ),
-              );
-            }
-          })
-          .whenComplete(() {
-            release();
-            if (!out.isClosed) unawaited(out.close());
-          }),
+      },
+      onFailure: (f) => f.inlineEvent,
     );
-    return out.stream;
   }
 
   /// The model request of [req] (pure; tests check prompts and tiers).

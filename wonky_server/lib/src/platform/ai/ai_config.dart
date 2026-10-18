@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:serverpod/serverpod.dart';
-import 'package:yaml/yaml.dart';
 
 import '../common/models.dart';
 import '../config/wonky_config.dart';
+import '../config/wonky_config_file.dart';
 import 'ai_models.dart';
 import 'llm/ai_client.dart';
 import 'llm/dartantic_ai_client.dart';
@@ -40,6 +40,8 @@ class AiProviderModels {
 ///     maxConcurrentRequests: 2      # per user
 ///     requestTimeoutMinutes: 10
 ///     maxToolRounds: 30             # model requests per assistant run
+///     historyTokenBudget: 100000    # thread history per request (estimate)
+///     maxRunTokens: 600000          # budget tokens per assistant run
 /// ```
 ///
 /// Server API keys are Serverpod passwords (`config/passwords.yaml` or
@@ -60,6 +62,8 @@ class AiConfig {
     this.maxConcurrentRequests = 2,
     this.requestTimeout = const Duration(minutes: 10),
     this.maxToolRounds = 30,
+    this.historyTokenBudget = 100000,
+    this.maxRunTokens = 600000,
   }) : serverKeys = {
          for (final e in serverKeys.entries)
            if (e.value.trim().isNotEmpty) e.key: e.value.trim(),
@@ -101,6 +105,15 @@ class AiConfig {
 
   /// Model requests per assistant run before it stops.
   final int maxToolRounds;
+
+  /// Estimated tokens of thread history sent with each request: older tool
+  /// results are elided, then the oldest exchanges left out
+  /// (`AssistantHistory.fit`, CQ-31).
+  final int historyTokenBudget;
+
+  /// Budget tokens one assistant run may use before it stops (input and
+  /// output of all its rounds).
+  final int maxRunTokens;
 
   /// The provider the server's own key is used with (null = no server key).
   AiProvider? get serverProvider {
@@ -158,25 +171,16 @@ class AiConfig {
   }
 
   static AiConfig _load() {
-    String runMode;
     final keys = <AiProvider, String>{};
+    final section = WonkyConfigFile.section('ai');
     try {
       final pod = Serverpod.instance;
-      runMode = pod.runMode;
       for (final e in passwordNames.entries) {
         final k = pod.getPassword(e.value);
         if (k != null) keys[e.key] = k;
       }
-    } on Object {
-      runMode = ServerpodRunMode.development;
-    }
-    final file = File('${Directory.current.path}/config/$runMode.yaml');
-    Map<dynamic, dynamic> section = const {};
-    if (file.existsSync()) {
-      final yaml = loadYaml(file.readAsStringSync());
-      if (yaml is Map && yaml['wonky'] is Map && yaml['wonky']['ai'] is Map) {
-        section = yaml['wonky']['ai'] as Map;
-      }
+    } on StateError {
+      // No server (unit tests, tools): no server keys.
     }
     return fromMap(
       section,
@@ -259,6 +263,12 @@ class AiConfig {
         ),
       ),
       maxToolRounds: i('maxToolRounds', 'WONKY_AI_MAX_TOOL_ROUNDS', 30),
+      historyTokenBudget: i(
+        'historyTokenBudget',
+        'WONKY_AI_HISTORY_TOKEN_BUDGET',
+        100000,
+      ),
+      maxRunTokens: i('maxRunTokens', 'WONKY_AI_MAX_RUN_TOKENS', 600000),
     );
   }
 }

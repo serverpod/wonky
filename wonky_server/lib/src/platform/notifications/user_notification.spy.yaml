@@ -13,6 +13,18 @@ fields:
   readAt: DateTime?
   ### When it was included in an email digest.
   emailedAt: DateTime?, scope=serverOnly
+  ### Waiting to be emailed: set when its kind was set to email at creation,
+  ### cleared when an email claims it (before sending), when it was read, or
+  ### after the 2-day email window. Keeps the digest scan to the rows that
+  ### still need an email.
+  emailPending: bool?, default=false, scope=serverOnly
 indexes:
   notification_user_idx:
     fields: userId, createdAt
+  ### The digest's pending rows (a stand-in for a partial index: the
+  ### pending ones are a small prefix) and the retention job.
+  notification_email_idx:
+    fields: emailPending, createdAt
+  notification_created_idx:
+    fields: createdAt
+    type: brin

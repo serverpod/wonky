@@ -65,7 +65,8 @@ void main() {
         findsOneWidget,
       );
       final d = s.services.openDialogs.whereType<McpDescribableDialog>().last;
-      final fields = (d.describe()['fields']! as List).cast<Map>();
+      final fields = (d.describe()['fields']! as List)
+          .cast<Map<Object?, Object?>>();
       final sep = fields.firstWhere((f) => f['id'] == 'separator');
       expect(sep['detected'], ';');
       expect(tester.takeException(), isNull);

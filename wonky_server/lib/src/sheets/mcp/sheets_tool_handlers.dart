@@ -3,7 +3,7 @@ import 'package:wonky_core/wonky_core.dart'
     show DriveTools, McpToolDefinition, Role, SheetsTools;
 import 'package:wonky_sheets_core/model.dart' show Dimension;
 
-import '../../platform/common/models.dart' show ChangeLog, ServerChangeRecord;
+import '../../platform/common/models.dart' show RevOp, ServerChangeRecord;
 import '../../platform/drive/drive_service.dart';
 import '../../platform/drive/templates/builtin_templates.dart';
 import '../../platform/mcp/drive_tool_handlers.dart';
@@ -143,8 +143,9 @@ abstract final class SheetsToolHandlers {
     );
   }
 
-  /// The `ChangeLog` id of the committed change [changeId] (null when it
-  /// can't be found).
+  /// The file revision of the committed change [changeId] (its last op;
+  /// null when it can't be found): a client whose replica reached it has
+  /// the change (RevLog spec 04 §2).
   static Future<String?> syncVersionOf(ToolContext ctx, String changeId) async {
     try {
       final id = UuidValue.withValidation(changeId);
@@ -153,15 +154,14 @@ abstract final class SheetsToolHandlers {
         where: (t) => t.changeId.equals(id),
       );
       if (record == null) return null;
-      final log = await ChangeLog.db.findFirstRow(
+      final recordId = record.recordId;
+      if (recordId == null) return null;
+      final op = await RevOp.db.findFirstRow(
         ctx.session,
-        where: (t) =>
-            t.spreadsheetId.equals(record.spreadsheetUuid) &
-            t.userId.equals(ctx.actor.authUserId) &
-            t.sessionId.equals('server:${ctx.actor.kind.name}'),
-        orderBy: (t) => t.at.desc(),
+        where: (t) => t.recordId.equals(recordId),
+        orderBy: (t) => t.revision.desc(),
       );
-      return log?.id.uuid;
+      return op == null ? null : '${op.revision}';
     } on Object {
       return null;
     }

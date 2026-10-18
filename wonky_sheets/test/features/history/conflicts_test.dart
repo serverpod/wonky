@@ -1,8 +1,7 @@
-import 'dart:convert';
-
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wonky_client/wonky_client.dart'
-    show ActorKind, ChangeLog, PresenceRoster, UuidValue;
+import 'package:wonky_client/wonky_client.dart' show PresenceRoster;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart' show RevOpMeta;
 import 'package:wonky_sheets/features/history/local_conflicts.dart';
 import 'package:wonky_sheets_core/model.dart' hide ActorKind;
 
@@ -15,7 +14,7 @@ void main() {
   group('Given edits made offline', () {
     late CollabHarness s;
     late bool offline;
-    late List<ChangeLog> logs;
+    late List<RevOpMeta> logs;
     late SheetsConflicts conflicts;
 
     /// A write by Bo that reached us through sync (not a local command).
@@ -35,17 +34,14 @@ void main() {
       );
       final after = sheet.cellAt(r.rect.top, r.rect.left)?.content;
       logs.add(
-        ChangeLog(
-          spreadsheetId: UuidValue.fromString(s.session.spreadsheetId),
-          id: UuidValue.fromString(
-            '01900000-0000-7000-8000-${logs.length.toString().padLeft(12, '0')}',
-          ),
-          userId: UuidValue.fromString(boUuid),
-          actorKind: ActorKind.user,
+        RevOpMeta(
+          revision: logs.length + 1,
+          authorUuid: boUuid,
+          actorKind: 'user',
           sessionId: 'bo',
           label: 'Edit',
-          summaryJson: ChangeSummary(sheets: {s.sheetId}).encode(),
-          detailJson: jsonEncode({
+          summary: ChangeSummary(sheets: {s.sheetId}).toJson(),
+          detail: {
             'cells': [
               {
                 's': s.sheetId,
@@ -55,8 +51,8 @@ void main() {
                 'a': after,
               },
             ],
-          }),
-          at: DateTime.now().toUtc(),
+          },
+          committedAt: clock.now().toUtc(),
         ),
       );
     }
@@ -134,15 +130,14 @@ void main() {
       offline = false;
       s.session.execute(SortRange(range, [SortKeySpec(col, ascending: false)]));
       logs.add(
-        ChangeLog(
-          spreadsheetId: UuidValue.fromString(s.session.spreadsheetId),
-          id: UuidValue.fromString('01900000-0000-7000-8000-00000000bbbb'),
-          userId: UuidValue.fromString(boUuid),
-          actorKind: ActorKind.user,
+        RevOpMeta(
+          revision: logs.length + 1,
+          authorUuid: boUuid,
+          actorKind: 'user',
           sessionId: 'bo',
           label: 'Sort range',
-          summaryJson: ChangeSummary(sheets: {s.sheetId}).encode(),
-          at: DateTime.now().toUtc(),
+          summary: ChangeSummary(sheets: {s.sheetId}).toJson(),
+          committedAt: clock.now().toUtc(),
         ),
       );
 
@@ -157,15 +152,14 @@ void main() {
       final rowId = s.sheet.rows.idAt(4);
       s.session.execute(DeleteDimension(s.sheetId, Dimension.rows, [rowId]));
       logs.add(
-        ChangeLog(
-          spreadsheetId: UuidValue.fromString(s.session.spreadsheetId),
-          id: UuidValue.fromString('01900000-0000-7000-8000-00000000aaaa'),
-          userId: UuidValue.fromString(boUuid),
-          actorKind: ActorKind.user,
+        RevOpMeta(
+          revision: logs.length + 1,
+          authorUuid: boUuid,
+          actorKind: 'user',
           sessionId: 'bo',
           label: 'Delete row',
-          summaryJson: (ChangeSummary()..addDeleted('rows', rowId)).encode(),
-          at: DateTime.now().toUtc(),
+          summary: (ChangeSummary()..addDeleted('rows', rowId)).toJson(),
+          committedAt: clock.now().toUtc(),
         ),
       );
       final found = await conflicts.check();

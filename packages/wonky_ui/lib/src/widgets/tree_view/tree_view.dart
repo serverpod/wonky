@@ -235,7 +235,7 @@ class _WonkyTreeViewState<T> extends State<WonkyTreeView<T>> {
   @override
   void initState() {
     super.initState();
-    widget.controller.ensureLoaded();
+    unawaited(widget.controller.ensureLoaded());
   }
 
   @override
@@ -282,7 +282,7 @@ class _WonkyTreeViewState<T> extends State<WonkyTreeView<T>> {
       _moveFocus(rows, rows.length - 1);
     } else if (key == LogicalKeyboardKey.arrowRight) {
       if (row.node.hasChildren && !c.isExpanded(row.node.id)) {
-        c.expand(row.node.id);
+        unawaited(c.expand(row.node.id));
       } else if (c.isExpanded(row.node.id) &&
           index + 1 < rows.length &&
           rows[index + 1].parentId == row.node.id) {
@@ -302,7 +302,7 @@ class _WonkyTreeViewState<T> extends State<WonkyTreeView<T>> {
     } else if (key == LogicalKeyboardKey.f2 && widget.onRename != null) {
       c.startRename(row.node.id);
     } else if (event.character == '*') {
-      c.expandSiblings(row.node.id);
+      unawaited(c.expandSiblings(row.node.id));
     } else {
       return KeyEventResult.ignored;
     }

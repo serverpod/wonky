@@ -27,7 +27,7 @@ class SheetsPdfFonts implements PdfFontProvider {
   static Future<SheetsPdfFonts> _load() async {
     Future<ByteData?> asset(String f) async {
       try {
-        return await rootBundle.load('assets/fonts/$f');
+        return await rootBundle.load('$fontAssetDir/$f');
       } catch (_) {
         return null;
       }

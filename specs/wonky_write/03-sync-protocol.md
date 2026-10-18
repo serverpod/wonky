@@ -39,7 +39,7 @@ prefix to keep the client namespace clean: `DocSubmitOp`, `DocCursorUpdate`, `Do
 |---------|--------|---------|
 | `SubmitOp` | `clientOpId`, `baseRevision`, `deltaJson`, `kind` | A local change based on `baseRevision` |
 | `CursorUpdate` | `revision`, `anchor`, `head`, `focused` | Local selection as Delta offsets at `revision` (throttled 10/s) |
-| `RequestOps` | `fromRevision`, `toRevision` | Gap fill |
+| `RequestOps` | `fromRevision`, `toRevision` | Gap fill. Below Editor (and in `getOps`) only the ops of the last 1,000 revisions are served; older ops are history (Editor+, like old snapshots) |
 | `Ping` | `t` | Keepalive / latency measurement |
 
 ### 1.2 Server → client
@@ -61,11 +61,16 @@ prefix to keep the client namespace clean: `DocSubmitOp`, `DocCursorUpdate`, `Do
 Per document, operations are serialized across server instances with a **Postgres row lock**
 on `document` (`SELECT … FOR UPDATE` in a transaction); within one instance an in-memory
 `DocumentSession` (per document, created on first connect, disposed 60 s after the last client
-leaves) caches the head document Delta and recent ops (last 1,000) to avoid DB reads.
+leaves, or 60 s after its last headless use by MCP, AI or a restore) caches the head document
+Delta and recent ops (last 1,000) to avoid DB reads.
 
 On `SubmitOp(clientOpId, base, A)`:
-1. **Idempotency**: if `(documentId, clientOpId)` exists → reply `Ack` with its revision.
-2. **Permission**: role ≥ editor, or commenter-restricted op (§5).
+1. **Idempotency**: if `(documentId, clientOpId)` exists → reply `Ack` with its revision. Checked
+   again after the row lock (step 3), and a unique violation on `clientOpId` is also a duplicate,
+   so a resend racing on another socket or instance gets the same `Ack`.
+2. **Permission and size**: role ≥ editor, or commenter-restricted op (§5). Ops over 1 MiB of
+   JSON or with more than 20,000 components → `OpRejected(code: tooLarge)` before they are
+   decoded or transformed (server-computed restores are exempt).
 3. Lock the document row; load `head`.
 4. If `base < head`: load ops `base+1…head` (cache or DB), compose them into `S`, and transform:
    `A' = S.transform(A, true)` (server ops win ties: their inserts go first).
@@ -74,12 +79,27 @@ On `SubmitOp(clientOpId, base, A)`:
    embed identity rule, trailing newline) → final `A''`; validate `D'` with
    `WonkyDeltaValidator`; reject if invalid (`code: invalidOp`).
 6. Insert `DocumentOp(revision: head+1, delta: A'', inverse: A''.invert(head doc))`, update
-   `document.headRevision`, stats (char/word counts every 50 ops), `DriveItem.modifiedAt`
-   (throttled 10 s) and `ActivityEvent` (aggregated). Commit.
-7. Reply `Ack` to the author; publish `RemoteOp` on `session.messages` channel
-   `doc:<documentUuid>` (global scope when Redis enabled). Every instance's `DocumentSession`
-   forwards to its connected clients except the author's session.
-8. Every 500 revisions create a `DocumentSnapshot` asynchronously.
+   `document.headRevision` and stats (char/word counts every 50 ops). Commit.
+7. Publish `RemoteOp` on `session.messages` channel `doc:<documentUuid>` (global scope when
+   Redis enabled; posted with `immediate: true`, so other instances get it without waiting for
+   the next bus batch, [13 §4](../13-security-and-operations.md)) and reply `Ack` to the author.
+   Every instance's `DocumentSession` forwards to its connected clients except the author's
+   session.
+8. Side effects run after the per-document lock is released, one after the other per document
+   (so the next op doesn't wait for them): the comment/suggestion thread lifecycle (Write 08
+   §1.4, only for ops with overlay transitions) and, every 500 revisions, a `DocumentSnapshot`.
+   The **bookkeeping** — activity log, version capture state, "last edited by me",
+   `DriveItem.modifiedAt` (throttled 10 s), search text and size (30 s) — is only counted in
+   memory per op (`PendingEdits`, `write/ot/edit_bookkeeping.dart`) and written in one batch for
+   all editors 5 s after the first unflushed op, and whenever the document settles: a connection
+   closes (it waits up to 10 s), a server-side caller (MCP, AI, restores) waits for its op, a
+   version is captured (`VersionProvider.beforeCapture`), or the state is disposed. A deleted
+   document's pending bookkeeping is dropped. A failure is logged and never breaks the
+   connection: any unexpected error while handling a message is logged (a failed submit is
+   answered with `OpRejected`) and the connection goes on.
+
+`DocumentMetaChange` writes (§6) update only the changed column, never the whole row, so they
+can't roll back a concurrently committed `headRevision`.
 
 Ordering guarantee: Redis delivery is best-effort and unordered; each client tracks
 `expectedRevision` and on receiving revision `r > expected` buffers it and sends `RequestOps`
@@ -124,11 +144,13 @@ States (ot.js): **Synchronized**, **AwaitingAck(inflight)**,
   `ChangeDeltaExtractor` ignores changes made by `DeltaApplier` (flag on the transaction).
 
 ### 3.1 Reconnect / offline
-On (re)connect the client sends `connect(knownRevision = revision)` and receives missed ops
-(transformed into its inflight/buffer as above); then re-submits the outbox: the inflight op is
-resent with the same `clientOpId` (idempotent), the buffer follows. Long offline periods compose
-the outbox into ≤ 1 op per 2 s of editing: the buffer is a list of chunks (one per 2 s window and
-per op kind/group); remote ops are transformed through the chunks one after the other, and when
+Reconnects (backoff, connectivity, *Simulate offline*) are driven by `ConnectionKeeper`
+(`wonky_app`, shared with the RevLog clients of Sheets and Slides). On (re)connect the client
+sends `connect(knownRevision = revision)` and receives missed ops (transformed into its
+inflight/buffer as above); then re-submits the outbox: the inflight op is resent with the same
+`clientOpId` (idempotent), the buffer follows. Long offline periods compose the outbox into
+≤ 1 op per 2 s of editing: the buffer is a list of chunks (one per 2 s window and per op
+kind/group); remote ops are transformed through the chunks one after the other, and when
 the in-flight op is acknowledged the leading chunks of the same kind are composed into the next
 op.
 
@@ -153,7 +175,11 @@ an error with the op range for diagnosis.
   since its base (which can order tied inserts differently from transforming through them
   one by one) and then normalizes it. On `Ack(r)` the client therefore predicts the committed
   op exactly as the server computes it — `WonkyOt.rebaseOnServer(sent, ops sentBase+1…r-1)`
-  then `WonkyDeltaNormalizer.normalizeChange` — and, when it differs from its local in-flight
+  then `WonkyDeltaNormalizer.normalizeChange`, computed with `normalizedChange` on the lines
+  the op touches (same result for the normalized server document: normalization is per line
+  given the list indent before; an op inserting an embed, or whose indent change cascades
+  past its lines, is normalized against the whole document; CQ-49) — and, when it differs
+  from its local in-flight
   op, applies the document difference as a *fix-up* (transformed against the buffer like a
   remote op). When prediction is impossible (the op introduces `sug_*` values, whose `at`
   is server time, or it was sent on more than one connection) the client fetches
@@ -166,14 +192,23 @@ an error with the op range for diagnosis.
   the in-flight op (same `clientOpId`) unless it was already sent on that connection.
 - Remote cursors arrive at a server revision: older ones are transformed through the
   remembered recent ops, newer ones wait; local cursors are expressed at the client's server
-  revision by transforming through the inverse of the pending changes.
+  revision by transforming through the inverse of the pending changes (built from their
+  lengths only; positions don't depend on the deleted text, so the server document is not
+  walked per cursor update).
+- The client's server document is updated per remote op and ack with
+  `WonkyOt.applyToCanonical`: only the ops around the change are composed and canonicalized,
+  the rest are reused (same result as `WonkyOt.apply`; CQ-49).
 - Undo stacks are rebased by `rebaseWriteStacks` (wonky_write `features/document/write_undo.dart`):
   the remote change is walked newest → oldest across *all* steps of the undo stack, and
-  separately of the redo stack, before `UndoService.applyRemote` swaps in the results.
+  separately of the redo stack, before `UndoService.applyRemote` swaps in the results. An entry
+  whose change is disjoint from the remote one (all of it before or after, no tie) is moved
+  without transforms, and an entry that doesn't move stays the same object, so its step is
+  not rebuilt (CQ-49).
 - Write undo stacks are not persisted by the shell (entries are only valid against the live
   document). The session stores them best-effort with the offline copy (`LocalUndoStack`,
   suite 12 §1.1) together with the hash of the local document, and restores them only when the
-  restored document has the same hash.
+  restored document has the same hash. They are stored when the app is hidden and when the
+  document closes, not after every change (hashing a long document took tens of ms).
 
 ## 4. Undo/redo (Write-specific)
 

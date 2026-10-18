@@ -9,6 +9,7 @@
 library;
 
 export 'src/export/pdf/frame_scenes.dart';
+export 'src/export/pdf/pdf_image_prep.dart';
 export 'src/export/pdf/pdf_options_codec.dart';
 export 'src/export/pdf/pdf_page_plan.dart';
 export 'src/export/pdf/pdf_strings.dart';

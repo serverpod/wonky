@@ -1,6 +1,11 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:test/test.dart';
+import 'package:wonky_server/src/platform/common/rate_limiter.dart';
 import 'package:wonky_server/src/platform/mcp/mcp_config.dart';
 import 'package:wonky_server/src/platform/mcp/mcp_http.dart';
 import 'package:wonky_server/src/platform/mcp/mcp_session_directory.dart';
@@ -149,5 +154,70 @@ void main() {
         expect(second.sessions, isEmpty);
       },
     );
+  });
+
+  withWonkyServerpod('Given the per-token MCP rate limit', (
+    sessionBuilder,
+    endpoints,
+  ) {
+    late McpHttpHandler handler;
+    late TestUser anna;
+    late McpHarness token;
+    setUp(() async {
+      handler = McpHttpHandler(
+        config: McpConfig(allowedHosts: {'localhost'}),
+        rateLimiter: RateLimiter(
+          name: 'mcp-test-${clock.now().microsecondsSinceEpoch}',
+          limit: 1,
+        ),
+      );
+      anna = await TestUsers.create(sessionBuilder, name: 'Anna');
+      token = await McpHarness.forUser(anna);
+    });
+    tearDown(() => handler.closeAll());
+
+    Future<McpHttpResponse> post(Map<String, Object?> body) => handler.handle(
+      anna.session,
+      McpHttpRequest(
+        method: 'POST',
+        headers: {
+          'host': 'localhost',
+          'accept': 'application/json, text/event-stream',
+          'authorization': 'Bearer ${token.secret}',
+        },
+        body: jsonEncode(body),
+      ),
+    );
+
+    Map<String, Object?> read(int id) => {
+      'jsonrpc': '2.0',
+      'id': id,
+      'method': 'resources/read',
+      'params': {'uri': 'wonky://drive/storage'},
+    };
+
+    test('when resources are read over the limit then the request is '
+        'refused with 429', () async {
+      final first = await post(read(1));
+
+      final second = await post(read(2));
+
+      expect(first.status, isNot(429));
+      expect(second.status, 429);
+      expect(second.headers['retry-after'], isNotNull);
+      expect(
+        ((jsonDecode(second.body!) as Map)['error'] as Map)['message'],
+        startsWith('Too many requests'),
+      );
+    });
+
+    test('when a request has no bearer token then the precheck refuses it '
+        'from the headers alone', () {
+      final r = handler.precheck(
+        McpHttpRequest(method: 'POST', headers: {'host': 'localhost'}),
+      );
+
+      expect(r?.status, 401);
+    });
   });
 }

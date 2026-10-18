@@ -4,7 +4,7 @@ publish_to: none
 
 environment:
   sdk: '^3.12.2'
-  flutter: '^3.44.4'
+  flutter: '^3.47.0'
 
 resolution: workspace
 
@@ -49,7 +49,12 @@ dependencies:
     path: ../wonky_ui
 
 dev_dependencies:
-  flutter_lints: '>=3.0.0 <7.0.0'
+  wonky_lints:
+    path: ../wonky_lints
+  # Composer documents in the Markdown round-trip test (the vendored, patched
+  # super_editor of pubspec_overrides.yaml; lib/ reaches it through
+  # wonky_rich_editor only).
+  super_editor: ^0.3.0-dev.52
 
 flutter:
   generate: true

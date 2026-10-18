@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/wonky_app.dart';
-import 'package:wonky_core/wonky_core.dart' show UiSheetsTools;
+import 'package:wonky_core/wonky_core.dart'
+    show InvocationSource, UiSheetsTools;
 import 'package:wonky_sheets/features/ai/sheets_ai_controller.dart';
+import 'package:wonky_sheets/features/cell_editor/cell_editor_controller.dart'
+    show EditMode;
 import 'package:wonky_sheets/mcp/ui_sheets_tools.dart';
 
 import '../support/grid_pump.dart';
@@ -135,6 +138,33 @@ void main() {
     expect(sel.result['editing'], isTrue);
     expect(sel.result['editor_text'], 'draft');
     s.editor.editor.cancel();
+    await finish(tester);
+  });
+
+  testWidgets('Given the user typing in a cell when the agent types into '
+      'another then the user\'s text is kept and the agent\'s write is '
+      'recorded as the agent\'s', (tester) async {
+    current = tester;
+    await pumpSheets(tester, s);
+    s.editor.selection.selectCell(2, 2);
+    s.editor.editor.begin(initialText: 'mine', mode: EditMode.edit);
+    await tester.pump();
+
+    await call('ui.sheets.type_in_cell', {'cell': 'B2', 'text': 'agent'});
+    await tester.pump();
+
+    expect(
+      s.editor.cells.displayAt(s.editor.activeSheetId, 2, 2)?.text,
+      'mine',
+    );
+    expect(
+      s.editor.cells.displayAt(s.editor.activeSheetId, 1, 1)?.text,
+      'agent',
+    );
+    final sources = [
+      for (final h in s.h.services.undo.history()) h.step.source,
+    ];
+    expect(sources, containsAll([InvocationSource.ui, InvocationSource.mcp]));
     await finish(tester);
   });
 

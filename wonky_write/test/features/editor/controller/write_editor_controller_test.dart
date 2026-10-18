@@ -1,8 +1,11 @@
+import 'dart:math';
+
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_write/features/editor/applier/delta_applier.dart';
 import 'package:wonky_write/features/editor/controller/editor_types.dart';
 
+import '../support/delta_gen.dart';
 import '../support/editor_harness.dart';
 
 void main() {
@@ -223,6 +226,32 @@ void main() {
         h.dispose();
       },
     );
+
+    for (final seed in propertySeeds()) {
+      test('when making random changes (seed $seed) then the windowed '
+          'rewrite equals the rewrite against the whole document (W-04)', () {
+        final gen = DeltaGen(Random(seed));
+        final changes = ChangeGen(gen);
+        for (var run = 0; run < propertyRuns(10); run += 1) {
+          // `verifyInvariants` (the harness) asserts the equality.
+          final h = EditorHarness(
+            gen.document(maxLines: 8),
+            mode: EditorMode.suggesting,
+          );
+          for (var step = 0; step < 6; step += 1) {
+            final change = changes.change(h.delta);
+            if (change.isEmpty) continue;
+            h.controller.applyLocal(change, label: 'Edit');
+            h.advance(const Duration(seconds: 1));
+          }
+          final length = h.controller.length;
+          h.select(gen.random.nextInt(length));
+          h.type('ab');
+          h.backspace();
+          h.dispose();
+        }
+      });
+    }
 
     test(
       'when deleting my own suggested insertion then it is really deleted',

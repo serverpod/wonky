@@ -55,13 +55,21 @@ class _Paged {
   /// of measures that changed the gaps.
   int paginate() {
     var passes = 0;
-    while (pagination.measure(layout, document)) {
+    while (measure()) {
       passes += 1;
       relayout();
       if (passes > 10) fail('pagination does not converge');
     }
     return passes;
   }
+
+  /// One measure, with component sizes from the blocks' heights.
+  bool measure() => pagination.measure(
+    layout,
+    document,
+    componentSize: (id) =>
+        Size(600, blocks.firstWhere((b) => b.id == id).height),
+  );
 
   /// Applies the controller's current gaps to the layout.
   void relayout() {
@@ -180,8 +188,8 @@ void main() {
         'the gaps are unchanged', () {
       final paged = _Paged([_p('p0', 96, 920), _p('p1', 1030, 40)]);
 
-      final first = paged.pagination.measure(paged.layout, paged.document);
-      final second = paged.pagination.measure(paged.layout, paged.document);
+      final first = paged.measure();
+      final second = paged.measure();
 
       expect((first, second), (true, false));
     });
@@ -199,6 +207,43 @@ void main() {
 
       expect(passes, 1);
       expect(paged.rectOf('img0').top, closeTo(_page1ContentTop, 0.01));
+    });
+  });
+
+  group('Given a paginated document (incremental measure, Write 04 §36)', () {
+    List<_Block> blocks() => [
+      for (var i = 0; i < 40; i++) _p('p$i', 96.0 + i * 60, 40),
+    ];
+
+    test('when measuring again without changes (a caret move) then no '
+        'block is measured through the layout', () {
+      final paged = _Paged(blocks())..paginate();
+
+      paged.measure();
+
+      expect(paged.pagination.debugLastQueries, 0);
+    });
+
+    test('when a block grows then only it and the next block are measured '
+        'and the page breaks equal a full measure', () {
+      final paged = _Paged(blocks())..paginate();
+      // p10 grows by 300 px; the blocks below it move down with it.
+      final grown = [
+        for (final (i, b) in paged.blocks.indexed)
+          i == 10
+              ? _p(b.id, b.top, b.height + 300)
+              : (i > 10 ? _p(b.id, b.top + 300, b.height) : b),
+      ];
+      paged.blocks.setAll(0, grown);
+
+      paged.measure();
+      final queries = paged.pagination.debugLastQueries;
+      paged.paginate();
+      final fresh = _Paged(grown)..paginate();
+
+      expect(queries, 2);
+      expect(paged.pagination.gaps, fresh.pagination.gaps);
+      expect(paged.pagination.pageCount, fresh.pagination.pageCount);
     });
   });
 }

@@ -3,7 +3,7 @@ import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/planner.dart';
 import 'package:wonky_slides_core/schema.dart';
 import 'package:wonky_slides_core/testing.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 void main() {
   group('Given a plan builder over a deck with a shape', () {

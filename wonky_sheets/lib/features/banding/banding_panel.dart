@@ -14,7 +14,6 @@ import '../formatting/formatting_features.dart';
 import '../formatting/panel_widgets.dart';
 import '../formatting/sheets_colors.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
-import '../toolbar/command_ui.dart' show invoke;
 import 'banding_controller.dart';
 
 /// The *Alternating colors* side panel (06 §14.2): range, header/footer
@@ -117,14 +116,12 @@ class _BandingPanelState extends State<BandingPanel> {
     final s = widget.services;
     final style = d.style.toJson();
     final r = d.bandingId == null
-        ? await invoke(
-            s,
+        ? await s.invokeWithToasts(
             'sheets.banding.add',
             args: {'range': range.a1, 'style': style},
             context: context,
           )
-        : await invoke(
-            s,
+        : await s.invokeWithToasts(
             'sheets.banding.update',
             args: {'bandingId': d.bandingId, 'range': range.a1, 'style': style},
             context: context,
@@ -135,8 +132,7 @@ class _BandingPanelState extends State<BandingPanel> {
   Future<void> _remove() async {
     final id = _draft.bandingId;
     if (id == null) return;
-    final r = await invoke(
-      widget.services,
+    final r = await widget.services.invokeWithToasts(
       'sheets.banding.remove',
       args: {'bandingId': id},
       context: context,

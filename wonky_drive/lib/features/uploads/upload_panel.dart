@@ -421,7 +421,7 @@ class _Row extends StatelessWidget {
       unawaited(services.openItem(item));
       return;
     }
-    invoke('drive.file.preview', {'uuid': item.uuid.uuid});
+    unawaited(invoke('drive.file.preview', {'uuid': item.uuid.uuid}));
   }
 
   @override

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:serverpod/serverpod.dart';
@@ -6,6 +7,7 @@ import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
+import '../../platform/common/isolate_runner.dart';
 import '../../platform/common/models.dart';
 import '../../platform/common/time.dart';
 import '../../platform/drive/drive_service.dart';
@@ -18,7 +20,7 @@ import '../../platform/storage/storage_service.dart';
 /// Write version history (Write 08 §4.3).
 abstract final class WriteHistoryService {
   /// Attributed replay is used up to this many ops.
-  static const maxReplayOps = 20000;
+  static int maxReplayOps = 20000;
   static const diffCacheRetention = Duration(days: 7);
 
   static Future<WriteVersionDocument> getVersionDocument(
@@ -72,28 +74,42 @@ abstract final class WriteHistoryService {
       );
     }
     final docA = await DocumentStore.contentAt(session, doc, a);
-    final ops = await DocumentOp.db.find(
-      session,
-      where: (t) =>
-          t.documentId.equals(doc.id!) & (t.revision > a) & (t.revision <= b),
-      orderBy: (t) => t.revision,
-    );
+    // Bounded: past maxReplayOps the diff compares snapshots, so the ops
+    // are not loaded at all (at most maxReplayOps + 1 otherwise).
+    final ops = b - a > maxReplayOps
+        ? const <DocumentOp>[]
+        : await DocumentOp.db.find(
+            session,
+            where: (t) =>
+                t.documentId.equals(doc.id!) &
+                (t.revision > a) &
+                (t.revision <= b),
+            orderBy: (t) => t.revision,
+            limit: maxReplayOps + 1,
+          );
     final users = await UserService.summaries(session, [
       for (final o in ops) o.authorId,
     ]);
     final WriteDiff result;
-    if (ops.length == b - a && ops.length <= maxReplayOps) {
-      result = AttributedDiff.diff(docA, [
-        for (final o in ops)
-          AuthoredOp(
-            DocumentStore.decodeDelta(o.deltaJson),
-            authorUuid: users[o.authorId]?.uuid.uuid,
-            actorKind: o.actorKind.name,
-          ),
-      ]);
-    } else {
-      final docB = await DocumentStore.contentAt(session, doc, b);
-      result = AttributedDiff.diffSnapshots(docA, docB);
+    try {
+      if (ops.length == b - a && ops.length <= maxReplayOps) {
+        result = await _diffIn(docA, [
+          for (final o in ops)
+            AuthoredOp(
+              DocumentStore.decodeDelta(o.deltaJson),
+              authorUuid: users[o.authorId]?.uuid.uuid,
+              actorKind: o.actorKind.name,
+            ),
+        ], null);
+      } else {
+        final docB = await DocumentStore.contentAt(session, doc, b);
+        result = await _diffIn(docA, null, docB);
+      }
+    } on TimeoutException {
+      throw Errors.unavailable(
+        'Comparing these versions took too long. Pick versions closer '
+        'together.',
+      );
     }
     final byUuid = {for (final u in users.values) u.uuid.uuid: u};
     final view = WriteDiffView(
@@ -134,6 +150,23 @@ abstract final class WriteHistoryService {
     }
     return view;
   }
+
+  /// Time limit of one diff (the worker isolate is killed after it).
+  static const diffTimeout = Duration(seconds: 60);
+
+  /// The attributed diff of [ops] from [docA], or of the snapshots [docA]
+  /// and [docB], in a worker isolate (the shared `IsolateRunner`).
+  static Future<WriteDiff> _diffIn(
+    Delta docA,
+    List<AuthoredOp>? ops,
+    Delta? docB,
+  ) => IsolateRunner.run(
+    () => ops != null
+        ? AttributedDiff.diff(docA, ops)
+        : AttributedDiff.diffSnapshots(docA, docB!),
+    name: 'write-diff',
+    timeout: diffTimeout,
+  );
 
   static Future<ItemVersionView> createRestorePoint(
     Session session,
@@ -208,10 +241,10 @@ abstract final class WriteHistoryService {
 
   static Future<int> purgeDiffCache(Session session, {DateTime? now}) async {
     final cutoff = (now ?? nowUtc()).subtract(diffCacheRetention);
-    final deleted = await WriteDiffCache.db.deleteWhere(
-      session,
-      where: (t) => t.createdAt < cutoff,
+    // A count, not the deleted rows (their JSON can be large).
+    return session.db.unsafeExecute(
+      'DELETE FROM write_diff_cache WHERE "createdAt" < @cutoff',
+      parameters: QueryParameters.named({'cutoff': cutoff}),
     );
-    return deleted.length;
   }
 }

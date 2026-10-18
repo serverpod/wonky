@@ -9,7 +9,6 @@ import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_write/features/document/write_document_api.dart';
 import 'package:wonky_write/features/document/write_document_session.dart';
-import 'package:wonky_write/features/sync/connection_keeper.dart';
 import 'package:wonky_write/features/sync/sync_transport.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 

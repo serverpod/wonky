@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
+import '../../platform/ai/untrusted_text.dart';
 import '../../platform/common/models.dart';
 import '../mcp/headless_editor.dart';
 
@@ -94,10 +95,7 @@ abstract final class WriteContextBuilder {
     );
   }
 
-  static String _attr(String v) => v
-      .replaceAll('&', '&amp;')
-      .replaceAll('"', '&quot;')
-      .replaceAll('<', '&lt;');
+  static String _attr(String v) => UntrustedText.attribute(v);
 
   static String outlineJson(WriteDocContext c) => jsonEncode([
     for (final e in c.outline)
@@ -113,7 +111,7 @@ abstract final class WriteContextBuilder {
     if (!c.isLarge) {
       b.write(
         '<document title="${_attr(c.title)}" revision="${c.revision}">\n'
-        '${c.markdown}\n</document>',
+        '${UntrustedText.escape(c.markdown, 'document')}\n</document>',
       );
       return b.toString();
     }
@@ -140,7 +138,9 @@ abstract final class WriteContextBuilder {
       }
     }
     b
-      ..write(parts.join('\n\n…\n\n'))
+      ..write(
+        UntrustedText.escape(parts.join('\n\n…\n\n'), 'document_excerpt'),
+      )
       ..write('\n</document_excerpt>');
     return b.toString();
   }
@@ -224,7 +224,7 @@ abstract final class WriteContextBuilder {
       for (final s in changed) {
         b
           ..writeln('<section heading="${_attr(s.$1)}">')
-          ..write(s.$2)
+          ..write(UntrustedText.escape(s.$2, 'section'))
           ..writeln('</section>');
       }
     }

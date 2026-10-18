@@ -8,6 +8,7 @@ import 'package:shad/shad.dart' show ShadTheme;
 import 'package:super_editor/super_editor.dart';
 import 'package:wonky_write_core/wonky_write_core.dart' show SuggestionView;
 
+import '../../../l10n/write_l10n.dart';
 import '../applier/delta_applier.dart';
 import '../commands/write_editor_commands.dart';
 import '../components/editor_services.dart';
@@ -15,7 +16,7 @@ import '../components/wonky_components.dart';
 import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
 import '../dnd/drop_indicator.dart';
-import '../dnd/external_drop.dart';
+import 'package:wonky_app/platform.dart';
 import '../dnd/text_drag.dart';
 import '../keyboard/editor_keyboard.dart';
 import '../layers/editor_layers.dart';
@@ -48,7 +49,7 @@ class WonkyEditor extends StatefulWidget {
     this.commands,
     this.clipboard,
     this.theme,
-    this.documentTitle = 'Document',
+    this.documentTitle,
     this.imageServices = const NetworkImageServices(),
     this.blockCallbacks = const EditorBlockCallbacks(),
     this.shortcutCallbacks,
@@ -60,7 +61,7 @@ class WonkyEditor extends StatefulWidget {
     this.onEditLink,
     this.autofocus = false,
     this.scrollController,
-    this.hint = 'Type / for commands, or just start writing',
+    this.hint,
     this.extraStylePhases = const [],
     this.emojiSuggestions,
     this.onDropFiles,
@@ -81,8 +82,8 @@ class WonkyEditor extends StatefulWidget {
   /// Document theme; defaults to Wonky Default for the ambient brightness.
   final EditorTheme? theme;
 
-  /// Semantics label of the editor (the document title).
-  final String documentTitle;
+  /// Semantics label of the editor (the document title; null: "Document").
+  final String? documentTitle;
 
   final EditorImageServices imageServices;
   final EditorBlockCallbacks blockCallbacks;
@@ -114,7 +115,9 @@ class WonkyEditor extends StatefulWidget {
 
   final bool autofocus;
   final ScrollController? scrollController;
-  final String hint;
+
+  /// Placeholder of an empty document (null: the editor's default).
+  final String? hint;
 
   /// More style phases (e.g. the spellcheck underlines, Write 04 §28.2).
   final List<SingleColumnLayoutStylePhase> extraStylePhases;
@@ -171,7 +174,16 @@ class WonkyEditorState extends State<WonkyEditor> {
   late TextDragController _textDrag;
   late InlineTableEditing _tables;
   ExternalDropSource? _drops;
-  final _slashItems = defaultSlashItems();
+
+  /// The slash menu items in the UI language (set in [didChangeDependencies]).
+  List<SlashItem> _slashItems = const [];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _slashItems = defaultSlashItems(writeL10n(context));
+  }
+
   final _linkCard = ValueNotifier<LinkRun?>(null);
   late ScrollController _scrollController;
   Timer? _hoverTimer;
@@ -360,7 +372,7 @@ class WonkyEditorState extends State<WonkyEditor> {
       query.start,
       query.end - query.start,
       item.emoji,
-      label: 'Insert emoji',
+      label: writeL10n(context).undoInsertEmoji,
     );
     _triggers.dismiss();
   }
@@ -674,9 +686,31 @@ class WonkyEditorState extends State<WonkyEditor> {
       ..onUndo = widget.shortcutCallbacks?.onUndo
       ..onRedo = widget.shortcutCallbacks?.onRedo;
 
-    final editorWidget = readOnly
-        ? _buildReader(theme, style, stylesheet, previewMode)
-        : _buildEditor(theme, style, stylesheet);
+    // The SuperEditor/SuperReader widget is reused while its inputs are the
+    // same: a new instance rebuilds super_editor's layout, which walks every
+    // component of the document (Write 04 §36). This build also runs on
+    // every controller notify (typing, caret moves) for the popovers.
+    final memoKey = (
+      widget,
+      theme,
+      style,
+      stylesheet,
+      readOnly,
+      previewMode,
+      _previewEditor,
+      pages,
+      pages ? _pagination.contentHeight : null,
+      controller.document.nodeCount == 1,
+      // The hint text (a locale switch).
+      writeL10n(context),
+    );
+    var editorWidget = _editorMemo?.key == memoKey ? _editorMemo?.widget : null;
+    if (editorWidget == null) {
+      editorWidget = readOnly
+          ? _buildReader(theme, style, stylesheet, previewMode)
+          : _buildEditor(theme, style, stylesheet);
+      _editorMemo = (key: memoKey, widget: editorWidget);
+    }
 
     Widget surface = MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
@@ -727,7 +761,7 @@ class WonkyEditorState extends State<WonkyEditor> {
       textField: true,
       multiline: true,
       readOnly: readOnly,
-      label: widget.documentTitle,
+      label: widget.documentTitle ?? writeL10n(context).editorDocumentTitle,
       child: Focus(
         // Parent of the in-place table cell field: outside the SuperEditor,
         // so the editor's key handlers and IME never see the cell's input.
@@ -770,6 +804,10 @@ class WonkyEditorState extends State<WonkyEditor> {
   }
 
   ({Stylesheet base, EdgeInsets margins, Stylesheet sheet})? _pagesSheet;
+
+  /// The last SuperEditor/SuperReader widget and the inputs it was built
+  /// from (see `_build`).
+  ({Object key, Widget widget})? _editorMemo;
 
   /// Coalesces repagination to one measure per frame, after layout (§29.3).
   /// Called after every rebuild in Pages mode and whenever the document's
@@ -819,7 +857,7 @@ class WonkyEditorState extends State<WonkyEditor> {
     return [
       if (editable && controller.document.nodeCount == 1)
         HintComponentBuilder(
-          widget.hint,
+          widget.hint ?? writeL10n(context).editorHint,
           (context) => theme.body.copyWith(
             color: theme.mutedColor,
             fontSize: (theme.body.fontSize ?? 14.67) * zoom,

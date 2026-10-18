@@ -11,6 +11,7 @@ import 'package:wonky_slides_core/scene.dart' show TextLayoutEngine;
 
 import '../../l10n/slides_l10n.dart';
 import '../stage/flutter_text_layout_engine.dart';
+import 'pdf_image_isolate.dart';
 
 /// Client-side Slides PDF export (10 §11.4: offline and ≤ 80 pages run in
 /// the app): the shared `SlidesPdfExporter` with the bundled TTFs read from
@@ -20,6 +21,11 @@ import '../stage/flutter_text_layout_engine.dart';
 /// engine with the deck's fonts registered first (10 §11.3 "As built").
 abstract final class SlidesClientExport {
   static BundledFileFontProvider? _fonts;
+
+  /// Whether PDF image work runs in an isolate (native platforms; killed
+  /// on Cancel, CQ-44). Off on the web, where the exporter time-slices
+  /// it, and in widget tests (fake async).
+  static bool useImageIsolate = !kIsWeb;
 
   /// The bundled-font provider over the package assets (bytes cached).
   static BundledFileFontProvider get fonts => _fonts ??= assetFonts();
@@ -73,6 +79,7 @@ abstract final class SlidesClientExport {
       prepareLayoutFonts: prepare,
       onProgress: onProgress,
       isCancelled: isCancelled,
+      imageRunner: useImageIsolate ? isolateImageRunner(isCancelled) : null,
     ).render(
       deck,
       options,

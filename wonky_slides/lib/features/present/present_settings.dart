@@ -77,7 +77,9 @@ class PresentSettings {
     }
 
     final kiosk = j['kiosk'];
-    final k = kiosk is Map ? kiosk.cast<String, Object?>() : const {};
+    final k = kiosk is Map
+        ? kiosk.cast<String, Object?>()
+        : const <String, Object?>{};
     final idle = k['restartAfterIdleSec'];
     return PresentSettings(
       mode: pick('mode', modes, defaults.mode),
