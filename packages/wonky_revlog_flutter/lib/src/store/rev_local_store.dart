@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:wonky_app/wonky_app.dart' show LocalDatabases;
 import 'package:wonky_revlog/codec.dart';
@@ -172,7 +173,21 @@ final class RevLocalStore {
   /// Per-connection settings (06 §2.1): a 64 MB page cache for the writer
   /// (bulk page writes into a cache of a million cells), temp tables in
   /// memory and fewer WAL checkpoints during bulk loads.
+  ///
+  /// The web has a single worker connection, set directly: there
+  /// `withAllConnections` holds the write lock but hands the block the
+  /// unlocked database, so any statement in it waits for that lock forever
+  /// (sqlite_async 0.14) and the cache never opens.
   Future<void> _pragmas() async {
+    if (kIsWeb) {
+      try {
+        await db.execute('PRAGMA cache_size = -65536');
+        await db.execute('PRAGMA temp_store = MEMORY');
+      } on Object {
+        // The defaults work.
+      }
+      return;
+    }
     try {
       await db.withAllConnections((writer, readers) async {
         await writer.execute('PRAGMA cache_size = -65536');
