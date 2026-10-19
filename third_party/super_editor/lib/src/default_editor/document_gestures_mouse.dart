@@ -21,9 +21,9 @@ import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 
-import '../infrastructure/document_gestures_interaction_overrides.dart';
+import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 // WONKY PATCH SE-6
-import 'content_drag.dart';
+import 'package:super_editor/src/default_editor/content_drag.dart';
 
 /// Governs mouse gesture interaction with a document, such as scrolling
 /// a document with a scroll wheel, tapping to place a caret, and

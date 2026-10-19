@@ -7,7 +7,7 @@ import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
-import '_presenter.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/_presenter.dart';
 
 /// Displays a document in a single-column layout.
 ///

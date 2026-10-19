@@ -18,12 +18,12 @@ import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_contr
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
 import 'package:super_editor/src/infrastructure/render_sliver_ext.dart';
 
-import '../document_hardware_keyboard/document_input_keyboard.dart';
-import 'document_delta_editing.dart';
-import 'document_ime_communication.dart';
-import 'document_ime_interaction_policies.dart';
-import 'ime_decoration.dart';
-import 'ime_keyboard_control.dart';
+import 'package:super_editor/src/default_editor/document_hardware_keyboard/document_input_keyboard.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_delta_editing.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_ime_communication.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_ime_interaction_policies.dart';
+import 'package:super_editor/src/default_editor/document_ime/ime_decoration.dart';
+import 'package:super_editor/src/default_editor/document_ime/ime_keyboard_control.dart';
 
 /// [SuperEditor] interactor that edits a document based on IME input
 /// from the operating system.
@@ -575,6 +575,9 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     if (selectedComponent is ProxyDocumentComponent) {
       // The selected component is a proxy.
       // If this component displays text, the text component is bounded to childDocumentComponentKey.
+      // WONKY PATCH (infra, SE-10): the IME styles the proxied text component;
+      // `childDocumentComponentKey` is `@protected` for app code, not for super_editor.
+      // ignore: invalid_use_of_protected_member
       selectedComponent = selectedComponent.childDocumentComponentKey.currentState as DocumentComponent?;
     }
 
@@ -589,12 +592,15 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     final style = selectedComponent.getTextStyleAt(nodePosition.offset);
-    SuperIme.instance.getImeConnectionForOwner(_myImeId)!.setStyle(
-          fontFamily: style.fontFamily,
-          fontSize: style.fontSize,
-          fontWeight: style.fontWeight,
-          textDirection: selectedComponent.textDirection ?? TextDirection.ltr,
-          textAlign: selectedComponent.textAlign ?? TextAlign.left,
+    // WONKY PATCH (infra, SE-10): `updateStyle` replaces the deprecated `setStyle`.
+    SuperIme.instance.getImeConnectionForOwner(_myImeId)!.updateStyle(
+          TextInputStyle(
+            fontFamily: style.fontFamily,
+            fontSize: style.fontSize,
+            fontWeight: style.fontWeight,
+            textDirection: selectedComponent.textDirection ?? TextDirection.ltr,
+            textAlign: selectedComponent.textAlign ?? TextAlign.left,
+          ),
         );
   }
 
@@ -644,6 +650,8 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     if (selectedComponent is ProxyDocumentComponent) {
       // The selected componente is a proxy.
       // If this component displays text, the text component is bounded to childDocumentComponentKey.
+      // WONKY PATCH (infra, SE-10): see `_reportTextStyleToIme`.
+      // ignore: invalid_use_of_protected_member
       selectedComponent = selectedComponent.childDocumentComponentKey.currentState as DocumentComponent;
     }
 

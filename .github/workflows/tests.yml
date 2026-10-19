@@ -153,6 +153,13 @@ jobs:
         working-directory: ${{matrix.package.path}}
         run: ${{matrix.package.tool}} pub get
 
+      # The vendored packages resolve their own lock files, so the workspace
+      # `analyze` job doesn't cover them; keeps them warning-free (PATCHES.md
+      # SE-10).
+      - name: Analyze
+        working-directory: ${{matrix.package.path}}
+        run: dart analyze --fatal-infos
+
       # super_editor's goldens need its own Docker golden runner
       # (third_party/super_editor/README_TESTS.md).
       - name: Run tests

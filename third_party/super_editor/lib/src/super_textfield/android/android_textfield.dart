@@ -19,9 +19,9 @@ import 'package:super_editor/src/super_textfield/infrastructure/text_scrollview.
 import 'package:super_editor/src/super_textfield/input_method_engine/_ime_text_editing_controller.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../../infrastructure/_logging.dart';
-import '../metrics.dart';
-import '../styles.dart';
+import 'package:super_editor/src/infrastructure/_logging.dart';
+import 'package:super_editor/src/super_textfield/metrics.dart';
+import 'package:super_editor/src/super_textfield/styles.dart';
 
 export '_caret.dart';
 

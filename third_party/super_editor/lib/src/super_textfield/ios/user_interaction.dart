@@ -7,12 +7,9 @@ import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/flutter/text_selection.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/selection_heuristics.dart';
-import 'package:super_editor/src/super_textfield/infrastructure/text_field_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/super_textfield/super_textfield.dart';
-import 'package:super_editor/src/test/test_globals.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import 'editing_controls.dart';
 
 final _log = iosTextFieldLog;
 
@@ -575,23 +572,6 @@ class IOSTextFieldTouchInteractorState extends State<IOSTextFieldTouchInteractor
     final textOffset =
         (widget.selectableTextKey.currentContext!.findRenderObject() as RenderBox).globalToLocal(globalOffset);
     return _textLayout.getPositionNearestToOffset(textOffset);
-  }
-
-  /// Returns the [TextPosition] that's at the given [localOffset] within
-  /// this [IOSTextFieldInteractor], or `null` if no text exists at the given
-  /// offset.
-  TextPosition? _getTextPositionAtOffset(Offset localOffset) {
-    // We show placeholder text when there is no text content. We don't want
-    // to place the caret in the placeholder text, so when _currentText is
-    // empty, explicitly set the text position to an offset of -1.
-    if (widget.textController.text.isEmpty) {
-      return const TextPosition(offset: -1);
-    }
-
-    final globalOffset = (context.findRenderObject() as RenderBox).localToGlobal(localOffset);
-    final textOffset =
-        (widget.selectableTextKey.currentContext!.findRenderObject() as RenderBox).globalToLocal(globalOffset);
-    return _textLayout.getPositionAtOffset(textOffset);
   }
 
   /// Returns a [TextSelection] that selects the word surrounding the given

@@ -37,7 +37,7 @@ import 'package:super_editor/src/infrastructure/touch_controls.dart';
 import 'package:super_editor/src/super_textfield/metrics.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../default_editor/text_tools.dart';
+import 'package:super_editor/src/default_editor/text_tools.dart';
 
 /// Read-only document gesture interactor that's designed for Android touch input, e.g.,
 /// drag to scroll, and handles to control selection.
@@ -458,7 +458,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
     );
   }
 
-  bool _wasScrollingOnTapDown = false;
+  final bool _wasScrollingOnTapDown = false;
   void _onTapDown(TapDownDetails details) {
     final position = scrollPosition;
     if (position is ScrollPositionWithSingleContext) {

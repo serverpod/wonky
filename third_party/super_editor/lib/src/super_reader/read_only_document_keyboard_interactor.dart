@@ -8,8 +8,8 @@ import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
 import 'package:super_editor/src/infrastructure/document_context.dart';
 
-import '../core/document_composer.dart';
-import 'reader_context.dart';
+import 'package:super_editor/src/core/document_composer.dart';
+import 'package:super_editor/src/super_reader/reader_context.dart';
 
 /// Governs document input that comes from a physical keyboard.
 ///

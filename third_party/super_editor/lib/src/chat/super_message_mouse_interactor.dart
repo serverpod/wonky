@@ -16,7 +16,7 @@ import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/super_reader/read_only_document_mouse_interactor.dart'
     show moveToNearestSelectableComponent, selectRegion;
 
-import '../core/document_composer.dart';
+import 'package:super_editor/src/core/document_composer.dart';
 
 /// Governs mouse gesture interaction with a read-only document, such as scrolling
 /// a document with a scroll wheel and tap-and-dragging to create an expanded selection.

@@ -97,6 +97,10 @@ class _IOSSystemContextMenuState extends State<IOSSystemContextMenu> {
   }
 
   void _positionSystemMenu() {
+    // WONKY PATCH (infra, SE-10): `showWithItems` needs explicit items, whose
+    // default set comes from an `EditableTextState` super_editor doesn't have;
+    // `show` keeps the native default menu.
+    // ignore: deprecated_member_use
     _systemContextMenuController.show(widget.leaderLink.offset! & widget.leaderLink.leaderSize!);
   }
 

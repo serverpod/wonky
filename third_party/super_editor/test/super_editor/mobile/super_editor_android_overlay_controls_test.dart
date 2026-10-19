@@ -7,7 +7,6 @@ import 'package:super_editor/src/infrastructure/platforms/android/selection_hand
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:super_keyboard/test/keyboard_simulator.dart';
-import 'package:super_text_layout/super_text_layout.dart';
 
 import '../../test_runners.dart';
 import '../../test_tools.dart';

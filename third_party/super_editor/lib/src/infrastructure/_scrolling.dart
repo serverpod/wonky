@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
-import '_logging.dart';
+import 'package:super_editor/src/infrastructure/_logging.dart';
 
 /// Animates the scroll offset of a given [scrollPosition] based on a
 /// given speed percent.

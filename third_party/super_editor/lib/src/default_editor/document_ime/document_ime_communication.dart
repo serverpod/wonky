@@ -7,9 +7,9 @@ import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_controls.dart';
 import 'package:super_editor/src/infrastructure/platforms/mac/mac_ime.dart';
 
-import 'document_delta_editing.dart';
-import 'document_serialization.dart';
-import 'ime_decoration.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_delta_editing.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_serialization.dart';
+import 'package:super_editor/src/default_editor/document_ime/ime_decoration.dart';
 
 /// Sends messages to, and receives messages from, the platform Input Method Engine (IME),
 /// for the purpose of document editing.

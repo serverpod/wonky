@@ -67,7 +67,7 @@ final _expectedDocument = MutableDocument(
   nodes: [
     ParagraphNode(id: "1", text: AttributedText("This is the first paragraph of the document.")),
     ParagraphNode(
-        id: "2", text: AttributedText("This is a blockquote."), metadata: {'blockType': blockquoteAttribution}),
+        id: "2", text: AttributedText("This is a blockquote."), metadata: const {'blockType': blockquoteAttribution}),
     ParagraphNode(id: "3", text: AttributedText("This is an ordered list.")),
     ListItemNode.ordered(id: "4", text: AttributedText("item 1")),
     ListItemNode.ordered(id: "5", text: AttributedText("item 2")),

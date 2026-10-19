@@ -45,7 +45,7 @@ void main() {
   });
 }
 
-TextStyle _hintStyler(BuildContext _) => TextStyle();
+TextStyle _hintStyler(BuildContext _) => const TextStyle();
 
 const _inlineWidgetBuilders = [
   _buildFakeInlineWidget,

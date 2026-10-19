@@ -504,11 +504,12 @@ class TextBlockDeltaSerializer implements DeltaSerializer {
         continue;
       }
       if (attribution is ColorAttribution) {
-        attributes["color"] = "#${attribution.color.value.toRadixString(16).substring(2)}";
+        // WONKY PATCH (infra, SE-10): `toARGB32()` replaces the deprecated `value`.
+        attributes["color"] = "#${attribution.color.toARGB32().toRadixString(16).substring(2)}";
         continue;
       }
       if (attribution is BackgroundColorAttribution) {
-        attributes["background"] = "#${attribution.color.value.toRadixString(16).substring(2)}";
+        attributes["background"] = "#${attribution.color.toARGB32().toRadixString(16).substring(2)}";
         continue;
       }
       if (attribution is FontFamilyAttribution) {

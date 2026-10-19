@@ -486,7 +486,9 @@ class AttachmentListNodeSelection extends NodeSelection {
     required this.extent,
   });
 
+  @override
   final AttachmentListNodePosition base;
+  @override
   final AttachmentListNodePosition extent;
 
   AttachmentListNodePosition get start => base < extent ? base : extent;

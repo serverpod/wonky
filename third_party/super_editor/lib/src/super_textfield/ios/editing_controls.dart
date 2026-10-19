@@ -14,7 +14,7 @@ import 'package:super_editor/src/infrastructure/platforms/ios/magnifier.dart';
 import 'package:super_editor/src/super_textfield/super_textfield.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../metrics.dart';
+import 'package:super_editor/src/super_textfield/metrics.dart';
 
 final _log = iosTextFieldLog;
 

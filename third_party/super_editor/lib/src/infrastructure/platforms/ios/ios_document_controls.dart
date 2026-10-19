@@ -705,11 +705,7 @@ class IosControlsDocumentLayerState extends DocumentLayoutLayerState<IosHandlesD
     NodePosition? extentNodePosition = component.movePositionRight(position.nodePosition);
     bool isExtentDownstream = extentNodePosition != null;
 
-    if (extentNodePosition == null) {
-      // Couldn't find a valid position to the right. Look for a position to the left
-      // of the current position within the same node.
-      extentNodePosition = component.movePositionLeft(position.nodePosition);
-    }
+    extentNodePosition ??= component.movePositionLeft(position.nodePosition);
 
     if (extentNodePosition == null) {
       // We couldn't expand the selection neither to the left of the right. Fallback

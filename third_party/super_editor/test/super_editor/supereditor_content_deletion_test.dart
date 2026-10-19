@@ -51,7 +51,7 @@ void main() {
       final document = testContext.document;
       expect(document.length, equals(1));
       expect(document.first, isA<ParagraphNode>());
-      expect((document.first as ParagraphNode).text.text, equals(''));
+      expect((document.first as ParagraphNode).text.toPlainText(includePlaceholders: false), equals(''));
 
       // Ensure the selection was moved to the end of the document.
       expect(
@@ -77,7 +77,7 @@ void main() {
 
       // Ensure the user can still type text.
       await tester.typeImeText('Hello world!');
-      expect((document.first as ParagraphNode).text.text, equals('Hello world!'));
+      expect((document.first as ParagraphNode).text.toPlainText(includePlaceholders: false), equals('Hello world!'));
     });
   });
 }

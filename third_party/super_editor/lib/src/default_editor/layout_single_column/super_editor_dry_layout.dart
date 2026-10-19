@@ -41,7 +41,9 @@ class SuperEditorDryLayout extends CustomScrollView {
     super.shrinkWrap,
     super.center,
     super.anchor,
-    super.cacheExtent,
+    // WONKY PATCH (infra, SE-10): `scrollCacheExtent` replaces the deprecated
+    // `cacheExtent`/`cacheExtentStyle` (Flutter 3.41).
+    super.scrollCacheExtent,
     super.semanticChildCount,
     super.dragStartBehavior,
     super.keyboardDismissBehavior,
@@ -74,8 +76,7 @@ class ViewportWithDryLayout extends Viewport {
     super.anchor = 0.0,
     required super.offset,
     super.center,
-    super.cacheExtent,
-    super.cacheExtentStyle = CacheExtentStyle.pixel,
+    super.scrollCacheExtent,
     super.clipBehavior = Clip.hardEdge,
     super.slivers = const <Widget>[],
   });
@@ -87,8 +88,7 @@ class ViewportWithDryLayout extends Viewport {
       crossAxisDirection: crossAxisDirection ?? Viewport.getDefaultCrossAxisDirection(context, axisDirection),
       anchor: anchor,
       offset: offset,
-      cacheExtent: cacheExtent,
-      cacheExtentStyle: cacheExtentStyle,
+      scrollCacheExtent: scrollCacheExtent,
       clipBehavior: clipBehavior,
     );
   }
@@ -100,8 +100,7 @@ class ViewportWithDryLayout extends Viewport {
       ..crossAxisDirection = crossAxisDirection ?? Viewport.getDefaultCrossAxisDirection(context, axisDirection)
       ..anchor = anchor
       ..offset = offset
-      ..cacheExtent = cacheExtent
-      ..cacheExtentStyle = cacheExtentStyle
+      ..scrollCacheExtent = scrollCacheExtent
       ..clipBehavior = clipBehavior;
   }
 }
@@ -113,8 +112,7 @@ class RenderViewportWithDryLayout extends RenderViewport {
     required super.offset,
     super.anchor = 0.0,
     super.center,
-    super.cacheExtent,
-    super.cacheExtentStyle,
+    super.scrollCacheExtent,
     super.clipBehavior,
     super.children,
   });

@@ -157,10 +157,30 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
 - **Spec**: Write 04 §36
 - **Upstream**: generally useful; to be proposed.
 
+## SE-10 — Analyzer clean
+
+- **Reason**: `dart analyze` reported 300 issues in this package (upstream style, Flutter API
+  deprecations, test tooling in `lib/`), drowning our own diagnostics in the IDE.
+- **Changes**: `dart fix` (198 fixes: package imports, const literals, unused/unnecessary imports
+  and a few small lints; unmarked, mechanical); the deprecated Flutter APIs are replaced
+  (`TextInputConnection.updateStyle`, `scrollCacheExtent`, `Matrix4.*ByDouble`,
+  `Color.toARGB32`, `AttributedText.toPlainText(includePlaceholders: false)` in tests), except
+  the iOS `SystemContextMenuController.show`, kept with an `ignore` (its replacement needs the
+  items of an `EditableTextState`); the golden helpers moved from `lib/` to
+  `test/test_tools_goldens.dart` (they import the dev dependency `golden_toolkit`, CQ-45); the
+  test tooling in `lib/src/test/` ignores `invalid_use_of_visible_for_testing_member` /
+  `invalid_use_of_protected_member` per file (it inspects test-only state by design); the IME
+  reads the `@protected` `childDocumentComponentKey` with an `ignore`; unused members, a stale
+  `@override` and the pub.dev `screenshots:` (images not vendored) are removed.
+- **Files**: 80+ files under `lib/` and `test/`, `pubspec.yaml`
+- **Tests**: the package's suite; CI's `third-party` job runs `dart analyze --fatal-infos` for
+  both vendored packages.
+- **Upstream**: the API migrations are generally useful; the rest is local.
+
 ## Infra
 
 - `pubspec.yaml`: `dependency_overrides: attributed_text: {path: ../attributed_text}` so the
   vendored suite runs against the vendored, patched `attributed_text` (patch AT-1).
 - `pubspec.yaml`: `golden_toolkit` is a `dev_dependency` (upstream: a regular one), so its
-  Roboto font no longer ships in every app's web build (CQ-45). Only `lib/super_test.dart`
-  (golden helpers) imports it; nothing in the workspace imports that library.
+  Roboto font no longer ships in every app's web build (CQ-45). Its only importers are
+  tests (`test/test_tools_goldens.dart` since SE-10).

@@ -11,15 +11,8 @@ topics:
   - quill
   - markdown
 
-screenshots:
-  - description: "SuperEditor on Mac desktop"
-    path: doc/marketing/screenshot_mac_desktop.png
-  - description: "SuperEditor dark mode"
-    path: doc/marketing/screenshot_mac_desktop_dark-mode.png
-  - description: "SuperEditor text selection"
-    path: doc/marketing/screenshot_mac_desktop_text-selection.png
-  - description: "SuperEditor text styles"
-    path: doc/marketing/screenshot_mac_desktop_bold-selection.png
+# WONKY PATCH (infra, SE-10): upstream's pub.dev `screenshots:` removed; the
+# `doc/marketing/` images aren't vendored and this copy is never published.
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

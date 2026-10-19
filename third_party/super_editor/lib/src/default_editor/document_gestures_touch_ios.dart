@@ -34,9 +34,9 @@ import 'package:super_editor/src/infrastructure/signal_notifier.dart';
 import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 import 'package:super_editor/src/infrastructure/touch_controls.dart';
 
-import '../infrastructure/document_gestures.dart';
-import '../infrastructure/document_gestures_interaction_overrides.dart';
-import 'selection_upstream_downstream.dart';
+import 'package:super_editor/src/infrastructure/document_gestures.dart';
+import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
+import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 
 /// An [InheritedWidget] that provides shared access to a [SuperEditorIosControlsController],
 /// which coordinates the state of iOS controls like the caret, handles, magnifier, etc.

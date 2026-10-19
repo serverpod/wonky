@@ -2,10 +2,10 @@ import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/default_editor/common_editor_operations.dart';
 import 'package:super_editor/src/infrastructure/documents/document_scroller.dart';
 
-import 'document.dart';
-import 'document_composer.dart';
-import 'document_layout.dart';
-import 'editor.dart';
+import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/core/document_composer.dart';
+import 'package:super_editor/src/core/document_layout.dart';
+import 'package:super_editor/src/core/editor.dart';
 
 /// Collection of core artifacts used to edit a document.
 ///

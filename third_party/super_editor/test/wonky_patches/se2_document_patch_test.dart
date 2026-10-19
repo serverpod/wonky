@@ -34,8 +34,8 @@ void main() {
                 'a', ParagraphNode(id: 'a', text: AttributedText('Hi'))),
             InsertNodePatch(
                 1, ParagraphNode(id: 'c', text: AttributedText('New'))),
-            MoveNodePatch('b', 0),
-            DeleteNodePatch('c'),
+            const MoveNodePatch('b', 0),
+            const DeleteNodePatch('c'),
           ],
           tag: 'remote',
         ),

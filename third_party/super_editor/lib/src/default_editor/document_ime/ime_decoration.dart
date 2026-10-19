@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
@@ -42,12 +41,13 @@ abstract class TextInputConnectionDecorator implements TextInputConnection {
           required FontWeight? fontWeight,
           required TextDirection textDirection,
           required TextAlign textAlign}) =>
-      client?.setStyle(
+      // WONKY PATCH (infra, SE-10): `setStyle` is deprecated (Flutter 3.41).
+      client?.updateStyle(TextInputStyle(
           fontFamily: fontFamily,
           fontSize: fontSize,
           fontWeight: fontWeight,
           textDirection: textDirection,
-          textAlign: textAlign);
+          textAlign: textAlign));
 
   @override
   void updateStyle(TextInputStyle style) => client?.updateStyle(style);

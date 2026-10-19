@@ -1361,7 +1361,7 @@ void main() {
                       ParagraphNode(
                         id: Editor.createNodeId(),
                         text: AttributedText('Document #1'),
-                        metadata: {
+                        metadata: const {
                           'blockType': header1Attribution,
                         },
                       ),
@@ -1402,7 +1402,7 @@ void main() {
                       ParagraphNode(
                         id: Editor.createNodeId(),
                         text: AttributedText('Document #1'),
-                        metadata: {
+                        metadata: const {
                           'blockType': header1Attribution,
                         },
                       ),
@@ -1637,7 +1637,7 @@ MutableDocument _createExampleDocumentForScrolling() {
         text: AttributedText(
           'Example Document',
         ),
-        metadata: {
+        metadata: const {
           'blockType': header1Attribution,
         },
       ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
-import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
@@ -1220,6 +1219,5 @@ const _aboveKeyboardToolbarKey = ValueKey('toolbar');
 const _keyboardPanelKey = ValueKey('keyboardPanel');
 
 enum _Panel {
-  panel1,
-  panel2;
+  panel1;
 }

@@ -38,24 +38,24 @@ import 'package:super_editor/src/infrastructure/text_input.dart';
 import 'package:super_editor/src/undo_redo.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../infrastructure/document_gestures_interaction_overrides.dart';
-import '../infrastructure/platforms/ios/ios_system_context_menu.dart';
-import '../infrastructure/platforms/mobile_documents.dart';
-import 'attributions.dart';
-import 'blockquote.dart';
-import 'document_caret_overlay.dart';
-import 'document_focus_and_selection_policies.dart';
-import 'document_gestures_mouse.dart';
+import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
+import 'package:super_editor/src/infrastructure/platforms/ios/ios_system_context_menu.dart';
+import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
+import 'package:super_editor/src/default_editor/attributions.dart';
+import 'package:super_editor/src/default_editor/blockquote.dart';
+import 'package:super_editor/src/default_editor/document_caret_overlay.dart';
+import 'package:super_editor/src/default_editor/document_focus_and_selection_policies.dart';
+import 'package:super_editor/src/default_editor/document_gestures_mouse.dart';
 // WONKY PATCH SE-6
-import 'content_drag.dart';
-import 'document_hardware_keyboard/document_input_keyboard.dart';
-import 'document_ime/document_input_ime.dart';
-import 'horizontal_rule.dart';
-import 'image.dart';
-import 'layout_single_column/layout_single_column.dart';
-import 'paragraph.dart';
-import 'text.dart';
-import 'unknown_component.dart';
+import 'package:super_editor/src/default_editor/content_drag.dart';
+import 'package:super_editor/src/default_editor/document_hardware_keyboard/document_input_keyboard.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_input_ime.dart';
+import 'package:super_editor/src/default_editor/horizontal_rule.dart';
+import 'package:super_editor/src/default_editor/image.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
+import 'package:super_editor/src/default_editor/paragraph.dart';
+import 'package:super_editor/src/default_editor/text.dart';
+import 'package:super_editor/src/default_editor/unknown_component.dart';
 
 /// A rich text editor that displays a document in a single-column layout.
 ///

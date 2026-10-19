@@ -2,8 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
 import 'package:super_editor/src/core/editor.dart';
 
-import 'document.dart';
-import 'document_selection.dart';
+import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/core/document_selection.dart';
 
 /// Obtains a [DocumentLayout].
 ///

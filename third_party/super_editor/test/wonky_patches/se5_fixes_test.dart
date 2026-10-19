@@ -32,7 +32,7 @@ void main() {
             id: 'l',
             text: AttributedText('x'),
             indent: 3,
-            metadata: {'custom': 1}),
+            metadata: const {'custom': 1}),
       ]);
       final editor = createDefaultDocumentEditor(
           document: document, composer: MutableDocumentComposer());

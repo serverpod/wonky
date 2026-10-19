@@ -96,7 +96,7 @@ void main() {
 
         // Ensure that the tag has a composing attribution.
         final text = SuperEditorInspector.findTextInComponent("1");
-        expect(text.text, "before #flutter after");
+        expect(text.toPlainText(includePlaceholders: false), "before #flutter after");
         expect(
           text.getAttributedRange({const PatternTagAttribution()}, 7),
           const SpanRange(7, 14),

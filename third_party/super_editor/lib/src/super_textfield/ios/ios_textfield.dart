@@ -1,4 +1,3 @@
-import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
@@ -20,11 +19,11 @@ import 'package:super_editor/src/super_textfield/input_method_engine/_ime_text_e
 import 'package:super_editor/src/super_textfield/ios/editing_controls.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../metrics.dart';
-import '../styles.dart';
-import 'floating_cursor.dart';
-import '../../infrastructure/platforms/ios/ios_system_context_menu.dart';
-import 'user_interaction.dart';
+import 'package:super_editor/src/super_textfield/metrics.dart';
+import 'package:super_editor/src/super_textfield/styles.dart';
+import 'package:super_editor/src/super_textfield/ios/floating_cursor.dart';
+import 'package:super_editor/src/infrastructure/platforms/ios/ios_system_context_menu.dart';
+import 'package:super_editor/src/super_textfield/ios/user_interaction.dart';
 
 export '../infrastructure/magnifier.dart';
 export 'caret.dart';
@@ -852,6 +851,9 @@ class _IOSSuperTextFieldSystemContextMenuState extends State<IOSSuperTextFieldSy
       return;
     }
 
+    // WONKY PATCH (infra, SE-10): `show` keeps the native default menu;
+    // `showWithItems` needs the items of an `EditableTextState`.
+    // ignore: deprecated_member_use
     _systemContextMenuController.show(Rect.fromLTRB(topAnchor.dx, topAnchor.dy, bottomAnchor.dx, bottomAnchor.dy));
   }
 

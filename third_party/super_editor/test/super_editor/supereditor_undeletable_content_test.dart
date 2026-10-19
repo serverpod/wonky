@@ -702,7 +702,7 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(
@@ -773,7 +773,7 @@ void main() {
                       id: '1',
                       text: AttributedText('This is some text'),
                     ),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -836,14 +836,14 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(
                       id: '2',
                       text: AttributedText('This is some text'),
                     ),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -906,13 +906,13 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -985,13 +985,13 @@ void main() {
                 MutableDocument(
                   nodes: [
                     ParagraphNode(id: '1', text: AttributedText()),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '4', metadata: {
+                    HorizontalRuleNode(id: '4', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(id: '5', text: AttributedText()),
@@ -1530,7 +1530,7 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(
@@ -1601,7 +1601,7 @@ void main() {
                       id: '1',
                       text: AttributedText('This is some text'),
                     ),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -1664,14 +1664,14 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(
                       id: '2',
                       text: AttributedText('This is some text'),
                     ),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -1734,13 +1734,13 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -1813,13 +1813,13 @@ void main() {
                 MutableDocument(
                   nodes: [
                     ParagraphNode(id: '1', text: AttributedText()),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '4', metadata: {
+                    HorizontalRuleNode(id: '4', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(id: '5', text: AttributedText()),
@@ -2338,7 +2338,7 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(
@@ -2408,7 +2408,7 @@ void main() {
                       id: '1',
                       text: AttributedText('This is some text'),
                     ),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -2472,14 +2472,14 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(
                       id: '2',
                       text: AttributedText('This is some text'),
                     ),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -2556,13 +2556,13 @@ void main() {
               .withCustomContent(
                 MutableDocument(
                   nodes: [
-                    HorizontalRuleNode(id: '1', metadata: {
+                    HorizontalRuleNode(id: '1', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                   ],
@@ -2634,13 +2634,13 @@ void main() {
                 MutableDocument(
                   nodes: [
                     ParagraphNode(id: '1', text: AttributedText()),
-                    HorizontalRuleNode(id: '2', metadata: {
+                    HorizontalRuleNode(id: '2', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '3', metadata: {
+                    HorizontalRuleNode(id: '3', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
-                    HorizontalRuleNode(id: '4', metadata: {
+                    HorizontalRuleNode(id: '4', metadata: const {
                       NodeMetadata.isDeletable: false,
                     }),
                     ParagraphNode(id: '5', text: AttributedText()),
@@ -2734,7 +2734,7 @@ Future<TestDocumentContext> _pumpParagraphThenHrTestApp(WidgetTester tester) asy
               id: '1',
               text: AttributedText('Paragraph 1'),
             ),
-            HorizontalRuleNode(id: 'hr', metadata: {
+            HorizontalRuleNode(id: 'hr', metadata: const {
               NodeMetadata.isDeletable: false,
             }),
           ],
@@ -2752,7 +2752,7 @@ Future<TestDocumentContext> _pumpHrThenParagraphTestApp(WidgetTester tester) asy
       .withCustomContent(
         MutableDocument(
           nodes: [
-            HorizontalRuleNode(id: 'hr', metadata: {
+            HorizontalRuleNode(id: 'hr', metadata: const {
               NodeMetadata.isDeletable: false,
             }),
             ParagraphNode(
@@ -2781,7 +2781,7 @@ Future<TestDocumentContext> _pumpParagraphThenHrThenParagraphTestApp(WidgetTeste
               id: '1',
               text: AttributedText('Paragraph 1'),
             ),
-            HorizontalRuleNode(id: 'hr', metadata: {
+            HorizontalRuleNode(id: 'hr', metadata: const {
               NodeMetadata.isDeletable: false,
             }),
             ParagraphNode(
@@ -2815,17 +2815,17 @@ Future<TestDocumentContext> _pumpMultipleDeletableAndUndeletableNodesTestApp(Wid
               id: '1',
               text: AttributedText('Paragraph 1'),
             ),
-            HorizontalRuleNode(id: 'hr1', metadata: {
+            HorizontalRuleNode(id: 'hr1', metadata: const {
               NodeMetadata.isDeletable: false,
             }),
-            HorizontalRuleNode(id: 'hr2', metadata: {
+            HorizontalRuleNode(id: 'hr2', metadata: const {
               NodeMetadata.isDeletable: false,
             }),
             ParagraphNode(
               id: '2',
               text: AttributedText('Paragraph 2'),
             ),
-            HorizontalRuleNode(id: 'hr3', metadata: {
+            HorizontalRuleNode(id: 'hr3', metadata: const {
               NodeMetadata.isDeletable: false,
             }),
             ParagraphNode(

@@ -1,3 +1,5 @@
+// WONKY PATCH (infra, SE-10): moved from `lib/src/test/flutter_extensions/`; it imports the
+// dev dependency `golden_toolkit` (CQ-45). Upstream exports it from `super_test.dart`.
 import 'dart:io';
 import 'dart:ui';
 
