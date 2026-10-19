@@ -42,7 +42,9 @@ enum BoardLimit {
   commentsPerHour(Duration(hours: 1), 'comments'),
   votesPerHour(Duration(hours: 1), 'votes'),
   flagsPerDay(Duration(days: 1), 'flags'),
-  similarPerMinute(Duration(minutes: 1), 'searches');
+  similarPerMinute(Duration(minutes: 1), 'searches'),
+  editsPerHour(Duration(hours: 1), 'edits'),
+  signedOutSearchesPerMinute(Duration(minutes: 1), 'searches');
 
   const BoardLimit(this.window, this.what);
 
@@ -56,6 +58,8 @@ enum BoardLimit {
     votesPerHour => l.votesPerHour,
     flagsPerDay => l.flagsPerDay,
     similarPerMinute => l.similarPerMinute,
+    editsPerHour => l.editsPerHour,
+    signedOutSearchesPerMinute => l.signedOutSearchesPerMinute,
   };
 }
 
@@ -71,8 +75,33 @@ abstract final class BoardRateLimits {
   /// over [limit]. Admins have no limits (they moderate and post in bulk).
   static Future<void> check(BoardLimit limit, BoardCaller caller) async {
     if (caller.isAdmin) return;
+    await _check(limit, caller.id);
+  }
+
+  /// Rate limit of a signed-out search ([BoardLimit.similarPerMinute] per
+  /// client address, and [BoardLimit.signedOutSearchesPerMinute] for all
+  /// signed-out callers together, which holds when addresses are forged
+  /// through `Forwarded` headers or rotated).
+  static Future<void> checkSignedOut(Session session) async {
+    await _check(
+      BoardLimit.similarPerMinute,
+      'ip:${clientAddress(session) ?? 'unknown'}',
+    );
+    await _check(BoardLimit.signedOutSearchesPerMinute, 'all');
+  }
+
+  /// The client address of [session]'s request (null without a request).
+  static String? clientAddress(Session session) {
+    try {
+      return session.request?.remoteInfo;
+    } on Object {
+      return null;
+    }
+  }
+
+  static Future<void> _check(BoardLimit limit, Object key) async {
     final max = limit.limitIn(BoardConfig.current.limits);
-    final retry = await _limiter(limit).check(caller.id, limit: max);
+    final retry = await _limiter(limit).check(key, limit: max);
     if (retry == null) return;
     final minutes = (retry.inSeconds / 60).ceil().clamp(1, 24 * 60);
     throw Errors.limit(

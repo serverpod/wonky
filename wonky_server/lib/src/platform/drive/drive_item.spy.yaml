@@ -66,3 +66,6 @@ indexes:
   ### (v2) `drive.expireUploads`: files still uploading after 24 h.
   drive_item_upload_idx:
     fields: uploadState, createdAt
+  ### Daily trash purge (`drive.purgeTrash`).
+  drive_item_trashed_idx:
+    fields: trashedAt

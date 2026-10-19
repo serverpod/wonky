@@ -238,4 +238,45 @@ void main() {
       },
     );
   });
+
+  group('Given a selection and a change', () {
+    final insertAt2 = Delta()
+      ..retain(2)
+      ..insert('xy');
+
+    test(
+      'when the change inserts at a caret then the caret moves after it',
+      () {
+        expect(
+          const DeltaSelection.collapsed(2).transform(insertAt2),
+          const DeltaSelection.collapsed(4),
+        );
+      },
+    );
+
+    test('when the change inserts at the edges of a range then it does not '
+        'grow', () {
+      expect(
+        const DeltaSelection(2, 5).transform(
+          Delta()
+            ..retain(5)
+            ..insert('z'),
+        ),
+        const DeltaSelection(2, 5),
+      );
+    });
+
+    test('when a backward range is transformed then it stays backward', () {
+      expect(
+        const DeltaSelection(6, 3).transform(insertAt2),
+        const DeltaSelection(8, 5),
+      );
+    });
+
+    test('when round-tripping JSON then the selection is equal', () {
+      const s = DeltaSelection(4, 1);
+
+      expect(DeltaSelection.fromJson(s.toJson()), s);
+    });
+  });
 }

@@ -215,7 +215,9 @@ Future<CommandResult> _exportPng(
     // Offline: the deck is local, exporting needs no server.
   }
   final raw = a.values['options'];
-  final given = raw is Map ? raw.cast<String, Object?>() : const {};
+  final given = raw is Map
+      ? raw.cast<String, Object?>()
+      : const <String, Object?>{};
   var o = SlidesPngOptions.fromJson({
     ..._lastPng(s).toPreferences(),
     'range': zip ? 'all' : 'current',

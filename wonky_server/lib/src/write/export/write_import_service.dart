@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
@@ -8,6 +7,7 @@ import 'package:wonky_write_core/wonky_write_core.dart' as core;
 
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
+import '../../platform/common/isolate_runner.dart';
 import '../../platform/common/models.dart';
 import '../../platform/common/time.dart';
 import '../../platform/config/wonky_config.dart';
@@ -81,7 +81,7 @@ abstract final class WriteImportService {
     final soft = (options['lineBreaks'] ?? options['line_breaks']) == 'soft';
     final maxChars = WonkyConfig.current.maxDocumentChars;
     try {
-      return await Isolate.run(
+      return await IsolateRunner.run(
         () =>
             core.WonkyImporters(
               limits: core.ImportLimits(
@@ -98,7 +98,9 @@ abstract final class WriteImportService {
               ),
               format: explicit,
             ),
-      ).timeout(conversionTimeout);
+        name: 'write-import',
+        timeout: conversionTimeout,
+      );
     } on TimeoutException {
       throw Errors.unavailable(
         'Converting the file took too long. Try a smaller file.',

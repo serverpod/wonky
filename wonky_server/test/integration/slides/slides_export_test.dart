@@ -7,11 +7,12 @@ import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
+import 'package:wonky_server/src/platform/common/isolate_runner.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/files/file_service.dart';
 import 'package:wonky_server/src/slides/exports/slides_export_service.dart';
 import 'package:wonky_server/src/slides/headless/headless_deck.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_slides_core/ops.dart';
 
 import '../../support/test_drive.dart';
@@ -62,7 +63,7 @@ void main() {
       await deck.write(SetSlideProps([slides[3]], skipped: true));
     });
 
-    tearDown(HeadlessDeckCache.clear);
+    tearDown(HeadlessFileCache.clear);
 
     test('when exporting a PDF then the stored result has one page per '
         'non-skipped slide, the deck title and an activity entry', () async {
@@ -136,6 +137,65 @@ void main() {
       expect(a.pageCount, 1);
       expect(await stored(), before);
       expect(b.sizeBytes, a.sizeBytes);
+    });
+
+    test('when the deck changes between two equal requests then the second '
+        'renders the new revision', () async {
+      final a = await endpoints.slidesExport.export(
+        anna.endpointSession,
+        item.uuid,
+        'pdf',
+        '{}',
+        null,
+      );
+      final deck = await const SlidesHeadlessProvider().open(
+        HeadlessDeckContext(anna.session, anna.actor),
+        item.uuid.uuid,
+      );
+      await deck.write(
+        AddSlides(afterSlideId: deck.model.slides.first.id, count: 1),
+      );
+
+      final b = await endpoints.slidesExport.export(
+        anna.endpointSession,
+        item.uuid,
+        'pdf',
+        '{}',
+        null,
+      );
+
+      expect(a.pageCount, 3);
+      expect(b.pageCount, 4);
+    });
+
+    test('when an export is cancelled before it starts then it fails as '
+        'cancelled and frees its slot', () async {
+      final cancel = IsolateCancelToken()..cancel();
+
+      await expectLater(
+        SlidesExportService.export(
+          anna.session,
+          anna.actor,
+          item.uuid,
+          'pdf',
+          '{}',
+          cancel: cancel,
+        ),
+        throwsA(
+          isA<WonkyException>()
+              .having((e) => e.code, 'code', WonkyErrorCode.unavailable)
+              .having((e) => e.message, 'message', contains('cancelled')),
+        ),
+      );
+      final r = await endpoints.slidesExport.export(
+        anna.endpointSession,
+        item.uuid,
+        'pdf',
+        '{}',
+        null,
+      );
+      expect(r.pageCount, 3);
+      expect(IsolateRunner.running, 0);
     });
 
     test(

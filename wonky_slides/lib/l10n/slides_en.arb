@@ -2593,6 +2593,22 @@
   "@toastUndoPartial": {
     "description": "Toast when an undo skipped a collaborator’s newer changes."
   },
+  "toastChangeNotSaved": "“{label}” couldn’t be saved: {reason}",
+  "@toastChangeNotSaved": {
+    "description": "A change the server rejected (RevLog 06 §4.6); it is undone on this device.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "toastChangeNoAccess": "You can no longer edit this presentation",
+  "@toastChangeNoAccess": {
+    "description": "A change was rejected because the user lost edit access."
+  },
   "cmdSelectElements": "Select objects",
   "@cmdSelectElements": {
     "description": "Title of the command `slides.select.elements` (menus, palette, tooltips, undo)."
@@ -10015,5 +10031,77 @@
         "type": "String"
       }
     }
+  },
+  "errorObjectLocked": "This object is locked.",
+  "@errorObjectLocked": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorTooManyGuides": "There are too many guides",
+  "@errorTooManyGuides": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorSelectTextBox": "Select a text box",
+  "@errorSelectTextBox": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorCopyFailed": "The copy couldn’t be made",
+  "@errorCopyFailed": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorNothingToRestore": "Nothing to restore",
+  "@errorNothingToRestore": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorCropRemovesImage": "The crop removes the whole image",
+  "@errorCropRemovesImage": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorSelectSlide": "Select at least one slide",
+  "@errorSelectSlide": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorClipboardNoSlides": "The clipboard holds no slides",
+  "@errorClipboardNoSlides": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorNothingToMove": "Nothing to move there",
+  "@errorNothingToMove": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorOneEmoji": "One emoji is expected",
+  "@errorOneEmoji": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorTextChanged": "The text has changed",
+  "@errorTextChanged": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorOneWord": "One word is expected",
+  "@errorOneWord": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorNoSlidesSelected": "No slides selected",
+  "@errorNoSlidesSelected": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorNothingToFix": "Nothing to fix",
+  "@errorNothingToFix": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorNothingToPaste": "Nothing to paste",
+  "@errorNothingToPaste": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorLineNotOnSlide": "The line is not on the current slide",
+  "@errorLineNotOnSlide": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorRouteHandlesInGroups": "Route handles are not available inside groups",
+  "@errorRouteHandlesInGroups": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
+  },
+  "errorStraightLineWaypoints": "Straight lines have no waypoints",
+  "@errorStraightLineWaypoints": {
+    "description": "Message of a command that can't run (shown as a toast; CQ-57)."
   }
 }

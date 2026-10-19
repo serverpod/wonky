@@ -2,6 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_core/wonky_core.dart' show InvocationSource;
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../data/api.dart';
 import '../../data/models_ext.dart';
@@ -248,13 +250,18 @@ class _MoveDialogState extends State<_MoveDialog>
     final name = _newName.text.trim();
     if (name.isEmpty) return;
     try {
-      final v = await s.drive.createFolder(
-        parentUuid: _folder?.uuid,
-        name: name,
+      // Through the command: undoable and visible to agents (CQ-54).
+      final result = await s.dispatcher.invoke(
+        'shell.drive.newFolder',
+        args: {'name': name, 'parentUuid': _folder?.uuid.uuid},
+        source: InvocationSource.ui,
       );
+      final data = result.data;
+      final uuid = data is Map ? data['uuid'] : null;
+      if (!mounted || uuid is! String) return;
       _newName.clear();
       setState(() => _creating = false);
-      await _open(v.uuid);
+      await _open(UuidValue.fromString(uuid));
     } catch (e) {
       s.toasts.error(l.errorGeneric, description: errorMessage(e));
     }
@@ -313,6 +320,7 @@ class _MoveDialogState extends State<_MoveDialog>
             : l.moveTitleMany(widget.items.length));
     return ShadDialog(
       key: const ValueKey<String>('dialog.move'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(title),
       actions: [
         ShadButton.outline(

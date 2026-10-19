@@ -27,13 +27,11 @@ workspace:
   - packages/wonky_rich_text
   - packages/wonky_fonts
   - packages/wonky_spellcheck
-  - packages/wonky_sync_kit
-  - packages/wonky_sync_kit_flutter
+  - packages/wonky_revlog
+  - packages/wonky_revlog_flutter
   - packages/wonky_slides_core
   - packages/wonky_rich_editor
-  # Vendored, patched copy (third_party/serverpod_offline_sync/PATCHES.md). A
-  # workspace member, not a path override, so Serverpod Cloud uploads it.
-  - third_party/serverpod_offline_sync
+  - packages/wonky_lints
   # Vendored, patched copy (third_party/dart_eval/PATCHES.md); the server
   # compiles scripts with it, so it is a workspace member too.
   - third_party/dart_eval

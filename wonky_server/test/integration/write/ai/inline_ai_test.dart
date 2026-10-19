@@ -1,7 +1,11 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/ai/ai_config.dart';
+import 'package:wonky_server/src/platform/ai/ai_usage_service.dart';
 import 'package:wonky_server/src/platform/ai/llm/ai_client.dart';
 import 'package:wonky_server/src/platform/ai/llm/fake_ai_client.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
@@ -206,6 +210,54 @@ void main() {
             .toList(),
         throwsA(isA<WonkyException>()),
       );
+    });
+
+    test('when runs finish, fail or are refused then no concurrency slot '
+        'stays taken', () async {
+      fake.enqueue((AiScript()..text('Done.')).response);
+      fake.enqueue(FakeAiResponse.error(StateError('provider down')));
+      InlineAiRequest req(String action) => InlineAiRequest(
+        itemUuid: doc.uuid,
+        action: action,
+        selectedMarkdown: 'We should ship it.',
+      );
+
+      await endpoints.assistant
+          .inline(anna.endpointSession, req('shorter'))
+          .toList();
+      await endpoints.assistant
+          .inline(anna.endpointSession, req('shorter'))
+          .toList()
+          .catchError((Object _) => <InlineAiEvent>[]);
+      await expectLater(
+        endpoints.assistant.inline(anna.endpointSession, req('nope')).toList(),
+        throwsA(isA<WonkyException>()),
+      );
+
+      expect(AiUsageService.running(anna.id), 0);
+    });
+
+    test('when the provider is rate limited then the run ends with a busy '
+        'error event and frees its slot', () async {
+      fake.enqueue(
+        FakeAiResponse.error(AiApiException(429, 'api_error', 'slow down')),
+      );
+
+      final events = await endpoints.assistant
+          .inline(
+            anna.endpointSession,
+            InlineAiRequest(
+              itemUuid: doc.uuid,
+              action: 'shorter',
+              selectedMarkdown: 'We should ship it.',
+            ),
+          )
+          .toList();
+
+      expect(events.last.type, InlineAiEventType.error);
+      expect(events.last.errorCode, 'rate_limited');
+      expect(events.last.error, contains('busy'));
+      expect(AiUsageService.running(anna.id), 0);
     });
   });
 }

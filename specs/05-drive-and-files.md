@@ -31,8 +31,8 @@ fields:
   ownerId: int, relation(parent=user_profile, onDelete=Restrict)
   parentId: int?, relation(parent=drive_item, onDelete=SetNull)   # null = owner's root
   description: String?
-  # Documents: document_id; spreadsheets: the offline-sync space UUID (= Spreadsheet.id);
-  # (v2) presentations: the deck's space UUID (= Deck.id = item uuid); files: StoredFile.fileUuid
+  # Documents: document_id; spreadsheets and (v2) presentations: the RevLog file UUID
+  # (= Spreadsheet.id / Deck.id = item uuid, 17 As built 2); files: StoredFile.fileUuid
   contentRef: UuidValue?
   thumbnailFileId: UuidValue?
   sizeBytes: int, default=0                    # (v2) counted content size: estimate or file size (Drive 03 §2)
@@ -86,15 +86,23 @@ Sharing tables (`DriveItemPermission`, `ShareLink`) are defined in
 |------|-----|---------|-----------|
 | `folder` | Drive | — | `createFolder` |
 | `document` | Write | `Document` + op log | `createDocument` (online/offline, client ids) |
-| `spreadsheet` | Sheets | sync space | reserved space + `registerSpreadsheet`, or `createSpreadsheet` |
-| `presentation` | Slides | sync space (one deck = one space) | reserved space + `registerPresentation`, or `createPresentation` ([Slides 02 §9.3](wonky_slides/02-data-model.md)) |
+| `spreadsheet` | Sheets | RevLog file (domain rows + op log, [17](17-revlog-sync.md)) | `registerSpreadsheet` (content written by the client, online/offline, client ids), or `createSpreadsheet` |
+| `presentation` | Slides | RevLog file | `registerPresentation` (as for spreadsheets), or `createPresentation` ([Slides 02 §9.3](wonky_slides/02-data-model.md)) |
 | `file` | Drive (preview) | `StoredFile` (`driveFile`) | `createFileUpload` + `completeFileUpload` ([Drive 02 §3](wonky_drive/02-files-uploads-previews.md)) |
 
-Full-text search uses Postgres `to_tsvector('simple', …)`/prefix `to_tsquery` computed at query
-time (plus `ILIKE` on the name) over `name`, `description` and an extracted `searchText` field
-updated asynchronously (document plain text, throttled; spreadsheet sheet names + first 10k cell
-values), restricted to items the caller can access. A GIN index via a hand-written migration step
-is a later optimization (it must then also be added to `definition.sql`).
+Full-text search uses Postgres `to_tsvector('simple', …)`/prefix `to_tsquery` (plus `ILIKE` on
+the name) over `name`, `description` and an extracted `searchText` field updated asynchronously
+(document plain text, throttled; spreadsheet sheet names + first 10k cell values), restricted to
+items the caller can access. The document expression has a GIN index and the name a `pg_trgm`
+index (when the extension exists); both are created at server start by `SearchIndexes`, outside
+the models, because Serverpod models cannot declare expression indexes and `definition.sql` must
+stay the generated one (13 §3). **As built (CQ-25):** `list` and `search` run in SQL
+(`DriveListing`): the view, visibility (owned, granted and not expired, or a link role; search:
+link items only once opened), kind/owner/category/folder/date/shared filters and the sort are
+in the query, pages are cut with an opaque keyset cursor (sort keys + id; search: rank, modified,
+id; a cursor of another list or sort is refused with `invalidArgument`), and views are built for
+the page only. Names sort by `lower(name)` in code-point order. The template gallery filters
+visibility in SQL too.
 
 ## 2. Endpoints — `DriveEndpoint` (`drive`)
 
@@ -106,9 +114,9 @@ is a later optimization (it must then also be added to `definition.sql`).
 | `search(query, filters, cursor)` | Full-text + filters (type, owner, modified range, shared). |
 | `createFolder(parentUuid?, name)` | |
 | `createDocument(parentUuid?, name, templateUuid?, initialMarkdown?)` | Creates `DriveItem` + `Document` (see Write data model). |
-| `registerSpreadsheet(spaceUuid, parentUuid?, name)` | Called after a spreadsheet was created locally in a reserved sync space (works offline-first; idempotent). |
-| `createSpreadsheet(parentUuid?, name, templateUuid?)` | Online convenience used by MCP/headless; creates space + rows server-side. |
-| `registerPresentation(spaceUuid, parentUuid?, name)` · `createPresentation(parentUuid?, name, templateUuid?)` | (v2) As for spreadsheets ([Slides 02 §9.3](wonky_slides/02-data-model.md)). |
+| `registerSpreadsheet(spaceUuid, parentUuid?, name)` | Creates the drive item and the RevLog file for a spreadsheet created on a device (client-generated file UUID = item uuid) with `initialize: false`: the file stays at revision 0 and the client's queued creation op becomes revision 1 ([17](17-revlog-sync.md) part 4 §5). Idempotent on the UUID; works offline-first (queued as a `PendingDriveOp`); a parent folder that is gone or no longer writable falls back to My Drive. |
+| `createSpreadsheet(parentUuid?, name, templateUuid?, locale?, timeZone?)` | Server-side creation (Drive's *New* online, MCP, AI, templates, welcome content): the server writes the template's or the default content as the file's first ops (`RevLogService.createFile`, 17 part 5 §8.3). |
+| `registerPresentation(spaceUuid, parentUuid?, name)` · `createPresentation(parentUuid?, name, templateUuid?, fileUuid?, initialize?)` | (v2) As for spreadsheets; `createPresentation` with `fileUuid` is idempotent and with `initialize: false` leaves the file for the client's creation op ([Slides 02 §9.3](wonky_slides/02-data-model.md)). |
 | `createFileUpload(request)` · `completeFileUpload(itemUuid)` · `cancelFileUpload(itemUuid)` · `fileUploadStatus(itemUuid)` | (v2) Uploads of `file` items, quota reservation ([Drive 02 §3](wonky_drive/02-files-uploads-previews.md)). |
 | `fileContentUrl(itemUuid, download)` · `updateFileMeta(itemUuid, fileMetaJson)` · `convertFile(fileItemUuid, target, options)` | (v2) Preview/download URLs, client-measured metadata, *Open with* conversion (Drive 02 §6–§8). |
 | `checkRoom(bytes, itemUuid?)` · `listByStorage(filter, cursor)` | (v2) Quota pre-check; owned items by counted size for the Storage page ([Drive 03](wonky_drive/03-storage-quota.md)). |
@@ -245,7 +253,8 @@ Single-window page at `/` of each app — layout:
   forever.
 - **Details panel** (toggle `i`): right side panel (`WonkySplitView` with `rail: false`: a close
   button, no icon rail; suite 02 §4.5) with thumbnail (or the kind icon), type, owner, location,
-  sharing summary, created/modified/opened, description (editable), activity feed (who did
+  sharing summary, created/modified/opened, description (editable; saved on blur through the
+  undoable `shell.drive.setDescription`), activity feed (who did
   what, from server activity log). (v2) Also "Storage used" (counted size, with "Counts against
   <owner>'s storage" for other people's items) and, for files, type/dimensions/pages and *Open
   with* ([Drive 04 §3.6](wonky_drive/04-screens-menus.md)).
@@ -280,11 +289,12 @@ upload (Drive 04 §10).
 ## 4. Offline behavior
 
 - The drive list is cached locally (last 500 items + all pinned) for offline browsing. Offline,
-  "New spreadsheet" works (reserved space; registered later). "New document" works offline
-  (client generates `documentId` UUIDv7; registration queued; see offline spec). (v2) "New
-  presentation" works offline like spreadsheets (Slides 02 §9.3). In Drive, *New* Wonky items
-  navigate to the app's `/new` route, which creates them offline-first (Drive 04 §5); Drive
-  itself holds no Sheets/Slides replica.
+  "New spreadsheet" works (client generates the file UUID, the creation op goes into the
+  outbox and `registerSpreadsheet` is queued; [17](17-revlog-sync.md) part 6 §7.1). "New
+  document" works offline (client generates `documentId` UUIDv7; registration queued; see
+  offline spec). (v2) "New presentation" works offline like spreadsheets (Slides 02 §9.3). In
+  Drive, *New* Wonky items navigate to the app's `/new` route, which creates them offline-first
+  (Drive 04 §5); Drive itself holds no Sheets/Slides cache.
 - (v2) Uploads in Drive are queued while offline and start when the connection returns; the
   quota applies when they reach the server ([Drive 02 §4](wonky_drive/02-files-uploads-previews.md)).
   Previews of files are available offline only from the in-memory cache.

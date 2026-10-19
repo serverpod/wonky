@@ -18,7 +18,7 @@ import 'package:wonky_write_core/wonky_write_core.dart'
         WonkyOt,
         documentHash;
 
-import 'connection_keeper.dart';
+import 'package:wonky_app/wonky_app.dart';
 import 'sync_persistence.dart';
 import 'sync_transport.dart';
 
@@ -405,6 +405,8 @@ class DocumentSyncController {
   String? _error;
   Timer? _ping;
   Timer? _gapTimer;
+  Timer? _internalRetry;
+  int _internalFailures = 0;
   final List<SyncLogEntry> _log = [];
 
   final _events = StreamController<SyncEvent>.broadcast(sync: true);
@@ -550,6 +552,7 @@ class DocumentSyncController {
     _disposed = true;
     _ping?.cancel();
     _gapTimer?.cancel();
+    _internalRetry?.cancel();
     keeper.connectivity.removeListener(_onConnectivity);
     await keeper.stop(key);
     final c = _conn;
@@ -609,17 +612,17 @@ class DocumentSyncController {
     if (conn == null || !conn.initialized || !_loaded) return;
     var a = anchor;
     var h = head;
+    final serverLength = DeltaUtils.documentLength(_server);
     final pending = _pendingDelta();
     if (pending != null) {
-      try {
-        final inverse = WonkyOt.invert(pending, _server);
-        a = WonkyOt.transformPosition(inverse, a, pushOnInsert: false);
-        h = WonkyOt.transformPosition(inverse, h, pushOnInsert: false);
-      } on Object {
-        return;
-      }
+      // Pending local changes that don't fit the server document: no
+      // cursor until they are resolved.
+      if (DeltaUtils.baseLength(pending) > serverLength) return;
+      final inverse = _positionInverse(pending);
+      a = WonkyOt.transformPosition(inverse, a, pushOnInsert: false);
+      h = WonkyOt.transformPosition(inverse, h, pushOnInsert: false);
     }
-    final max = DeltaUtils.documentLength(_server) - 1;
+    final max = serverLength - 1;
     conn.send(
       DocCursorUpdate(
         revision: _revision,
@@ -628,6 +631,26 @@ class DocumentSyncController {
         focused: focused,
       ),
     );
+  }
+
+  /// The inverse of [change] for transforming positions: positions only
+  /// depend on the lengths of inserts, deletes and retains, so deleted text
+  /// is stood in for by spaces instead of being read from the server
+  /// document (`WonkyOt.invert` walked and copied all of it for every
+  /// cursor update, CQ-49).
+  static Delta _positionInverse(Delta change) {
+    final inverse = Delta();
+    for (final op in change.operations) {
+      final length = op.length!;
+      if (op.isInsert) {
+        inverse.delete(length);
+      } else if (op.isDelete) {
+        inverse.insert(' ' * length);
+      } else {
+        inverse.retain(length);
+      }
+    }
+    return inverse;
   }
 
   /// Runs the integrity check now (Write 03 §3.2, debug "on demand").
@@ -1026,6 +1049,7 @@ class DocumentSyncController {
   void _onAck(DocAck m) {
     final inflight = _inflight;
     if (inflight == null || inflight.id != m.clientOpId) return;
+    _internalFailures = 0;
     if (m.revision <= _revision) return;
     if (_blockedAck?.revision == m.revision) return;
     final existing = _queue[m.revision];
@@ -1084,7 +1108,8 @@ class DocumentSyncController {
   void _applyRemote(_RemoteOp e) {
     final r = e.delta;
     try {
-      _server = WonkyOt.apply(_server, r);
+      // `_server` is canonical: only the ops around the change are redone.
+      _server = WonkyOt.applyToCanonical(_server, r);
     } on Object catch (err) {
       _logEvent('Remote op ${e.revision} does not fit: $err', isError: true);
       unawaited(_resync(ResyncReason.inconsistent));
@@ -1159,7 +1184,9 @@ class DocumentSyncController {
       }
     }
     try {
-      return _normalizer.normalizeChange(_server, op).change;
+      // Only the lines the op touches (CQ-49): same result as
+      // `normalizeChange(_server, op).change`.
+      return _normalizer.normalizedChange(_server, op);
     } on Object {
       return null;
     }
@@ -1205,7 +1232,7 @@ class DocumentSyncController {
     final inflight = _inflight!;
     final before = _server;
     try {
-      _server = WonkyOt.apply(before, finalDelta);
+      _server = WonkyOt.applyToCanonical(before, finalDelta);
     } on Object catch (err) {
       _logEvent('Acknowledged op does not fit: $err', isError: true);
       unawaited(_resync(ResyncReason.inconsistent));
@@ -1365,6 +1392,12 @@ class DocumentSyncController {
 
   void _onRejected(DocOpRejected m) {
     if (_inflight?.id != m.clientOpId) return;
+    if (m.code == DocRejectCode.internal) {
+      // Nothing was committed (or the resend is acknowledged as a
+      // duplicate): retry the same op after a backoff, keeping local edits.
+      _retryInternal();
+      return;
+    }
     _error = m.message;
     _logEvent('Change rejected (${m.code.name}): ${m.message}', isError: true);
     if (m.code == DocRejectCode.rebaseTooOld) {
@@ -1374,6 +1407,25 @@ class DocumentSyncController {
         _resync(ResyncReason.rejected, code: m.code, message: m.message),
       );
     }
+  }
+
+  /// Resends the in-flight op after an `internal` rejection, backing off
+  /// from 1 s to 30 s; a reconnect resends it anyway.
+  void _retryInternal() {
+    _internalFailures++;
+    final seconds = 1 << (_internalFailures - 1).clamp(0, 5);
+    _logEvent(
+      'Server error; retrying the change in ${seconds.clamp(1, 30)} s.',
+      isError: true,
+    );
+    _internalRetry?.cancel();
+    _internalRetry = Timer(Duration(seconds: seconds.clamp(1, 30)), () {
+      final p = _inflight;
+      final session = _conn?.sessionId;
+      if (_disposed || p == null || session == null) return;
+      p.sentOn.remove(session);
+      _sendInflight();
+    });
   }
 
   /// Re-synchronizes the local document from the head snapshot. Pending

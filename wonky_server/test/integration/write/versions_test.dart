@@ -1,5 +1,9 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/versions/version_service.dart';
@@ -56,7 +60,7 @@ void main() {
         final early = await VersionService.captureDue(session);
         final later = await VersionService.captureDue(
           session,
-          now: DateTime.now().toUtc().add(const Duration(minutes: 6)),
+          now: clock.now().toUtc().add(const Duration(minutes: 6)),
         );
         final versions = await endpoints.version.list(
           anna.endpointSession,
@@ -112,7 +116,7 @@ void main() {
         final session = sessionBuilder.build();
         await VersionService.captureDue(
           session,
-          now: DateTime.now().toUtc().add(const Duration(minutes: 6)),
+          now: clock.now().toUtc().add(const Duration(minutes: 6)),
         );
         final auto = (await endpoints.version.list(
           anna.endpointSession,

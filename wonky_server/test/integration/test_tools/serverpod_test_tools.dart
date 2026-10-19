@@ -18,10 +18,10 @@ import 'dart:typed_data' as _idt;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
-    as _izehhkf5;
 import 'package:serverpod_test/serverpod_test.dart' as _ist;
 import 'package:wonky_server/src/generated/future_calls.dart' as _iwslocjr;
+import 'package:wonky_server/src/generated/future_calls_generated_models/acl_future_call_fan_out_model.dart'
+    as _ievi2fyc;
 import 'package:wonky_server/src/generated/future_calls_generated_models/board_future_call_summarize_model.dart'
     as _ied218dm;
 import 'package:wonky_server/src/generated/future_calls_generated_models/board_future_call_triage_model.dart'
@@ -170,6 +170,18 @@ import 'package:wonky_server/src/generated/platform/presence/presence_event.dart
     as _in8u6dfh;
 import 'package:wonky_server/src/generated/platform/presence/presence_update.dart'
     as _ipd65of1;
+import 'package:wonky_server/src/generated/platform/revlog/messages/rev_client_message.dart'
+    as _iv4mnr49;
+import 'package:wonky_server/src/generated/platform/revlog/messages/rev_server_message.dart'
+    as _ifa159qn;
+import 'package:wonky_server/src/generated/platform/revlog/models/rev_file_info.dart'
+    as _iwjfjan3;
+import 'package:wonky_server/src/generated/platform/revlog/models/rev_op_view.dart'
+    as _iu7aww0d;
+import 'package:wonky_server/src/generated/platform/revlog/models/rev_page.dart'
+    as _i4qoa0fo;
+import 'package:wonky_server/src/generated/platform/revlog/models/rev_page_request.dart'
+    as _iynxab9u;
 import 'package:wonky_server/src/generated/platform/sharing/invite_resolution.dart'
     as _ir129i67;
 import 'package:wonky_server/src/generated/platform/sharing/item_sharing_settings.dart'
@@ -216,10 +228,6 @@ import 'package:wonky_server/src/generated/sheets/models/revert_result.dart'
     as _iqq3mn94;
 import 'package:wonky_server/src/generated/sheets/models/sheets_activity_summary.dart'
     as _in9s3hn0;
-import 'package:wonky_server/src/generated/sheets/models/space_stats.dart'
-    as _ilyb1rcx;
-import 'package:wonky_server/src/generated/sheets/models/subscribe_result.dart'
-    as _iy5owoxu;
 import 'package:wonky_server/src/generated/sheets/scripts/models/script_authorization_view.dart'
     as _ix5njoik;
 import 'package:wonky_server/src/generated/sheets/scripts/models/script_compile_response.dart'
@@ -467,9 +475,9 @@ class TestEndpoints {
 
   late final _SheetsAiEndpoint sheetsAi;
 
-  late final _SheetsEndpoint sheets;
+  late final _SheetsDocEndpoint sheetsDoc;
 
-  late final _SheetsSyncEndpoint sheetsSync;
+  late final _SheetsEndpoint sheets;
 
   late final _SheetsImportEndpoint sheetsImport;
 
@@ -481,9 +489,9 @@ class TestEndpoints {
 
   late final _SlidesChartsEndpoint slidesCharts;
 
-  late final _SlidesEndpoint slides;
+  late final _SlidesDocEndpoint slidesDoc;
 
-  late final _SlidesSyncEndpoint slidesSync;
+  late final _SlidesEndpoint slides;
 
   late final _SlidesExportEndpoint slidesExport;
 
@@ -589,11 +597,11 @@ class _InternalTestEndpoints extends TestEndpoints
       endpoints,
       serializationManager,
     );
-    sheets = _SheetsEndpoint(
+    sheetsDoc = _SheetsDocEndpoint(
       endpoints,
       serializationManager,
     );
-    sheetsSync = _SheetsSyncEndpoint(
+    sheets = _SheetsEndpoint(
       endpoints,
       serializationManager,
     );
@@ -617,11 +625,11 @@ class _InternalTestEndpoints extends TestEndpoints
       endpoints,
       serializationManager,
     );
-    slides = _SlidesEndpoint(
+    slidesDoc = _SlidesDocEndpoint(
       endpoints,
       serializationManager,
     );
-    slidesSync = _SlidesSyncEndpoint(
+    slides = _SlidesEndpoint(
       endpoints,
       serializationManager,
     );
@@ -670,6 +678,8 @@ class _FutureCalls {
   late final maintenance = _MaintenanceFutureCall();
 
   late final notificationEmail = _NotificationEmailFutureCall();
+
+  late final acl = _AclFutureCall();
 
   late final storage = _StorageFutureCall();
 
@@ -4710,8 +4720,10 @@ class _DriveEndpoint {
     _ist.TestSessionBuilder sessionBuilder,
     _is.UuidValue? parentUuid,
     String name,
-    _is.UuidValue? templateUuid,
-  ) async {
+    _is.UuidValue? templateUuid, {
+    _is.UuidValue? fileUuid,
+    bool? initialize,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
@@ -4727,6 +4739,8 @@ class _DriveEndpoint {
             'parentUuid': parentUuid,
             'name': name,
             'templateUuid': templateUuid,
+            'fileUuid': fileUuid,
+            'initialize': initialize,
           }),
           serializationManager: _serializationManager,
         );
@@ -7359,6 +7373,160 @@ class _SheetsAiEndpoint {
   }
 }
 
+class _SheetsDocEndpoint {
+  _SheetsDocEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Stream<_ifa159qn.RevServerMessage> connect(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue fileUuid,
+    int knownRevision,
+    String tabId,
+    _ida.Stream<_iv4mnr49.RevClientMessage> input,
+  ) {
+    var _localTestStreamManager =
+        _ist.TestStreamManager<_ifa159qn.RevServerMessage>();
+    _ist.callStreamFunctionAndHandleExceptions(
+      () async {
+        var _localUniqueSession =
+            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+              endpoint: 'sheetsDoc',
+              method: 'connect',
+            );
+        var _localCallContext = await _endpointDispatch
+            .getMethodStreamCallContext(
+              createSessionCallback: (_) => _localUniqueSession,
+              endpointPath: 'sheetsDoc',
+              methodName: 'connect',
+              arguments: {
+                'fileUuid': fileUuid,
+                'knownRevision': knownRevision,
+                'tabId': tabId,
+              },
+              requestedInputStreams: ['input'],
+              serializationManager: _serializationManager,
+            );
+        await _localTestStreamManager.callStreamMethod(
+          _localCallContext,
+          _localUniqueSession,
+          {'input': input},
+        );
+      },
+      _localTestStreamManager.outputStreamController,
+    );
+    return _localTestStreamManager.outputStreamController.stream;
+  }
+
+  _ida.Future<_i4qoa0fo.RevPage> page(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue fileUuid,
+    _iynxab9u.RevPageRequest request,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'sheetsDoc',
+            method: 'page',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'sheetsDoc',
+          methodName: 'page',
+          parameters: _ist.testObjectToJson({
+            'fileUuid': fileUuid,
+            'request': request,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i4qoa0fo.RevPage>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<List<_iu7aww0d.RevOpView>> ops(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue fileUuid,
+    int fromRevision,
+    int toRevision,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'sheetsDoc',
+            method: 'ops',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'sheetsDoc',
+          methodName: 'ops',
+          parameters: _ist.testObjectToJson({
+            'fileUuid': fileUuid,
+            'fromRevision': fromRevision,
+            'toRevision': toRevision,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_iu7aww0d.RevOpView>>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_iwjfjan3.RevFileInfo> info(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue fileUuid,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'sheetsDoc',
+            method: 'info',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'sheetsDoc',
+          methodName: 'info',
+          parameters: _ist.testObjectToJson({'fileUuid': fileUuid}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iwjfjan3.RevFileInfo>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
 class _SheetsEndpoint {
   _SheetsEndpoint(
     this._endpointDispatch,
@@ -7369,22 +7537,22 @@ class _SheetsEndpoint {
 
   final _is.SerializationManager _serializationManager;
 
-  _ida.Future<List<_is.UuidValue>> reserveSpaces(
+  _ida.Future<Map<String, String>> getUserProperties(
     _ist.TestSessionBuilder sessionBuilder,
-    int count,
+    _is.UuidValue fileUuid,
   ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
             endpoint: 'sheets',
-            method: 'reserveSpaces',
+            method: 'getUserProperties',
           );
       try {
         var _localCallContext = await _endpointDispatch.getMethodCallContext(
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'sheets',
-          methodName: 'reserveSpaces',
-          parameters: _ist.testObjectToJson({'count': count}),
+          methodName: 'getUserProperties',
+          parameters: _ist.testObjectToJson({'fileUuid': fileUuid}),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -7392,7 +7560,7 @@ class _SheetsEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<List<_is.UuidValue>>);
+                as _ida.Future<Map<String, String>>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -7400,53 +7568,26 @@ class _SheetsEndpoint {
     });
   }
 
-  _ida.Future<_iy5owoxu.SubscribeResult> subscribe(
+  _ida.Future<void> setUserProperties(
     _ist.TestSessionBuilder sessionBuilder,
-    _is.UuidValue itemUuid,
+    _is.UuidValue fileUuid,
+    Map<String, String?> changes,
   ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
             endpoint: 'sheets',
-            method: 'subscribe',
+            method: 'setUserProperties',
           );
       try {
         var _localCallContext = await _endpointDispatch.getMethodCallContext(
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'sheets',
-          methodName: 'subscribe',
-          parameters: _ist.testObjectToJson({'itemUuid': itemUuid}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_iy5owoxu.SubscribeResult>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<void> unsubscribe(
-    _ist.TestSessionBuilder sessionBuilder,
-    _is.UuidValue itemUuid,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'sheets',
-            method: 'unsubscribe',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'sheets',
-          methodName: 'unsubscribe',
-          parameters: _ist.testObjectToJson({'itemUuid': itemUuid}),
+          methodName: 'setUserProperties',
+          parameters: _ist.testObjectToJson({
+            'fileUuid': fileUuid,
+            'changes': changes,
+          }),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -7455,68 +7596,6 @@ class _SheetsEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<void>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<List<_is.UuidValue>> ensureSubscribed(
-    _ist.TestSessionBuilder sessionBuilder,
-    List<_is.UuidValue> spaces,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'sheets',
-            method: 'ensureSubscribed',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'sheets',
-          methodName: 'ensureSubscribed',
-          parameters: _ist.testObjectToJson({'spaces': spaces}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<List<_is.UuidValue>>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<_ilyb1rcx.SpaceStats> spaceStats(
-    _ist.TestSessionBuilder sessionBuilder,
-    _is.UuidValue itemUuid,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'sheets',
-            method: 'spaceStats',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'sheets',
-          methodName: 'spaceStats',
-          parameters: _ist.testObjectToJson({'itemUuid': itemUuid}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_ilyb1rcx.SpaceStats>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -7757,51 +7836,6 @@ class _SheetsEndpoint {
         await _localUniqueSession.close();
       }
     });
-  }
-}
-
-class _SheetsSyncEndpoint {
-  _SheetsSyncEndpoint(
-    this._endpointDispatch,
-    this._serializationManager,
-  );
-
-  final _is.EndpointDispatch _endpointDispatch;
-
-  final _is.SerializationManager _serializationManager;
-
-  _ida.Stream<_izehhkf5.OfflineSyncStreamEvent> sync(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required _ida.Stream<_izehhkf5.OfflineSyncStreamEvent> changes,
-    required bool once,
-  }) {
-    var _localTestStreamManager =
-        _ist.TestStreamManager<_izehhkf5.OfflineSyncStreamEvent>();
-    _ist.callStreamFunctionAndHandleExceptions(
-      () async {
-        var _localUniqueSession =
-            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-              endpoint: 'sheetsSync',
-              method: 'sync',
-            );
-        var _localCallContext = await _endpointDispatch
-            .getMethodStreamCallContext(
-              createSessionCallback: (_) => _localUniqueSession,
-              endpointPath: 'sheetsSync',
-              methodName: 'sync',
-              arguments: {'once': once},
-              requestedInputStreams: ['changes'],
-              serializationManager: _serializationManager,
-            );
-        await _localTestStreamManager.callStreamMethod(
-          _localCallContext,
-          _localUniqueSession,
-          {'changes': changes},
-        );
-      },
-      _localTestStreamManager.outputStreamController,
-    );
-    return _localTestStreamManager.outputStreamController.stream;
   }
 }
 
@@ -8993,6 +9027,160 @@ class _SlidesChartsEndpoint {
   }
 }
 
+class _SlidesDocEndpoint {
+  _SlidesDocEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Stream<_ifa159qn.RevServerMessage> connect(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue fileUuid,
+    int knownRevision,
+    String tabId,
+    _ida.Stream<_iv4mnr49.RevClientMessage> input,
+  ) {
+    var _localTestStreamManager =
+        _ist.TestStreamManager<_ifa159qn.RevServerMessage>();
+    _ist.callStreamFunctionAndHandleExceptions(
+      () async {
+        var _localUniqueSession =
+            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+              endpoint: 'slidesDoc',
+              method: 'connect',
+            );
+        var _localCallContext = await _endpointDispatch
+            .getMethodStreamCallContext(
+              createSessionCallback: (_) => _localUniqueSession,
+              endpointPath: 'slidesDoc',
+              methodName: 'connect',
+              arguments: {
+                'fileUuid': fileUuid,
+                'knownRevision': knownRevision,
+                'tabId': tabId,
+              },
+              requestedInputStreams: ['input'],
+              serializationManager: _serializationManager,
+            );
+        await _localTestStreamManager.callStreamMethod(
+          _localCallContext,
+          _localUniqueSession,
+          {'input': input},
+        );
+      },
+      _localTestStreamManager.outputStreamController,
+    );
+    return _localTestStreamManager.outputStreamController.stream;
+  }
+
+  _ida.Future<_i4qoa0fo.RevPage> page(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue fileUuid,
+    _iynxab9u.RevPageRequest request,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'slidesDoc',
+            method: 'page',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'slidesDoc',
+          methodName: 'page',
+          parameters: _ist.testObjectToJson({
+            'fileUuid': fileUuid,
+            'request': request,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i4qoa0fo.RevPage>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<List<_iu7aww0d.RevOpView>> ops(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue fileUuid,
+    int fromRevision,
+    int toRevision,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'slidesDoc',
+            method: 'ops',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'slidesDoc',
+          methodName: 'ops',
+          parameters: _ist.testObjectToJson({
+            'fileUuid': fileUuid,
+            'fromRevision': fromRevision,
+            'toRevision': toRevision,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_iu7aww0d.RevOpView>>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_iwjfjan3.RevFileInfo> info(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue fileUuid,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'slidesDoc',
+            method: 'info',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'slidesDoc',
+          methodName: 'info',
+          parameters: _ist.testObjectToJson({'fileUuid': fileUuid}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iwjfjan3.RevFileInfo>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
 class _SlidesEndpoint {
   _SlidesEndpoint(
     this._endpointDispatch,
@@ -9002,161 +9190,6 @@ class _SlidesEndpoint {
   final _is.EndpointDispatch _endpointDispatch;
 
   final _is.SerializationManager _serializationManager;
-
-  _ida.Future<List<_is.UuidValue>> reserveSpaces(
-    _ist.TestSessionBuilder sessionBuilder,
-    int count,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'slides',
-            method: 'reserveSpaces',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'slides',
-          methodName: 'reserveSpaces',
-          parameters: _ist.testObjectToJson({'count': count}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<List<_is.UuidValue>>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<_iy5owoxu.SubscribeResult> subscribe(
-    _ist.TestSessionBuilder sessionBuilder,
-    _is.UuidValue itemUuid,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'slides',
-            method: 'subscribe',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'slides',
-          methodName: 'subscribe',
-          parameters: _ist.testObjectToJson({'itemUuid': itemUuid}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_iy5owoxu.SubscribeResult>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<void> unsubscribe(
-    _ist.TestSessionBuilder sessionBuilder,
-    _is.UuidValue itemUuid,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'slides',
-            method: 'unsubscribe',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'slides',
-          methodName: 'unsubscribe',
-          parameters: _ist.testObjectToJson({'itemUuid': itemUuid}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<void>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<List<_is.UuidValue>> ensureSubscribed(
-    _ist.TestSessionBuilder sessionBuilder,
-    List<_is.UuidValue> spaces,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'slides',
-            method: 'ensureSubscribed',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'slides',
-          methodName: 'ensureSubscribed',
-          parameters: _ist.testObjectToJson({'spaces': spaces}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<List<_is.UuidValue>>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<_ilyb1rcx.SpaceStats> spaceStats(
-    _ist.TestSessionBuilder sessionBuilder,
-    _is.UuidValue itemUuid,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'slides',
-            method: 'spaceStats',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'slides',
-          methodName: 'spaceStats',
-          parameters: _ist.testObjectToJson({'itemUuid': itemUuid}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_ilyb1rcx.SpaceStats>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
 
   _ida.Future<_iqq3mn94.RevertResult> revertChange(
     _ist.TestSessionBuilder sessionBuilder,
@@ -9218,51 +9251,6 @@ class _SlidesEndpoint {
         await _localUniqueSession.close();
       }
     });
-  }
-}
-
-class _SlidesSyncEndpoint {
-  _SlidesSyncEndpoint(
-    this._endpointDispatch,
-    this._serializationManager,
-  );
-
-  final _is.EndpointDispatch _endpointDispatch;
-
-  final _is.SerializationManager _serializationManager;
-
-  _ida.Stream<_izehhkf5.OfflineSyncStreamEvent> sync(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required _ida.Stream<_izehhkf5.OfflineSyncStreamEvent> changes,
-    required bool once,
-  }) {
-    var _localTestStreamManager =
-        _ist.TestStreamManager<_izehhkf5.OfflineSyncStreamEvent>();
-    _ist.callStreamFunctionAndHandleExceptions(
-      () async {
-        var _localUniqueSession =
-            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-              endpoint: 'slidesSync',
-              method: 'sync',
-            );
-        var _localCallContext = await _endpointDispatch
-            .getMethodStreamCallContext(
-              createSessionCallback: (_) => _localUniqueSession,
-              endpointPath: 'slidesSync',
-              methodName: 'sync',
-              arguments: {'once': once},
-              requestedInputStreams: ['changes'],
-              serializationManager: _serializationManager,
-            );
-        await _localTestStreamManager.callStreamMethod(
-          _localCallContext,
-          _localUniqueSession,
-          {'changes': changes},
-        );
-      },
-      _localTestStreamManager.outputStreamController,
-    );
-    return _localTestStreamManager.outputStreamController.stream;
   }
 }
 
@@ -10754,6 +10742,32 @@ class _MaintenanceFutureCall {
     }
   }
 
+  Future<void> revlogSweep(_ist.TestSessionBuilder sessionBuilder) async {
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _iwslocjr.MaintenanceRevlogSweepFutureCall().invoke(
+        _localUniqueSession,
+        null,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
+  }
+
+  Future<void> expireGrants(_ist.TestSessionBuilder sessionBuilder) async {
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _iwslocjr.MaintenanceExpireGrantsFutureCall().invoke(
+        _localUniqueSession,
+        null,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
+  }
+
   Future<void> daily(_ist.TestSessionBuilder sessionBuilder) async {
     var _localUniqueSession =
         (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
@@ -10780,6 +10794,31 @@ class _NotificationEmailFutureCall {
         (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
     try {
       await _iwslocjr.NotificationEmailSendFutureCall().invoke(
+        _localUniqueSession,
+        object,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
+  }
+}
+
+class _AclFutureCall {
+  Future<void> fanOut(
+    _ist.TestSessionBuilder sessionBuilder,
+    int itemId,
+    String kind,
+    List<int> affectedUsers,
+  ) async {
+    var object = _ievi2fyc.AclFutureCallFanOutModel(
+      itemId: itemId,
+      kind: kind,
+      affectedUsers: affectedUsers,
+    );
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _iwslocjr.AclFanOutFutureCall().invoke(
         _localUniqueSession,
         object,
       );

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -44,7 +45,7 @@ void main() {
         },
       ),
     );
-    showImportDialog(ctx, canEdit: true, spreadsheetLocale: 'en_US');
+    unawaited(showImportDialog(ctx, canEdit: true, spreadsheetLocale: 'en_US'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   }

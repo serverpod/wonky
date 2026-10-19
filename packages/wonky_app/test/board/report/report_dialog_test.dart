@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/src/board/report/board_report_dialog.dart';
@@ -618,7 +619,7 @@ void main() {
             [for (var i = 0; i < 40; i++) '#$i frame$i (package:x/y.dart:$i:1)']
                 .join('\n'),
           ),
-          at: DateTime.now().subtract(ago),
+          at: clock.now().subtract(ago),
         );
 
     testWidgets('when it happened 2 minutes ago then it is offered, ticked, '

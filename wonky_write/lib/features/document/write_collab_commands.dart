@@ -59,7 +59,7 @@ List<Command<CommandArgs>> writeCollabCommands(ShellServices services) {
     }
     final active = s.suggestions.activeId;
     if (active != null) return {active};
-    final caret = s.editor.selection?.base;
+    final caret = s.editor.selection?.anchor;
     final at = caret == null ? null : s.suggestions.idAt(caret);
     return {?at};
   }

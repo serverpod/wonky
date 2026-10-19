@@ -5,7 +5,13 @@ import 'package:flutter/widgets.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_sheets_core/formula.dart'
-    show FormulaEngine, FormulaLocale, GridRect, CellPos, ColumnLetters;
+    show
+        FormulaEngine,
+        FormulaLocale,
+        GridRect,
+        CellPos,
+        ColumnLetters,
+        RecalcBatch;
 import 'package:wonky_sheets_core/model.dart';
 
 import '../../l10n/sheets_l10n.dart';
@@ -29,7 +35,14 @@ import 'write_gate.dart';
 
 /// A repaint signal.
 class GridSignal extends ChangeNotifier {
-  void fire() => notifyListeners();
+  /// Incremented by [fire] (cache keys).
+  int get generation => _generation;
+  int _generation = 0;
+
+  void fire() {
+    _generation++;
+    notifyListeners();
+  }
 }
 
 /// The copied/cut range shown with marching ants (03 §12.2).
@@ -143,7 +156,7 @@ class SheetEditorController extends ChangeNotifier {
       displayLanguage: true,
     );
     model.addListener(_onBatch);
-    _recalc = engine.changes.listen((_) => _invalidateCells());
+    _recalc = engine.changes.listen(_onRecalc);
     selection.addListener(_onSelection);
     scroll.addListener(overlaySignal.fire);
     _watchLoading();
@@ -249,8 +262,29 @@ class SheetEditorController extends ChangeNotifier {
 
   StreamSubscription<Object?>? _recalc;
 
-  /// The geometry of the last painted frame (hit testing, editor overlay).
-  GridGeometry? lastGeometry;
+  /// The grid viewport's size and device pixel ratio, set by the grid's
+  /// layout (null before the first layout).
+  Size? _viewSize;
+  double _viewDpr = 1;
+
+  /// Called by the grid's layout with its size (S-06).
+  void setViewport(Size size, double devicePixelRatio) {
+    _viewSize = size;
+    _viewDpr = devicePixelRatio;
+  }
+
+  /// The geometry of the grid viewport at the current scroll, zoom and model
+  /// state (hit testing, overlays, both paint passes), or null before the
+  /// grid's first layout. Computed once per change and shared, so widgets
+  /// built before this frame's paint position with this frame's geometry
+  /// (S-06, CQ-41).
+  GridGeometry? get geometry {
+    final size = _viewSize;
+    return size == null ? null : geometryFor(size, _viewDpr);
+  }
+
+  GridGeometry? _memoGeometry;
+  Object? _memoKey;
 
   bool _viewMode = false;
   bool showFormulas = false;
@@ -377,13 +411,24 @@ class SheetEditorController extends ChangeNotifier {
         }
       }
     }
-    _invalidateCells();
+    cells.invalidateBatch(batch);
+    _repaintCells();
     selection.modelChanged();
     notifyListeners();
   }
 
   void _invalidateCells() {
     cells.invalidate();
+    _repaintCells();
+  }
+
+  /// Recalculated values: only those cells leave the render cache (03 §2.7).
+  void _onRecalc(RecalcBatch batch) {
+    cells.invalidateRecalc(batch);
+    _repaintCells();
+  }
+
+  void _repaintCells() {
     contentSignal.fire();
     overlaySignal.fire();
   }
@@ -404,7 +449,13 @@ class SheetEditorController extends ChangeNotifier {
     }
     final plan = session.execute(op);
     if (!plan.isEmpty && ctx?.transaction != null) {
-      ctx!.record(SheetsRowsUndoEntry(plan.changes, label: plan.label));
+      ctx!.record(
+        SheetsRowsUndoEntry(
+          plan.changes,
+          label: plan.label,
+          groupId: session.groupOf(plan),
+        ),
+      );
     }
     for (final l in List.of(applyListeners)) {
       l(ctx, op, plan);
@@ -418,30 +469,12 @@ class SheetEditorController extends ChangeNotifier {
     String id, [
     Map<String, Object?> args = const {},
     InvocationSource source = InvocationSource.ui,
-  ]) async {
-    services.noteRecentCommand(id);
-    try {
-      final r = await services.dispatcher.invoke(
-        id,
-        args: args,
-        source: source,
-        context: services.navigatorContext,
-      );
-      if (r.status == CommandStatus.failed && r.message != null) {
-        services.toasts.error(r.message!);
-      }
-      return r.isOk;
-    } on CommandDisabled catch (e) {
-      if (e.reason != null) services.toasts.show(e.reason!);
-      return false;
-    } on CommandException catch (e) {
-      services.toasts.error(e.message);
-      return false;
-    } catch (e) {
-      services.toasts.error(l10n.toastCommandFailed, description: '$e');
-      return false;
-    }
-  }
+  ]) async => (await services.invokeWithToasts(
+    id,
+    args: args,
+    source: source,
+    context: services.navigatorContext,
+  )).isOk;
 
   /// The selected ranges (all of them) as core ranges.
   List<ResolvedRange> get selectedRanges =>
@@ -552,9 +585,40 @@ class SheetEditorController extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Geometry and scrolling.
 
+  /// The geometry for a viewport of [size]; the one of the laid-out grid
+  /// viewport is memoized until the scroll, zoom, sheet or a repaint signal
+  /// changes, and keeps the scroll limits up to date.
   GridGeometry? geometryFor(Size size, double dpr) {
     final s = activeSheet;
     if (s == null) return null;
+    final viewport = size == _viewSize && dpr == _viewDpr;
+    final key = viewport
+        ? (
+            s,
+            size,
+            dpr,
+            scroll.zoom,
+            scroll.x,
+            scroll.y,
+            contentSignal.generation,
+            overlaySignal.generation,
+          )
+        : null;
+    if (key != null && key == _memoKey) return _memoGeometry;
+    final g = _computeGeometry(s, size, dpr);
+    if (key != null) {
+      _memoKey = key;
+      _memoGeometry = g;
+      scroll.updateLimits(
+        maxX: g.maxScrollX,
+        maxY: g.maxScrollY,
+        viewport: g.main.rect.size,
+      );
+    }
+    return g;
+  }
+
+  GridGeometry _computeGeometry(SheetModel s, Size size, double dpr) {
     final gutters = gridHooks.gutters?.call(s);
     return GridGeometry(
       sheet: s,
@@ -596,10 +660,10 @@ class SheetEditorController extends ChangeNotifier {
 
   /// Scrolls minimally so that (row, col) is fully visible.
   void revealCell(int row, int col) {
-    final g = lastGeometry;
+    final g = geometry;
     if (g == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (lastGeometry != null) revealCell(row, col);
+        if (geometry != null) revealCell(row, col);
       });
       return;
     }
@@ -833,7 +897,7 @@ class SheetEditorController extends ChangeNotifier {
 
   /// PageUp/PageDown (vertical) or Alt+PageUp/Down (horizontal).
   void page(NavDirection d) {
-    final g = lastGeometry;
+    final g = geometry;
     final s = activeSheet;
     if (g == null || s == null) return;
     final r = selection.resolved;

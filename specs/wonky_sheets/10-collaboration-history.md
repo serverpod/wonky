@@ -8,9 +8,10 @@ restore, copies), **cell edit history**, the activity dashboard, change notifica
 conflict UX, and a walk-through of offline collaboration scenarios.
 
 Read first: suite [07-collaboration.md](../07-collaboration.md),
-[12-offline-and-sync.md](../12-offline-and-sync.md) §2,
+[12-offline-and-sync.md](../12-offline-and-sync.md) §2, [17-revlog-sync.md](../17-revlog-sync.md)
+(op log, outcomes, conflicts: part 6 §6),
 [08-commands-and-undo.md](../08-commands-and-undo.md) §3;
-Sheets [02-data-model.md](02-data-model.md) (ids, `ChangeLog`, `CellHistory`, `SheetsWriter`),
+Sheets [02-data-model.md](02-data-model.md) (ids, op log, `cell_history`, writes),
 [03-grid-and-editing.md](03-grid-and-editing.md) (grid layers, selection model),
 [07-data-tools.md](07-data-tools.md) (sort semantics).
 
@@ -40,12 +41,13 @@ The suite defines `PresenceCursor` as app-specific JSON. Sheets uses:
 - Sent on change, throttled to 10/s (suite), coalesced. Viewport updates are throttled to 2/s
   and sent only while someone follows this participant (the server tells the followed client
   through a `FollowerCount` event, see §1.5).
-- Ids that the receiver doesn't know yet (rows created by the sender that haven't synced) are
-  ignored until they arrive. A range with an unknown bound is drawn up to the known bounds.
+- Ids that the receiver doesn't know yet (rows created by the sender whose op hasn't arrived)
+  are ignored until they arrive. A range with an unknown bound is drawn up to the known bounds.
 - `actorKind: mcp|ai` participants (suite §1.1) send cursors injected by the server: after a
   headless write, the server sets the agent participant's `ranges` to the written ranges for 5 s.
   Implementation: `AgentCursors` (`wonky_server/lib/src/sheets/changelog/agent_cursors.dart`)
-  runs in the change-log consumer for `mcp`/`ai` rows: one participant per spreadsheet, user and
+  runs inline after a tool write is committed (`SheetsWrites`; best effort, not a durable hook,
+  suite 17 part 5 §6.2): one participant per spreadsheet, user and
   actor kind (`PresenceService.injectAgent` with a reused session id and the cursor JSON built
   from `summaryJson.ranges`), removed 5 s after its last write. The client labels it "Claude via
   MCP (Anna)" / "Assistant (Anna)".
@@ -108,9 +110,15 @@ outline twice.
 
 ## 2. Ephemeral commit hints
 
-The CRDT sync loop takes 0.2–2.5 s to propagate. To make collaboration feel live, committed
-cell edits are additionally broadcast as **hints** over the presence stream (suite 12 §2.4).
-The synced rows remain the source of truth.
+Committed edits reach other clients as RevLog ops in about one round trip (suite 17 part 7,
+P1 < 250 ms), so hints carry no committed values. Two **hints** ride the presence stream: the
+live `typing` preview of a cell being edited, and a `pending` shimmer over a range whose large
+change (a group of several ops) is still being saved (suite 17 part 6 §10). The ops remain the
+source of truth.
+
+> **As built.** `CommitHints` sends `typing` and `pending` only; `cell`/`range` hints of older
+> clients are ignored. A `pending` shimmer is dropped by the last op of a remote group, the next
+> remote change to its sheet, its sender leaving, or after 5 s.
 
 ### 2.1 Message formats
 
@@ -119,18 +127,7 @@ server relays them as `PresenceEvent.Hints(sessionId, hints)` to other participa
 same item (not persisted, not echoed to the sender).
 
 ```jsonc
-// Single cell commit (typing Enter, formula commit, delete key on one cell)
-{ "t": "cell", "sheetId": "…", "rowId": "…", "colId": "…",
-  "input": "=SUM(B2:B9)",            // what the user typed (A1 form, sender's locale) or null for clear
-  "content": "=SUM(⟦R:…;C:…⟧:⟦R:…;C:…⟧)", // stored-form content (authoritative for receivers)
-  "hlcMillis": 1760262734123 }
-
-// Small multi-cell commit (paste/fill/clear ≤ 500 cells)
-{ "t": "range", "sheetId": "…",
-  "cells": [ { "rowId": "…", "colId": "…", "content": "n:42" }, … ],
-  "hlcMillis": 1760262734123 }
-
-// Format-only or structure change: no values, just a "pending" shimmer
+// A commit of more than 500 cells still being saved: no values, just a "pending" shimmer
 { "t": "pending", "sheetId": "…", "range": { "r1": "…", "c1": "…", "r2": "…", "c2": "…" },
   "kind": "format" | "structure", "hlcMillis": … }
 
@@ -138,26 +135,15 @@ same item (not persisted, not echoed to the sender).
 { "t": "typing", "sheetId": "…", "rowId": "…", "colId": "…", "text": "Hel" }
 ```
 
-Implementation note: cell and range hints also carry `"v"` — the sender's locally computed value of
-a formula cell in content form (`"n:42"`); receivers show `v` (formulas are not re-evaluated on the
-receiver). Commits made in the same event-loop turn are sent as one `range` hint.
-
 Limits: max 500 cells per message, max 20 hint messages/s per session, max 64 KB per message.
 Larger operations send only a `pending` hint for the bounding range. The server drops hints
 from participants whose role is below Editor.
 
 ### 2.2 Receiver behavior (`CommitHintOverlay`)
-- Keeps a map `(sheetId, rowId, colId) → HintedCell {content, hlcMillis, receivedAt}`.
-- The grid paints hinted cells with the hinted content (formulas evaluated locally against the
-  current model; number formats from the existing cell). The style is identical to real values;
-  there is no visual marker.
-- A hint is removed when: a synced value for that cell arrives with HLC ≥ `hlcMillis` (or any
-  synced change to the cell's `content`), a local edit to that cell happens, 5 s pass, or the
-  sender leaves.
-- Hints are **display-only** in v1: dependents are not recalculated from hinted values
-  (P1: dependents recompute in an overlay recalc pass when ≤ 1,000 dependents).
+- `typing` hints show the collaborator's in-progress text over the cell (presence layer).
 - `pending` hints draw a subtle animated shimmer over the range (static tint with *Reduce
-  motion*) until a synced change touching the range arrives or 5 s pass.
+  motion*) until the group's last op arrives, the sheet's cells change remotely, the sender
+  leaves, or 5 s pass.
 - Unknown ids → hint ignored.
 
 ---
@@ -166,8 +152,8 @@ from participants whose role is below Editor.
 
 ### 3.1 Anchors
 
-Comments live in Postgres (`CommentThread`, `Comment`, suite §2.1), not in the space, so
-commenters don't need write access to the space.
+Comments live in Postgres (`CommentThread`, `Comment`, suite §2.1), not in the spreadsheet's
+file, so commenters don't need write access to it.
 
 | `anchorKind` | `anchorJson` | Created from |
 |--------------|-------------|--------------|
@@ -192,11 +178,11 @@ commenters don't need write access to the space.
 - Range sorts that move **contents** between rows (partial-range sorts, see
   [07-data-tools.md](07-data-tools.md)) update anchors the same way (not built yet).
 - **Orphaning**: when the anchor's row, column or sheet is deleted, the thread becomes
-  `orphaned`. Detection is **server-side** in the change-log consumer: `ChangeLog.summaryJson`
-  lists deleted row/column/sheet ids (Additions A-10-1). For each, the server marks threads
-  `orphaned` with `orphanReason {kind: row|column|sheet, id, changeLogId}` and records the
-  previous status. Undoing the deletion revives the same ids. When a later ChangeLog lists them
-  as **revived**, the server restores the previous status. The client also hides threads
+  `orphaned`. Detection is **server-side** in the `comments` post-commit hook (suite 17 part 5
+  §6.2): the op's `summaryJson` lists deleted row/column/sheet ids (Additions A-10-1). For each,
+  the server marks threads `orphaned` with `orphanReason {kind: row|column|sheet, id, revision}` and
+  records the previous status. Undoing the deletion revives the same ids. When a later op lists
+  them as **revived**, the server restores the previous status. The client also hides threads
   whose anchors don't resolve, so the UI is right before the server catches up.
 - Orphaned threads appear in the comments panel under "Orphaned" with the quoted text and
   "The cell this comment was on was deleted"; they can be resolved or deleted, not
@@ -261,10 +247,10 @@ connection is back. Undoing an offline create drops its queued operations.
 
 | | Note | Comment |
 |-|------|---------|
-| Storage | `Cell.note` (synced field, LWW) | Postgres threads |
+| Storage | `Cell.note` (file column, last arrival wins) | Postgres threads |
 | Who can edit | Editors | Commenters+ |
 | Threads, mentions, resolve, notifications | — | ✓ |
-| Offline | ✓ (synced) | queued (P1) |
+| Offline | ✓ (outbox) | queued (P1) |
 | Indicator | dark triangle | colored triangle |
 | Undo | spreadsheet undo (`sheets.rows`) | `comments` domain |
 | Export XLSX | `<comment>` legacy notes | threaded comments (P2) or notes with "[Comment] author: text" |
@@ -285,26 +271,28 @@ Implements the suite `VersionProvider` contract: **capture**, **materialize**, *
 plus **diff** and **copy** for Sheets.
 
 #### 5.1.1 Capture triggers
-- The change-log consumer (after `onMergeSuccess`) updates per spreadsheet
-  `lastEditAt`, `editorsSinceLastVersion` and `changeLogIdsSinceLastVersion` in the server-only
-  `SheetsVersionState` table (Additions A-10-3).
+- The `versions` post-commit hook of the RevLog file (RevLog spec 05 §6) updates per
+  spreadsheet `lastEditAt` and `editorsSinceLastVersion` in the server-only
+  `ItemVersionState` table (Additions A-10-3).
 - `SheetsVersionScheduler` (FutureCall every minute) applies the suite capture policy: an
   `auto` version when ≥ 5 min passed since `lastEditAt` and there were edits since the last
   version, and at most one per 30 min of continuous editing (force a capture after 30 min
   even while editing continues). Named versions (`versions.name_current`, *File › Version
   history › Name current version*) capture immediately.
-- Offline edits that sync later belong to the next version (their `ChangeLog.at` may be older;
-  versions are ordered by capture time, and the version's author list comes from ChangeLog rows
-  consumed since the previous capture, not by their timestamps).
+- Offline edits that sync later belong to the next version: a version is captured **at a file
+  revision** (`ItemVersion.revision`, the head the snapshot shows), and an edit belongs to the
+  version whose revision window (previous capture's revision, this one] contains its op's
+  commit, whatever its creation time.
 
 #### 5.1.2 Snapshot format
-A snapshot is a compressed export of **all synced rows of the space** at capture time, read
-with an admin read (bypassing membership) inside one read transaction:
+A snapshot is a compressed export of **all rows of the spreadsheet** at capture time, read
+with an admin read inside one repeatable-read transaction together with the file's
+`headRevision` (recorded in `ItemVersion.revision` and the header's `revision`):
 
 ```
 snapshot.wsv (gzip)
 ├── header line (JSON): {"format":"wonky-sheets-snapshot","v":1,"spreadsheetId":"…",
-│                        "capturedAt":"…","engineHlc":"…","syncTablesHash":"…",
+│                        "capturedAt":"…","revision":123,"schemaHash":"…",
 │                        "engineVersion":"…","counts":{"cell":123456,…}}
 └── NDJSON records, grouped by table in dependency order:
     {"tb":"spreadsheet","row":{…all columns…}}
@@ -313,19 +301,23 @@ snapshot.wsv (gzip)
     {"tb":"script_project",…} {"tb":"script_file",…} {"tb":"macro",…} {"tb":"script_property",…}
 ```
 
-- Excluded tables: `change_log` (history, not state), `script_build` (derived),
+- Excluded tables: `script_build` (derived),
   `script_trigger` (security: per installer; never restored).
 - Cells are written compactly: column names abbreviated via a per-table key map in the header,
   null fields omitted. Typical size: ~25 bytes/cell after gzip.
 - Stored as a `StoredFile` (cloud storage) referenced by `ItemVersion.snapshotFileId`;
   `ItemVersion.storageKind = snapshotFile`, `sizeBytes` set.
 - `SheetsSnapshotIndex` (server-only, Additions A-10-3) stores per version: sheet list (id, name,
-  row/col counts, cell count, kind) and `changedRangesJson` (union of `ChangeLog.summaryJson`
-  ranges consumed since the previous version, per sheet, capped at 1,000 ranges then marked
+  row/col counts, cell count, kind) and `changedRangesJson` (union of the `rev_op.summaryJson`
+  ranges committed since the previous version, per sheet, capped at 1,000 ranges then marked
   `"approx": true`). It also stores the author ids.
   Format: `{"v":1,"approx":false,"ranges":[{"s","r1","c1","r2","c2","u":<user id>}]}`, oldest
-  first; the window is the `ChangeLog` rows whose `SheetsChangeLogReceipt.processedAt` lies
-  between the previous version's capture and this one (`SheetsVersionChanges`).
+  first; the window is the ops with revision in (previous version's `revision`, this version's
+  `revision`] (`SheetsVersionChanges.between`; versions captured before RevLog, without a
+  revision, fall back to the commit times between the two captures).
+- The header carries the captured `revision` and the `sheetsSchema` hash (`schemaHash`; older
+  snapshots carry `engineHlc`/`syncTablesHash` instead); restores keep only the tables and columns of the current
+  RevLog schema, so older snapshots stay restorable.
 - Capture runs in a background isolate on the server, streaming rows (bounded memory). It
   takes < 10 s for 1M cells. Thinning (suite policy) deletes snapshot files of thinned
   versions.
@@ -361,8 +353,8 @@ Route `/s/:uuid/history?version=<itemVersionId>` (suite §5 UI). Sheets-specific
      `SheetsSnapshotIndex.diffFileId`); the client downloads the gzip JSON
      `{diff: SnapshotDiff JSON, a: [author user id per changed cell, 0 = unknown]}` instead of
      the previous snapshot.
-5. **Author attribution**: for each changed cell, the author is taken from the `ChangeLog`
-   rows (and `CellHistory` for pruned ones) between the two capture times whose `detailJson` or
+5. **Author attribution**: for each changed cell, the author is taken from the ops
+   (and `cell_history` for pruned ones) in the revision window between the two captures whose `detailJson` or
    ranges include the cell (latest wins). The server returns this as part of the diff (`authorId`).
    Cells changed by bulk operations without details are attributed from `summaryJson.ranges`.
    Agent edits show the agent attribution ("Claude via MCP (Anna)").
@@ -384,45 +376,50 @@ Right panel: suite version list; each Sheets version also shows a size and sheet
    **row diff by id**:
    | Case | Write |
    |------|-------|
-   | Row in snapshot, missing/tombstoned in current | insert with the same id (revives tombstone) and all snapshot columns |
+   | Row in snapshot, missing in current | insert with the same id and all snapshot columns |
    | Row in current, missing in snapshot | delete |
    | Row in both, some columns differ | update naming **only the differing columns** |
-3. Apply via `ServerSheetsWriter` in `transactionForUser(restoringUserUuid, spaceId)` in
-   chunks of ≤ 5,000 row changes, in dependency order (parents first for inserts, children
-   first for deletes), each chunk with a `ChangeLog` row (`actorKind: user`, label
-   `"Restore version '<name or time>'"`, kinds `["restore"]`). One `ServerChangeRecord` stores
-   the inverse (the pre-restore values of every touched column, gzip in storage) so the restore
-   can be reverted.
-4. Progress is streamed (`Stream<RestoreProgress {phase, done, total}>`); the client shows a
-   progress dialog. Collaborators see changes arrive through normal sync, plus a toast "Anna
+3. **Protection pre-check** (RevLog spec 05 §3.5): the whole diff is checked with the
+   protection guard (`ProtectionCheck.ofApplied` against the current headless model, as the
+   restoring user) before anything is written; a diff that touches ranges protected from the
+   user is refused with "This version changes protected ranges you can't edit"
+   (`forbidden`, reason `protected_range`), so a restore never commits partially because of
+   protection. (The restore point of step 1 stays.)
+4. Apply as RevLog server changes (`SheetsServerWrites.applyRecorded`): chunked ops in
+   dependency order (parents first for inserts, children first for deletes), each op with
+   `actorKind: user`, label `"Restore version '<name or time>'"`, kinds `["restore"]`, joined by
+   one record id; one `ServerChangeRecord` (7 days) points at them so the restore can be
+   reverted (the ops' applied forms carry the pre-restore values).
+5. Progress is streamed (`Stream<RestoreProgress {phase, done, total}>`); the client shows a
+   progress dialog. Collaborators see the ops arrive live, plus a toast "Anna
    restored a previous version" (presence `system` event).
-5. Excluded from restore: `script_trigger`, `script_build`, `change_log`. The current
+6. Excluded from restore: `script_trigger`, `script_build`. The current
    spreadsheet title is restored too (mirrored to Drive).
-Implementation note: the restore is written with `SheetsBulkWriter` (one batched writer, same
-`ServerChangeRecord` format); its `ChangeLog` summary lists deleted/revived rows/columns/sheets (comment
+Implementation note: the restore is written with `SheetsServerWrites` (RevLog server changes, same
+`ServerChangeRecord` with a record id); its op summary lists deleted/revived rows/columns/sheets (comment
 orphaning) and up to 200 cell details (cell history), and the server broadcasts a presence notice
 `versionRestored` that shows the toast. The client records the undo entry through
 `VersionRenderer.restoreUndoEntry` (suite hook) on `shell.versions.restore`.
 
-6. **Undo**: the restore's response contains `changeId`. The client pushes an `UndoStep`
+7. **Undo**: the restore's response contains `changeId`. The client pushes an `UndoStep`
    labelled "Restore version" with one entry in the new undo domain **`sheets.serverChange`**
-   (Additions A-10-5): undo calls `SheetsEndpoint.revertChange(changeId)` (server applies the
-   stored inverse with the same per-column skip rule: columns changed since by others are
+   (Additions A-10-5): undo calls `SheetsEndpoint.revertChange(changeId)` (server inverts the
+   record's applied ops with the same per-column skip rule, 12 §2.5: columns changed since by others are
    skipped and reported, which drives the partial-undo toast); redo calls
    `SheetsEndpoint.reapplyChange(changeId)`.
-7. Concurrency: edits by others during the restore follow LWW. Writes made after the restore
-   chunk's HLC win. The restore never blocks collaborators.
+8. Concurrency: edits by others during the restore are ordinary ops; the later arrival wins per
+   column. The restore never blocks collaborators.
 
 ### 5.4 Named versions, copies, downloads
 - *Name this version* / rename: `versions.*` endpoints (suite); not undoable (metadata).
 - **Make a copy** (from a version or from the current state, *File › Make a copy*):
   `DriveEndpoint.copy` uses `SpaceCopier` (pure Dart, `wonky_sheets_core/lib/copy/`), which
-  rewrites every id for the new space (row ids are global and can't move between spaces):
+  rewrites every id for the new file (row ids are global and can't move between files):
   new UUIDv7 for all entities; cell ids recomputed with `SheetsIds.cellId`; stored formula
   reference tokens remapped; `GridRange` JSON in rules, objects, pivots, named ranges and comments
-  anchors remapped; script files copied (triggers not copied); `ChangeLog` not copied. Options:
+  anchors remapped; script files copied (triggers not copied); the op log is not copied (the copy starts with its creation ops, `createFile`). Options:
   *Copy comments* (threads with remapped anchors), *Share with the same people*. From a version
-  the copy is written on the client; the options are applied by
+  the copy is written on the client (a new file created with `initialize: false` whose first op group is the copy, 02 §4); the options are applied by
   `SheetsVersionEndpoint.copyExtras(source, target, anchorIdMapJson, copyComments, copySharing)`
   with the sheet/row/column id map of the copy (online only; a toast reports failures). The
   same
@@ -453,29 +450,35 @@ anchored to the cell:
   actors: "Script: onEdit (Anna)"), time, old → new value rendered as display text (formulas
   shown as `=SUM(B2:B9)` in A1 against the **current** structure; references to deleted rows
   show `#REF!`), the change label ("Paste", "Fill down", "Restore version") when not a plain edit.
+  Labels are stored as stable English codes (shared log, other locales; `SheetsChangeLabels`)
+  and localized when shown (`changeLabelText`; unknown labels, e.g. server or older clients',
+  as stored; CQ-57).
 - Bulk changes without per-cell details (`detailJson == null`) show "Changed as part of
   'Paste' (12,000 cells)" without values, and *Restore* is disabled.
-- **Sources** (merged and de-duplicated by `ChangeLog` id):
-  1. Local synced `ChangeLog` rows of the last 30 days whose `detailJson` contains the cell
-     (works offline; indexed client-side by a lazily built map cellId → changeLogIds for the
-     open spreadsheet).
-  2. Server `CellHistory` (older entries, up to 100 per cell) via
-     `SheetsEndpoint.cellHistory(spreadsheetUuid, sheetId, rowId, colId, cursor)` when online.
+- **Sources** (merged and de-duplicated by op revision):
+  1. Local op metadata of the last 30 days whose `detailJson` contains the cell
+     (`LoggedWorkbookSession.recentOps`, from the cache's `rev_local_op`; works offline;
+     indexed client-side by a lazily built map cellId → revisions for the open spreadsheet).
+  2. Server `cell_history` (older entries, up to 100 per cell) via
+     `SheetsEndpoint.cellHistory(spreadsheetUuid, sheetId, rowId, colId, cursor)` when online
+     (Editor+); entries carry the op's `revision`.
 - Only **value** changes are listed (format changes are not, matching Google Sheets).
 - *Restore this value* → `sheets.history.restoreCellValue {sheetId,rowId,colId,changeLogId}`
-  writes the old content via `SheetsWriter` (undoable, label "Restore value").
+  (`changeLogId` holds the entry's op revision) writes the old content through the session
+  (undoable, label "Restore value").
 - Merged cells: history of the top-left cell. Cells that received content by cut/paste have
   their own history only (history follows cell ids, not moved content).
-- `CellHistory` population: the change-log consumer copies each `detailJson` entry into
-  `CellHistory` (`before`, `after`, user, at) before `ChangeLog` pruning (30 days), trimming
-  to the latest 100 per cell.
+- `cell_history` population: the `cellHistory` post-commit hook (suite 17 part 5 §6.2) inserts
+  each op's `detailJson` cells (`revision`, `before`, `after`, user, actor kind, label, at;
+  `ON CONFLICT DO NOTHING`), so the history outlives the op log's 30-day payload retention,
+  trimming to the latest 100 per cell.
 
 ---
 
 ## 7. Activity dashboard (Sheets specifics)
 
 *The suite dashboard UI was removed (suite 07 §6); if it returns,* it adds a **Changes** tab for Editors+, computed from
-`ChangeLog` (30 days) + `ActivityEvent`:
+the op log (`rev_op`, 30 days) + `ActivityEvent`:
 - Edits per day chart (stacked by user, top 8 + "others", rendered with our chart engine).
 - Contributors table: user, edits, last edit, most edited sheet.
 - Sheets table: sheet, edits, last edited by/at.
@@ -498,12 +501,12 @@ fields:
   spreadsheetUuid: UuidValue
   mode: SheetsNotifyMode               # off, immediate, dailyDigest
   lastNotifiedAt: DateTime?
-  lastChangeLogAt: DateTime?
+  lastNotifiedRevision: int?
 indexes:
   sheets_notify_idx: { fields: spreadsheetUuid, userId, unique: true }
 ```
 
-The change-log consumer marks rules dirty; a FutureCall batches **immediate** notifications
+A post-commit hook (suite 17 part 5 §6) marks rules dirty; a FutureCall batches **immediate** notifications
 every 15 min (suite email batching) and **daily** digests at 07:00 in the user's time zone.
 Email content: per user who changed things, a list of "Sheet1: changed 14 cells in B2:F30,
 inserted 2 rows" (from `summaryJson`), with a link to version history at that time. Own
@@ -513,73 +516,89 @@ changes are excluded. Users lose rules when they lose access.
 
 ## 9. Conflict UX
 
+Ops apply in the order they reach the server, online and offline alike: **the last arrival
+wins** per column, and a deleted row, column or sheet stays deleted (suite 17 part 1 Q1, RD-2,
+RD-3). The server reports each acknowledged op's outcome (`RevOutcome`: `conflicts`, `dropped`,
+`cascaded`; suite 17 part 6 §6), and the UI is shown only for ops made offline.
+
 - **Help article** ("How simultaneous edits work", linked from the sync status details and the
-  conflict toasts): last writer wins per cell value and per format attribute; deleting a row,
-  column or sheet wins over edits inside it; formulas never break when rows/columns move;
-  offline edits are merged when you reconnect.
+  conflict toasts): the edit that reaches the server last wins per cell value and per format
+  attribute; deleting a row, column or sheet wins over edits inside it; formulas never break
+  when rows/columns move; offline edits are sent when you reconnect and may replace newer edits.
 - **Partial undo**: the suite toast "Some changes couldn't be undone because they were edited
   by someone else." with *Details* (lists the skipped cells as A1 refs and who changed them,
-  from the latest `ChangeLog`).
-- **Overwritten offline edits (P1)**: when a sync session starts, the client snapshots the set of
-  cells/columns with unsynced local changes (from `LocalUndoStack` steps not yet synced). After
-  the merge, `RemoteChangeTracker` compares: if a cell's merged value differs from what we
-  wrote and the winning write came from another user (its `ChangeLog`), it records a
-  `LocalConflict` (Additions A-10-4). The UI shows a toast "3 of your offline edits were
-  replaced by newer edits from Bo — Review", and the review dialog lists cell, your value,
-  current value, author, with *Apply mine again* per row (writes via `SheetsWriter`, undoable)
-  and *Dismiss all*. Cells in deleted rows/sheets appear as "Row deleted by Anna" (no apply).
-  Conflicts expire after 7 days.
-  Implementation (`features/history/local_conflicts.dart`, `SheetsConflicts`): cells written
-  while offline are tracked from the applied plans' model batches (`sheets.offlineEdits.<item>`
-  in the user's `LocalStore`; a later online edit of ours drops the entry); after reconnecting,
-  once a sync cycle merged our pending writes, the tracked cells are compared with the model and
-  the winner is looked up in the local `ChangeLog` (details, else ranges; deletions from
-  `summaryJson.deleted`). Conflicts are kept in `sheets.conflicts.<item>`. The review dialog
-  (`WonkyDialogSpec`) has one checkbox per overwritten cell (deleted cells listed in the
-  description); *Apply mine again* runs `sheets.conflicts.applyMine` (one undo step of
-  `RestoreCellValue`s). *Your sort was replaced*: offline sorts record the rows' sortKeys; when
-  most of them changed, the newest `ChangeLog` of another user on that sheet labeled "Sort…"
-  names the winner.
-- **Rejected protected-range edits** (advisory protection): if a merge brings an edit into a
-  range the editing user wasn't allowed to change (possible with modified or stale clients),
-  nothing is rejected (U9 not available). The range's owner sees a warning badge in the
-  Protected ranges panel ("Edited by Bo at 10:42 — not in editor list"), sourced from
-  `ChangeLog` (P1).
+  from the op metadata).
+- **Offline edits that replaced newer edits (P1)**: when an offline op overwrote values that
+  another user had written after the op's base (outcome `conflicts`), the author sees the toast
+  "Your offline changes replaced {n} newer edits by {name} — Review". The review dialog lists
+  cell, your value, their previous value and author, with *Restore theirs* (undoable, one step)
+  and *Dismiss*.
+- **Dropped offline edits**: edits into a row, column or sheet that another user deleted
+  (outcome `dropped`) appear as "Row deleted by {name}" / "Column…" / "Sheet…" (no apply). The
+  deleter comes from the local op metadata (`rev_local_op`) or the server's op range. A deleted
+  row's cells that the offline user created before the delete arrived are cascaded; the deleter
+  sees "Also removed {n} cells added by {name}" (`cascaded`, P2; logged in P1).
+- **Sorts**: a `sheet_row.sortKey` conflict on at least half the rows of an offline sort gives
+  "Your sort was replaced by a newer sort from {name}".
+- Outcomes are kept in the cache (`rev_outcome`) until reviewed or 7 days old.
+- **Rejected protected-range edits**: the server rejects an op that writes cells, structure,
+  rules, objects or sheets protected from its author (suite 17 part 5 §3.5; 07 §10.3), e.g. an
+  edit made offline before the protection arrived. The whole op group is rolled back on the
+  client, its undo step removed, and the toast "“{label}” wasn’t saved because it edits a
+  protected cell or object." is shown (03 §16). For offline ops the toast also offers *Save my
+  changes as a copy*: a new spreadsheet (`initialize: false`) from the server state plus the
+  rejected group, kept 7 days (suite 17 part 6 §4.6, §8).
+
+> **As built.** The review is fed by tracking, not yet directly by outcomes (suite 17, As built
+> 11): `SheetsConflicts` (`features/history/local_conflicts.dart`) records the cells and sorts
+> written offline (`sheets.offlineEdits.<item>` in the user's local store), waits until the outbox drained after reconnecting (`session.whenSynced`),
+> compares the tracked cells with the model and finds the deciding op in the local op metadata
+> (details, else ranges; deletions from `summaryJson.deleted`). It reports offline edits that a
+> later op of someone else replaced or dropped — "{n} of your offline edits were replaced by
+> newer edits from {name}" — with *Apply mine again* (`sheets.conflicts.applyMine`, one undo
+> step of `RestoreCellValue`s) and *Dismiss*; conflicts are kept as `LocalConflict`s in the
+> user's local store (`sheets.conflicts.<item>`, 7 days). The "you replaced newer edits" review
+> with *Restore theirs* is not built. *Save my changes as a copy* on a rejection is not built
+> either (As built 10): the rejected group is only rolled back with the toast.
 
 ---
 
 ## 10. Offline collaboration scenarios
 
-Two users, Anna (A) and Bo (B), both offline, then both reconnect. "Later HLC" = the write made
-later in hybrid-logical-clock order (≈ wall clock).
+Two users, Anna (A) and Bo (B), both offline, then both reconnect. "Later arrival" = the op the
+server sequenced later (higher revision), whatever the time the edit was made.
 
 | # | Scenario | Data-model behavior | Expected outcome | UX |
 |---|----------|--------------------|------------------|----|
-| 1 | A and B type different values into **the same cell** C5 | Same deterministic `Cell` id → one row; `content` column LWW | The later HLC value wins everywhere. Formats set by either survive per attribute. | Loser gets the overwritten-edit review (§9). Edit history shows both entries. |
+| 1 | A and B type different values into **the same cell** C5 | Same deterministic `Cell` id → one row; the inserts merge per column (non-null columns), `content` last arrival wins | The later arrival's value wins everywhere. Formats set by either survive per attribute. | The later arriver gets the "replaced newer edits" review (§9). Edit history shows both entries. |
 | 2 | A edits C5, B edits D5 (**same row**, different cells) | Different cell rows | Both values survive | — |
 | 3 | A sets C5 = 10, B makes C5 bold | Different columns of the same cell row | Both survive (C5 = 10, bold) | — |
 | 4 | A and B both **insert a row** below row 4 and type into it | Both generate `FractionalIndex.between(k4, k5)` → possibly identical `sortKey`s; tie broken by row `id` | Two new rows, both kept, in a deterministic order (same on all clients); both rows' contents intact | Users may see their row at index 5 or 6. |
-| 5 | A **deletes row 7**, B edits cells in row 7 | Row tombstoned; cell rows cascade-deleted; B's later updates to those cells are dropped (or the cells are hidden by FK repair if B created them) | Row 7 is gone. B's edits are not visible | B gets the review entry "Row deleted by Anna". If A undoes the delete (revives row and cells), B's surviving cell rows become visible again. |
+| 5 | A **deletes row 7**, B edits cells in row 7 | The sequencer deletes the row and cascades its cells (A's plan lists the cells it loaded); B's later changes to the row are dropped (`dropped`); cells B created before A's delete arrived are cascaded (`cascaded`) | Row 7 is gone. B's edits are not visible | B gets the review entry "Row deleted by Anna". If A undoes the delete, A's undo restores the cells A's plan deleted; cells B created after the delete was committed are not revived. A sees "Also removed n cells added by Bo" for cells cascaded (P2). |
 | 6 | A edits C5, B **deletes column C** | Same as 5 | Column gone | as 5 |
-| 7 | A **deletes sheet** "Q3", B edits it | Sheet tombstoned, cascades | Sheet gone; B's edits lost | Review: "Sheet deleted by Anna"; A's undo restores the sheet. |
-| 8 | A and B **sort the same range** by different columns (full-row sort rewrites `SheetRow.sortKey`, see [07-data-tools.md](07-data-tools.md)) | Each row's `sortKey` LWW | Rows written by the later sort take its keys. If both sorts covered the same rows, the final order is exactly the later sort's order. Rows inserted by the other user meanwhile keep their own keys and land between neighbors. | No corruption: rows move as units. Toast after sync for the earlier sorter: "Your sort was replaced by a newer sort from Bo" (P1, via conflict detection on `sortKey` columns). |
-| 9 | A sorts a **partial range** (content move), B edits a cell inside it | Range sort moves `content`/format columns between cells; cell-level LWW | The later write per cell wins. The data can end up mixed (B's value in a cell whose row now holds A's sorted data). | Documented limitation. The sort dialog shows "Sorting part of a table while others edit it can mix rows — sort entire rows instead" when collaborators are present. Review dialog lists overwritten cells. |
-| 10 | A and B **rename different sheets to the same name** "Q1" | Not a DB constraint; maintenance rename rule | The sheet with the larger id becomes "Q1 (2)" (deterministic, first client to notice writes it) | Formulas use sheet ids, so nothing breaks. |
-| 11 | A and B **rename the same sheet** differently | `Sheet.name` LWW | Later name wins | Review entry for the loser (P1). |
+| 7 | A **deletes sheet** "Q3", B edits it | Sheet deleted, cascades | Sheet gone; B's edits lost | Review: "Sheet deleted by Anna"; A's undo restores the sheet. |
+| 8 | A and B **sort the same range** by different columns (full-row sort rewrites `SheetRow.sortKey`, see [07-data-tools.md](07-data-tools.md)) | Each row's `sortKey`: last arrival wins | Rows written by the later-arriving sort take its keys. If both sorts covered the same rows, the final order is exactly that sort's order. Rows inserted by the other user meanwhile keep their own keys and land between neighbors. | No corruption: rows move as units. The earlier sorter, if offline, gets the toast "Your sort was replaced by a newer sort from Bo" (P1, from `sortKey` conflicts). |
+| 9 | A sorts a **partial range** (content move), B edits a cell inside it | Range sort moves `content`/format columns between cells; per cell, last arrival wins | The later arrival per cell wins. The data can end up mixed (B's value in a cell whose row now holds A's sorted data). | Documented limitation. The sort dialog shows "Sorting part of a table while others edit it can mix rows — sort entire rows instead" when collaborators are present. Review dialog lists overwritten cells. |
+| 10 | A and B **rename different sheets to the same name** "Q1" | Not a DB constraint; client maintenance rename rule (`WorkbookMaintenance`, 02 §8) | The sheet with the larger id becomes "Q1 (2)" (deterministic, first client to notice writes it) | Formulas use sheet ids, so nothing breaks. **As built:** `WorkbookMaintenance` isn't run by the app yet (02 §8), so both sheets keep "Q1". |
+| 11 | A and B **rename the same sheet** differently | `Sheet.name`: last arrival wins | Later arrival's name wins | Review entry for the offline author whose rename replaced the other (P1). |
 | 12 | A and B **insert columns** at the same place and write formulas referencing them | Formulas store id tokens | Both formulas reference the intended columns | — |
-| 13 | A merges A1:B2, B merges B2:C3 (**overlapping merges**) | Two `MergedRange` rows overlap; maintenance keeps the smaller id | One merge survives; the other is removed deterministically | Toast for the loser (P1). |
-| 14 | A and B **paste overlapping ranges** | Per-cell LWW | Per cell, the later paste wins: the overlap can mix | Review for overwritten cells. |
+| 13 | A merges A1:B2, B merges B2:C3 (**overlapping merges**) | Two `MergedRange` rows overlap; client maintenance keeps the smaller id (02 §8) | One merge survives; the other is removed deterministically | Toast for the loser (P1). |
+| 14 | A and B **paste overlapping ranges** | Per cell, last arrival wins | Per cell, the later-arriving paste wins: the overlap can mix | Review for overwritten cells. |
 | 15 | A writes `=SUM(B2:B9)`, B **deletes row 9** | Token for row 9 no longer resolves | Range shrinks to B2:B8 (range ends adapt like insert/delete in Sheets: the deleted bound moves to the next surviving row); a single deleted reference gives `#REF!` | — |
 | 16 | A **undoes** an edit after B changed the same cell | Undo per-column skip rule | A's undo skips C5 | Partial-undo toast. |
 | 17 | A and B add **conditional format rules** to overlapping ranges | Independent rows ordered by `sortKey` | Both rules exist; priority by `sortKey` | — |
 | 18 | A moves a chart, B edits its title | See [08-charts-and-objects.md](08-charts-and-objects.md) §15.2 | Both survive | — |
-| 19 | A and B edit the **same script file** | `ScriptFile.source` LWW (whole file) | Later save wins | Online: conflict dialog before saving; offline: loser's text kept in local script history ([09-scripting.md](09-scripting.md) §14.3). |
+| 19 | A and B edit the **same script file** | `ScriptFile.source`: last arrival wins (whole file) | Later-arriving save wins | Online: conflict dialog before saving; offline: loser's text kept in local script history ([09-scripting.md](09-scripting.md) §14.3). |
 | 20 | A **changes the locale**, B types `1,5` offline | B's client parsed input with the old locale at typing time (content stored typed, e.g. `n:1.5`) | Value stays 1.5; display follows the new locale | — |
-| 21 | A creates a spreadsheet offline, B can't see it yet | Reserved space; registration queued | Visible to collaborators after A reconnects and shares | — |
-| 22 | A is downgraded to viewer while offline with pending edits | Server membership `readOnly`; engine rejects A's writes at sync | A's pending edits are discarded | Suite rule: toast + "Unsaved changes" export offered. |
+| 21 | A creates a spreadsheet offline, B can't see it yet | Client file UUID; the drive create is queued and the creation op is the first outbox op (02 §4) | Visible to collaborators after A reconnects and shares | — |
+| 22 | A is downgraded to viewer while offline with pending edits | The resend is rejected (`forbiddenForRole`); the outbox is kept | A's pending edits are not applied | Read-only, toast "You can no longer edit this spreadsheet", *Save my changes as a copy* (suite 17 part 6 §8). **As built:** the copy offer is not built (suite 17, As built 10). |
+| 23 | A edits B4 offline; meanwhile the owner protects column B ("Only me") | The sequencer's protection check rejects A's op (`protectedRange`, suite 17 part 5 §3.5) | B4 keeps the owner's value; nothing of A's op group is applied | A sees the blocked message with *Save my changes as a copy* (§9; as built: the message only). |
+| 24 | A (not a protection editor) uses a stale or modified client to write a protected cell | Rejected by the server (`protectedRange`) | Nothing is written | The rejection toast (§9). |
 
-Each row of this table is a test case in the multi-client sync harness
-([13-implementation-plan.md](13-implementation-plan.md) §7.3).
+Each row of this table is a test case of the multi-client tests against the in-process RevLog
+server (`FakeRevServer`/`FakeRevHub`, suite 17 As built 16;
+`wonky_sheets/test/features/collab/offline_scenarios_test.dart`,
+`rejections_test.dart`).
 
 ---
 
@@ -632,7 +651,8 @@ Each row of this table is a test case in the multi-client sync harness
 | `wonky_sheets_core/lib/snapshot/` | snapshot codec (read/write), diff algorithm (pure Dart; used by client and server) |
 | `wonky_sheets_core/lib/copy/` | `SpaceCopier` |
 | `wonky_server/lib/src/sheets/versions/` | `SheetsVersionProvider`, scheduler, restore, diff cache |
-| `wonky_server/lib/src/sheets/changelog/` | consumer: orphaning, `CellHistory`, version state, notifications, trigger enqueue |
+| `wonky_server/lib/src/sheets/revlog/sheets_hooks.dart` | post-commit hooks (suite 17 part 5 §6.2): orphaning, `cell_history`, version state, script compile and trigger enqueue |
+| `wonky_server/lib/src/sheets/changelog/agent_cursors.dart` | agent cursors after tool writes |
 
 ---
 
@@ -640,10 +660,10 @@ Each row of this table is a test case in the multi-client sync harness
 
 | # | Change |
 |---|--------|
-| A-10-1 | `ChangeLog.summaryJson` gains `deleted: {rows: [ids], cols: [ids], sheets: [ids]}` and `revived: {…}` (capped at 1,000 ids each; beyond that `structureOverflow: true` makes the server rescan anchors of affected sheets). |
+| A-10-1 | The op summary (`summaryJson`) gains `deleted: {rows: [ids], cols: [ids], sheets: [ids]}` and `revived: {…}` (capped at 1,000 ids each; beyond that `structureOverflow: true` makes the server rescan anchors of affected sheets). |
 | A-10-2 | `CommentThread` (suite table) gains `orphanReasonJson: String?` and `statusBeforeOrphan: CommentStatus?` (applied in suite 07 §2.1). |
 | A-10-3 | Server tables `ItemVersionState` (shared by both apps: `itemId, lastEditAt, dirtySince, lastVersionAt, editorsSinceLastVersion: List<int>, lastRevision`; replaces the proposed `SheetsVersionState`) and `SheetsSnapshotIndex(itemVersionId, sheetsJson, changedRangesJson, authorIds: List<int>, diffFileId?)`. |
-| A-10-4 | Local-only records `PendingCommentOp(opId, threadUuid, kind, payloadJson, createdAt)` and `LocalConflict(id, spreadsheetId, sheetId, rowId, colId, column, myValue, theirValue, theirUserId, changeLogId, detectedAt, dismissed)` — kept as JSON in the user's `LocalStore` (not replica tables). |
+| A-10-4 | Local-only records `PendingCommentOp(opId, threadUuid, kind, payloadJson, createdAt)` and `LocalConflict(id, spreadsheetId, sheetId, rowId, colId, column, myValue, theirValue, theirUserId, changeLogId (the deciding op's revision), detectedAt, dismissed)` — kept as JSON in the user's `LocalStore` (not cache tables). |
 | A-10-5 | New undo domain `sheets.serverChange` (entry = `{changeId}`); undo → `SheetsEndpoint.revertChange`, redo → `reapplyChange`. Shared with MCP-originated changes surfaced in the UI. |
 | A-10-6 | `PresenceUpdate.hints` / `PresenceEvent.Hints` and `FollowerCount` event (suite 07 protocol extension). |
 
@@ -652,8 +672,8 @@ Each row of this table is a test case in the multi-client sync harness
 ## 15. Acceptance criteria
 
 1. Two windows on the same sheet: B sees A's active cell border, range fill and name flag
-   within 200 ms of A moving; A's committed value appears in B's grid within 300 ms (hint)
-   and stays after the synced row arrives (no flicker).
+   within 200 ms of A moving; A's committed value appears in B's grid within 300 ms (the remote
+   op, suite 17 part 7 P1) without flicker.
 2. Tab avatars show who is on which sheet; *Follow* tracks the followed user's sheet and
    viewport until local interaction.
 3. A comment on B4 stays on the same logical cell after inserting rows above, sorting the
@@ -669,8 +689,9 @@ Each row of this table is a test case in the multi-client sync harness
    CF/DV rules, pivots and comments (if chosen) work and point at the copy.
 8. *Show edit history* lists previous values with authors offline (last 30 days) and online
    (older), and *Restore this value* is undoable.
-9. Every scenario in §10 passes in the multi-client harness with the stated outcome.
-10. Overwritten offline edits produce a review toast and *Apply mine again* works.
+9. Every scenario in §10 passes in the multi-client tests with the stated outcome.
+10. Offline edits that replaced newer edits produce a review toast and *Restore theirs* works;
+    an offline edit into a range protected meanwhile is rejected with the blocked message.
 
 ## 16. Tests
 
@@ -679,9 +700,14 @@ Each row of this table is a test case in the multi-client sync harness
   diff algorithm (content/format/structure), `SpaceCopier` remapping (formulas, GridRanges,
   objects, comments), cell-history merge/dedupe.
 - Server (`serverpod_test`): capture policy timing (fake clock), restore diff/apply with
-  concurrent writes, revert of restore with per-column skip, orphaning/revival via ChangeLog,
-  CellHistory population and trimming, notification batching.
-- Multi-client harness: §10 table (each row a test), hint behavior with 3 clients.
+  concurrent writes, restore refused by the protection pre-check, revert of restore with
+  per-column skip, orphaning/revival from op summaries (`comments` hook), `cell_history`
+  population (`cellHistory` hook) and trimming, version windows by revision (an offline edit
+  committed late belongs to the version whose revision window contains it), notification
+  batching.
+- Multi-client (in-process RevLog server, `FakeRevServer`): §10 table (each row a test,
+  including the `protectedRange` rejections of scenarios 23–24), outcomes (`conflicts`,
+  `dropped`) driving the review, hint behavior with 3 clients.
 - Golden: remote cursor rendering (light/dark, overlaps, editing state), comment/note
   indicators, history diff highlighting.
 - Performance: snapshot capture and load of 1M cells (< 10 s capture, < 8 s load on desktop),

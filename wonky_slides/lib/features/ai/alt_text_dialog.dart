@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/slides_l10n.dart';
 import 'ai_widgets.dart';
@@ -213,6 +214,7 @@ class _AltTextGenerateDialogState extends State<AltTextGenerateDialog>
     final cs = theme.colorScheme;
     final items = _items;
     return ShadDialog(
+      closeIcon: const WonkyDialogCloseButton(),
       constraints: const BoxConstraints(maxWidth: 600),
       key: AltTextDialogKeys.dialog,
       title: Text(l.aiAltTitle),

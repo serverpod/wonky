@@ -225,6 +225,9 @@ class CfController extends ChangeNotifier {
       }
     }
     if (all) _evaluator.invalidateAll();
+    // A previewed draft may read the changed cells on a sheet without rules
+    // (the render cache drops only sheets with rules, CQ-41).
+    if (draft != null) editor.cells.invalidate();
     if (highlight.value != null) _refreshHighlight();
     notifyListeners();
   }
@@ -307,7 +310,14 @@ class CfController extends ChangeNotifier {
       _invalidateFormulaRules(e.key);
       _evaluator.invalidateCells(e.key, e.value);
     }
-    _repaint();
+    // The editor's render cache already dropped the sheets with rules
+    // (CellRenderCache.invalidateRecalc); a previewed draft may sit on a
+    // sheet without rules.
+    if (draft != null) {
+      _repaint();
+    } else {
+      editor.contentSignal.fire();
+    }
   }
 
   void _scheduleMidnight() {

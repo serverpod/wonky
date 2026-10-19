@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:serverpod/serverpod.dart';
-import 'package:yaml/yaml.dart';
+
+import 'wonky_config_file.dart';
 
 /// Wonky Work settings from the `wonky:` section of `config/<runMode>.yaml`
 /// (specs/01-architecture.md §6). Serverpod ignores the section; this class
@@ -14,8 +15,6 @@ class WonkyConfig {
     this.mcpUiBridgeEnabled = true,
     this.experimentalCharts = false,
     this.maxCellsPerSpreadsheet = 1000000,
-    this.maxActiveSpacesPerUser = 30,
-    this.maxActiveDecksPerUser = 30,
     this.maxSheetsPerSpreadsheet = 200,
     this.scriptTimeoutMs = 30000,
     this.scriptDailyQuotaMs = 5400000,
@@ -34,8 +33,9 @@ class WonkyConfig {
     this.maxPendingUploadsPerUser = 100,
     this.uploadsPerHour = 200,
     this.uploadBytesPerDay = 500 * 1024 * 1024,
-    this.minClientVersion = '2.0.0',
-    this.serverVersion = '2.0.0',
+    this.downloadBytesPerDay = 2 * 1024 * 1024 * 1024,
+    this.minClientVersion = '3.0.0',
+    this.serverVersion = '3.0.0',
     this.publicWebUrl,
     this.publicApiUrl,
     this.busFlushMs = 1000,
@@ -59,12 +59,6 @@ class WonkyConfig {
   final bool mcpUiBridgeEnabled;
   final bool experimentalCharts;
   final int maxCellsPerSpreadsheet;
-  final int maxActiveSpacesPerUser;
-
-  /// (v2) The Slides active set limit (`slides.maxActiveSpacesPerUser`):
-  /// deck spaces are limited separately from spreadsheet spaces (suite 12
-  /// §2.6).
-  final int maxActiveDecksPerUser;
   final int maxSheetsPerSpreadsheet;
 
   /// Time limit of client script runs (menus, macros, editor; Sheets 09 §10).
@@ -118,6 +112,10 @@ class WonkyConfig {
   /// `files.uploadBytesPerDay`; suite 13 §6).
   final int uploadsPerHour;
   final int uploadBytesPerDay;
+
+  /// (v2) Download traffic per user and day (`files.downloadBytesPerDay`,
+  /// suite 13 §6: 2 GB), counted per instance.
+  final int downloadBytesPerDay;
   final String minClientVersion;
   final String serverVersion;
 
@@ -171,31 +169,13 @@ class WonkyConfig {
   /// Replaces the current configuration (tests).
   static set current(WonkyConfig config) => _current = config;
 
-  static WonkyConfig _loadForRunningServer() {
-    String runMode;
-    try {
-      runMode = Serverpod.instance.runMode;
-    } catch (_) {
-      runMode = ServerpodRunMode.development;
-    }
-    return load(runMode);
-  }
+  static WonkyConfig _loadForRunningServer() => load(WonkyConfigFile.runMode());
 
   /// Loads the configuration for [runMode] from `config/<runMode>.yaml`
   /// relative to [directory] (default: the working directory).
   static WonkyConfig load(String runMode, {Directory? directory}) {
-    final file = File(
-      '${(directory ?? Directory.current).path}/config/$runMode.yaml',
-    );
-    Map<dynamic, dynamic> section = const {};
-    if (file.existsSync()) {
-      final yaml = loadYaml(file.readAsStringSync());
-      if (yaml is Map && yaml['wonky'] is Map) {
-        section = yaml['wonky'] as Map;
-      }
-    }
     return fromMap(
-      section,
+      WonkyConfigFile.wonky(runMode: runMode, directory: directory),
       environment: Platform.environment,
       defaultPublicWebUrl: runMode == ServerpodRunMode.production
           ? productionWebUrl
@@ -249,8 +229,6 @@ class WonkyConfig {
       mcpUiBridgeEnabled: b('features', 'mcpUiBridge', true),
       experimentalCharts: b('features', 'experimentalCharts', false),
       maxCellsPerSpreadsheet: i('sheets', 'maxCellsPerSpreadsheet', 1000000),
-      maxActiveSpacesPerUser: i('sheets', 'maxActiveSpacesPerUser', 30),
-      maxActiveDecksPerUser: i('slides', 'maxActiveSpacesPerUser', 30),
       maxSheetsPerSpreadsheet: i('sheets', 'maxSheetsPerSpreadsheet', 200),
       scriptTimeoutMs: i('sheets', 'scriptTimeoutMs', 30000),
       scriptDailyQuotaMs: i('sheets', 'scriptDailyQuotaMs', 5400000),
@@ -273,8 +251,13 @@ class WonkyConfig {
       maxPendingUploadsPerUser: i('drive', 'maxPendingUploadsPerUser', 100),
       uploadsPerHour: i('files', 'uploadsPerHour', 200),
       uploadBytesPerDay: i('files', 'uploadBytesPerDay', 500 * 1024 * 1024),
-      minClientVersion: s('minClientVersion', '2.0.0'),
-      serverVersion: s('serverVersion', '2.0.0'),
+      downloadBytesPerDay: i(
+        'files',
+        'downloadBytesPerDay',
+        2 * 1024 * 1024 * 1024,
+      ),
+      minClientVersion: s('minClientVersion', '3.0.0'),
+      serverVersion: s('serverVersion', '3.0.0'),
       busFlushMs: i('cluster', 'busFlushMs', 1000),
       publicWebUrl:
           environment['WONKY_PUBLIC_WEB_URL'] ??

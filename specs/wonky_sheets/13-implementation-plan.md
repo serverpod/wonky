@@ -16,6 +16,14 @@ Suite: [01-architecture.md](../01-architecture.md),
 [08-commands-and-undo.md](../08-commands-and-undo.md),
 [12-offline-and-sync.md](../12-offline-and-sync.md).
 
+> **Superseded by RevLog (M13).** This is the historical plan the first iteration followed. Its
+> sync parts — the `serverpod_offline_sync` engine, spaces, the reserved-space pool, the active
+> set, subscriptions, the synced `ChangeLog` and its consumer, `SheetsWriter`/`SyncTxAdapter`,
+> `RemoteChangeTracker`, the upstream requirements U1–U12 and the staged cell limits — were
+> replaced by RevLog: [17 · RevLog sync](../17-revlog-sync.md) (plan:
+> `plans/sheets-sync-migration/`). The current behavior is in 02, 10, 12 and suite 12/17; the
+> notes below mark the main superseded items.
+
 ---
 
 ## 1. Milestones
@@ -29,7 +37,7 @@ Suite: [01-architecture.md](../01-architecture.md),
 | **M4** Collaboration | Presence, comments, versions, sharing↔space mirroring | Sheets presence + hints, comments/notes, version history (snapshots, view, diff, restore, copy), cell edit history, conflict review, activity | All scenarios of [10](10-collaboration-history.md) §10 pass in the harness |
 | **M5** Advanced | — | Full formatting (CF, DV, banding, rich text), filters/filter views/slicers, sort variants, pivots, charts (P0+P1 types), XLSX/ODS import/export, PDF/print, named/protected ranges, groups, remaining functions (~450 total) | XLSX corpus round-trip; print goldens; chart goldens |
 | **M6** MCP + AI + scripting | MCP server, UI bridge, assistant | `sheets.*` headless tools, `ui.sheets.*`, resources/prompts, AI features (formula suggestion, explain, fill, analyze, suggest-mode previews), scripting (compile service, client/server runtimes, bridge, editor, triggers, macros) | MCP integration suite; script conformance in all hosts; sandbox escape suite |
-| **M7** Polish | Perf, a11y, i18n | Accessibility audit, localization (number/date locales, function name localization P2), performance tuning, raise cell limits as upstream U1–U5 land (5M, then 10M), P1 leftovers | Perf suite at the new limit; a11y checklist; no P0/P1 bugs open |
+| **M7** Polish | Perf, a11y, i18n | Accessibility audit, localization (number/date locales, function name localization P2), performance tuning, raise cell limits as upstream U1–U5 land (5M, then 10M; superseded by RevLog: limits are raised against the gates of suite 17 part 7), P1 leftovers | Perf suite at the new limit; a11y checklist; no P0/P1 bugs open |
 
 M2 is the Write MVP at suite level. Sheets work during M2 is foundational and runs in parallel
 (the Sheets team is not blocked on Write).
@@ -88,7 +96,7 @@ Rules for parallel work:
   deterministic cell ids; planner ops round-trip with undo (execute → undo → state equal).
 
 ### WS-S2 · Sync controller and spaces (M0–M1)
-- **Scope**: `SheetsSyncController` lifecycle (suite 12 §2.5); reserved space pool;
+- **Scope**: `SheetsSyncController` lifecycle; reserved space pool;
   `SheetsEndpoint.reserveSpaces/subscribe/ensureSubscribed/spaceStats`; active set eviction job;
   custom sync endpoint `sheetsSync.sync` with `onMergeSuccess` fan-out (`session.messages`
   `sheets:merged:<space>`); `ChangeLog` consumer skeleton (cursor per space, idempotent);
@@ -100,6 +108,9 @@ Rules for parallel work:
 - **Acceptance**: harness tests: offline create → sync → collaborator sees it; membership
   mirroring of roles; eviction never removes pinned/dirty spaces; consumer exactly-once per
   ChangeLog row across server restarts.
+- **Superseded by RevLog (M13):** `SheetsRevLog` + `LoggedWorkbookSession` (client),
+  `SheetsDocEndpoint.connect` stream, `SheetsRevBinding` and durable post-commit hooks
+  (server); offline creation with client file UUIDs (suite 17 parts 4–6).
 
 ### WS-S3 · WorkbookModel (M0–M2)
 - **Scope** (pure Dart in `wonky_sheets_core/lib/model/`): `AxisIndex` (ordered ids,
@@ -265,6 +276,10 @@ abstract interface class SyncTxAdapter {
 }
 ```
 
+Superseded by RevLog (M13): plans are committed by the client session (outbox, op groups) and on
+the server by `submitServerChange`; summary and detail go into the op (`rev_op.summaryJson`,
+`detailJson`), 02 §3.7 and §7.
+
 ### 4.2 Model
 
 ```dart
@@ -342,6 +357,10 @@ abstract interface class ChangeLogConsumer {
   Future<void> consume(Session session, UuidValue spaceId, List<ChangeLogRow> rows);
 }
 ```
+
+Superseded by RevLog (M13): consumers are RevLog post-commit hooks (`RevHook`, suite 17 part 5
+§6), and headless models are leases of `HeadlessFileCache` (part 5 §9;
+`HeadlessWorkbookProvider.open` remains as the Sheets wrapper).
 
 ---
 
@@ -434,6 +453,10 @@ N simulated clients, **each in its own isolate** with its own SQLite file, `Work
   formulas never refer to wrong cells (each formula's referenced cell ids exist or render
   `#REF!`); undo of client A never modifies a column last written by client B (suite 08 §4).
 - Seeds recorded; failures shrink to minimal sequences; nightly long runs (10k sequences).
+- **Superseded by RevLog (M13):** clients run against the in-process RevLog server
+  (`FakeRevServer`/`FakeRevHub`, suite 17 As built 16; `wonky_sheets/test/revlog/support/`,
+  `test/features/collab/offline_scenarios_test.dart`); the RevLog property tests are listed in
+  suite 17 part 3 §7 and the plan's testing file.
 
 ### 7.4 Golden tests
 Grid rendering (formats, merges, borders, CF, overflow, RTL, zoom, light/dark), panels,
@@ -453,6 +476,12 @@ writer: `BLOCKS=20` 100k cells ≈ 8 s, `BLOCKS=200` 1M cells ≈ 2 min on a loa
 `set_values`, revert, redo). Remaining cost at 1M cells: commits of random-UUID index pages
 (cell ids, `crdt_data_rows`), and deleting rows/columns on the server runs the full FK
 projection (~8 s per 500 rows at 50k cells).
+
+**Superseded by RevLog (M13):** the sync and write timings above measured the old engine. The
+sync performance budgets are the RevLog gates P1–P12 of [17](../17-revlog-sync.md) part 7
+(propagation, server commits, cold open and complete download of 1M cells, reopen from cache,
+1M-cell local and server imports, storage per cell, protected-file commits); the rest of this
+suite (grid, formulas, import/export, print, charts) is unchanged.
 
 ### 7.6 Integration tests
 `flutter_driver`-based app tests (skill `flutter-add-integration-test`) driven through the
@@ -475,20 +504,20 @@ ranges, prompt-injection corpus.
 
 | # | Risk | Likelihood | Impact | Mitigation | Owner |
 |---|------|-----------|--------|------------|-------|
-| R1 | `serverpod_offline_sync` maturity (0.0.x): bugs, scale limits, missing hooks (U1–U11) | High | High | Vendored patch with tests; workarounds per suite 12 §4; staged cell limits; harness catches regressions; close collaboration with upstream; abstraction (`SyncTxAdapter`, `RemoteChangeSink`) limits blast radius | S2 |
-| R2 | Large spreadsheets: sync volume and memory (1M → 10M cells) | High | High | Per-cell rows only for non-empty cells; column default formats; ChangeLog detail cap; perf gates; U3/U5 upstream | S2/S3 |
-| R3 | Web SQLite/OPFS availability and performance (Safari, private mode, IndexedDB fallback) | Medium | High | Detect and warn; limited offline on fallback; `--wasm` builds; perf suite on all browsers | S2 |
-| R4 | Synced schema changes are lock-step | Medium | Medium | Front-load Additions into M0; batch releases; recovery export path | S1 |
+| R1 | `serverpod_offline_sync` maturity (0.0.x): bugs, scale limits, missing hooks (U1–U11) | High | High | Vendored patch with tests; staged cell limits; harness catches regressions; close collaboration with upstream; abstraction (`SyncTxAdapter`, `RemoteChangeSink`) limits blast radius. *Superseded by RevLog (M13): the engine was replaced (suite 17)* | S2 |
+| R2 | Large spreadsheets: sync volume and memory (1M → 10M cells) | High | High | Per-cell rows only for non-empty cells; column default formats; op detail cap; viewport-first bootstrap pages; RevLog performance gates (suite 17 part 7) before raising the cell limit. *Superseded by RevLog (M13): the upstream items U3/U5 no longer apply* | S2/S3 |
+| R3 | Web SQLite/OPFS availability and performance (Safari, private mode, IndexedDB fallback) | Medium | High | Detect and warn; limited offline on fallback (200,000 cells kept offline, suite 17 part 6 §2.5); the cache is never the source of truth, so a dropped cache only re-downloads; `--wasm` builds; perf suite on all browsers | S2 |
+| R4 | Synced schema changes are lock-step | Medium | Medium | Front-load Additions into M0; batch releases; recovery export path. *Superseded by RevLog (M13): additive schema changes are accepted within a window; the client re-encodes its outbox (suite 17 part 2 §4.3)* | S1 |
 | R5 | `dart_eval` performance and language coverage | High | Medium | Subset lint, bulk APIs, batching, vendored patches, conformance corpus; host protocol engine-agnostic (QuickJS fallback possible) | S16 |
 | R6 | Synchronous bridge on web (COOP/COEP) breaks other resources | Medium | Medium | Same-origin resources; spike in M3; snapshot-mode fallback; run-on-server option | S16 |
 | R7 | Formula compatibility with Google Sheets/Excel (≈ 450 functions, edge cases, QUERY) | High | Medium | Category-parallel work, test vectors from real apps, explicit unsupported list, import reports | S8 |
 | R8 | Grid rendering performance on web (CanvasKit/skwasm text cost) | Medium | High | Text layout cache, glyph atlas experiments, layer repaint isolation, perf gate in M2 | S4 |
 | R9 | Own OOXML reader/writer gaps/performance at 1M cells | Medium | Medium | Corpus + LibreOffice validation; streaming parts; IR boundary keeps fixes local | S14 |
 | R10 | Concurrency surprises (LWW on whole JSON specs, partial-range sorts) | Medium | Medium | Read-modify-write within transactions; documentation; conflict review UI; full-row sorts preferred | S11/S13/S15 |
-| R11 | Advisory protection bypass (U9) | Medium | Low | Documented; ChangeLog-based warnings; server-side enforcement for MCP/scripts | S10/S17 |
+| R11 | Advisory protection bypass (U9) | Medium | Low | Documented; ChangeLog-based warnings; server-side enforcement for MCP/scripts. *Superseded by RevLog (M13): the sequencer enforces protections (07 §10.3)* | S10/S17 |
 | R12 | AI cost and prompt injection | Medium | Medium | Budgets, caching, confirmations, data-tag wrapping, no sharing tools, eval suite | S18 |
 | R13 | Many parallel agents editing shared files | Medium | Medium | Folder ownership, contract PRs, registration indexes owned by S19, CI checks for forbidden imports | all |
-| R14 | Vendored packages (`serverpod_offline_sync`, `dart_eval`, candidates) drift from upstream | Medium | Medium | Patch logs, upstream PRs (the sync module is Serverpod-owned), deliberate re-sync per upgrade (suite 01 §2.3) | S2, S16 |
+| R14 | Vendored packages (`serverpod_offline_sync`, `dart_eval`, candidates) drift from upstream | Medium | Medium | Patch logs, upstream PRs (the sync module is Serverpod-owned), deliberate re-sync per upgrade (suite 01 §2.3). *Superseded by RevLog (M13) for the sync module* | S2, S16 |
 
 ---
 
@@ -507,7 +536,8 @@ Questions raised while writing specs 01–13, and where they were settled:
 4. **Undo domain `sheets.serverChange`** — added to suite 08 §3.3.
 5. **Presence extensions and comment orphan fields** — suite 07 updated.
 6. **Personal space** — implicit in the engine (UUID = user id, always `readWrite`); no
-   creation step (suite 12 §2.2).
+   creation step. *Superseded by RevLog (M13): no personal space; script user properties are
+   a server table (09 §6.9).*
 7. **Dependencies** — `native_synchronization` (script), `re_editor` and `super_clipboard`
    (Flutter app) added to suite 01 §2.1.
 8. **COOP/COEP** — both web apps are cross-origin isolated; external images go through the
@@ -530,8 +560,7 @@ Questions raised while writing specs 01–13, and where they were settled:
   skill); no overflow at 360 px for panels/dialogs.
 - Keyboard operable; semantics labels; screen-reader announcements where specified.
 - Offline behavior as specified (and tested with the harness when it touches synced data).
-- All synced writes name their columns (lint green); `ChangeLog` rows written with correct
-  `actorKind` and labels.
+- All writes name only the columns they change; ops carry the correct `actorKind` and labels.
 - MCP: tools/bridge coverage where the spec requires it, with integration tests.
 - Unit, widget, golden and integration tests added; perf budgets measured if applicable.
 - Docs: in-app help entries for user-visible features; spec updated if behavior differs.

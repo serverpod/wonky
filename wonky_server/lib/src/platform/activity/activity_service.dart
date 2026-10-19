@@ -42,7 +42,8 @@ abstract final class ActivityService {
   /// when it is less than [editWindow] old. Numeric [counters] are summed;
   /// [sets] (ids, e.g. the slides a deck edit touched) are merged as sorted
   /// lists of at most [maxSetSize]; actor kinds are collected in
-  /// `actorKinds`.
+  /// `actorKinds`. The event is read and merged under its row lock, so
+  /// concurrent recorders (instances, hooks) don't lose each other's counts.
   static Future<void> logEdit(
     Session session,
     int itemId,
@@ -51,6 +52,18 @@ abstract final class ActivityService {
     Map<String, Iterable<String>> sets = const {},
     Transaction? transaction,
   }) async {
+    if (transaction == null) {
+      return session.db.transaction(
+        (tx) => logEdit(
+          session,
+          itemId,
+          actor,
+          counters: counters,
+          sets: sets,
+          transaction: tx,
+        ),
+      );
+    }
     final now = nowUtc();
     final recent = await ActivityEvent.db.findFirstRow(
       session,
@@ -61,6 +74,7 @@ abstract final class ActivityService {
           (t.at > now.subtract(editWindow)),
       orderBy: (t) => t.at.desc(),
       transaction: transaction,
+      lockMode: LockMode.forUpdate,
     );
     if (recent == null) {
       await ActivityEvent.db.insertRow(

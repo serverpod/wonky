@@ -1,0 +1,49 @@
+### One committed op of a RevLog file (RevLog spec 02 §1).
+class: RevOp
+table: rev_op
+serverOnly: true
+fields:
+  file: RevFile?, relation(onDelete=Cascade)
+  revision: int
+  clientOpId: UuidValue
+  baseRevision: int
+  ### user_profile id (null for system changes).
+  authorId: int?
+  ### Auth user uuid (sent to clients).
+  authorUuid: UuidValue?
+  ### The committing connection's session id, or "server:<runId>".
+  sessionId: String?
+  onBehalfOfSessionId: String?
+  actorKind: ActorKind
+  label: String
+  ### Chunk group of one plan (RD-21).
+  groupId: String?
+  groupIndex: int, default=0
+  groupLast: bool, default=true
+  ### ServerChangeRecord / assistant run (RD-21).
+  recordId: UuidValue?
+  offline: bool, default=false
+  ### gzip of the codec JSON of the applied changes, with before (RD-20);
+  ### null once pruned.
+  payload: ByteData?
+  changeCount: int
+  summaryJson: String?
+  detailJson: String?
+  ### Full outcome (04 §2.2) for idempotent re-acks; null once pruned.
+  outcomeJson: String?
+  ### The applied form is exactly the submitted changes.
+  appliedEqualsSubmitted: bool
+  clientCreatedAt: DateTime?
+  committedAt: DateTime
+indexes:
+  rev_op_rev_idx:
+    fields: fileId, revision
+    unique: true
+  rev_op_client_idx:
+    fields: fileId, clientOpId
+    unique: true
+  rev_op_record_idx:
+    fields: recordId
+  rev_op_committed_idx:
+    fields: committedAt
+    type: brin

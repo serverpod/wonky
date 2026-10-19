@@ -4,6 +4,7 @@ import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_sheets_core/formula.dart' show GridRect;
 import 'package:wonky_sheets_core/model.dart';
 
+import '../features/history/change_labels.dart';
 import '../features/ai/sheets_a1.dart';
 import '../features/ai/sheets_ai_controller.dart';
 import '../features/ai/sheets_assistant_adapter.dart' show markdownToRows;
@@ -327,7 +328,7 @@ List<Command<CommandArgs>> aiCommands(ShellServices s) => [
               ],
           ],
           parseLocale: ed.locale,
-          label: 'Insert AI result',
+          label: SheetsChangeLabels.insertAiResult,
         ),
       );
       final range = rectA1(

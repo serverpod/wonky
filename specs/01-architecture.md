@@ -8,22 +8,22 @@
 | A2 | **Four Flutter apps** (v2; `wonky_drive`, `wonky_write`, `wonky_sheets`, `wonky_slides`) sharing packages (`packages/wonky_app` shell, `wonky_ui`, cores), all served by `wonky_server` on one origin (`/drive/`, `/write/`, `/sheets/`, `/slides/`; `/` → `/drive/`, Wonky Drive's home, v2 review B4) with one shared sign-in. | Smaller bundles, independent release cadence, clear ownership; shared shell keeps UX identical; same origin makes the session cookie shared. |
 | A3 | **Pure-Dart "core" packages** for logic needed on both server and client (Markdown↔Delta, OT helpers, exporters, formula engine, number formats, XLSX/CSV mapping, tool schemas). | Headless MCP tools, server-side export/import, AI tools and version materialization need the same logic as the apps. |
 | A4 | **Write: server-authoritative OT** over Quill Deltas on typed Serverpod streams; op log in Postgres. | Required by the brief; Delta has `compose/transform/invert/transformPosition`. |
-| A5 | **Sheets: Serverpod offline-first sync** (`serverpod_offline_sync`, `database: sync`), one spreadsheet = one space; per-cell rows with deterministic ids; stable row/column ids; formulas stored with id-based references. | Offline-first requirement; field-level LWW merges; concurrent row/column insertion merges without rewriting cells or formulas. |
+| A5 | **Sheets: offline-first sync over RevLog** ([17](17-revlog-sync.md)): one spreadsheet = one RevLog file; the server sequences change sets into a revision-ordered log; clients keep a local cache and a durable outbox; per-cell rows with deterministic ids; stable row/column ids; formulas stored with id-based references. (Until M13 this was the vendored `serverpod_offline_sync` CRDT engine.) | Offline-first requirement; column-level "last arrival wins" merges; concurrent row/column insertion merges without rewriting cells or formulas; a server-ordered log is simpler, faster and checkable on the server (protection, limits). |
 | A6 | **Everything is a command**; undo is per-user forward ops. | Undo-for-everything + MCP control (see 08). |
 | A7 | **MCP hosted in the server** (`mcp_dart`, Streamable HTTP) + UI bridge relayed over a Serverpod stream. | Works identically for web and desktop clients. |
 | A8 | **Dart scripting via `dart_eval`**: compile on the server, execute bytecode on server (triggers, scheduled jobs) and client (custom functions, macros) inside a sandbox worker. | Keeps the analyzer out of the web bundle; sandboxed by default. |
 | A9 | State management: Flutter's layered architecture, `ChangeNotifier` controllers, `provider` for DI, `go_router`. | Official guidance, low ceremony. |
-| A10 | (v2) **Slides: offline-first sync like Sheets** (`serverpod_offline_sync`, one deck = one space, field-level LWW, `slides.rows` undo) with a pure-Dart `wonky_slides_core`. | Object-based slide content maps onto rows; offline works; reuses the Sheets sync stack ([Slides 02](wonky_slides/02-data-model.md)). |
+| A10 | (v2) **Slides: offline-first sync like Sheets, over RevLog** (one deck = one RevLog file, column-level "last arrival wins", `slides.rows` undo) with a pure-Dart `wonky_slides_core`. Both apps share `wonky_revlog` (core) and `wonky_revlog_flutter` (client) ([17](17-revlog-sync.md)). | Object-based slide content maps onto rows; offline works; one sync stack for both apps ([Slides 02](wonky_slides/02-data-model.md)). |
 | A11 | (v2) **Shared leaf packages** for code highlighting (`wonky_code`, `wonky_code_flutter`, extracted from Write) and charts (`wonky_charts`, `wonky_charts_flutter`, extracted from Sheets), used by Write/Sheets and Slides. | Slides needs both; the app packages still never import each other. |
 | A12 | (v2) **One drive, filtered app homes**: Wonky Drive shows every kind and owns uploads, previews and storage; each app home shows only its kind. A 50 MB per-user quota is enforced server-side. | User requirement; [Drive 01](wonky_drive/01-overview.md), [Drive 03](wonky_drive/03-storage-quota.md). |
-| A13 | (v2) **Web only for now.** v2 is built, tested and shipped for the web. The desktop targets (`macos/` etc.) **keep compiling** — CI's macOS integration-test job (`e2e.yml`) still builds them and shared code keeps its conditional imports — but desktop-only features are **disabled or deferred**: native menubar (`PlatformMenuBar`), separate desktop binaries with custom URL schemes and desktop packaging, multi-window (Slides' presenter second window, desktop multi-window spikes), desktop printing extras and OS drag-and-drop in native builds (`desktop_drop`). New v2 code needs no desktop-specific paths; where a platform split is unavoidable the desktop branch may be a stub ("Not available on desktop yet"). The desktop notes in the v1 app specs describe that deferred later state. | User decision (v2 review, Q9/Q29/Q30): one platform to build and verify keeps M8–M11 small. |
+| A13 | (v2) **Web only for now.** v2 is built, tested and shipped for the web. The desktop targets (`macos/` etc.) **keep compiling** — CI's macOS integration-test job (`e2e.yml`) and the weekly `desktop` job of `build.yml` build them and shared code keeps its conditional imports — but desktop-only features are **disabled or deferred**: native menubar (`PlatformMenuBar`), separate desktop binaries with custom URL schemes and desktop packaging, multi-window (Slides' presenter second window, desktop multi-window spikes), desktop printing extras and OS drag-and-drop in native builds (`desktop_drop`). New v2 code needs no desktop-specific paths; where a platform split is unavoidable the desktop branch may be a stub ("Not available on desktop yet"). The desktop notes in the v1 app specs describe that deferred later state. | User decision (v2 review, Q9/Q29/Q30): one platform to build and verify keeps M8–M11 small. |
 | A14 | (v2) **One window, also on the web.** No v2 feature opens a second browser window or tab (including Slides' audience view, which runs on another device or browser joined to a presentation session, [Slides 10 §5](wonky_slides/10-presenting-and-pdf.md)). | Single-window rule of [03 §1](03-app-shell-and-navigation.md) without exceptions beyond external links and Google sign-in (v2 review, Q5). A presenting-only second window is a possible later addition. |
 
 ## 2. Repository layout
 
-**Current state (starting point).**
-
-The repository was created from the Serverpod project template and two `flutter create` apps:
+**History (M0 starting point).** The repository was created from the Serverpod project
+template and two `flutter create` apps; M0 (steps below) turned it into the target layout. The
+table records where each original folder went:
 
 | Folder | State | Fate |
 |--------|-------|------|
@@ -33,20 +33,39 @@ The repository was created from the Serverpod project template and two `flutter 
 | `wonky_write/`, `wonky_sheets/` | Fresh `flutter create` apps (counter demo), not yet in the pub workspace, own `pubspec.lock`, SDK `^3.13.4` | **Become the two apps** (M0: join the workspace, wire to the server) |
 | `specs/` | These specs; app specs in `specs/wonky_write/` and `specs/wonky_sheets/` | — |
 
-Root `pubspec.yaml` is a pub workspace (currently `wonky_client`, `wonky_server`, `wonky_flutter`).
-`.mcp.json` points the `serverpod` MCP at `wonky_server`. CI (`.github/workflows`, extended in
-M0 step 6) covers every workspace member: `analyze.yml` runs `dart analyze --fatal-infos` over all
-members and `tool/`, plus the dependency-rule check `dart run tool/check_dependencies.dart`
-(§2.1); `format.yml` runs `dart format --output=none --set-exit-if-changed` over the same
-folders (generated code included — the generator formats its output); `tests.yml` runs the
-server tests (embedded Postgres, after `serverpod generate`), one matrix job per other member
-that has tests (`dart test -x slow,e2e`, or `flutter test -x golden,slow,e2e` for
-Flutter packages; the list is derived from the root `workspace:`), and the vendored suites of
-`super_editor` (`flutter test -x golden`) and `attributed_text` (§2.3 rule 4;
-`serverpod_offline_sync` has none). `deploy.yml` deploys to Serverpod Cloud. All workflows pin
-Flutter 3.47.5 (the workspace lock file needs Flutter ≥ 3.47.0).
+Root `pubspec.yaml` is a pub workspace listing every package below (it started as
+`wonky_client`, `wonky_server`, `wonky_flutter`). `.mcp.json` (git-ignored, per machine) points
+the `serverpod` MCP at `wonky_server`.
 
-**Target layout.**
+**CI** (`.github/workflows`; all workflows pin Flutter 3.47.5, the workspace lock file needs
+Flutter ≥ 3.47.0) covers every workspace member, whose list is derived from the root
+`workspace:` so new packages are picked up automatically:
+
+- `analyze.yml`: `dart analyze --fatal-infos` over all members and `tool/` (lints from
+  `packages/wonky_lints`, 11 §6); the dependency check `dart run tool/check_dependencies.dart`
+  (§2.1, including unused dependencies and the imports of tests and tools); `generated`:
+  `tool/check_generated.sh` regenerates the committed generated code (Serverpod, gen-l10n and
+  the `en_XA` pseudo-locales, the board's spec index, the RevLog schemas, the Sheets script
+  API index) and fails on any difference (CQ-64b).
+- `format.yml`: `dart format --output=none --set-exit-if-changed` over the same folders
+  (generated code included — the generators' output is formatted).
+- `tests.yml`: the server tests (embedded Postgres, after `serverpod generate`, `-x slow`), one
+  matrix job per other member that has tests (`dart test -x slow,e2e`, or `flutter test -x
+  golden,slow,e2e` for Flutter packages), and the vendored suites of `super_editor` (`flutter
+  test -x golden`) and `attributed_text` (§2.3 rule 4); *All tests* is the required check.
+- `build.yml`: the `--wasm` web build of every app through `tool/build_web.dart` with the
+  bundle-size budgets of `tool/web_budgets.json` (sizes in the job summary; CQ-64a); weekly, a
+  debug macOS build of Write and Sheets (A13) and a `flutter pub outdated` report.
+- `goldens.yml`: image goldens in the pinned `ghcr.io/cirruslabs/flutter` container for the
+  packages with committed masters; a manual run with `update` renders new masters as an
+  artifact (`tool/update_goldens.sh` does the same locally with Docker; 15 §7).
+- `nightly.yml`: `slow` tests (members and server), the `perf` suites and Sheets core
+  benchmarks, long property runs with fixed and random seeds (15 §3, §8). `e2e.yml`: the Write
+  E2E journeys on macOS, nightly.
+- `deploy.yml` deploys to Serverpod Cloud (`wonky_server/scloud.yaml`; its pre-deploy hook
+  runs `serverpod generate` and `serverpod run flutter_build`).
+
+**Target layout** (reached in M0; the tree is the current layout).
 
 ```
 wonky/
@@ -73,7 +92,8 @@ wonky/
 │   ├── wonky_app/                       # Flutter: shell (client bootstrap, auth, routing, drive, sharing, comments UI,
 │   │                                    #          history UI, presence, settings, command system, MCP bridge, AI panel,
 │   │                                    #          product icons in assets/icons/)
-│   ├── wonky_sync_models/               # Serverpod *shared package*: `database: sync` models for Sheets + Slides, id helpers
+│   ├── wonky_sync_models/               # pure Dart: id helpers of Sheets + Slides (UUIDv5 ids, id generators,
+│   │                                    #   fractional indexes; base-62 from wonky_revlog). Name kept from the CRDT era
 │   ├── wonky_write_core/                # pure Dart: Delta schema, Markdown⇄Delta, OT helpers, exporters, theme model
 │   ├── wonky_sheets_core/               # pure Dart: addressing, formula parser/evaluator/functions, number formats,
 │   │                                    #   recalculation graph, xlsx/csv/ods mapping, sheet model helpers
@@ -95,15 +115,16 @@ wonky/
 │   ├── wonky_rich_editor/               # Flutter: lightweight WYSIWYG Markdown editor on super_editor (Markdown ⇄
 │   │                                    #   document codec, `WonkyRichEditor`, toolbar) — the board's composer (16 §7.3);
 │   │                                    #   also the super_editor spelling glue shared with Slides (`DocumentSpelling`)
-│   ├── wonky_sync_kit/                  # (v2) pure Dart, extracted from Sheets: RowChange, MutationPlan, UndoInverter,
-│   │                                    #   SyncTxAdapter (Slides 12 §5.1)
-│   ├── wonky_sync_kit_flutter/          # (v2) Flutter client part: SyncReplica, AppSyncController, SyncWriter,
-│   │                                    #   ChangeJournal, from wonky_sheets/lib/features/sync (Slides 12 §5.2)
-│   └── wonky_mcp_stdio/                 # tiny CLI: stdio ↔ Streamable HTTP proxy
+│   ├── wonky_revlog/                    # pure Dart: RevLog core (server-sequenced op log): RevSchema, wire codec, apply rules,
+│   │                                    #   validation, RevOverlay, RevSyncCore, chunker; RowChange/MutationPlan/UndoInverter
+│   ├── wonky_revlog_flutter/            # Flutter: RevLog client — local cache (RevLocalStore), transport, per-file
+│   │                                    #   connection with bootstrap pages (RevFileSync), per-user RevLogClient; fakes in testing.dart
+│   ├── wonky_mcp_stdio/                 # tiny CLI: stdio ↔ Streamable HTTP proxy
+│   └── wonky_lints/                     # shared analysis options (dart.yaml, flutter.yaml; 11 §6), a dev dependency of every package
+├── tool/                                # repository scripts: dependency rules, web build + sizes, generated-code check, goldens, pseudo-locale
 └── third_party/                         # vendored (locally patched) copies of third-party packages — see §2.3
     ├── super_editor/                    #   (+ super_text_layout / attributed_text only if patches need them)
     ├── dart_quill_delta/                #   only if OT fixes are needed
-    ├── serverpod_offline_sync/          #   + _client / _server as needed
     └── dart_eval/
 ```
 
@@ -159,24 +180,24 @@ wonky_charts_flutter  → (v2) wonky_charts, wonky_ui, shad, flutter_scene, vect
 wonky_write_core      → wonky_core, wonky_code (v2; was highlight), wonky_rich_text (v2), wonky_fonts (v2),
                         dart_quill_delta (9.x by default; see §2.2), markdown,
                         html, pdf, archive, xml, image, crypto
-wonky_sheets_core     → wonky_core, wonky_charts (v2), wonky_numfmt (v2), wonky_sync_kit (v2), wonky_sync_models (model types only), petitparser, intl, timezone,
+wonky_sheets_core     → wonky_core, wonky_revlog, wonky_charts (v2), wonky_numfmt (v2), wonky_sync_models (ids only), petitparser, intl, timezone,
                         archive, xml, csv, pdf, image (in-house OOXML/ODS reader and writer on archive + xml — Sheets 11 §5.1)
-wonky_sync_kit        → (v2) wonky_core, wonky_sync_models, serverpod_database, serverpod_serialization (Flutter-free)
-wonky_sync_kit_flutter→ (v2) wonky_sync_kit, wonky_app, wonky_ui, wonky_client, wonky_sync_models, serverpod_offline_sync_client,
-                        serverpod_database (replica, sync controller, writer, change journal)
-wonky_slides_core     → (v2) wonky_core, wonky_sync_models (model types + ids only), wonky_sync_kit, wonky_charts,
+wonky_slides_core     → (v2) wonky_core, wonky_revlog, wonky_sync_models (ids only), wonky_charts,
                         wonky_numfmt, wonky_code, wonky_rich_text, wonky_fonts, pdf, image, vector_math, crypto,
                         html (clipboard HTML: tables and rich text pasted from other apps, Slides 03 §12.5)
 wonky_sheets_script   → wonky_core, wonky_sheets_core, dart_eval, eval_annotation, native_synchronization
-wonky_sync_models     → serverpod_database, serverpod_offline_sync, serverpod_serialization, uuid
-wonky_server          → serverpod, serverpod_auth_idp_server, serverpod_offline_sync(_server), serverpod_cloud_storage,
+wonky_revlog          → wonky_core, archive, collection, meta, uuid (pure Dart; RevLog core: schema, codec, apply rules, client sync state machine)
+wonky_revlog_flutter  → wonky_revlog, wonky_app, wonky_ui, wonky_client, wonky_core (roles), sqlite_async, clock, collection, meta,
+                        uuid, web (RevLog client: cache, transport, per-file connection)
+wonky_sync_models     → wonky_revlog (base-62 codec), uuid (pure Dart; id helpers only — no Serverpod models since RevLog R8)
+wonky_server          → serverpod, serverpod_auth_idp_server, serverpod_cloud_storage, wonky_revlog,
                         wonky_core, wonky_write_core, wonky_sheets_core, wonky_sheets_script, wonky_slides_core (v2),
-                        wonky_charts (v2), wonky_code (v2), wonky_sync_kit (v2, `RowChange` for the Slides server writer), wonky_sync_models, mcp_dart, http, mime (v2, upload sniffing,
+                        wonky_charts (v2), wonky_code (v2), wonky_sync_models, mcp_dart, http, mime (v2, upload sniffing,
                         Drive 02 §5), dartantic_ai (AI providers: OpenAI, Anthropic, Gemini — 10 §1; pure Dart, no Flutter)
 wonky_client          → generated: serverpod_client + module clients (serverpod_auth_idp_client,
-                        serverpod_auth_core_client), serverpod_offline_sync_client, serverpod_database,
-                        wonky_sync_models
+                        serverpod_auth_core_client), serverpod_database
 wonky_mcp_stdio       → args, http
+wonky_lints           → lints, flutter_lints (analysis options only, 11 §6; every package lists it under dev_dependencies)
 wonky_ui              → flutter, shad
 wonky_app             → wonky_ui, wonky_core, wonky_client, serverpod_flutter, serverpod_auth_idp_flutter, go_router, provider, mcp_dart,
                         wonky_spellcheck (v2; spelling glue and dictionaries moved from Write),
@@ -188,14 +209,14 @@ wonky_write           → wonky_app, wonky_ui, wonky_write_core, wonky_code + wo
                         printing, file_saver, file_picker
 wonky_sheets          → wonky_app, wonky_ui, wonky_sheets_core, wonky_sheets_script, two_dimensional_scrollables (auxiliary
                         tables only), super_clipboard, re_editor (+ re_highlight for the Dart grammar),
-                        crypto (script file content hashes), printing, file_saver, file_picker, path_provider,
-                        wonky_sync_models, serverpod_offline_sync_client, serverpod_database (the local replica
-                        and sync client of 12 §2), wonky_charts_flutter (v2), wonky_sync_kit + wonky_sync_kit_flutter (v2)
+                        crypto (script file content hashes), printing, file_saver, file_picker,
+                        wonky_revlog + wonky_revlog_flutter (RevLog sync, Sheets sync migration spec 06),
+                        wonky_sync_models (ids only), wonky_charts_flutter (v2)
                         (charts: the shared engine in wonky_charts + Sheets data resolution in wonky_sheets_core — Sheets 08 §24)
-wonky_slides          → (v2) wonky_app, wonky_ui, wonky_slides_core, wonky_sync_kit, wonky_sync_kit_flutter, wonky_charts + wonky_charts_flutter,
+wonky_slides          → (v2) wonky_app, wonky_ui, wonky_slides_core, wonky_revlog, wonky_revlog_flutter, wonky_charts + wonky_charts_flutter,
                         wonky_code_flutter, wonky_rich_text, wonky_fonts, super_editor (vendored; text boxes, Slides 03 §6.1),
-                        super_clipboard, printing, file_saver, file_picker, flutter_scene, vector_math, wonky_sync_models,
-                        serverpod_offline_sync_client, serverpod_database (Slides 01 §7)
+                        super_clipboard, printing, file_saver, file_picker, flutter_scene, vector_math, wonky_sync_models
+                        (ids only; Slides 01 §7)
 ```
 
 Forbidden: `wonky_sheets` importing `wonky_sheets_script/compiler.dart`, `testing.dart`,
@@ -205,8 +226,14 @@ importing another's packages** — the families are Write (`wonky_write`, `wonky
 Sheets (`wonky_sheets`, `wonky_sheets_core`, `wonky_sheets_script`), Slides (`wonky_slides`,
 `wonky_slides_core`) and Drive (`wonky_drive`); shared code moves into the shared leaf packages
 (`wonky_core`, `wonky_ui`, `wonky_app`, `wonky_code*`, `wonky_charts*`, `wonky_numfmt`,
-`wonky_rich_text`, `wonky_rich_editor`, `wonky_fonts`, `wonky_spellcheck`, `wonky_sync_kit*`);
+`wonky_rich_text`, `wonky_rich_editor`, `wonky_fonts`, `wonky_spellcheck`, `wonky_revlog*`);
 feature code importing generated server code.
+
+**Unused and undeclared dependencies** (CQ-64i): the script also fails on a `dependencies:` entry
+that no `lib/`/`bin/` file imports (move it to `dev_dependencies:` when only tests use it), a
+`dev_dependencies:` entry that no test, tool, benchmark, `lib/driver.dart` or
+`analysis_options.yaml` uses, and a test/tool/benchmark import of an undeclared package. The few
+packages needed without an import are listed with their reason in `_usedWithoutImport`.
 
 **Decided (v2 review, Q3):** code highlighting is **two packages** like the charts —
 `wonky_code` (pure Dart: languages, token classes, palettes, the TextMate engine copied from
@@ -220,8 +247,9 @@ Slides reuses (Delta inline schema and attribute keys, text-run normalization, t
 inline codec) move into the shared leaf **`wonky_rich_text`**; `wonky_write_core` re-exports
 them.
 
-**Decided (v2 review, Q23):** the other shared packages are `wonky_sync_kit` (pure Dart) +
-`wonky_sync_kit_flutter` (client part), `wonky_fonts` (font registry + TTFs), `wonky_spellcheck`
+**Decided (v2 review, Q23):** the other shared packages are the sync packages (originally
+`wonky_sync_kit` + `wonky_sync_kit_flutter` on the CRDT engine; since M13 `wonky_revlog` (pure
+Dart) + `wonky_revlog_flutter` (client part), [17](17-revlog-sync.md)), `wonky_fonts` (font registry + TTFs), `wonky_spellcheck`
 (pure Hunspell engine; the Flutter glue — `SpellEngine` loader, spelling dialogs — and Write's
 emoji picker move into `wonky_app`) and `wonky_numfmt` (Q27).
 
@@ -242,6 +270,16 @@ characters dialog, moved from Write by Slides SL-44; Unicode names in
 strings are in the shell's ARB files; each app passes its own widget-key prefix (`SpellingKeys`,
 `EmojiPickerKeys`, `SpecialCharsKeys`: `write` by default, `slides`).
 
+Client code that more than one app needs lives in the shell (CQ-53), in two more libraries so
+their names never clash with an app's: `package:wonky_app/platform.dart` (platform glue with web
+and desktop implementations: drops from other applications, the system clipboard
+`WonkyClipboard` that the apps' clipboard facades wrap, the image clipboard, the in-app PDF
+viewer and printing) and `package:wonky_app/uploads.dart` (the durable `PendingUploadQueue`
+with its stores and the `PerUserInstallation` helper, used by Sheets and Slides). The main
+library adds `ShellCommandUi` and `invokeWithToasts` (one policy for invoking commands from
+controls: toasts for people, none for agents), `WonkyFindBar`, `showConflictReview` and
+`applyCommentAnchorChanges`.
+
 **What the script checks** (only `dependencies:`, not `dev_dependencies:`; imports in `lib/` and
 `bin/`; `third_party/*` are external packages and are not checked):
 
@@ -249,7 +287,7 @@ strings are in the shell's ARB files; each app passes its own widget-key prefix 
   exceptions below;
 - pure-Dart packages (`*_core`, `wonky_sheets_script`, `wonky_sync_models`, `wonky_mcp_stdio`,
   `wonky_server`, `wonky_client`, and (v2) `wonky_charts`, `wonky_code`, `wonky_numfmt`,
-  `wonky_rich_text`, `wonky_fonts`, `wonky_spellcheck`, `wonky_sync_kit`) neither
+  `wonky_rich_text`, `wonky_fonts`, `wonky_spellcheck`, `wonky_revlog`) neither
   depend on nor import Flutter or any package that (transitively) depends on it (read from
   `.dart_tool/package_graph.json`);
 - `wonky_ui` imports none of `wonky_client`, `wonky_server`, `wonky_app`, `serverpod*`;
@@ -262,7 +300,7 @@ strings are in the shell's ARB files; each app passes its own widget-key prefix 
   comes in through their own types);
 - (v2) the Flutter halves depend on their pure halves, never the other way round
   (`wonky_code` must not import `wonky_code_flutter`, `wonky_charts` not `wonky_charts_flutter`,
-  `wonky_sync_kit` not `wonky_sync_kit_flutter`);
+  `wonky_revlog` not `wonky_revlog_flutter`);
 - nothing outside `wonky_server` imports `package:wonky_server/`, and no relative import leaves
   its package (e.g. into `wonky_server/lib/src/generated`);
 - every imported package is declared under `dependencies:` of the importing package. Two
@@ -280,7 +318,7 @@ strings are in the shell's ARB files; each app passes its own widget-key prefix 
 | Package | Dependency | Why |
 |---------|------------|-----|
 | `wonky_write_core` | `diff_match_patch` | Minimal text diffs for overlay-preserving Delta diffs (`DeltaDiff`) |
-| `wonky_sheets_script` | `wonky_sync_models` | Id generators and table names of the script tables |
+| `wonky_sheets_script` | `wonky_sync_models` | Id generators of the script tables |
 | `wonky_sheets_script` | `crypto` | Build source hashes; `Utilities.computeDigest`/`computeHmac` |
 | `wonky_sheets_script` | `analyzer` | Subset lint and exports of the server-only `compiler.dart` (the app must not import it; enforced) |
 | `wonky_sheets_core` | `vector_math` | `Matrix4` for `PdfGraphics.setTransform` in the print PDF renderer (already a dependency of `pdf`); stays with the print renderer after the chart extraction (the chart renderers don't need it) |
@@ -305,12 +343,11 @@ strings are in the shell's ARB files; each app passes its own widget-key prefix 
 | `wonky_sheets` | `desktop_drop` | Dropping files onto the grid on desktop (Sheets 11 §2; deferred in v2, A13) |
 | `wonky_sheets` | `http` | Fetching XLSX images and URL imports (Sheets 11 §2) |
 | `wonky_sheets` | `pdf` | Client PDF export and print preview (Sheets 11 §7) |
-| `wonky_sheets` | `archive` | Recovery export of a replica that can't be opened: its unsynced spreadsheets (read by `wonky_sync_kit_flutter`) zipped as XLSX + JSON (suite 12 §2.5) |
+| `wonky_sheets` | `archive` | gunzip of version snapshots (Sheets 10 §5.1.2) |
 | `wonky_charts` | `archive` | (v2) gzip of large chart snapshot columns (`gz:`, Slides 08 §3.3, SL-27); already resolved through `image` |
 | `wonky_slides_core` | `archive` | (v2) gzip NDJSON deck version snapshots, one codec for server and client (`SlidesSnapshotCodec`, Slides 09 §4.1, SL-39); already resolved through `image` |
 | `wonky_charts_flutter` | `flutter_scene`, `vector_math` | (v2) GPU backend of 3D charts (Sheets 08 §23.7); moved out of `wonky_sheets` by the extraction (Drive 05 D-3) |
-| `wonky_sync_kit_flutter` | `wonky_app`, `wonky_ui`, `wonky_client` | (v2) Connectivity/`LocalStore`, `SyncStatus` and the generated sync client: a Flutter leaf below the app families, extracted from `wonky_sheets/lib/features/sync` |
-| `wonky_sync_kit_flutter` | `wonky_core`, `path_provider`, `sqlite3` | (v2) Roles and id generators; the desktop location of replica files; the read-only recovery read of a replica that can't be opened (suite 12 §2.5) — moved out of `wonky_sheets` with the replica (Drive 05 D-6) |
+| `wonky_revlog_flutter` | `wonky_core` | Roles (pure Dart) |
 | `wonky_sheets` | `flutter_svg` | Rasterizing SVG images on insert (Sheets 08 §10.1) |
 | `wonky_write`, `wonky_sheets` (v2: and `wonky_drive`, `wonky_slides`) | `wonky_core`, `wonky_client`, `shad`, `go_router` | Ids/commands/undo, repositories calling endpoints (never widgets, 11 §6), shad UI (02), routes (A9) |
 | `wonky_write` | `dart_quill_delta` | Client side of the Delta OT (A4) |
@@ -331,9 +368,9 @@ strings are in the shell's ARB files; each app passes its own widget-key prefix 
   super_editor is vendored we may relax that constraint and move to 10.x if useful — decided in
   M0; vendor `dart_quill_delta` itself only if OT fixes are needed (e.g. embed handling in
   `transform`/`invert`, `compose` performance on large documents).
-- `serverpod_offline_sync*`: vendored in `third_party/serverpod_offline_sync` (as toptap does)
-  for Serverpod 4.1 compatibility (`watch()`, web transaction deadlock fix) and our helpers
-  (U11). Fixes are contributed upstream; overrides are removed when upstream catches up.
+- `serverpod_offline_sync*`: no longer used. Sheets and Slides sync through RevLog
+  ([17](17-revlog-sync.md)); the vendored copy, the module and its tables were removed in M13
+  (RevLog R8, migration `20261018113026742-revlog-r8-remove-crdt`).
 - `dart_eval`: vendored in `third_party/dart_eval` (patches DE-1…DE-3, Sheets 09).
 - `syntax_highlight`: (v2, D-2 done) no longer a dependency. Its TextMate engine and the 15
   patched grammars (patches SH-1…SH-5) were **copied** into `packages/wonky_code` (pure Dart,
@@ -356,7 +393,7 @@ Rules:
    How it is wired depends on whether the **server** uses it, because Serverpod Cloud builds the
    server from the root `pubspec.yaml` trimmed to the server's workspace packages, uploads only
    those, and pub resolves every root override even when nothing depends on it:
-   - **Used by the server** (`serverpod_offline_sync`): a **workspace member** (`resolution:
+   - **Used by the server** (`dart_eval`): a **workspace member** (`resolution:
      workspace` in its pubspec, listed under `workspace:`), so the Cloud CLI uploads it. Its
      version must satisfy the hosted dependents' constraints.
    - **Flutter-only** (`super_editor`, `attributed_text`): a path override in the root
@@ -375,7 +412,7 @@ Rules:
    mark changed code with `// WONKY PATCH <id>` comments.
 4. **Tests**: the package's own test suite plus tests for each patch run in CI.
 5. **Upstream first**: open upstream PRs for general fixes; Serverpod-owned packages
-   (`serverpod_offline_sync`, `shad`) are fixed upstream directly when possible and vendored
+   (e.g. `shad`) are fixed upstream directly when possible and vendored
    only to unblock. Remove the copy when upstream contains everything we need.
 6. **Upgrades**: re-copy the new upstream version, re-apply the patch log, run tests — never
    edit the vendored copy without a `PATCHES.md` entry.
@@ -387,7 +424,7 @@ Current and candidate vendored packages:
 | Package | Status | Why |
 |---------|--------|-----|
 | `super_editor` | Vendored (M0) | Quill serializer gaps, incremental Delta apply, richer change events, editable table cells, fixes found by our tests (Write 04 §2.2) |
-| `serverpod_offline_sync` (+ `_client`, `_server`) | Vendored (M0) | Serverpod 4.1 compatibility, web deadlock fix, `changedRowsSince` (U11) and other upstream requirements while they land (suite 12 §4) |
+| `serverpod_offline_sync` (+ `_client`, `_server`) | Removed (M13, RevLog R8) | Was vendored in M0 for the CRDT sync of Sheets and Slides; replaced by RevLog ([17](17-revlog-sync.md)) |
 | `dart_eval` | Vendored (0.8.5, workspace member; patches DE-0…DE-19) | Source positions, interrupt hook, conformance fixes (Sheets 09 §2). Pins the workspace to analyzer 8.x. |
 | `dart_quill_delta` | Candidate | Only if OT edge cases or performance require it |
 | `docx_creator` | Candidate | If the M5 spike adopts it but finds gaps (Write 07) |
@@ -416,11 +453,17 @@ development) from one origin; there is no separate host app.
 
 - **Build**: the `flutter_build` script in `wonky_server/pubspec.yaml` (`serverpod run
   flutter_build`, also run by the Serverpod Cloud pre-deploy hook) builds every app into
-  `wonky_server/web/<app>` (`drive`, `write`, `sheets`, `slides`; posix: `flutter build web
-  --wasm --base-href /write/ --output ../wonky_server/web/write`; Windows: build + `xcopy`, as the
-  template does). (v2) The posix script builds the four apps one after another (four parallel `--wasm`
-  builds swap on a 16 GB machine) and fails if any build fails. Build folders are
-  git-ignored. WASM and cross-origin-isolation headers: see
+  `wonky_server/web/<app>` (`drive`, `write`, `sheets`, `slides`) through `tool/build_web.dart`
+  on every platform (CQ-64h): `flutter build web --wasm --base-href /<app>/` in the app folder,
+  then a copy of `build/web` (`--output` doesn't work on Windows). It builds the four apps one
+  after another (four parallel `--wasm` builds swap on a 16 GB machine), exits non-zero if any
+  build fails, never retries silently (`--clean-retry` opts into one `flutter clean` retry) and
+  prints the bundle sizes; CI's `web` job runs it with `--budget tool/web_budgets.json`
+  (§2, CI). Build folders are git-ignored. After each build, `tool/prune_web_fonts.dart` drops the font families the app
+  never uses from `assets/FontManifest.json` (the engine downloads every listed font at
+  start-up) and deletes their files: the Lucide stroke weights outside Slides (≈ 2.9 MB),
+  shad's Inter in Drive and Write (only chart text uses it, ≈ 0.9 MB) and test fonts (CQ-45).
+  The vendored super_editor keeps `golden_toolkit` (and its Roboto) in `dev_dependencies`. WASM and cross-origin-isolation headers: see
   [13 §3](13-security-and-operations.md).
 - **Link previews**: each app's `web/index.html` carries a description and Open Graph / X card
   tags (`og:title` is the app — Drive, where `/` lands, says Wonky Work —, `og:site_name` Wonky Work, `twitter:card`
@@ -520,11 +563,12 @@ src/
   platform/
     users/                     # UserProfile, UserPreferences, UserEndpoint, AccessTokenEndpoint
     drive/                     # DriveItem, DriveItemUserState, DriveEndpoint, search, templates, trash purge,
-                               #   (v2) file uploads, conversions, kind masks (Drive 02)
+                               #   (v2) file uploads, conversions, kind masks (Drive 02);
+                               #   DriveService (read, create, move), DriveCopies, DriveTrash, DriveUserStates, DriveTemplates
     storage/                   # (v2) UserStorage, StorageReservation, StorageService, reconcile + backfill (Drive 03)
-    spaces/                    # (v2) SpaceService (reservations, active set and membership mirroring per SpaceKind),
-                               #   SpaceKinds/SpaceKindFilter, SpaceSync (engine sync per kind, patch OS-8; suite 12 §2.6)
-    sharing/                   # DriveItemPermission, ShareLink, SharingEndpoint, AccessService (role resolution + space membership mirroring)
+    revlog/                    # RevLog (17): RevLogService (sequencer), RevLogConnection (per-file stream), pages,
+                               #   bus, hooks and jobs, HeadlessFileCache; RevFile/RevOp models; RevBinding per app
+    sharing/                   # DriveItemPermission, ShareLink, SharingEndpoint, AccessService (role resolution)
     comments/                  # CommentThread, Comment, CommentEndpoint
     notifications/             # Notification, NotificationEndpoint, email digests
     presence/                  # PresenceEndpoint (ephemeral)
@@ -532,8 +576,8 @@ src/
     activity/                  # ActivityEvent
     files/                     # StoredFile (uploads: images, avatars, imports, exports, drive files, previews), signed URLs,
                                #   (v2) FileTypeSniffer, download route, preview generation
-    mcp/                       # transport, auth, ToolExecutor, UiBridgeHub, UiBridgeEndpoint
-    ai/                        # AiModelClient (dartantic_ai), AiKeys, AssistantService, AssistantEndpoint
+    mcp/                       # transport, auth, ToolExecutor, McpErrors (tool ↔ endpoint ↔ protocol errors), UiBridgeHub, UiBridgeEndpoint
+    ai/                        # AiModelClient (dartantic_ai), AiKeys, AiCall, AssistantService, AssistantEndpoint
     feedback/                  # FeedbackEndpoint
   write/
     models/                    # Document, DocumentOp, DocumentSnapshot, WriteTheme, …
@@ -542,14 +586,15 @@ src/
     versions/                  # WriteVersionProvider
     mcp/                       # write.* tools
   sheets/
-    spaces/                    # SheetsSpaces (sheets.* space endpoints + SpaceStats on platform/spaces), spreadsheet factory, copier
-    endpoints/                 # SheetsEndpoint (online-only ops), SheetsSyncEndpoint (custom sync wrapper w/ onMergeSuccess)
+    revlog/                    # SheetsRevBinding (schema, validation, protection), hooks, server writes
+    spaces/                    # spreadsheet factory, create defaults, copier (folder name kept; no sync spaces any more)
+    endpoints/                 # SheetsEndpoint (online-only ops), SheetsDocEndpoint (the RevLog stream of a spreadsheet)
     scripts/                   # compile service, server runtime pool, triggers, scheduled jobs, quotas
     changelog/                 # ChangeLog processing (activity, triggers, cell history, pruning)
     versions/                  # SheetsVersionProvider (snapshots to cloud storage)
     imports/                   # xlsx/csv/ods import pipeline (server-side for large files)
     mcp/                       # sheets.* tools
-  slides/                      # (v2) spaces (deck kind), slidesSync endpoint, change log, versions, chart links, PDF
+  slides/                      # (v2) RevLog binding (revlog/), decks, versions, chart links, PDF
                                #   exports, templates, slides.* MCP tools, AI (Slides 01 §7)
 ```
 
@@ -585,7 +630,7 @@ Feature folders are the unit of parallel work: e.g. Write `features/editor`,
                                                                                 ▼
              ┌──────────────────────── wonky_server ───────────────────────────┐
              │ Endpoints ─► Services ─► Postgres (platform + Write tables)       │
-             │                       └► Offline-sync engine (Sheets spaces)      │
+             │                       └► RevLog sequencer (Sheets/Slides files)   │
              │ MCP route ─► ToolExecutor ─► same Services  (+ UiBridgeHub ─► apps)│
              │ AssistantService ─► dartantic_ai (OpenAI/Anthropic/Gemini) ─► Tools│
              │ session.messages (Redis when multi-instance): presence, doc ops,  │
@@ -595,19 +640,28 @@ Feature folders are the unit of parallel work: e.g. Write `features/editor`,
 
 ## 6. Configuration
 
-`config/*.yaml` additions live in one `wonky:` section (Serverpod ignores unknown keys; read by
-`wonky_server/lib/src/platform/config/wonky_config.dart`, env overrides `WONKY_<SECTION>_<KEY>`):
+`config/*.yaml` additions live in one `wonky:` section (Serverpod ignores unknown keys; read once
+per file by `WonkyConfigFile` (`platform/config/wonky_config_file.dart`) for `WonkyConfig`,
+`AiConfig`, `McpConfig` and `BoardConfig`; a run mode other than development, test, staging or
+production fails at start instead of silently using the development settings; without a
+server (unit tests, tools) the development file is read; env overrides `WONKY_<SECTION>_<KEY>`):
 `features: {ai, scripting, mcpUiBridge, experimentalCharts}`, `ai: {enabled, dailyTokenBudgetPerUser}`, `mcp: {enabled, port?,
-allowedHosts, allowedOrigins}`, `sheets: {maxCellsPerSpreadsheet, maxActiveSpacesPerUser,
+allowedHosts, allowedOrigins}`, `sheets: {maxCellsPerSpreadsheet, maxSheetsPerSpreadsheet,
 scriptTimeoutMs, scriptDailyQuotaMs}`, `write: {snapshotEveryNOps, maxDocumentChars}`,
 `cluster: {busFlushMs}` (13 §4, `WONKY_CLUSTER_BUS_FLUSH_MS`), `publicWebUrl`,
 `webApps: {drive: {dir: web/drive, path: /drive/}, write: {dir: web/write, path: /write/},
 sheets: {dir: web/sheets, path: /sheets/}, slides: {dir: web/slides, path: /slides/}}` (§2.4;
 drive and slides v2); (v2) `drive: {quotaBytesPerUser, warnAtPercent, maxPendingUploadsPerUser}`,
-`files: {maxFileUploadBytes, maxImageUploadBytes, maxImportUploadBytes}` (Drive 03 §3),
-`slides: {maxActiveSpacesPerUser, …}` (Slides 01 limits; the deck active set, suite 12 §2.6), `help: {bugReportUrl}` (default
+`files: {maxFileUploadBytes, maxImageUploadBytes, maxImportUploadBytes, downloadBytesPerDay}` (Drive 03 §3),
+`help: {bugReportUrl}` (default
 `https://github.com/serverpod/wonky/issues`, the fallback of 03 §3.4), (M12) `board: {enabled, repository}` in `config.json` (16 §12); the template's commented-out
 `authCookie` + `allowedOrigins` are enabled (§2.5).
+RevLog limits (op size and change count, message size, ops in `RevInit`, page sizes, retention,
+hook timing, headless cache budget, schema window) are listed as a `revlog:` section in
+[17](17-revlog-sync.md) Part 1; as built they are constants of the RevLog services (e.g.
+`RevLogConnection.opsInInit`), not yet read from the config. The sync-era keys
+`sheets.maxActiveSpacesPerUser` and `slides.maxActiveSpacesPerUser` (and
+`ServerLimits.maxActiveSpacesPerUser`) are gone: there are no sync spaces or active sets.
 Secrets in `passwords.yaml`: `openaiApiKey` / `anthropicApiKey` / `geminiApiKey` (any or none,
 10 §1), `jwt…` (existing), email provider credentials.
 
@@ -620,18 +674,23 @@ without Redis (local scope).
 
 ## 7. Protocol versioning
 
-- `ProtocolInfo { serverVersion, minClientVersion, syncTablesHash, …, redisEnabled,
+- `ProtocolInfo { serverVersion, minClientVersion, revSchemaHash, …, redisEnabled,
   redisConnected }` returned by `meta.getInfo()`; clients check on connect (see shell spec for
-  UX). The Redis fields feed Settings › Developer (suite 04 §4).
+  UX). The Redis fields feed Settings › Developer (suite 04 §4). `revSchemaHash` is
+  `sheets:<hash>,slides:<hash>`, the `RevSchema.hash` of each app ([17](17-revlog-sync.md)
+  02 §4.3); Settings › About shows it shortened.
 - (v2) New values of byName enums that clients deserialize (`DriveItemKind.presentation/file`,
   `DriveChangeKind.storageChanged`, `NotificationKind.storage`, `WonkyErrorCode.quotaExceeded`)
   make older clients throw; such releases bump `minClientVersion` so cached web apps reload.
-  M8 sets `minClientVersion` (and `serverVersion`) to 2.0.0; the apps' `WONKY_VERSION`
-  default is 2.0.0.
-- Offline-sync schema changes are lock-step (the engine rejects clients with a different
-  `syncTablesHash`). (v2) The Slides synced tables are one such release (M9); Sheets and Slides
-  clients share the hash because all synced models are in one client package (release S-1,
-  recorded with its hash as `SyncSchemaRelease` in `wonky_sync_models` and in Slides 02 §14.1;
-  server and client guard tests fail until a model change bumps it). Rule: synced schema changes are batched into releases; clients that fail the
-  hash check show a blocking "Update required" screen **after** exporting any pending local
-  changes to a recovery file (see offline spec).
+  M8 set `minClientVersion` (and `serverVersion`) to 2.0.0. M13 (RevLog, [17](17-revlog-sync.md)
+  RD-17) raises both to 3.0.0, since 2.x clients speak the removed CRDT sync protocol; the
+  apps' `WONKY_VERSION` default is 3.0.0.
+- Synced-schema changes are **no longer lock-step** (the CRDT engine's `syncTablesHash` and its
+  schema releases are gone with M13). Every RevLog payload carries its app's schema hash; the
+  server accepts the current hash and, for additive changes (a new nullable column or table),
+  the previous hashes listed in `compatibleWith` for `schemaWindowDays`, and announces them in
+  `RevInit.acceptedHashes`. Older clients keep working against an additively newer server (their
+  decoders skip unknown tables and columns) and re-stamp their outbox after an update. Only a
+  breaking change (rename, type change, removal) bumps `minClientVersion`; a client whose hash
+  is not accepted stops sending and shows "Update required" without losing its outbox
+  ([17](17-revlog-sync.md) 02 §4.3, 06 §2.4).

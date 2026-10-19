@@ -1,9 +1,13 @@
+@Tags(['integration'])
+library;
+
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
-import 'package:wonky_server/src/platform/drive/drive_service.dart';
+import 'package:wonky_server/src/platform/drive/drive_trash.dart';
 import 'package:wonky_server/src/platform/drive/templates/builtin_templates.dart';
 
 import 'package:wonky_server/src/platform/drive/drive_events.dart';
@@ -262,9 +266,9 @@ void main() {
       () async {
         await endpoints.drive.trash(anna.endpointSession, [parent.uuid]);
 
-        final purged = await DriveService.purgeExpiredTrash(
+        final purged = await DriveTrash.purgeExpiredTrash(
           sessionBuilder.build(),
-          now: DateTime.now().toUtc().add(const Duration(days: 31)),
+          now: clock.now().toUtc().add(const Duration(days: 31)),
         );
 
         expect(purged, greaterThanOrEqualTo(2));

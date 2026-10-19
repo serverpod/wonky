@@ -16,9 +16,6 @@ import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
     as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
-import 'package:serverpod_database/serverpod_database.dart' as _isd;
-import 'package:serverpod_offline_sync_client/serverpod_offline_sync_client.dart'
-    as _ipulbpi2;
 import 'package:wonky_client/src/protocol/platform/activity/activity_event_view.dart'
     as _itempttd;
 import 'package:wonky_client/src/protocol/platform/ai/models/assistant_thread_view.dart'
@@ -41,6 +38,8 @@ import 'package:wonky_client/src/protocol/platform/drive/template_view.dart'
     as _i1pzk6fp;
 import 'package:wonky_client/src/protocol/platform/files/file_url_view.dart'
     as _i4i1hokq;
+import 'package:wonky_client/src/protocol/platform/revlog/models/rev_op_view.dart'
+    as _iq15rk0l;
 import 'package:wonky_client/src/protocol/platform/users/access_token_view.dart'
     as _ip6swqsj;
 import 'package:wonky_client/src/protocol/platform/users/user_summary.dart'
@@ -71,7 +70,6 @@ import 'package:wonky_client/src/protocol/write/models/write_theme_revision_view
     as _igytjuh5;
 import 'package:wonky_client/src/protocol/write/models/write_theme_view.dart'
     as _i2zuh8f2;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
 import 'platform/activity/activity_dashboard.dart' as _izr1y672;
 import 'platform/activity/activity_event.dart' as _iatdjl5p;
 import 'platform/activity/activity_event_view.dart' as _isa7sjzq;
@@ -149,6 +147,7 @@ import 'platform/comments/comment_thread.dart' as _ijog60vm;
 import 'platform/comments/comment_thread_view.dart' as _i818olql;
 import 'platform/comments/comment_view.dart' as _i4xrxro7;
 import 'platform/common/access_role.dart' as _ii98prcs;
+import 'platform/common/actor_kind.dart' as _i2wc4tyi;
 import 'platform/common/wonky_error_code.dart' as _inb0isem;
 import 'platform/common/wonky_exception.dart' as _igdswlrw;
 import 'platform/drive/drive_change.dart' as _iktwt5zz;
@@ -198,6 +197,15 @@ import 'platform/presence/participant.dart' as _iylgyc33;
 import 'platform/presence/presence_event.dart' as _i8r9afjv;
 import 'platform/presence/presence_state.dart' as _ik055xb9;
 import 'platform/presence/presence_update.dart' as _isz2sju0;
+import 'platform/revlog/messages/rev_client_message.dart' as _i6ck957q;
+import 'platform/revlog/messages/rev_server_message.dart' as _ie6clghy;
+import 'platform/revlog/models/rev_file_info.dart' as _ihwy023l;
+import 'platform/revlog/models/rev_file_kind.dart' as _iwkehf4e;
+import 'platform/revlog/models/rev_op_view.dart' as _it4o2pk5;
+import 'platform/revlog/models/rev_page.dart' as _ium7xjeg;
+import 'platform/revlog/models/rev_page_kind.dart' as _i3q3ua5p;
+import 'platform/revlog/models/rev_page_request.dart' as _if03ikx4;
+import 'platform/revlog/models/rev_reject_code.dart' as _iilsyt4b;
 import 'platform/sharing/access_request.dart' as _i8scn8dm;
 import 'platform/sharing/access_request_outcome.dart' as _i7trut12;
 import 'platform/sharing/access_request_view.dart' as _iimp60a4;
@@ -239,18 +247,19 @@ import 'sheets/imports/models/sheets_import_progress.dart' as _iaf43n69;
 import 'sheets/imports/models/sheets_import_status.dart' as _i8d83qca;
 import 'sheets/models/cell_history_entry.dart' as _ij1xvs09;
 import 'sheets/models/cell_history_page.dart' as _i09xo3k8;
-import 'sheets/models/reserved_space.dart' as _i4tr28q5;
 import 'sheets/models/revert_result.dart' as _ilv3hlxr;
 import 'sheets/models/revert_skip.dart' as _ipqum05l;
+import 'sheets/models/rows/enums/dimension.dart' as _ilnsyzhq;
+import 'sheets/models/rows/enums/embedded_object_kind.dart' as _ihfpm0ve;
+import 'sheets/models/rows/enums/horizontal_align.dart' as _iofwzekn;
+import 'sheets/models/rows/enums/recalc_mode.dart' as _i0z9m4nl;
+import 'sheets/models/rows/enums/script_build_status.dart' as _io4oc09s;
+import 'sheets/models/rows/enums/sheet_kind.dart' as _i8ne06ql;
+import 'sheets/models/rows/enums/trigger_kind.dart' as _irmtoho8;
+import 'sheets/models/rows/enums/vertical_align.dart' as _ivf2txqv;
+import 'sheets/models/rows/enums/wrap_strategy.dart' as _iz9rjt8b;
 import 'sheets/models/sheets_activity_summary.dart' as _iaehez21;
 import 'sheets/models/sheets_contributor_stat.dart' as _i9yjzgjk;
-import 'sheets/models/sheets_dirty_space.dart' as _ign37bwd;
-import 'sheets/models/sheets_journal_space.dart' as _i6vovdef;
-import 'sheets/models/sheets_row_journal.dart' as _i09o85d1;
-import 'sheets/models/space_kind.dart' as _i19n72yw;
-import 'sheets/models/space_stats.dart' as _izbczo40;
-import 'sheets/models/subscribe_result.dart' as _i6dq35xo;
-import 'sheets/models/subscription_reason.dart' as _ic8hyldr;
 import 'sheets/scripts/models/script_authorization_view.dart' as _icjzxy6x;
 import 'sheets/scripts/models/script_compile_response.dart' as _iq0xpzf7;
 import 'sheets/scripts/models/script_execution.dart' as _i4bc0fek;
@@ -274,6 +283,13 @@ import 'slides/charts/models/chart_link_status.dart' as _is6z3tpy;
 import 'slides/charts/models/chart_snapshot_view.dart' as _iua8dx49;
 import 'slides/charts/models/chart_source_list.dart' as _iq1h9id2;
 import 'slides/charts/models/chart_source_summary.dart' as _inygrvyi;
+import 'slides/models/rows/enums/build_kind.dart' as _ipok3hcm;
+import 'slides/models/rows/enums/build_trigger.dart' as _isb6wks2;
+import 'slides/models/rows/enums/deck_appearance.dart' as _isf9v7y6;
+import 'slides/models/rows/enums/placeholder_type.dart' as _i4oq3vgh;
+import 'slides/models/rows/enums/slide_element_kind.dart' as _isah8148;
+import 'slides/models/rows/enums/slide_size_preset.dart' as _isghg0k1;
+import 'slides/models/rows/enums/table_dimension.dart' as _i5m4q7yg;
 import 'slides/present/models/presentation_event.dart' as _iz9vxb2f;
 import 'slides/present/models/presentation_join.dart' as _ih25cwup;
 import 'slides/present/models/presentation_pairing_target.dart' as _i6know5x;
@@ -384,6 +400,7 @@ export 'platform/comments/comment_thread.dart';
 export 'platform/comments/comment_thread_view.dart';
 export 'platform/comments/comment_view.dart';
 export 'platform/common/access_role.dart';
+export 'platform/common/actor_kind.dart';
 export 'platform/common/wonky_error_code.dart';
 export 'platform/common/wonky_exception.dart';
 export 'platform/drive/drive_change.dart';
@@ -433,6 +450,15 @@ export 'platform/presence/participant.dart';
 export 'platform/presence/presence_event.dart';
 export 'platform/presence/presence_state.dart';
 export 'platform/presence/presence_update.dart';
+export 'platform/revlog/messages/rev_client_message.dart';
+export 'platform/revlog/messages/rev_server_message.dart';
+export 'platform/revlog/models/rev_file_info.dart';
+export 'platform/revlog/models/rev_file_kind.dart';
+export 'platform/revlog/models/rev_op_view.dart';
+export 'platform/revlog/models/rev_page.dart';
+export 'platform/revlog/models/rev_page_kind.dart';
+export 'platform/revlog/models/rev_page_request.dart';
+export 'platform/revlog/models/rev_reject_code.dart';
 export 'platform/sharing/access_request.dart';
 export 'platform/sharing/access_request_outcome.dart';
 export 'platform/sharing/access_request_view.dart';
@@ -474,18 +500,19 @@ export 'sheets/imports/models/sheets_import_progress.dart';
 export 'sheets/imports/models/sheets_import_status.dart';
 export 'sheets/models/cell_history_entry.dart';
 export 'sheets/models/cell_history_page.dart';
-export 'sheets/models/reserved_space.dart';
 export 'sheets/models/revert_result.dart';
 export 'sheets/models/revert_skip.dart';
+export 'sheets/models/rows/enums/dimension.dart';
+export 'sheets/models/rows/enums/embedded_object_kind.dart';
+export 'sheets/models/rows/enums/horizontal_align.dart';
+export 'sheets/models/rows/enums/recalc_mode.dart';
+export 'sheets/models/rows/enums/script_build_status.dart';
+export 'sheets/models/rows/enums/sheet_kind.dart';
+export 'sheets/models/rows/enums/trigger_kind.dart';
+export 'sheets/models/rows/enums/vertical_align.dart';
+export 'sheets/models/rows/enums/wrap_strategy.dart';
 export 'sheets/models/sheets_activity_summary.dart';
 export 'sheets/models/sheets_contributor_stat.dart';
-export 'sheets/models/sheets_dirty_space.dart';
-export 'sheets/models/sheets_journal_space.dart';
-export 'sheets/models/sheets_row_journal.dart';
-export 'sheets/models/space_kind.dart';
-export 'sheets/models/space_stats.dart';
-export 'sheets/models/subscribe_result.dart';
-export 'sheets/models/subscription_reason.dart';
 export 'sheets/scripts/models/script_authorization_view.dart';
 export 'sheets/scripts/models/script_compile_response.dart';
 export 'sheets/scripts/models/script_execution.dart';
@@ -509,6 +536,13 @@ export 'slides/charts/models/chart_link_status.dart';
 export 'slides/charts/models/chart_snapshot_view.dart';
 export 'slides/charts/models/chart_source_list.dart';
 export 'slides/charts/models/chart_source_summary.dart';
+export 'slides/models/rows/enums/build_kind.dart';
+export 'slides/models/rows/enums/build_trigger.dart';
+export 'slides/models/rows/enums/deck_appearance.dart';
+export 'slides/models/rows/enums/placeholder_type.dart';
+export 'slides/models/rows/enums/slide_element_kind.dart';
+export 'slides/models/rows/enums/slide_size_preset.dart';
+export 'slides/models/rows/enums/table_dimension.dart';
 export 'slides/present/models/presentation_event.dart';
 export 'slides/present/models/presentation_join.dart';
 export 'slides/present/models/presentation_pairing_target.dart';
@@ -543,10 +577,9 @@ export 'write/models/write_theme_revision_view.dart';
 export 'write/models/write_theme_view.dart';
 export 'write/models/write_version_document.dart';
 export 'client.dart';
-export 'sync_tables.dart';
 
-class Protocol extends _isd.DatabaseSerializationManager
-    implements _isd.DatabaseProtocolDeserializationProvider {
+class Protocol extends _isc.SerializationManager
+    implements _isc.ProtocolDeserializationProvider {
   Protocol._();
 
   factory Protocol() => _instance;
@@ -635,6 +668,7 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<_i818olql.CommentThreadView>,
           _isc.getType<_i4xrxro7.CommentView>,
           _isc.getType<_ii98prcs.AccessRole>,
+          _isc.getType<_i2wc4tyi.ActorKind>,
           _isc.getType<_inb0isem.WonkyErrorCode>,
           _isc.getType<_igdswlrw.WonkyException>,
           _isc.getType<_iktwt5zz.DriveChange>,
@@ -696,6 +730,23 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<_i8r9afjv.PresenceUpdated>,
           _isc.getType<_ik055xb9.PresenceState>,
           _isc.getType<_isz2sju0.PresenceUpdate>,
+          _isc.getType<_ie6clghy.RevAck>,
+          _isc.getType<_i6ck957q.RevPing>,
+          _isc.getType<_i6ck957q.RevRequestOps>,
+          _isc.getType<_i6ck957q.RevSubmit>,
+          _isc.getType<_ie6clghy.RevInit>,
+          _isc.getType<_ie6clghy.RevPong>,
+          _isc.getType<_ie6clghy.RevRejected>,
+          _isc.getType<_ie6clghy.RevRemoteOp>,
+          _isc.getType<_ie6clghy.RevResync>,
+          _isc.getType<_ie6clghy.RevRoleChanged>,
+          _isc.getType<_ihwy023l.RevFileInfo>,
+          _isc.getType<_iwkehf4e.RevFileKind>,
+          _isc.getType<_it4o2pk5.RevOpView>,
+          _isc.getType<_ium7xjeg.RevPage>,
+          _isc.getType<_i3q3ua5p.RevPageKind>,
+          _isc.getType<_if03ikx4.RevPageRequest>,
+          _isc.getType<_iilsyt4b.RevRejectCode>,
           _isc.getType<_i8scn8dm.AccessRequest>,
           _isc.getType<_i7trut12.AccessRequestOutcome>,
           _isc.getType<_iimp60a4.AccessRequestView>,
@@ -737,18 +788,19 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<_i8d83qca.SheetsImportStatus>,
           _isc.getType<_ij1xvs09.CellHistoryEntry>,
           _isc.getType<_i09xo3k8.CellHistoryPage>,
-          _isc.getType<_i4tr28q5.ReservedSpace>,
           _isc.getType<_ilv3hlxr.RevertResult>,
           _isc.getType<_ipqum05l.RevertSkip>,
+          _isc.getType<_ilnsyzhq.Dimension>,
+          _isc.getType<_ihfpm0ve.EmbeddedObjectKind>,
+          _isc.getType<_iofwzekn.HorizontalAlign>,
+          _isc.getType<_i0z9m4nl.RecalcMode>,
+          _isc.getType<_io4oc09s.ScriptBuildStatus>,
+          _isc.getType<_i8ne06ql.SheetKind>,
+          _isc.getType<_irmtoho8.TriggerKind>,
+          _isc.getType<_ivf2txqv.VerticalAlign>,
+          _isc.getType<_iz9rjt8b.WrapStrategy>,
           _isc.getType<_iaehez21.SheetsActivitySummary>,
           _isc.getType<_i9yjzgjk.SheetsContributorStat>,
-          _isc.getType<_ign37bwd.SheetsDirtySpace>,
-          _isc.getType<_i6vovdef.SheetsJournalSpace>,
-          _isc.getType<_i09o85d1.SheetsRowJournal>,
-          _isc.getType<_i19n72yw.SpaceKind>,
-          _isc.getType<_izbczo40.SpaceStats>,
-          _isc.getType<_i6dq35xo.SubscribeResult>,
-          _isc.getType<_ic8hyldr.SubscriptionReason>,
           _isc.getType<_icjzxy6x.ScriptAuthorizationView>,
           _isc.getType<_iq0xpzf7.ScriptCompileResponse>,
           _isc.getType<_i4bc0fek.ScriptExecution>,
@@ -772,6 +824,13 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<_iua8dx49.ChartSnapshotView>,
           _isc.getType<_iq1h9id2.ChartSourceList>,
           _isc.getType<_inygrvyi.ChartSourceSummary>,
+          _isc.getType<_ipok3hcm.BuildKind>,
+          _isc.getType<_isb6wks2.BuildTrigger>,
+          _isc.getType<_isf9v7y6.DeckAppearance>,
+          _isc.getType<_i4oq3vgh.PlaceholderType>,
+          _isc.getType<_isah8148.SlideElementKind>,
+          _isc.getType<_isghg0k1.SlideSizePreset>,
+          _isc.getType<_i5m4q7yg.TableDimension>,
           _isc.getType<_iz9vxb2f.PresentationCommandEvent>,
           _isc.getType<_ijdad65m.PresentationCommandUpdate>,
           _isc.getType<_ijdad65m.PresentationEndUpdate>,
@@ -909,6 +968,7 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<_i818olql.CommentThreadView?>,
           _isc.getType<_i4xrxro7.CommentView?>,
           _isc.getType<_ii98prcs.AccessRole?>,
+          _isc.getType<_i2wc4tyi.ActorKind?>,
           _isc.getType<_inb0isem.WonkyErrorCode?>,
           _isc.getType<_igdswlrw.WonkyException?>,
           _isc.getType<_iktwt5zz.DriveChange?>,
@@ -970,6 +1030,23 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<_i8r9afjv.PresenceUpdated?>,
           _isc.getType<_ik055xb9.PresenceState?>,
           _isc.getType<_isz2sju0.PresenceUpdate?>,
+          _isc.getType<_ie6clghy.RevAck?>,
+          _isc.getType<_i6ck957q.RevPing?>,
+          _isc.getType<_i6ck957q.RevRequestOps?>,
+          _isc.getType<_i6ck957q.RevSubmit?>,
+          _isc.getType<_ie6clghy.RevInit?>,
+          _isc.getType<_ie6clghy.RevPong?>,
+          _isc.getType<_ie6clghy.RevRejected?>,
+          _isc.getType<_ie6clghy.RevRemoteOp?>,
+          _isc.getType<_ie6clghy.RevResync?>,
+          _isc.getType<_ie6clghy.RevRoleChanged?>,
+          _isc.getType<_ihwy023l.RevFileInfo?>,
+          _isc.getType<_iwkehf4e.RevFileKind?>,
+          _isc.getType<_it4o2pk5.RevOpView?>,
+          _isc.getType<_ium7xjeg.RevPage?>,
+          _isc.getType<_i3q3ua5p.RevPageKind?>,
+          _isc.getType<_if03ikx4.RevPageRequest?>,
+          _isc.getType<_iilsyt4b.RevRejectCode?>,
           _isc.getType<_i8scn8dm.AccessRequest?>,
           _isc.getType<_i7trut12.AccessRequestOutcome?>,
           _isc.getType<_iimp60a4.AccessRequestView?>,
@@ -1011,18 +1088,19 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<_i8d83qca.SheetsImportStatus?>,
           _isc.getType<_ij1xvs09.CellHistoryEntry?>,
           _isc.getType<_i09xo3k8.CellHistoryPage?>,
-          _isc.getType<_i4tr28q5.ReservedSpace?>,
           _isc.getType<_ilv3hlxr.RevertResult?>,
           _isc.getType<_ipqum05l.RevertSkip?>,
+          _isc.getType<_ilnsyzhq.Dimension?>,
+          _isc.getType<_ihfpm0ve.EmbeddedObjectKind?>,
+          _isc.getType<_iofwzekn.HorizontalAlign?>,
+          _isc.getType<_i0z9m4nl.RecalcMode?>,
+          _isc.getType<_io4oc09s.ScriptBuildStatus?>,
+          _isc.getType<_i8ne06ql.SheetKind?>,
+          _isc.getType<_irmtoho8.TriggerKind?>,
+          _isc.getType<_ivf2txqv.VerticalAlign?>,
+          _isc.getType<_iz9rjt8b.WrapStrategy?>,
           _isc.getType<_iaehez21.SheetsActivitySummary?>,
           _isc.getType<_i9yjzgjk.SheetsContributorStat?>,
-          _isc.getType<_ign37bwd.SheetsDirtySpace?>,
-          _isc.getType<_i6vovdef.SheetsJournalSpace?>,
-          _isc.getType<_i09o85d1.SheetsRowJournal?>,
-          _isc.getType<_i19n72yw.SpaceKind?>,
-          _isc.getType<_izbczo40.SpaceStats?>,
-          _isc.getType<_i6dq35xo.SubscribeResult?>,
-          _isc.getType<_ic8hyldr.SubscriptionReason?>,
           _isc.getType<_icjzxy6x.ScriptAuthorizationView?>,
           _isc.getType<_iq0xpzf7.ScriptCompileResponse?>,
           _isc.getType<_i4bc0fek.ScriptExecution?>,
@@ -1046,6 +1124,13 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<_iua8dx49.ChartSnapshotView?>,
           _isc.getType<_iq1h9id2.ChartSourceList?>,
           _isc.getType<_inygrvyi.ChartSourceSummary?>,
+          _isc.getType<_ipok3hcm.BuildKind?>,
+          _isc.getType<_isb6wks2.BuildTrigger?>,
+          _isc.getType<_isf9v7y6.DeckAppearance?>,
+          _isc.getType<_i4oq3vgh.PlaceholderType?>,
+          _isc.getType<_isah8148.SlideElementKind?>,
+          _isc.getType<_isghg0k1.SlideSizePreset?>,
+          _isc.getType<_i5m4q7yg.TableDimension?>,
           _isc.getType<_iz9vxb2f.PresentationCommandEvent?>,
           _isc.getType<_ijdad65m.PresentationCommandUpdate?>,
           _isc.getType<_ijdad65m.PresentationEndUpdate?>,
@@ -1134,6 +1219,10 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<List<_i48sm9f2.ImportWarningView>>,
           _isc.getType<List<_izfzk9h3.NotificationView>>,
           _isc.getType<List<_iylgyc33.Participant>>,
+          _isc.getType<List<_it4o2pk5.RevOpView>>,
+          _isc.getType<List<_it4o2pk5.RevOpView>?>,
+          _isc.getType<List<_isc.UuidValue>>,
+          _isc.getType<List<_isc.UuidValue>?>,
           _isc.getType<List<_iead0ok9.PermissionView>>,
           _isc.getType<List<_iimp60a4.AccessRequestView>>,
           _isc.getType<List<_idzstekp.SheetsAiPreviewCall>>,
@@ -1174,6 +1263,9 @@ class Protocol extends _isd.DatabaseSerializationManager
           _isc.getType<List<String>?>,
           _isc.getType<List<_ivc6ykj9.SheetsAiCellResult>>,
           _isc.getType<List<_ibrzlkni.SheetsAiCellRequest>>,
+          _isc.getType<List<_iq15rk0l.RevOpView>>,
+          _isc.getType<Map<String, String>>,
+          _isc.getType<Map<String, String?>>,
           _isc.getType<List<_ijdpewvc.ScriptExecution>>,
           _isc.getType<List<_iascr37x.SlidesAiNote>>,
           _isc.getType<List<_iqd8jbjp.SlidesAiAltText>>,
@@ -1186,208 +1278,9 @@ class Protocol extends _isd.DatabaseSerializationManager
         ],
         modules: const [
           _iaic.Protocol.new,
-          _ipulbpi2.Protocol.new,
           _iacc.Protocol.new,
-          _i810rwvy.Protocol.new,
         ],
       );
-
-  static List<_isd.TableDefinition> get targetTableDefinitions => [
-    _isd.TableDefinition(
-      name: 'reserved_space',
-      dartName: 'ReservedSpace',
-      schema: 'public',
-      module: 'wonky',
-      columns: [
-        _isd.ColumnDefinition(
-          name: 'id',
-          columnType: _isd.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
-        ),
-        _isd.ColumnDefinition(
-          name: 'spaceUuid',
-          columnType: _isd.ColumnType.uuid,
-          isNullable: false,
-          dartType: 'UuidValue',
-        ),
-        _isd.ColumnDefinition(
-          name: 'reservedAt',
-          columnType: _isd.ColumnType.timestampWithoutTimeZone,
-          isNullable: false,
-          dartType: 'DateTime',
-          columnDefault: 'now',
-        ),
-      ],
-      foreignKeys: [],
-      indexes: [
-        _isd.IndexDefinition(
-          indexName: 'reserved_space_uuid_unique_idx',
-          tableSpace: null,
-          elements: [
-            _isd.IndexElementDefinition(
-              type: _isd.IndexElementDefinitionType.column,
-              definition: 'spaceUuid',
-            ),
-          ],
-          type: 'btree',
-          isUnique: true,
-          isPrimary: false,
-        ),
-      ],
-      managed: true,
-    ),
-    _isd.TableDefinition(
-      name: 'sheets_dirty_space',
-      dartName: 'SheetsDirtySpace',
-      schema: 'public',
-      module: 'wonky',
-      columns: [
-        _isd.ColumnDefinition(
-          name: 'id',
-          columnType: _isd.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
-        ),
-        _isd.ColumnDefinition(
-          name: 'spaceUuid',
-          columnType: _isd.ColumnType.uuid,
-          isNullable: false,
-          dartType: 'UuidValue',
-        ),
-        _isd.ColumnDefinition(
-          name: 'markedAt',
-          columnType: _isd.ColumnType.timestampWithoutTimeZone,
-          isNullable: false,
-          dartType: 'DateTime',
-          columnDefault: 'now',
-        ),
-      ],
-      foreignKeys: [],
-      indexes: [
-        _isd.IndexDefinition(
-          indexName: 'sheets_dirty_space_uuid_idx',
-          tableSpace: null,
-          elements: [
-            _isd.IndexElementDefinition(
-              type: _isd.IndexElementDefinitionType.column,
-              definition: 'spaceUuid',
-            ),
-          ],
-          type: 'btree',
-          isUnique: true,
-          isPrimary: false,
-        ),
-      ],
-      managed: true,
-    ),
-    _isd.TableDefinition(
-      name: 'sheets_journal_space',
-      dartName: 'SheetsJournalSpace',
-      schema: 'public',
-      module: 'wonky',
-      columns: [
-        _isd.ColumnDefinition(
-          name: 'id',
-          columnType: _isd.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
-        ),
-        _isd.ColumnDefinition(
-          name: 'spaceKey',
-          columnType: _isd.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int',
-        ),
-      ],
-      foreignKeys: [],
-      indexes: [
-        _isd.IndexDefinition(
-          indexName: 'sheets_journal_space_key_idx',
-          tableSpace: null,
-          elements: [
-            _isd.IndexElementDefinition(
-              type: _isd.IndexElementDefinitionType.column,
-              definition: 'spaceKey',
-            ),
-          ],
-          type: 'btree',
-          isUnique: true,
-          isPrimary: false,
-        ),
-      ],
-      managed: true,
-    ),
-    _isd.TableDefinition(
-      name: 'sheets_row_journal',
-      dartName: 'SheetsRowJournal',
-      schema: 'public',
-      module: 'wonky',
-      columns: [
-        _isd.ColumnDefinition(
-          name: 'id',
-          columnType: _isd.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
-        ),
-        _isd.ColumnDefinition(
-          name: 'spaceKey',
-          columnType: _isd.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int',
-        ),
-        _isd.ColumnDefinition(
-          name: 'syncTable',
-          columnType: _isd.ColumnType.text,
-          isNullable: false,
-          dartType: 'String',
-        ),
-        _isd.ColumnDefinition(
-          name: 'rowId',
-          columnType: _isd.ColumnType.uuid,
-          isNullable: false,
-          dartType: 'UuidValue',
-        ),
-      ],
-      foreignKeys: [],
-      indexes: [
-        _isd.IndexDefinition(
-          indexName: 'sheets_row_journal_space_idx',
-          tableSpace: null,
-          elements: [
-            _isd.IndexElementDefinition(
-              type: _isd.IndexElementDefinitionType.column,
-              definition: 'spaceKey',
-            ),
-          ],
-          type: 'btree',
-          isUnique: false,
-          isPrimary: false,
-        ),
-      ],
-      managed: true,
-    ),
-    ..._iaic.Protocol() is _isd.DatabaseSerializationManager
-        ? (_iaic.Protocol() as _isd.DatabaseSerializationManager)
-              .getTargetTableDefinitions()
-        : [],
-    ..._ipulbpi2.Protocol() is _isd.DatabaseSerializationManager
-        ? (_ipulbpi2.Protocol() as _isd.DatabaseSerializationManager)
-              .getTargetTableDefinitions()
-        : [],
-    ..._iacc.Protocol() is _isd.DatabaseSerializationManager
-        ? (_iacc.Protocol() as _isd.DatabaseSerializationManager)
-              .getTargetTableDefinitions()
-        : [],
-    ..._i810rwvy.Protocol() is _isd.DatabaseSerializationManager
-        ? (_i810rwvy.Protocol() as _isd.DatabaseSerializationManager)
-              .getTargetTableDefinitions()
-        : [],
-  ];
 
   static String? getClassNameFromObjectJson(dynamic data) {
     if (data is! Map) return null;
@@ -1647,6 +1540,9 @@ class Protocol extends _isd.DatabaseSerializationManager
     if (t == _ii98prcs.AccessRole) {
       return _ii98prcs.AccessRole.fromJson(data) as T;
     }
+    if (t == _i2wc4tyi.ActorKind) {
+      return _i2wc4tyi.ActorKind.fromJson(data) as T;
+    }
     if (t == _inb0isem.WonkyErrorCode) {
       return _inb0isem.WonkyErrorCode.fromJson(data) as T;
     }
@@ -1830,6 +1726,57 @@ class Protocol extends _isd.DatabaseSerializationManager
     if (t == _isz2sju0.PresenceUpdate) {
       return _isz2sju0.PresenceUpdate.fromJson(data) as T;
     }
+    if (t == _ie6clghy.RevAck) {
+      return _ie6clghy.RevAck.fromJson(data) as T;
+    }
+    if (t == _i6ck957q.RevPing) {
+      return _i6ck957q.RevPing.fromJson(data) as T;
+    }
+    if (t == _i6ck957q.RevRequestOps) {
+      return _i6ck957q.RevRequestOps.fromJson(data) as T;
+    }
+    if (t == _i6ck957q.RevSubmit) {
+      return _i6ck957q.RevSubmit.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevInit) {
+      return _ie6clghy.RevInit.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevPong) {
+      return _ie6clghy.RevPong.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevRejected) {
+      return _ie6clghy.RevRejected.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevRemoteOp) {
+      return _ie6clghy.RevRemoteOp.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevResync) {
+      return _ie6clghy.RevResync.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevRoleChanged) {
+      return _ie6clghy.RevRoleChanged.fromJson(data) as T;
+    }
+    if (t == _ihwy023l.RevFileInfo) {
+      return _ihwy023l.RevFileInfo.fromJson(data) as T;
+    }
+    if (t == _iwkehf4e.RevFileKind) {
+      return _iwkehf4e.RevFileKind.fromJson(data) as T;
+    }
+    if (t == _it4o2pk5.RevOpView) {
+      return _it4o2pk5.RevOpView.fromJson(data) as T;
+    }
+    if (t == _ium7xjeg.RevPage) {
+      return _ium7xjeg.RevPage.fromJson(data) as T;
+    }
+    if (t == _i3q3ua5p.RevPageKind) {
+      return _i3q3ua5p.RevPageKind.fromJson(data) as T;
+    }
+    if (t == _if03ikx4.RevPageRequest) {
+      return _if03ikx4.RevPageRequest.fromJson(data) as T;
+    }
+    if (t == _iilsyt4b.RevRejectCode) {
+      return _iilsyt4b.RevRejectCode.fromJson(data) as T;
+    }
     if (t == _i8scn8dm.AccessRequest) {
       return _i8scn8dm.AccessRequest.fromJson(data) as T;
     }
@@ -1953,41 +1900,44 @@ class Protocol extends _isd.DatabaseSerializationManager
     if (t == _i09xo3k8.CellHistoryPage) {
       return _i09xo3k8.CellHistoryPage.fromJson(data) as T;
     }
-    if (t == _i4tr28q5.ReservedSpace) {
-      return _i4tr28q5.ReservedSpace.fromJson(data) as T;
-    }
     if (t == _ilv3hlxr.RevertResult) {
       return _ilv3hlxr.RevertResult.fromJson(data) as T;
     }
     if (t == _ipqum05l.RevertSkip) {
       return _ipqum05l.RevertSkip.fromJson(data) as T;
     }
+    if (t == _ilnsyzhq.Dimension) {
+      return _ilnsyzhq.Dimension.fromJson(data) as T;
+    }
+    if (t == _ihfpm0ve.EmbeddedObjectKind) {
+      return _ihfpm0ve.EmbeddedObjectKind.fromJson(data) as T;
+    }
+    if (t == _iofwzekn.HorizontalAlign) {
+      return _iofwzekn.HorizontalAlign.fromJson(data) as T;
+    }
+    if (t == _i0z9m4nl.RecalcMode) {
+      return _i0z9m4nl.RecalcMode.fromJson(data) as T;
+    }
+    if (t == _io4oc09s.ScriptBuildStatus) {
+      return _io4oc09s.ScriptBuildStatus.fromJson(data) as T;
+    }
+    if (t == _i8ne06ql.SheetKind) {
+      return _i8ne06ql.SheetKind.fromJson(data) as T;
+    }
+    if (t == _irmtoho8.TriggerKind) {
+      return _irmtoho8.TriggerKind.fromJson(data) as T;
+    }
+    if (t == _ivf2txqv.VerticalAlign) {
+      return _ivf2txqv.VerticalAlign.fromJson(data) as T;
+    }
+    if (t == _iz9rjt8b.WrapStrategy) {
+      return _iz9rjt8b.WrapStrategy.fromJson(data) as T;
+    }
     if (t == _iaehez21.SheetsActivitySummary) {
       return _iaehez21.SheetsActivitySummary.fromJson(data) as T;
     }
     if (t == _i9yjzgjk.SheetsContributorStat) {
       return _i9yjzgjk.SheetsContributorStat.fromJson(data) as T;
-    }
-    if (t == _ign37bwd.SheetsDirtySpace) {
-      return _ign37bwd.SheetsDirtySpace.fromJson(data) as T;
-    }
-    if (t == _i6vovdef.SheetsJournalSpace) {
-      return _i6vovdef.SheetsJournalSpace.fromJson(data) as T;
-    }
-    if (t == _i09o85d1.SheetsRowJournal) {
-      return _i09o85d1.SheetsRowJournal.fromJson(data) as T;
-    }
-    if (t == _i19n72yw.SpaceKind) {
-      return _i19n72yw.SpaceKind.fromJson(data) as T;
-    }
-    if (t == _izbczo40.SpaceStats) {
-      return _izbczo40.SpaceStats.fromJson(data) as T;
-    }
-    if (t == _i6dq35xo.SubscribeResult) {
-      return _i6dq35xo.SubscribeResult.fromJson(data) as T;
-    }
-    if (t == _ic8hyldr.SubscriptionReason) {
-      return _ic8hyldr.SubscriptionReason.fromJson(data) as T;
     }
     if (t == _icjzxy6x.ScriptAuthorizationView) {
       return _icjzxy6x.ScriptAuthorizationView.fromJson(data) as T;
@@ -2057,6 +2007,27 @@ class Protocol extends _isd.DatabaseSerializationManager
     }
     if (t == _inygrvyi.ChartSourceSummary) {
       return _inygrvyi.ChartSourceSummary.fromJson(data) as T;
+    }
+    if (t == _ipok3hcm.BuildKind) {
+      return _ipok3hcm.BuildKind.fromJson(data) as T;
+    }
+    if (t == _isb6wks2.BuildTrigger) {
+      return _isb6wks2.BuildTrigger.fromJson(data) as T;
+    }
+    if (t == _isf9v7y6.DeckAppearance) {
+      return _isf9v7y6.DeckAppearance.fromJson(data) as T;
+    }
+    if (t == _i4oq3vgh.PlaceholderType) {
+      return _i4oq3vgh.PlaceholderType.fromJson(data) as T;
+    }
+    if (t == _isah8148.SlideElementKind) {
+      return _isah8148.SlideElementKind.fromJson(data) as T;
+    }
+    if (t == _isghg0k1.SlideSizePreset) {
+      return _isghg0k1.SlideSizePreset.fromJson(data) as T;
+    }
+    if (t == _i5m4q7yg.TableDimension) {
+      return _i5m4q7yg.TableDimension.fromJson(data) as T;
     }
     if (t == _iz9vxb2f.PresentationCommandEvent) {
       return _iz9vxb2f.PresentationCommandEvent.fromJson(data) as T;
@@ -2538,6 +2509,9 @@ class Protocol extends _isd.DatabaseSerializationManager
     if (t == _isc.getType<_ii98prcs.AccessRole?>()) {
       return (data != null ? _ii98prcs.AccessRole.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_i2wc4tyi.ActorKind?>()) {
+      return (data != null ? _i2wc4tyi.ActorKind.fromJson(data) : null) as T;
+    }
     if (t == _isc.getType<_inb0isem.WonkyErrorCode?>()) {
       return (data != null ? _inb0isem.WonkyErrorCode.fromJson(data) : null)
           as T;
@@ -2770,6 +2744,61 @@ class Protocol extends _isd.DatabaseSerializationManager
       return (data != null ? _isz2sju0.PresenceUpdate.fromJson(data) : null)
           as T;
     }
+    if (t == _isc.getType<_ie6clghy.RevAck?>()) {
+      return (data != null ? _ie6clghy.RevAck.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i6ck957q.RevPing?>()) {
+      return (data != null ? _i6ck957q.RevPing.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i6ck957q.RevRequestOps?>()) {
+      return (data != null ? _i6ck957q.RevRequestOps.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i6ck957q.RevSubmit?>()) {
+      return (data != null ? _i6ck957q.RevSubmit.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ie6clghy.RevInit?>()) {
+      return (data != null ? _ie6clghy.RevInit.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ie6clghy.RevPong?>()) {
+      return (data != null ? _ie6clghy.RevPong.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ie6clghy.RevRejected?>()) {
+      return (data != null ? _ie6clghy.RevRejected.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ie6clghy.RevRemoteOp?>()) {
+      return (data != null ? _ie6clghy.RevRemoteOp.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ie6clghy.RevResync?>()) {
+      return (data != null ? _ie6clghy.RevResync.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ie6clghy.RevRoleChanged?>()) {
+      return (data != null ? _ie6clghy.RevRoleChanged.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ihwy023l.RevFileInfo?>()) {
+      return (data != null ? _ihwy023l.RevFileInfo.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_iwkehf4e.RevFileKind?>()) {
+      return (data != null ? _iwkehf4e.RevFileKind.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_it4o2pk5.RevOpView?>()) {
+      return (data != null ? _it4o2pk5.RevOpView.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ium7xjeg.RevPage?>()) {
+      return (data != null ? _ium7xjeg.RevPage.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i3q3ua5p.RevPageKind?>()) {
+      return (data != null ? _i3q3ua5p.RevPageKind.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_if03ikx4.RevPageRequest?>()) {
+      return (data != null ? _if03ikx4.RevPageRequest.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iilsyt4b.RevRejectCode?>()) {
+      return (data != null ? _iilsyt4b.RevRejectCode.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_i8scn8dm.AccessRequest?>()) {
       return (data != null ? _i8scn8dm.AccessRequest.fromJson(data) : null)
           as T;
@@ -2954,15 +2983,42 @@ class Protocol extends _isd.DatabaseSerializationManager
       return (data != null ? _i09xo3k8.CellHistoryPage.fromJson(data) : null)
           as T;
     }
-    if (t == _isc.getType<_i4tr28q5.ReservedSpace?>()) {
-      return (data != null ? _i4tr28q5.ReservedSpace.fromJson(data) : null)
-          as T;
-    }
     if (t == _isc.getType<_ilv3hlxr.RevertResult?>()) {
       return (data != null ? _ilv3hlxr.RevertResult.fromJson(data) : null) as T;
     }
     if (t == _isc.getType<_ipqum05l.RevertSkip?>()) {
       return (data != null ? _ipqum05l.RevertSkip.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ilnsyzhq.Dimension?>()) {
+      return (data != null ? _ilnsyzhq.Dimension.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ihfpm0ve.EmbeddedObjectKind?>()) {
+      return (data != null ? _ihfpm0ve.EmbeddedObjectKind.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iofwzekn.HorizontalAlign?>()) {
+      return (data != null ? _iofwzekn.HorizontalAlign.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i0z9m4nl.RecalcMode?>()) {
+      return (data != null ? _i0z9m4nl.RecalcMode.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_io4oc09s.ScriptBuildStatus?>()) {
+      return (data != null ? _io4oc09s.ScriptBuildStatus.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i8ne06ql.SheetKind?>()) {
+      return (data != null ? _i8ne06ql.SheetKind.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_irmtoho8.TriggerKind?>()) {
+      return (data != null ? _irmtoho8.TriggerKind.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ivf2txqv.VerticalAlign?>()) {
+      return (data != null ? _ivf2txqv.VerticalAlign.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iz9rjt8b.WrapStrategy?>()) {
+      return (data != null ? _iz9rjt8b.WrapStrategy.fromJson(data) : null) as T;
     }
     if (t == _isc.getType<_iaehez21.SheetsActivitySummary?>()) {
       return (data != null
@@ -2974,32 +3030,6 @@ class Protocol extends _isd.DatabaseSerializationManager
       return (data != null
               ? _i9yjzgjk.SheetsContributorStat.fromJson(data)
               : null)
-          as T;
-    }
-    if (t == _isc.getType<_ign37bwd.SheetsDirtySpace?>()) {
-      return (data != null ? _ign37bwd.SheetsDirtySpace.fromJson(data) : null)
-          as T;
-    }
-    if (t == _isc.getType<_i6vovdef.SheetsJournalSpace?>()) {
-      return (data != null ? _i6vovdef.SheetsJournalSpace.fromJson(data) : null)
-          as T;
-    }
-    if (t == _isc.getType<_i09o85d1.SheetsRowJournal?>()) {
-      return (data != null ? _i09o85d1.SheetsRowJournal.fromJson(data) : null)
-          as T;
-    }
-    if (t == _isc.getType<_i19n72yw.SpaceKind?>()) {
-      return (data != null ? _i19n72yw.SpaceKind.fromJson(data) : null) as T;
-    }
-    if (t == _isc.getType<_izbczo40.SpaceStats?>()) {
-      return (data != null ? _izbczo40.SpaceStats.fromJson(data) : null) as T;
-    }
-    if (t == _isc.getType<_i6dq35xo.SubscribeResult?>()) {
-      return (data != null ? _i6dq35xo.SubscribeResult.fromJson(data) : null)
-          as T;
-    }
-    if (t == _isc.getType<_ic8hyldr.SubscriptionReason?>()) {
-      return (data != null ? _ic8hyldr.SubscriptionReason.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_icjzxy6x.ScriptAuthorizationView?>()) {
@@ -3111,6 +3141,32 @@ class Protocol extends _isd.DatabaseSerializationManager
     }
     if (t == _isc.getType<_inygrvyi.ChartSourceSummary?>()) {
       return (data != null ? _inygrvyi.ChartSourceSummary.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ipok3hcm.BuildKind?>()) {
+      return (data != null ? _ipok3hcm.BuildKind.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_isb6wks2.BuildTrigger?>()) {
+      return (data != null ? _isb6wks2.BuildTrigger.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_isf9v7y6.DeckAppearance?>()) {
+      return (data != null ? _isf9v7y6.DeckAppearance.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i4oq3vgh.PlaceholderType?>()) {
+      return (data != null ? _i4oq3vgh.PlaceholderType.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_isah8148.SlideElementKind?>()) {
+      return (data != null ? _isah8148.SlideElementKind.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_isghg0k1.SlideSizePreset?>()) {
+      return (data != null ? _isghg0k1.SlideSizePreset.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i5m4q7yg.TableDimension?>()) {
+      return (data != null ? _i5m4q7yg.TableDimension.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_iz9vxb2f.PresentationCommandEvent?>()) {
@@ -3566,6 +3622,32 @@ class Protocol extends _isd.DatabaseSerializationManager
               .toList()
           as T;
     }
+    if (t == List<_it4o2pk5.RevOpView>) {
+      return (data as List)
+              .map((e) => deserialize<_it4o2pk5.RevOpView>(e))
+              .toList()
+          as T;
+    }
+    if (t == _isc.getType<List<_it4o2pk5.RevOpView>?>()) {
+      return (data != null
+              ? (data as List)
+                    .map((e) => deserialize<_it4o2pk5.RevOpView>(e))
+                    .toList()
+              : null)
+          as T;
+    }
+    if (t == List<_isc.UuidValue>) {
+      return (data as List).map((e) => deserialize<_isc.UuidValue>(e)).toList()
+          as T;
+    }
+    if (t == _isc.getType<List<_isc.UuidValue>?>()) {
+      return (data != null
+              ? (data as List)
+                    .map((e) => deserialize<_isc.UuidValue>(e))
+                    .toList()
+              : null)
+          as T;
+    }
     if (t == List<_iead0ok9.PermissionView>) {
       return (data as List)
               .map((e) => deserialize<_iead0ok9.PermissionView>(e))
@@ -3806,6 +3888,24 @@ class Protocol extends _isd.DatabaseSerializationManager
               .toList()
           as T;
     }
+    if (t == List<_iq15rk0l.RevOpView>) {
+      return (data as List)
+              .map((e) => deserialize<_iq15rk0l.RevOpView>(e))
+              .toList()
+          as T;
+    }
+    if (t == Map<String, String>) {
+      return (data as Map).map(
+            (k, v) => MapEntry(deserialize<String>(k), deserialize<String>(v)),
+          )
+          as T;
+    }
+    if (t == Map<String, String?>) {
+      return (data as Map).map(
+            (k, v) => MapEntry(deserialize<String>(k), deserialize<String?>(v)),
+          )
+          as T;
+    }
     if (t == List<_ijdpewvc.ScriptExecution>) {
       return (data as List)
               .map((e) => deserialize<_ijdpewvc.ScriptExecution>(e))
@@ -3951,6 +4051,7 @@ class Protocol extends _isd.DatabaseSerializationManager
       _i818olql.CommentThreadView => 'CommentThreadView',
       _i4xrxro7.CommentView => 'CommentView',
       _ii98prcs.AccessRole => 'AccessRole',
+      _i2wc4tyi.ActorKind => 'ActorKind',
       _inb0isem.WonkyErrorCode => 'WonkyErrorCode',
       _igdswlrw.WonkyException => 'WonkyException',
       _iktwt5zz.DriveChange => 'DriveChange',
@@ -4012,6 +4113,23 @@ class Protocol extends _isd.DatabaseSerializationManager
       _i8r9afjv.PresenceUpdated => 'PresenceUpdated',
       _ik055xb9.PresenceState => 'PresenceState',
       _isz2sju0.PresenceUpdate => 'PresenceUpdate',
+      _ie6clghy.RevAck => 'RevAck',
+      _i6ck957q.RevPing => 'RevPing',
+      _i6ck957q.RevRequestOps => 'RevRequestOps',
+      _i6ck957q.RevSubmit => 'RevSubmit',
+      _ie6clghy.RevInit => 'RevInit',
+      _ie6clghy.RevPong => 'RevPong',
+      _ie6clghy.RevRejected => 'RevRejected',
+      _ie6clghy.RevRemoteOp => 'RevRemoteOp',
+      _ie6clghy.RevResync => 'RevResync',
+      _ie6clghy.RevRoleChanged => 'RevRoleChanged',
+      _ihwy023l.RevFileInfo => 'RevFileInfo',
+      _iwkehf4e.RevFileKind => 'RevFileKind',
+      _it4o2pk5.RevOpView => 'RevOpView',
+      _ium7xjeg.RevPage => 'RevPage',
+      _i3q3ua5p.RevPageKind => 'RevPageKind',
+      _if03ikx4.RevPageRequest => 'RevPageRequest',
+      _iilsyt4b.RevRejectCode => 'RevRejectCode',
       _i8scn8dm.AccessRequest => 'AccessRequest',
       _i7trut12.AccessRequestOutcome => 'AccessRequestOutcome',
       _iimp60a4.AccessRequestView => 'AccessRequestView',
@@ -4053,18 +4171,19 @@ class Protocol extends _isd.DatabaseSerializationManager
       _i8d83qca.SheetsImportStatus => 'SheetsImportStatus',
       _ij1xvs09.CellHistoryEntry => 'CellHistoryEntry',
       _i09xo3k8.CellHistoryPage => 'CellHistoryPage',
-      _i4tr28q5.ReservedSpace => 'ReservedSpace',
       _ilv3hlxr.RevertResult => 'RevertResult',
       _ipqum05l.RevertSkip => 'RevertSkip',
+      _ilnsyzhq.Dimension => 'Dimension',
+      _ihfpm0ve.EmbeddedObjectKind => 'EmbeddedObjectKind',
+      _iofwzekn.HorizontalAlign => 'HorizontalAlign',
+      _i0z9m4nl.RecalcMode => 'RecalcMode',
+      _io4oc09s.ScriptBuildStatus => 'ScriptBuildStatus',
+      _i8ne06ql.SheetKind => 'SheetKind',
+      _irmtoho8.TriggerKind => 'TriggerKind',
+      _ivf2txqv.VerticalAlign => 'VerticalAlign',
+      _iz9rjt8b.WrapStrategy => 'WrapStrategy',
       _iaehez21.SheetsActivitySummary => 'SheetsActivitySummary',
       _i9yjzgjk.SheetsContributorStat => 'SheetsContributorStat',
-      _ign37bwd.SheetsDirtySpace => 'SheetsDirtySpace',
-      _i6vovdef.SheetsJournalSpace => 'SheetsJournalSpace',
-      _i09o85d1.SheetsRowJournal => 'SheetsRowJournal',
-      _i19n72yw.SpaceKind => 'SpaceKind',
-      _izbczo40.SpaceStats => 'SpaceStats',
-      _i6dq35xo.SubscribeResult => 'SubscribeResult',
-      _ic8hyldr.SubscriptionReason => 'SubscriptionReason',
       _icjzxy6x.ScriptAuthorizationView => 'ScriptAuthorizationView',
       _iq0xpzf7.ScriptCompileResponse => 'ScriptCompileResponse',
       _i4bc0fek.ScriptExecution => 'ScriptExecution',
@@ -4088,6 +4207,13 @@ class Protocol extends _isd.DatabaseSerializationManager
       _iua8dx49.ChartSnapshotView => 'ChartSnapshotView',
       _iq1h9id2.ChartSourceList => 'ChartSourceList',
       _inygrvyi.ChartSourceSummary => 'ChartSourceSummary',
+      _ipok3hcm.BuildKind => 'BuildKind',
+      _isb6wks2.BuildTrigger => 'BuildTrigger',
+      _isf9v7y6.DeckAppearance => 'DeckAppearance',
+      _i4oq3vgh.PlaceholderType => 'PlaceholderType',
+      _isah8148.SlideElementKind => 'SlideElementKind',
+      _isghg0k1.SlideSizePreset => 'SlideSizePreset',
+      _i5m4q7yg.TableDimension => 'TableDimension',
       _iz9vxb2f.PresentationCommandEvent => 'PresentationCommandEvent',
       _ijdad65m.PresentationCommandUpdate => 'PresentationCommandUpdate',
       _ijdad65m.PresentationEndUpdate => 'PresentationEndUpdate',
@@ -4316,6 +4442,8 @@ class Protocol extends _isd.DatabaseSerializationManager
         return 'CommentView';
       case _ii98prcs.AccessRole():
         return 'AccessRole';
+      case _i2wc4tyi.ActorKind():
+        return 'ActorKind';
       case _inb0isem.WonkyErrorCode():
         return 'WonkyErrorCode';
       case _igdswlrw.WonkyException():
@@ -4438,6 +4566,40 @@ class Protocol extends _isd.DatabaseSerializationManager
         return 'PresenceState';
       case _isz2sju0.PresenceUpdate():
         return 'PresenceUpdate';
+      case _ie6clghy.RevAck():
+        return 'RevAck';
+      case _i6ck957q.RevPing():
+        return 'RevPing';
+      case _i6ck957q.RevRequestOps():
+        return 'RevRequestOps';
+      case _i6ck957q.RevSubmit():
+        return 'RevSubmit';
+      case _ie6clghy.RevInit():
+        return 'RevInit';
+      case _ie6clghy.RevPong():
+        return 'RevPong';
+      case _ie6clghy.RevRejected():
+        return 'RevRejected';
+      case _ie6clghy.RevRemoteOp():
+        return 'RevRemoteOp';
+      case _ie6clghy.RevResync():
+        return 'RevResync';
+      case _ie6clghy.RevRoleChanged():
+        return 'RevRoleChanged';
+      case _ihwy023l.RevFileInfo():
+        return 'RevFileInfo';
+      case _iwkehf4e.RevFileKind():
+        return 'RevFileKind';
+      case _it4o2pk5.RevOpView():
+        return 'RevOpView';
+      case _ium7xjeg.RevPage():
+        return 'RevPage';
+      case _i3q3ua5p.RevPageKind():
+        return 'RevPageKind';
+      case _if03ikx4.RevPageRequest():
+        return 'RevPageRequest';
+      case _iilsyt4b.RevRejectCode():
+        return 'RevRejectCode';
       case _i8scn8dm.AccessRequest():
         return 'AccessRequest';
       case _i7trut12.AccessRequestOutcome():
@@ -4520,30 +4682,32 @@ class Protocol extends _isd.DatabaseSerializationManager
         return 'CellHistoryEntry';
       case _i09xo3k8.CellHistoryPage():
         return 'CellHistoryPage';
-      case _i4tr28q5.ReservedSpace():
-        return 'ReservedSpace';
       case _ilv3hlxr.RevertResult():
         return 'RevertResult';
       case _ipqum05l.RevertSkip():
         return 'RevertSkip';
+      case _ilnsyzhq.Dimension():
+        return 'Dimension';
+      case _ihfpm0ve.EmbeddedObjectKind():
+        return 'EmbeddedObjectKind';
+      case _iofwzekn.HorizontalAlign():
+        return 'HorizontalAlign';
+      case _i0z9m4nl.RecalcMode():
+        return 'RecalcMode';
+      case _io4oc09s.ScriptBuildStatus():
+        return 'ScriptBuildStatus';
+      case _i8ne06ql.SheetKind():
+        return 'SheetKind';
+      case _irmtoho8.TriggerKind():
+        return 'TriggerKind';
+      case _ivf2txqv.VerticalAlign():
+        return 'VerticalAlign';
+      case _iz9rjt8b.WrapStrategy():
+        return 'WrapStrategy';
       case _iaehez21.SheetsActivitySummary():
         return 'SheetsActivitySummary';
       case _i9yjzgjk.SheetsContributorStat():
         return 'SheetsContributorStat';
-      case _ign37bwd.SheetsDirtySpace():
-        return 'SheetsDirtySpace';
-      case _i6vovdef.SheetsJournalSpace():
-        return 'SheetsJournalSpace';
-      case _i09o85d1.SheetsRowJournal():
-        return 'SheetsRowJournal';
-      case _i19n72yw.SpaceKind():
-        return 'SpaceKind';
-      case _izbczo40.SpaceStats():
-        return 'SpaceStats';
-      case _i6dq35xo.SubscribeResult():
-        return 'SubscribeResult';
-      case _ic8hyldr.SubscriptionReason():
-        return 'SubscriptionReason';
       case _icjzxy6x.ScriptAuthorizationView():
         return 'ScriptAuthorizationView';
       case _iq0xpzf7.ScriptCompileResponse():
@@ -4590,6 +4754,20 @@ class Protocol extends _isd.DatabaseSerializationManager
         return 'ChartSourceList';
       case _inygrvyi.ChartSourceSummary():
         return 'ChartSourceSummary';
+      case _ipok3hcm.BuildKind():
+        return 'BuildKind';
+      case _isb6wks2.BuildTrigger():
+        return 'BuildTrigger';
+      case _isf9v7y6.DeckAppearance():
+        return 'DeckAppearance';
+      case _i4oq3vgh.PlaceholderType():
+        return 'PlaceholderType';
+      case _isah8148.SlideElementKind():
+        return 'SlideElementKind';
+      case _isghg0k1.SlideSizePreset():
+        return 'SlideSizePreset';
+      case _i5m4q7yg.TableDimension():
+        return 'TableDimension';
       case _iz9vxb2f.PresentationCommandEvent():
         return 'PresentationCommandEvent';
       case _ijdad65m.PresentationCommandUpdate():
@@ -4717,23 +4895,11 @@ class Protocol extends _isd.DatabaseSerializationManager
           ? className
           : 'serverpod_auth_idp.$className';
     }
-    className = _ipulbpi2.Protocol().getClassNameForObject(data);
-    if (className != null) {
-      return className.contains('.')
-          ? className
-          : 'serverpod_offline_sync.$className';
-    }
     className = _iacc.Protocol().getClassNameForObject(data);
     if (className != null) {
       return className.contains('.')
           ? className
           : 'serverpod_auth_core.$className';
-    }
-    className = _i810rwvy.Protocol().getClassNameForObject(data);
-    if (className != null) {
-      return className.contains('.')
-          ? className
-          : 'wonky_sync_models.$className';
     }
     return null;
   }
@@ -4975,6 +5141,9 @@ class Protocol extends _isd.DatabaseSerializationManager
     if (dataClassName == 'AccessRole') {
       return deserialize<_ii98prcs.AccessRole>(data['data']);
     }
+    if (dataClassName == 'ActorKind') {
+      return deserialize<_i2wc4tyi.ActorKind>(data['data']);
+    }
     if (dataClassName == 'WonkyErrorCode') {
       return deserialize<_inb0isem.WonkyErrorCode>(data['data']);
     }
@@ -5158,6 +5327,57 @@ class Protocol extends _isd.DatabaseSerializationManager
     if (dataClassName == 'PresenceUpdate') {
       return deserialize<_isz2sju0.PresenceUpdate>(data['data']);
     }
+    if (dataClassName == 'RevAck') {
+      return deserialize<_ie6clghy.RevAck>(data['data']);
+    }
+    if (dataClassName == 'RevPing') {
+      return deserialize<_i6ck957q.RevPing>(data['data']);
+    }
+    if (dataClassName == 'RevRequestOps') {
+      return deserialize<_i6ck957q.RevRequestOps>(data['data']);
+    }
+    if (dataClassName == 'RevSubmit') {
+      return deserialize<_i6ck957q.RevSubmit>(data['data']);
+    }
+    if (dataClassName == 'RevInit') {
+      return deserialize<_ie6clghy.RevInit>(data['data']);
+    }
+    if (dataClassName == 'RevPong') {
+      return deserialize<_ie6clghy.RevPong>(data['data']);
+    }
+    if (dataClassName == 'RevRejected') {
+      return deserialize<_ie6clghy.RevRejected>(data['data']);
+    }
+    if (dataClassName == 'RevRemoteOp') {
+      return deserialize<_ie6clghy.RevRemoteOp>(data['data']);
+    }
+    if (dataClassName == 'RevResync') {
+      return deserialize<_ie6clghy.RevResync>(data['data']);
+    }
+    if (dataClassName == 'RevRoleChanged') {
+      return deserialize<_ie6clghy.RevRoleChanged>(data['data']);
+    }
+    if (dataClassName == 'RevFileInfo') {
+      return deserialize<_ihwy023l.RevFileInfo>(data['data']);
+    }
+    if (dataClassName == 'RevFileKind') {
+      return deserialize<_iwkehf4e.RevFileKind>(data['data']);
+    }
+    if (dataClassName == 'RevOpView') {
+      return deserialize<_it4o2pk5.RevOpView>(data['data']);
+    }
+    if (dataClassName == 'RevPage') {
+      return deserialize<_ium7xjeg.RevPage>(data['data']);
+    }
+    if (dataClassName == 'RevPageKind') {
+      return deserialize<_i3q3ua5p.RevPageKind>(data['data']);
+    }
+    if (dataClassName == 'RevPageRequest') {
+      return deserialize<_if03ikx4.RevPageRequest>(data['data']);
+    }
+    if (dataClassName == 'RevRejectCode') {
+      return deserialize<_iilsyt4b.RevRejectCode>(data['data']);
+    }
     if (dataClassName == 'AccessRequest') {
       return deserialize<_i8scn8dm.AccessRequest>(data['data']);
     }
@@ -5281,41 +5501,44 @@ class Protocol extends _isd.DatabaseSerializationManager
     if (dataClassName == 'CellHistoryPage') {
       return deserialize<_i09xo3k8.CellHistoryPage>(data['data']);
     }
-    if (dataClassName == 'ReservedSpace') {
-      return deserialize<_i4tr28q5.ReservedSpace>(data['data']);
-    }
     if (dataClassName == 'RevertResult') {
       return deserialize<_ilv3hlxr.RevertResult>(data['data']);
     }
     if (dataClassName == 'RevertSkip') {
       return deserialize<_ipqum05l.RevertSkip>(data['data']);
     }
+    if (dataClassName == 'Dimension') {
+      return deserialize<_ilnsyzhq.Dimension>(data['data']);
+    }
+    if (dataClassName == 'EmbeddedObjectKind') {
+      return deserialize<_ihfpm0ve.EmbeddedObjectKind>(data['data']);
+    }
+    if (dataClassName == 'HorizontalAlign') {
+      return deserialize<_iofwzekn.HorizontalAlign>(data['data']);
+    }
+    if (dataClassName == 'RecalcMode') {
+      return deserialize<_i0z9m4nl.RecalcMode>(data['data']);
+    }
+    if (dataClassName == 'ScriptBuildStatus') {
+      return deserialize<_io4oc09s.ScriptBuildStatus>(data['data']);
+    }
+    if (dataClassName == 'SheetKind') {
+      return deserialize<_i8ne06ql.SheetKind>(data['data']);
+    }
+    if (dataClassName == 'TriggerKind') {
+      return deserialize<_irmtoho8.TriggerKind>(data['data']);
+    }
+    if (dataClassName == 'VerticalAlign') {
+      return deserialize<_ivf2txqv.VerticalAlign>(data['data']);
+    }
+    if (dataClassName == 'WrapStrategy') {
+      return deserialize<_iz9rjt8b.WrapStrategy>(data['data']);
+    }
     if (dataClassName == 'SheetsActivitySummary') {
       return deserialize<_iaehez21.SheetsActivitySummary>(data['data']);
     }
     if (dataClassName == 'SheetsContributorStat') {
       return deserialize<_i9yjzgjk.SheetsContributorStat>(data['data']);
-    }
-    if (dataClassName == 'SheetsDirtySpace') {
-      return deserialize<_ign37bwd.SheetsDirtySpace>(data['data']);
-    }
-    if (dataClassName == 'SheetsJournalSpace') {
-      return deserialize<_i6vovdef.SheetsJournalSpace>(data['data']);
-    }
-    if (dataClassName == 'SheetsRowJournal') {
-      return deserialize<_i09o85d1.SheetsRowJournal>(data['data']);
-    }
-    if (dataClassName == 'SpaceKind') {
-      return deserialize<_i19n72yw.SpaceKind>(data['data']);
-    }
-    if (dataClassName == 'SpaceStats') {
-      return deserialize<_izbczo40.SpaceStats>(data['data']);
-    }
-    if (dataClassName == 'SubscribeResult') {
-      return deserialize<_i6dq35xo.SubscribeResult>(data['data']);
-    }
-    if (dataClassName == 'SubscriptionReason') {
-      return deserialize<_ic8hyldr.SubscriptionReason>(data['data']);
     }
     if (dataClassName == 'ScriptAuthorizationView') {
       return deserialize<_icjzxy6x.ScriptAuthorizationView>(data['data']);
@@ -5385,6 +5608,27 @@ class Protocol extends _isd.DatabaseSerializationManager
     }
     if (dataClassName == 'ChartSourceSummary') {
       return deserialize<_inygrvyi.ChartSourceSummary>(data['data']);
+    }
+    if (dataClassName == 'BuildKind') {
+      return deserialize<_ipok3hcm.BuildKind>(data['data']);
+    }
+    if (dataClassName == 'BuildTrigger') {
+      return deserialize<_isb6wks2.BuildTrigger>(data['data']);
+    }
+    if (dataClassName == 'DeckAppearance') {
+      return deserialize<_isf9v7y6.DeckAppearance>(data['data']);
+    }
+    if (dataClassName == 'PlaceholderType') {
+      return deserialize<_i4oq3vgh.PlaceholderType>(data['data']);
+    }
+    if (dataClassName == 'SlideElementKind') {
+      return deserialize<_isah8148.SlideElementKind>(data['data']);
+    }
+    if (dataClassName == 'SlideSizePreset') {
+      return deserialize<_isghg0k1.SlideSizePreset>(data['data']);
+    }
+    if (dataClassName == 'TableDimension') {
+      return deserialize<_i5m4q7yg.TableDimension>(data['data']);
     }
     if (dataClassName == 'PresentationCommandEvent') {
       return deserialize<_iz9vxb2f.PresentationCommandEvent>(data['data']);
@@ -5570,82 +5814,17 @@ class Protocol extends _isd.DatabaseSerializationManager
       data['className'] = dataClassName.substring(19);
       return _iaic.Protocol().deserializeByClassName(data);
     }
-    if (dataClassName.startsWith('serverpod_offline_sync.')) {
-      data['className'] = dataClassName.substring(23);
-      return _ipulbpi2.Protocol().deserializeByClassName(data);
-    }
     if (dataClassName.startsWith('serverpod_auth_core.')) {
       data['className'] = dataClassName.substring(20);
       return _iacc.Protocol().deserializeByClassName(data);
-    }
-    if (dataClassName.startsWith('wonky_sync_models.')) {
-      data['className'] = dataClassName.substring(18);
-      return _i810rwvy.Protocol().deserializeByClassName(data);
     }
     return super.deserializeByClassName(data);
   }
 
   void _registerHostProtocols() {
     _iaic.Protocol().registerHostProtocol('wonky', this);
-    _ipulbpi2.Protocol().registerHostProtocol('wonky', this);
     _iacc.Protocol().registerHostProtocol('wonky', this);
-    _i810rwvy.Protocol().registerHostProtocol('wonky', this);
   }
-
-  @override
-  _isd.Table? getTableForType(Type t) {
-    {
-      var protocol = _iaic.Protocol();
-      var table = protocol is _isd.DatabaseSerializationManager
-          ? (protocol as _isd.DatabaseSerializationManager).getTableForType(t)
-          : null;
-      if (table != null) {
-        return table;
-      }
-    }
-    {
-      var protocol = _ipulbpi2.Protocol();
-      var table = protocol is _isd.DatabaseSerializationManager
-          ? (protocol as _isd.DatabaseSerializationManager).getTableForType(t)
-          : null;
-      if (table != null) {
-        return table;
-      }
-    }
-    {
-      var protocol = _iacc.Protocol();
-      var table = protocol is _isd.DatabaseSerializationManager
-          ? (protocol as _isd.DatabaseSerializationManager).getTableForType(t)
-          : null;
-      if (table != null) {
-        return table;
-      }
-    }
-    {
-      var protocol = _i810rwvy.Protocol();
-      var table = protocol is _isd.DatabaseSerializationManager
-          ? (protocol as _isd.DatabaseSerializationManager).getTableForType(t)
-          : null;
-      if (table != null) {
-        return table;
-      }
-    }
-    switch (t) {
-      case _i4tr28q5.ReservedSpace:
-        return _i4tr28q5.ReservedSpace.t;
-      case _ign37bwd.SheetsDirtySpace:
-        return _ign37bwd.SheetsDirtySpace.t;
-      case _i6vovdef.SheetsJournalSpace:
-        return _i6vovdef.SheetsJournalSpace.t;
-      case _i09o85d1.SheetsRowJournal:
-        return _i09o85d1.SheetsRowJournal.t;
-    }
-    return null;
-  }
-
-  @override
-  List<_isd.TableDefinition> getTargetTableDefinitions() =>
-      targetTableDefinitions;
 
   @override
   String getModuleName() => 'wonky';
@@ -5661,9 +5840,6 @@ class Protocol extends _isd.DatabaseSerializationManager
     }
     try {
       return _iaic.Protocol().mapRecordToJson(record);
-    } catch (_) {}
-    try {
-      return _ipulbpi2.Protocol().mapRecordToJson(record);
     } catch (_) {}
     try {
       return _iacc.Protocol().mapRecordToJson(record);

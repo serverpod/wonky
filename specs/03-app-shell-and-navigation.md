@@ -313,6 +313,12 @@ behind `confirmExternalLink` (§1).
   directly.
 - Long-lived services (Connectivity, Presence, UndoService, CommandRegistry, KeymapService,
   McpBridge, Preferences) are created in `WonkyShell` and provided at the top.
+- **Start-up (CQ-45):** the shell loads the device preferences, then, when signed in and the
+  device has the user's profile from an earlier session (`UserRepository.cachedMe`), binds
+  that user (user store, drive cache), runs the once-per-sign-in setup (drive watch, storage,
+  the app's `onSignedIn`) and shows the UI; `getMe` and the server preferences load in
+  parallel in the background (the keymap overrides reapply after). Without a cached profile
+  it waits for `getMe` (with the server preferences loaded in parallel) as before.
 
 ## 6. Desktop specifics (deferred in v2)
 

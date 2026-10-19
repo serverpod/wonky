@@ -13,7 +13,6 @@ final class SnapshotHeader {
     required this.spreadsheetId,
     required this.capturedAt,
     this.engineHlc,
-    this.syncTablesHash,
     this.engineVersion,
     this.counts = const {},
     this.keys = const {},
@@ -28,7 +27,6 @@ final class SnapshotHeader {
   final String spreadsheetId;
   final DateTime capturedAt;
   final String? engineHlc;
-  final String? syncTablesHash;
   final String? engineVersion;
 
   /// Row counts per table.
@@ -44,7 +42,6 @@ final class SnapshotHeader {
     'spreadsheetId': spreadsheetId,
     'capturedAt': capturedAt.toUtc().toIso8601String(),
     'engineHlc': ?engineHlc,
-    'syncTablesHash': ?syncTablesHash,
     'engineVersion': ?engineVersion,
     'counts': counts,
     'keys': keys,
@@ -63,7 +60,6 @@ final class SnapshotHeader {
       spreadsheetId: m['spreadsheetId']! as String,
       capturedAt: DateTime.parse(m['capturedAt']! as String),
       engineHlc: m['engineHlc'] as String?,
-      syncTablesHash: m['syncTablesHash'] as String?,
       engineVersion: m['engineVersion'] as String?,
       counts: {
         for (final e in ((m['counts'] as Map?) ?? const {}).entries)
@@ -113,7 +109,6 @@ abstract final class SnapshotCodec {
     required String spreadsheetId,
     required DateTime capturedAt,
     String? engineHlc,
-    String? syncTablesHash,
     String? engineVersion,
   }) {
     final byTable = <String, List<Map<String, Object?>>>{};
@@ -145,7 +140,6 @@ abstract final class SnapshotCodec {
       spreadsheetId: spreadsheetId,
       capturedAt: capturedAt,
       engineHlc: engineHlc,
-      syncTablesHash: syncTablesHash,
       engineVersion: engineVersion,
       counts: {for (final t in tables) t: byTable[t]!.length},
       keys: keys,

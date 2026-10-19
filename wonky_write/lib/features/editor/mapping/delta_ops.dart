@@ -15,6 +15,19 @@ abstract final class DeltaOps {
     return inserted == 0 ? Delta() : (Delta()..delete(inserted));
   }
 
+  /// Length after minus length before of a change (inserts − deletes).
+  static int lengthChange(Delta change) {
+    var net = 0;
+    for (final op in change.operations) {
+      if (op.isInsert) {
+        net += op.length!;
+      } else if (op.isDelete) {
+        net -= op.length!;
+      }
+    }
+    return net;
+  }
+
   /// Total length of a document Delta (inserts only).
   static int documentLength(Delta document) {
     var length = 0;

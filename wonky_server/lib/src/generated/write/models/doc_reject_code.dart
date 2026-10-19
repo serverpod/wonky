@@ -26,7 +26,10 @@ enum DocRejectCode implements _is.SerializableModel {
   tooLarge,
 
   /// The base revision is ahead of the server head.
-  unknownBase;
+  unknownBase,
+
+  /// Unexpected server error: retry with the same clientOpId.
+  internal;
 
   static DocRejectCode fromJson(String name) {
     switch (name) {
@@ -40,6 +43,8 @@ enum DocRejectCode implements _is.SerializableModel {
         return DocRejectCode.tooLarge;
       case 'unknownBase':
         return DocRejectCode.unknownBase;
+      case 'internal':
+        return DocRejectCode.internal;
       default:
         throw ArgumentError(
           'Value "$name" cannot be converted to "DocRejectCode"',

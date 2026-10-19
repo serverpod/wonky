@@ -1,5 +1,6 @@
 import '../../eval/args.dart';
 import '../../eval/eval_context.dart' show FormulaError, fail;
+import '../../values/collation.dart';
 import '../../values/compare.dart';
 import '../../values/errors.dart';
 import '../../values/fvalue.dart';
@@ -209,10 +210,29 @@ _Key _keyOf(Args a, FArray data, FValue spec, bool ascending) {
 }
 
 List<int> _order(int n, List<_Key> keys) {
+  // Collation keys once per row and key column, not per comparison.
+  final textKeys = [
+    for (final (values, _) in keys)
+      [
+        for (var i = 0; i < n; i++)
+          switch (values[i]) {
+            FText(:final v) ||
+            FRich(scalar: FText(:final v)) => Collation.key(v),
+            _ => null,
+          },
+      ],
+  ];
   final order = List<int>.generate(n, (i) => i);
   order.sort((x, y) {
-    for (final (values, asc) in keys) {
-      final c = Compare.sortCompare(values[x], values[y], ascending: asc);
+    for (var k = 0; k < keys.length; k++) {
+      final (values, asc) = keys[k];
+      final c = Compare.sortCompare(
+        values[x],
+        values[y],
+        ascending: asc,
+        keyA: textKeys[k][x],
+        keyB: textKeys[k][y],
+      );
       if (c != 0) return c;
     }
     return x - y;

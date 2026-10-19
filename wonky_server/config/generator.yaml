@@ -2,15 +2,3 @@ type: server
 
 client_package_path: ../wonky_client
 server_test_tools_path: test/integration/test_tools
-
-# Synced Sheets models (`database: sync`) live in this shared package so the
-# server, the client and the Flutter apps use the same classes.
-shared_packages:
-  - ../packages/wonky_sync_models
-
-modules:
-  serverpod_offline_sync:
-    nickname: offline_sync
-
-experimental_features:
-  databaseSync: true

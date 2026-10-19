@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/spellcheck.dart' show SpellDictionaries;
+import 'package:wonky_slides/features/print/slides_client_export.dart';
 import 'package:wonky_slides/features/spellcheck/slides_spelling.dart';
 
 /// Runs before every test file of `wonky_slides` (specs/15 §4).
@@ -17,6 +18,9 @@ import 'package:wonky_slides/features/spellcheck/slides_spelling.dart';
 /// dictionaries; spelling tests install fakes (`installFakeSpelling`) and
 /// `real_dictionary_test.dart` opts into the real ones.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  // PDF image work stays on the test isolate (fake async can't wait for
+  // another isolate); pdf_image_isolate_test covers the isolate.
+  SlidesClientExport.useImageIsolate = false;
   setUp(() {
     SlidesSpelling.debugDictionaries ??= SpellDictionaries(
       bundle: _NoDictionaries(),

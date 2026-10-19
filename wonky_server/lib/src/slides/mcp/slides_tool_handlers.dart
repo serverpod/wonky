@@ -4,7 +4,12 @@ import '../../platform/mcp/tool_executor.dart';
 import '../../platform/mcp/tool_support.dart';
 import 'slides_deck_handlers.dart';
 import 'slides_element_handlers.dart';
+import 'slides_build_handlers.dart';
+import 'slides_chart_handlers.dart';
+import 'slides_code_handlers.dart';
 import 'slides_media_handlers.dart';
+import 'slides_table_handlers.dart';
+import 'slides_text_handlers.dart';
 import 'slides_read_handlers.dart';
 
 /// The headless `slides.*` tools (Slides 11 §3) and the handler of
@@ -40,30 +45,30 @@ abstract final class SlidesToolHandlers {
     _t(SlidesTools.deleteGroup, SlidesDeckHandlers.deleteGroup),
     _t(SlidesTools.addElements, SlidesElementHandlers.addElements),
     _t(SlidesTools.updateElements, SlidesElementHandlers.updateElements),
-    _t(SlidesTools.setText, SlidesElementHandlers.setText),
-    _t(SlidesTools.formatText, SlidesElementHandlers.formatText),
-    _t(SlidesTools.replaceText, SlidesElementHandlers.replaceText),
+    _t(SlidesTools.setText, SlidesTextHandlers.setText),
+    _t(SlidesTools.formatText, SlidesTextHandlers.formatText),
+    _t(SlidesTools.replaceText, SlidesTextHandlers.replaceText),
     _t(SlidesTools.deleteElements, SlidesElementHandlers.deleteElements),
     _t(SlidesTools.duplicateElements, SlidesElementHandlers.duplicateElements),
     _t(SlidesTools.groupElements, SlidesElementHandlers.groupElements),
     _t(SlidesTools.ungroupElements, SlidesElementHandlers.ungroupElements),
     _t(SlidesTools.alignElements, SlidesElementHandlers.alignElements),
-    _t(SlidesTools.setTableCells, SlidesElementHandlers.setTableCells),
-    _t(SlidesTools.listSheetCharts, SlidesMediaHandlers.listSheetCharts),
-    _t(SlidesTools.insertLinkedChart, SlidesMediaHandlers.insertLinkedChart),
+    _t(SlidesTools.setTableCells, SlidesTableHandlers.setTableCells),
+    _t(SlidesTools.listSheetCharts, SlidesChartHandlers.listSheetCharts),
+    _t(SlidesTools.insertLinkedChart, SlidesChartHandlers.insertLinkedChart),
     _t(
       SlidesTools.refreshLinkedCharts,
-      SlidesMediaHandlers.refreshLinkedCharts,
+      SlidesChartHandlers.refreshLinkedCharts,
     ),
-    _t(SlidesTools.updateChartStyle, SlidesMediaHandlers.updateChartStyle),
-    _t(SlidesTools.unlinkChart, SlidesMediaHandlers.unlinkChart),
-    _t(SlidesTools.addCodeBlock, SlidesMediaHandlers.addCodeBlock),
-    _t(SlidesTools.setCodeStates, SlidesMediaHandlers.setCodeStates),
-    _t(SlidesTools.updateCodeBlock, SlidesMediaHandlers.updateCodeBlock),
-    _t(SlidesTools.setBuilds, SlidesMediaHandlers.setBuilds),
-    _t(SlidesTools.updateBuild, SlidesMediaHandlers.updateBuild),
-    _t(SlidesTools.deleteBuilds, SlidesMediaHandlers.deleteBuilds),
-    _t(SlidesTools.setTransition, SlidesMediaHandlers.setTransition),
+    _t(SlidesTools.updateChartStyle, SlidesChartHandlers.updateChartStyle),
+    _t(SlidesTools.unlinkChart, SlidesChartHandlers.unlinkChart),
+    _t(SlidesTools.addCodeBlock, SlidesCodeHandlers.addCodeBlock),
+    _t(SlidesTools.setCodeStates, SlidesCodeHandlers.setCodeStates),
+    _t(SlidesTools.updateCodeBlock, SlidesCodeHandlers.updateCodeBlock),
+    _t(SlidesTools.setBuilds, SlidesBuildHandlers.setBuilds),
+    _t(SlidesTools.updateBuild, SlidesBuildHandlers.updateBuild),
+    _t(SlidesTools.deleteBuilds, SlidesBuildHandlers.deleteBuilds),
+    _t(SlidesTools.setTransition, SlidesBuildHandlers.setTransition),
     _t(SlidesTools.exportPdf, SlidesMediaHandlers.exportPdf),
   ];
 

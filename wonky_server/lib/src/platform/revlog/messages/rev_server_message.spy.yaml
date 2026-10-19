@@ -1,0 +1,3 @@
+### Server → client messages of `<app>Doc.connect` (RevLog spec 04 §2.2).
+class: RevServerMessage
+sealed: true

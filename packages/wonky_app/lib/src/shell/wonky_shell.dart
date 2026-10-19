@@ -26,7 +26,6 @@ import '../data/drive_repository.dart';
 import '../data/file_repository.dart';
 import '../data/sharing_repository.dart';
 import '../data/user_repository.dart';
-import '../document/document_controller.dart';
 import '../l10n/wonky_app_localizations.dart';
 import '../mcp_bridge/mcp_bridge_scope.dart';
 import '../routing/router.dart';
@@ -197,7 +196,20 @@ class _WonkyShellState extends State<WonkyShell> {
     s.mcp.setEnabled(s.prefs.device<bool>('mcp.uiBridge') ?? kDebugMode);
     s.connectivity.start();
     unawaited(_loadServerInfo());
-    if (s.auth.isSignedIn) await _afterSignIn(null);
+    if (s.auth.isSignedIn) {
+      // Render from the device first (CQ-45, H-6): with the profile cached
+      // by an earlier session, the UI shows without waiting for the
+      // network; the profile and preferences refresh in the background.
+      final cached = await s.repositories.users.cachedMe();
+      if (cached != null) {
+        await _bindUser(cached);
+        await _setUpSignedIn();
+        if (mounted) setState(() => _ready = true);
+        unawaited(_refreshSignedIn());
+        return;
+      }
+      await _afterSignIn(null);
+    }
     if (mounted) setState(() => _ready = true);
   }
 
@@ -224,20 +236,53 @@ class _WonkyShellState extends State<WonkyShell> {
         debugPrint('Setting the display name failed: $e');
       }
     }
+    // The profile and the preferences in parallel (H-6).
+    final remotePrefs = _signedInSetup ? null : s.prefs.loadRemote();
     try {
-      final me = await s.repositories.users.getMe();
-      s.currentUser.value = me;
-      final user = me.summary.uuid.uuid;
-      s.userStore = s.deviceStore.scoped('user.$user.');
-      final d = s.drive;
-      if (d is CachedDriveRepository) await d.init();
+      await _bindUser(await s.repositories.users.getMe());
     } catch (e) {
       debugPrint('Loading the profile failed: $e');
     }
     if (_signedInSetup) return;
-    _signedInSetup = true;
-    await s.prefs.loadRemote();
+    await remotePrefs;
     s.keymap.loadOverrides(s.prefs.keymapOverrides);
+    await _setUpSignedIn();
+  }
+
+  /// Makes [me] the current user: their device store and drive cache.
+  Future<void> _bindUser(UserProfileView me) async {
+    final changed = s.currentUser.value?.summary.uuid != me.summary.uuid;
+    s.currentUser.value = me;
+    if (!changed) return;
+    final user = me.summary.uuid.uuid;
+    s.userStore = s.deviceStore.scoped('user.$user.');
+    final d = s.drive;
+    if (d is CachedDriveRepository) await d.init();
+  }
+
+  /// The background part of a start from the cached profile: the server's
+  /// profile and preferences, in parallel.
+  Future<void> _refreshSignedIn() async {
+    await Future.wait([
+      () async {
+        try {
+          final me = await s.repositories.users.getMe();
+          if (mounted && s.auth.isSignedIn) await _bindUser(me);
+        } catch (e) {
+          debugPrint('Loading the profile failed: $e');
+        }
+      }(),
+      s.prefs.loadRemote(),
+    ]);
+    if (!mounted) return;
+    s.keymap.loadOverrides(s.prefs.keymapOverrides);
+  }
+
+  /// Once per sign-in: live drive changes, storage, undo signals and the
+  /// app's own setup.
+  Future<void> _setUpSignedIn() async {
+    if (_signedInSetup) return;
+    _signedInSetup = true;
     s.supervisor.supervise<DriveChange>(
       'drive.watch',
       s.drive.watch,
@@ -305,43 +350,40 @@ class _WonkyShellState extends State<WonkyShell> {
         Provider<ShellServices>.value(value: s),
         ChangeNotifierProvider<AuthController>.value(value: s.auth),
       ],
-      child: ActiveDocumentHostScope(
-        host: s,
-        child: ListenableBuilder(
-          listenable: s.prefs,
-          builder: (context, _) => ShadApp.router(
-            title: config.appName,
-            debugShowCheckedModeBanner: false,
-            theme: WonkyTheme.light(s.prefs.themeConfig),
-            darkTheme: WonkyTheme.dark(s.prefs.themeConfig),
-            themeMode: s.prefs.themeMode,
-            routerConfig: s.router,
-            locale: _locale,
-            supportedLocales: WonkyAppLocalizations.supportedLocales,
-            localizationsDelegates: [
-              WonkyAppLocalizations.delegate,
-              WonkyUiLocalizations.delegate,
-              ...config.localizationsDelegates,
-            ],
-            builder: (context, child) => WonkyThemeScope(
-              data: WonkyThemeExtension(
-                density: s.prefs.wonkyDensity,
-                reduceMotion: s.prefs.reduceMotion,
-              ),
-              child: KeymapScope(
-                scope: KeyScope.global,
-                keymap: s.keymap,
-                child: config.wrap(
-                  context,
-                  s,
-                  McpBridgeScope(
+      child: ListenableBuilder(
+        listenable: s.prefs,
+        builder: (context, _) => ShadApp.router(
+          title: config.appName,
+          debugShowCheckedModeBanner: false,
+          theme: WonkyTheme.light(s.prefs.themeConfig),
+          darkTheme: WonkyTheme.dark(s.prefs.themeConfig),
+          themeMode: s.prefs.themeMode,
+          routerConfig: s.router,
+          locale: _locale,
+          supportedLocales: WonkyAppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            WonkyAppLocalizations.delegate,
+            WonkyUiLocalizations.delegate,
+            ...config.localizationsDelegates,
+          ],
+          builder: (context, child) => WonkyThemeScope(
+            data: WonkyThemeExtension(
+              density: s.prefs.wonkyDensity,
+              reduceMotion: s.prefs.reduceMotion,
+            ),
+            child: KeymapScope(
+              scope: KeyScope.global,
+              keymap: s.keymap,
+              child: config.wrap(
+                context,
+                s,
+                McpBridgeScope(
+                  services: s,
+                  appTools: config.mcpUiTools(s),
+                  child: ShellOverlays(
                     services: s,
-                    appTools: config.mcpUiTools(s),
-                    child: ShellOverlays(
-                      services: s,
-                      ready: _ready,
-                      child: child ?? const SizedBox.shrink(),
-                    ),
+                    ready: _ready,
+                    child: child ?? const SizedBox.shrink(),
                   ),
                 ),
               ),

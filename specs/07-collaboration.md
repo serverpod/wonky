@@ -3,6 +3,15 @@
 This spec defines the **shared** collaboration framework. App specs define how each feature
 anchors to content (text ranges vs. cells) and how versions are captured.
 
+**Edit propagation.** Content edits travel over each app's own stream, not over presence:
+Write ops over the document stream (OT, [Write 03](wonky_write/03-sync-protocol.md)),
+spreadsheet and deck ops over the RevLog stream ([17](17-revlog-sync.md)). The server commits
+an op, posts it on the bus at once (`immediate: true`, also across instances) and every other
+open client applies it, so a collaborator sees an edit about one round trip after it was made
+(RevLog budgets: p95 < 250 ms on one instance, < 400 ms across two, 17 part 7 P1–P2).
+Presence (cursors, selections, hints) is separate and may lag up to the bus flush interval
+across instances (13 §4).
+
 ## 1. Presence
 
 ### 1.1 Protocol
@@ -26,6 +35,13 @@ PresenceEndpoint.join(String itemUuid, Stream<PresenceUpdate> updates) → Strea
 - With several instances each session also sends a `beat` every 30 s; sessions not heard of
   for 90 s leave the roster (their instance crashed or the `bye` was lost;
   [13 §4](13-security-and-operations.md)).
+- **Limits**: the server drops updates with a cursor (`cursorJson`) over 8 KB or a `mode` /
+  followed session id over 64 chars, and relays at most 20 updates per second and session
+  (more are coalesced: the latest one is sent when the second ends).
+- **Access re-check**: a joined session re-resolves the user's role when the item's ACL
+  changes (the user's drive signal for the item) and every 5 minutes (grants that expire send
+  no signal). Without viewer access the stream ends with `notFound`, like a join without
+  access.
 - **MCP/AI presence**: when an agent edits headlessly, the server injects a transient
   participant (`actorKind: mcp`, name "Claude via MCP (Anna)") so humans see agent activity.
 
@@ -180,8 +196,14 @@ fields:
 - Email: **mentions and assignments** set to email are sent right away (a `FutureCall` without
   delay, `NotificationEmailFutureCall`); everything else set to email goes into the **digest
   every 15 min** (`MaintenanceFutureCall.sendDigests`), or one email each when `digest` is
-  false. Only unread, not yet emailed notifications of the last 2 days are sent;
-  `emailedAt` marks them (idempotent; a failed immediate email is retried by the digest). Links
+  false. Only unread, not yet emailed notifications of the last 2 days are sent. A
+  notification whose kind is set to email when it is created is marked `emailPending`; the
+  digest reads only those rows (so in-app notifications never fill its batch), drops the mark
+  of rows read, too old or no longer set to email, and every email first **claims** its rows
+  (`emailPending` → false, `emailedAt` set, in one conditional update), so the immediate email
+  and the digest never send one twice; a failed send gives the claim back and the digest
+  retries it. Read notifications are deleted after 90 days and all after a year
+  (`notifications.purgeOld`, daily). Links
   point at the item's URL by kind (`<web origin>/write/d/<uuid>`, `/sheets/s/…`, (v2)
   `/slides/p/…`, `/drive/file/…`, `WonkyConfig.itemUrl`, 01 §2.4) and the footer at
   Wonky Work settings › Notifications. (v2) `storage` notifications are in-app only.
@@ -208,7 +230,7 @@ fields:
   createdAt: DateTime
   authors: List<int>         # users who contributed since previous version
   storageKind: VersionStorage # writeRevision | snapshotFile
-  revision: int?             # Write: op-log revision this version represents
+  revision: int?             # op-log revision this version represents (Write; Sheets and Slides: the RevLog file revision captured)
   snapshotFileId: UuidValue? # Sheets, (v2) Slides: compressed snapshot in cloud storage
   sizeBytes: int
 indexes:
@@ -219,6 +241,27 @@ Capture policy (both apps): an `auto` version after ≥ 5 min of inactivity foll
 most one per 30 min of continuous editing, plus on explicit "Name current version". Auto versions
 are thinned over time (keep all for 7 days, then hourly for 30 days, then daily). Named
 versions are never thinned.
+
+How the policy runs (`VersionService`): edits are recorded with one atomic upsert of
+`ItemVersionState` (editors merged in SQL, so concurrent recorders never lose one). The
+minute job `versions.capture` **claims** due items one at a time (`capturingSince`,
+`FOR UPDATE SKIP LOCKED`), so overlapping runs and instances never capture an item twice; a
+claim older than 10 minutes is taken over, which is also when a failed capture is retried. A
+capture reads the state *before* the provider captures (`beforeCapture` first writes pending
+bookkeeping, e.g. Write's batched edits) and clears the dirty flag only if `lastEditAt` is
+unchanged; an edit recorded during the capture keeps the item dirty from the capture's start.
+Providers compute their index during the capture (Sheets' per-sheet counts, Slides' slide list)
+instead of re-reading the snapshot they just stored; Sheets encodes its snapshot as a stream.
+Nightly thinning (`versions.thin`) works through the items in rounds of 100 under a time
+budget.
+
+Sheets and Slides capture a version **at a file revision**: the snapshot is read in one
+transaction at the file's head revision, which `ItemVersion.revision` records. A version's
+changes and authors are the RevLog ops in its **revision window** (the previous version's
+revision, this version's revision], read from `rev_op`, so an edit made offline belongs to the
+version whose window contains its commit ([17](17-revlog-sync.md) part 2 §2.5;
+[Sheets 10 §5](wonky_sheets/10-collaboration-history.md),
+[Slides 09 §4](wonky_slides/09-collaboration-history.md)).
 
 Access: **Editors and Owners** can view version history, name versions and restore;
 Commenters/Viewers cannot (as in Google Docs). *Make a copy* from a version requires Editor+.
@@ -232,7 +275,10 @@ UI (full-screen route `/…/history`):
   *Download as…*. Filter *Only named versions*.
 - Top bar: back arrow ("Back to editing"), current version title, *Restore this version* button.
 - Restore creates a `restorePoint` of the current state, then applies the version as a normal
-  forward edit (collaborators see it live; it is one undo step for the restoring user).
+  forward edit (collaborators see it live; it is one undo step for the restoring user). Sheets
+  and Slides submit the diff as a recorded server change (`submitServerChange(record: true)`,
+  17 part 5 §8), so it is undone with `*.serverChange` (08 §3.3); Sheets first checks the whole
+  diff against protected ranges and refuses a restore the user can't fully write.
 
 ## 6. Activity dashboard (removed from the UI)
 The *Tools › Activity dashboard* dialog (`shell.activity.open`) was removed; the item's activity
@@ -248,7 +294,7 @@ feed stays in the drive details panel (suite 05 §3.1). The server side below st
 - **Activity**: the item's activity feed (same widget as the details panel, with paging).
 
 Views are recorded per user and UTC day (`item_view_day`) whenever the item is opened
-(`DriveService.recordOpen`: `drive.markOpened`, document connect, invite). The privacy toggle
+(`DriveUserStates.recordOpen`: `drive.markOpened`, document connect, invite). The privacy toggle
 **"Show my view history"** (`UserActivitySettings.showViewHistory`, default on;
 `ActivityEndpoint.setShowViewHistory`) has no UI while the dialog is gone; when off, the user's
 views still count anonymously in the trends.

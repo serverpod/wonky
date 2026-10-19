@@ -75,19 +75,22 @@ void main() {
       expect(sql, contains('t."height"'));
       expect(sql, contains('t."hidden"'));
       expect(sql, contains('t."formatJson"'));
-      for (final c in ['id', 'spaceId', 'sheetId', 'sortKey', 'createdAt']) {
+      for (final c in [
+        'id',
+        'fileId',
+        'revision',
+        'sheetId',
+        'sortKey',
+        'createdAt',
+      ]) {
         expect(sql, isNot(contains('t."$c"')));
       }
     });
 
-    test('when the change log, script builds or the spreadsheet row are '
-        'priced then they cost nothing beyond the base', () {
-      final e = SheetsSizeEstimator();
-
-      expect(e.tables, isNot(contains('change_log')));
-      expect(e.tables, isNot(contains('script_build')));
-      expect(e.rowBytes('spreadsheet'), '0');
-      expect(e.baseBytes, SheetsSizeEstimator.base);
+    test('when script builds or the spreadsheet row are priced then they '
+        'cost nothing beyond the base', () {
+      expect(SheetsSizeEstimator.excluded, contains('script_build'));
+      expect(SheetsSizeEstimator.rowBytes('spreadsheet'), '0');
     });
   });
 

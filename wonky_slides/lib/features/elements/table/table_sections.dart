@@ -104,7 +104,7 @@ Widget cellSection(
   final ix = ed.model.indexes.table(e.id);
   final sel = TableCellSelection.of(ed);
   final range = (sel.tableId == e.id ? sel.range : null) ?? TableRange.all(ix);
-  final cells = range == null ? const [] : range.cells(ix);
+  final cells = range?.cells(ix) ?? const [];
   final recs = [for (final c in cells) ix.cell(c.rowId, c.columnId)];
   T? common<T>(T? Function(SlideTableCellRec? r) f) {
     final v = {for (final r in recs) f(r)};

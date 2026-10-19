@@ -39,6 +39,11 @@ class WonkyHighlightLayerBuilder implements SuperEditorLayerBuilder {
   final WriteEditorController controller;
   final EditorTheme theme;
 
+  /// Find matches measured by the last layout of the layer (tests: only
+  /// the ones near the viewport are).
+  @visibleForTesting
+  static int debugMeasuredFindMatches = 0;
+
   @override
   ContentLayerWidget build(
     BuildContext context,
@@ -96,7 +101,18 @@ class _HighlightLayerState
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = Scrollable.maybeOf(context)?.position;
+    if (!identical(position, _position)) {
+      _position?.removeListener(_onScroll);
+      _position = position?..addListener(_onScroll);
+    }
+  }
+
+  @override
   void dispose() {
+    _position?.removeListener(_onScroll);
     widget.controller.view.removeListener(_onChange);
     widget.controller.removeListener(_onChange);
     super.dispose();
@@ -104,6 +120,87 @@ class _HighlightLayerState
 
   void _onChange() {
     if (mounted) setState(() {});
+  }
+
+  // ---------------------------------------------------------------------------
+  // Viewport (Write 04 §36.2, W-13): highlights are measured only for the
+  // visible part of the document plus one screen above and below; scrolling
+  // past that measures again.
+
+  ScrollPosition? _position;
+  DocumentLayout? _layout;
+
+  /// The document y-range the current layout data covers (null: all).
+  (double, double)? _covered;
+
+  void _onScroll() {
+    final covered = _covered;
+    final layout = _layout;
+    if (covered == null || layout == null || !mounted) return;
+    final visible = _visible(layout);
+    if (visible == null || visible.$1 < covered.$1 || visible.$2 > covered.$2) {
+      setState(() {});
+    }
+  }
+
+  /// The visible document y-range, or null when unknown.
+  (double, double)? _visible(DocumentLayout layout) {
+    final scrollable = context.findAncestorStateOfType<ScrollableState>();
+    final box = scrollable?.context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return null;
+    final top = layout
+        .getDocumentOffsetFromAncestorOffset(box.localToGlobal(Offset.zero))
+        .dy;
+    return (top, top + box.size.height);
+  }
+
+  /// The Delta range `[start, end)` of the blocks in the document y-range
+  /// [range].
+  static (int, int)? _offsetsIn(
+    DocumentLayout layout,
+    WriteEditorController controller,
+    (double, double) range,
+  ) {
+    final mirror = controller.mirror;
+    final count = mirror.nodeCount;
+    if (count == 0) return null;
+    // The top of block [index] in document coordinates (null: not laid out).
+    double? topOf(int index) {
+      final component = layout.getComponentByNodeId(
+        mirror.entryAt(index).nodeId,
+      );
+      final box = component?.context.findRenderObject();
+      if (box is! RenderBox || !box.attached) return null;
+      return layout
+          .getDocumentOffsetFromAncestorOffset(box.localToGlobal(Offset.zero))
+          .dy;
+    }
+
+    // The last block that starts at or above [y] (binary search: blocks are
+    // stacked top to bottom).
+    int? indexAt(double y) {
+      var lo = 0;
+      var hi = count - 1;
+      while (lo < hi) {
+        final mid = (lo + hi + 1) ~/ 2;
+        final top = topOf(mid);
+        if (top == null) return null;
+        if (top <= y) {
+          lo = mid;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      return lo;
+    }
+
+    final i = indexAt(range.$1);
+    final j = indexAt(range.$2);
+    if (i == null || j == null) return null;
+    return (
+      mirror.startOfIndex(i),
+      mirror.startOfIndex(j) + mirror.entryAt(j).length,
+    );
   }
 
   @override
@@ -123,18 +220,48 @@ class _HighlightLayerState
       range.end,
     );
 
+    _layout = documentLayout;
+    // Only find matches and collaborators' selections are limited to the
+    // viewport; without any, nothing is measured.
+    final ranged =
+        view.findMatches.isNotEmpty ||
+        (view.showRemoteCursors &&
+            view.remoteCursors.any((c) => !c.selection.isCollapsed));
+    final visible = ranged ? _visible(documentLayout) : null;
+    final covered = visible == null
+        ? null
+        : (
+            visible.$1 - (visible.$2 - visible.$1),
+            visible.$2 + (visible.$2 - visible.$1),
+          );
+    final window = covered == null
+        ? null
+        : _offsetsIn(documentLayout, controller, covered);
+    _covered = window == null ? null : covered;
+    bool shown(HighlightRange range) =>
+        window == null || (range.end >= window.$1 && range.start <= window.$2);
+
     final find = <Rect>[];
     final active = <Rect>[];
     final matches = view.findMatches;
-    for (var i = 0; i < matches.length && i < 2000; i += 1) {
+    var painted = 0;
+    for (var i = 0; i < matches.length && painted < 2000; i += 1) {
+      if (!shown(matches[i])) continue;
+      painted += 1;
       (i == view.activeFindMatch ? active : find).addAll(rects(matches[i]));
     }
 
+    WonkyHighlightLayerBuilder.debugMeasuredFindMatches = painted;
     final remote = <(Color, List<Rect>)>[];
     if (view.showRemoteCursors) {
       var count = 0;
       for (final cursor in view.remoteCursors) {
         if (cursor.selection.isCollapsed || count >= 50) continue;
+        if (!shown(
+          HighlightRange(cursor.selection.start, cursor.selection.end),
+        )) {
+          continue;
+        }
         count += 1;
         final color = cursor.colorIndex == null
             ? theme.presenceColorFor(cursor.userKey)
@@ -357,7 +484,7 @@ class _RemoteCaretLayerState
     final carets = <_CaretData>[];
     for (final cursor in view.remoteCursors) {
       if (!cursor.focused || carets.length >= 50) continue;
-      final offset = cursor.selection.extent.clamp(0, mirror.length - 1);
+      final offset = cursor.selection.head.clamp(0, mirror.length - 1);
       final rect = DocumentGeometry.caretRect(documentLayout, mirror, offset);
       if (rect == null) continue;
       var color = cursor.colorIndex == null

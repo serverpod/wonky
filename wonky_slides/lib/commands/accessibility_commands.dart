@@ -155,7 +155,11 @@ List<Command<CommandArgs>> accessibilityCommands(ShellServices s) => [
         A11yIssue(rule: rule, slideId: slide, elementId: el),
         resolver: ed.resolver,
       );
-      if (ops == null) return const CommandResult.failed('Nothing to fix');
+      if (ops == null) {
+        return CommandResult.failed(
+          slidesL10nOf(ed.services).errorNothingToFix,
+        );
+      }
       for (final op in ops) {
         ed.apply(ctx, op);
       }

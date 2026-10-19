@@ -21,7 +21,7 @@ class PivotEditButton extends StatelessWidget {
       listenable: Listenable.merge([ed.overlaySignal, ed.scroll, controller]),
       builder: (context, _) {
         final o = controller.activeOutput;
-        final g = ed.lastGeometry;
+        final g = ed.geometry;
         if (o == null || g == null || ed.editor.isEditing) {
           return const SizedBox.shrink();
         }

@@ -120,37 +120,34 @@ Future<PrintRig> pumpPrintPreview(
           WonkyAppLocalizations.delegate,
           ...h.services.config.localizationsDelegates,
         ],
-        child: ActiveDocumentHostScope(
-          host: h.services,
-          child: Stack(
-            children: [
-              // Covered by the opaque print route (not painted), as under
-              // the router's page stack.
-              Offstage(
-                child: DeckEditorScreen(
-                  services: h.services,
-                  itemUuid: uuid.uuid,
-                  sessionFactory: (services, item) async => session,
+        child: Stack(
+          children: [
+            // Covered by the opaque print route (not painted), as under
+            // the router's page stack.
+            Offstage(
+              child: DeckEditorScreen(
+                services: h.services,
+                itemUuid: uuid.uuid,
+                sessionFactory: (services, item) async => session,
+              ),
+            ),
+            Positioned.fill(
+              child: PrintPreviewScreen(
+                services: h.services,
+                itemUuid: uuid.uuid,
+                renderer: (deck, o, cancelled) => SlidesClientExport.render(
+                  deck,
+                  o,
+                  images: session.images,
+                  l: l,
+                  screenLayout: false,
+                  // Per test: cached futures don't cross fake-async zones.
+                  fonts: fonts,
+                  isCancelled: cancelled,
                 ),
               ),
-              Positioned.fill(
-                child: PrintPreviewScreen(
-                  services: h.services,
-                  itemUuid: uuid.uuid,
-                  renderer: (deck, o, cancelled) => SlidesClientExport.render(
-                    deck,
-                    o,
-                    images: session.images,
-                    l: l,
-                    screenLayout: false,
-                    // Per test: cached futures don't cross fake-async zones.
-                    fonts: fonts,
-                    isCancelled: cancelled,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     ),

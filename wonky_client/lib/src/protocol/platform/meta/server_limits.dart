@@ -17,7 +17,6 @@ abstract class ServerLimits
     implements _isc.SerializableModel, _isc.ProtocolSerialization {
   ServerLimits._({
     required this.maxCellsPerSpreadsheet,
-    required this.maxActiveSpacesPerUser,
     required this.maxSheetsPerSpreadsheet,
     required this.maxDocumentChars,
     required this.maxImageUploadBytes,
@@ -30,7 +29,6 @@ abstract class ServerLimits
 
   factory ServerLimits({
     required int maxCellsPerSpreadsheet,
-    required int maxActiveSpacesPerUser,
     required int maxSheetsPerSpreadsheet,
     required int maxDocumentChars,
     required int maxImageUploadBytes,
@@ -44,8 +42,6 @@ abstract class ServerLimits
     return ServerLimits(
       maxCellsPerSpreadsheet:
           jsonSerialization['maxCellsPerSpreadsheet'] as int,
-      maxActiveSpacesPerUser:
-          jsonSerialization['maxActiveSpacesPerUser'] as int,
       maxSheetsPerSpreadsheet:
           jsonSerialization['maxSheetsPerSpreadsheet'] as int,
       maxDocumentChars: jsonSerialization['maxDocumentChars'] as int,
@@ -58,8 +54,6 @@ abstract class ServerLimits
   }
 
   int maxCellsPerSpreadsheet;
-
-  int maxActiveSpacesPerUser;
 
   int maxSheetsPerSpreadsheet;
 
@@ -84,7 +78,6 @@ abstract class ServerLimits
   @_isc.useResult
   ServerLimits copyWith({
     int? maxCellsPerSpreadsheet,
-    int? maxActiveSpacesPerUser,
     int? maxSheetsPerSpreadsheet,
     int? maxDocumentChars,
     int? maxImageUploadBytes,
@@ -98,7 +91,6 @@ abstract class ServerLimits
     return {
       '__className__': 'ServerLimits',
       'maxCellsPerSpreadsheet': maxCellsPerSpreadsheet,
-      'maxActiveSpacesPerUser': maxActiveSpacesPerUser,
       'maxSheetsPerSpreadsheet': maxSheetsPerSpreadsheet,
       'maxDocumentChars': maxDocumentChars,
       'maxImageUploadBytes': maxImageUploadBytes,
@@ -114,7 +106,6 @@ abstract class ServerLimits
     return {
       '__className__': 'ServerLimits',
       'maxCellsPerSpreadsheet': maxCellsPerSpreadsheet,
-      'maxActiveSpacesPerUser': maxActiveSpacesPerUser,
       'maxSheetsPerSpreadsheet': maxSheetsPerSpreadsheet,
       'maxDocumentChars': maxDocumentChars,
       'maxImageUploadBytes': maxImageUploadBytes,
@@ -134,7 +125,6 @@ abstract class ServerLimits
 class _ServerLimitsImpl extends ServerLimits {
   _ServerLimitsImpl({
     required int maxCellsPerSpreadsheet,
-    required int maxActiveSpacesPerUser,
     required int maxSheetsPerSpreadsheet,
     required int maxDocumentChars,
     required int maxImageUploadBytes,
@@ -144,7 +134,6 @@ class _ServerLimitsImpl extends ServerLimits {
     int? quotaBytesPerUser,
   }) : super._(
          maxCellsPerSpreadsheet: maxCellsPerSpreadsheet,
-         maxActiveSpacesPerUser: maxActiveSpacesPerUser,
          maxSheetsPerSpreadsheet: maxSheetsPerSpreadsheet,
          maxDocumentChars: maxDocumentChars,
          maxImageUploadBytes: maxImageUploadBytes,
@@ -160,7 +149,6 @@ class _ServerLimitsImpl extends ServerLimits {
   @override
   ServerLimits copyWith({
     int? maxCellsPerSpreadsheet,
-    int? maxActiveSpacesPerUser,
     int? maxSheetsPerSpreadsheet,
     int? maxDocumentChars,
     int? maxImageUploadBytes,
@@ -172,8 +160,6 @@ class _ServerLimitsImpl extends ServerLimits {
     return ServerLimits(
       maxCellsPerSpreadsheet:
           maxCellsPerSpreadsheet ?? this.maxCellsPerSpreadsheet,
-      maxActiveSpacesPerUser:
-          maxActiveSpacesPerUser ?? this.maxActiveSpacesPerUser,
       maxSheetsPerSpreadsheet:
           maxSheetsPerSpreadsheet ?? this.maxSheetsPerSpreadsheet,
       maxDocumentChars: maxDocumentChars ?? this.maxDocumentChars,

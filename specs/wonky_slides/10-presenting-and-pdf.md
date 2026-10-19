@@ -16,7 +16,7 @@ Read first: [06-animations-and-transitions.md](06-animations-and-transitions.md)
 [05-themes-layouts-masters.md](05-themes-layouts-masters.md) (slide numbers, footers, fonts),
 suite [03-app-shell-and-navigation.md](../03-app-shell-and-navigation.md) §1 (single window),
 [07-collaboration.md](../07-collaboration.md) §1 (presence stream pattern),
-[12-offline-and-sync.md](../12-offline-and-sync.md), Write
+[12-offline-and-sync.md](../12-offline-and-sync.md), [17-revlog-sync.md](../17-revlog-sync.md), Write
 [07-import-export-print.md](../wonky_write/07-import-export-print.md) §4–§10 (PDF exporter,
 print preview, export endpoint patterns reused here).
 
@@ -346,7 +346,8 @@ PresentationEndpoint.join(String deckUuid, PresentationJoin join, Stream<Present
 
 Followers render locally with their own `SlidePlayer`: on `state` they seek to `(slideId, step,
 now − stepStartedAt)` so animations stay roughly in sync (clock offset estimated from the
-endpoint's server timestamps; ±50 ms). The deck content itself comes from normal sync; if the
+endpoint's server timestamps; ±50 ms). The deck content itself comes from normal sync (RevLog:
+edits made during a presentation reach audience devices in about one round trip); if the
 follower's deck revision is older, it waits for sync (spinner "Catching up…").
 
 ### 6.3 Who may join
@@ -377,7 +378,9 @@ follower's deck revision is older, it waits for sync (spinner "Catching up…").
 ### 6.5 Security
 
 Session ids and pairing keys are unguessable and never logged; joining checks the deck ACL on
-every join; remote commands from a user who loses access are rejected; sessions carry no deck
+every join; remote commands from a user who loses access are rejected, and members (audience,
+followers, remotes) re-check their access at most every 5 s while the presenter's state arrives
+and are ended with `noAccess` once it is gone; sessions carry no deck
 content (only positions and ink). Rate limit: 20 commands/s per remote.
 
 ### 6.6 As built (SL-19)
@@ -433,17 +436,19 @@ content (only positions and ink). Rate limit: 20 commands/s per remote.
   resolves through `presentation.resolvePairingCode(code) → PresentationPairingTarget
   {deckUuid, sessionId, pairingKey}?` (bus `present-code:<code>`, ≥ viewer, 10 tries a
   minute per user). Deviation from §6.4: codes are looked up on the bus, not stored.
-- **Same-browser channel (client core, built, not wired):** `PresentFastPath` over
-  `BroadcastChannel('wonky-present-<sessionId>')` carries `state`/`laser`/`ink`/`end` from the
+- **Same-browser channel (design; the unwired client core was removed, CQ-56):** a
+  `BroadcastChannel('wonky-present-<sessionId>')` carrying `state`/`laser`/`ink`/`end` from the
   presenter and `command`s from members as JSON with local times (mapped to server time with
-  the link's `ClockOffset`), plus 2 s pings for liveness.
+  the link's `ClockOffset`), plus 2 s pings for liveness. SL-41 is on hold; the earlier
+  `PresentFastPath`/`PresentChannel` code (never wired into `PresentationLink`) is in the git
+  history.
 - Not built yet: the remote UI, rehearse, the fast-path wiring and *Freeze audience* (TODO).
 
 ---
 
 ## 7. Presenting offline
 
-- A deck is presentable offline once it is in the local replica (offline-first sync, 02/09):
+- A deck is presentable offline once it is in the device's RevLog cache (02 §9.1, 09 §6):
   slides, notes, builds, code states, chart snapshots, themes. Fonts are bundled. Images use
   the local blob cache; the pre-flight (§1.2) checks that all images of the deck are cached and
   otherwise shows "3 images aren't available offline" (*Present anyway* shows placeholders).
@@ -688,6 +693,14 @@ draw real charts; timelines get `chartShapeOf` (`SlideChartMotion.shapes`) for c
 | MCP `slides.export_pdf`, `drive.export`, AI | Server |
 | An older revision (version history) | Server (P1) |
 
+**As built (CQ-44).** The client renders on the UI isolate; the heavy part, image work, runs
+per source image (`SlidesPdfImageJob`: decoded once, then each variant downscaled,
+color-adjusted, blurred and encoded; `pdf_image_prep.dart`). On desktop the client passes
+`SlidesPdfExporter.imageRunner` = a new isolate per source (`pdf_image_isolate_io.dart`),
+killed when *Cancel* is pressed; on the web (and on the server, already in a worker isolate)
+the exporter runs it inline in steps (decode, resize, color-matrix row bands, blur, encode),
+giving the event loop a turn every 12 ms and checking *Cancel* each time.
+
 Budgets: 50 slides with images and charts ≤ 5 s desktop client, ≤ 10 s web, ≤ 15 s server; limits
 500 pages, 2,000 images, 120 s server timeout, 2 concurrent exports per user.
 
@@ -716,9 +729,12 @@ fallbacks, missing images, excluded link targets) under *Details*.
 
 **As built (SL-20).** `slidesExport.export`/`exportWithProgress` reuse Write's
 `ExportResultView`/`ExportProgressEvent` (no new models); `itemUuid` is the deck's drive item
-(= space). Formats: `pdf`; `png`/`pngZip` and `revision` answer `unavailable` (P1). The
-result cache is per server instance, keyed by the deck's content hash (canonical model dump),
-options, fonts version and user. In the app, *File › Download ▸ PDF* opens the preview;
+(= the RevLog file). Formats: `pdf`; `png`/`pngZip` and `revision` answer `unavailable` (P1). The
+result cache is per server instance (an LRU of 256 results), keyed by the deck's RevLog head
+revision, its name and modification time, options, fonts version and user (CQ-24: no hash of the
+whole deck per request). The render runs in a worker isolate (`IsolateRunner`, spec 13 §3) on a
+copy of the deck rows; images are read on the request isolate through the runner's channel;
+closing the progress stream kills the render. In the app, *File › Download ▸ PDF* opens the preview;
 `immediate: true` exports with `options` merged over the last-used options (stored in
 `UserPreferences.slidesDefaults.exportOptions`); the full options dialog is not built — the
 preview's settings column holds every §11.1 option. Client exports have no progress toast or

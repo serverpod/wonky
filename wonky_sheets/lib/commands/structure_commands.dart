@@ -673,7 +673,7 @@ List<Command<CommandArgs>> structureCommands(ShellServices s) => [
       },
       run: (ctx, ed, a) {
         final n = a.integer('count') ?? 0;
-        final g = ed.lastGeometry;
+        final g = ed.geometry;
         if (g != null && n > 0) {
           final extent =
               (rows ? g.sheet.rows.offsetOf(n) : g.sheet.columns.offsetOf(n)) *

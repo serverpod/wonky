@@ -1,0 +1,8 @@
+### Head revision, role and stats of a file (RevLog spec 04 §2.3).
+class: RevFileInfo
+fields:
+  fileUuid: UuidValue
+  revision: int
+  role: AccessRole
+  schemaHash: String
+  stats: String

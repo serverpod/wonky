@@ -11,7 +11,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 import '../../write/models/document_op_kind.dart' as _iymqng84;
 
 abstract class DocumentOpView
@@ -34,7 +34,7 @@ abstract class DocumentOpView
     required _is.UuidValue clientOpId,
     int? authorId,
     _is.UuidValue? authorUuid,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required _iymqng84.DocumentOpKind kind,
     String? sessionId,
     required DateTime createdAt,
@@ -53,7 +53,7 @@ abstract class DocumentOpView
           : _is.UuidValueJsonExtension.fromJson(
               jsonSerialization['authorUuid'],
             ),
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       kind: _iymqng84.DocumentOpKind.fromJson(
@@ -76,7 +76,7 @@ abstract class DocumentOpView
 
   _is.UuidValue? authorUuid;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   _iymqng84.DocumentOpKind kind;
 
@@ -93,7 +93,7 @@ abstract class DocumentOpView
     _is.UuidValue? clientOpId,
     int? authorId,
     _is.UuidValue? authorUuid = const _is.$UndefinedUuidValue(),
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     _iymqng84.DocumentOpKind? kind,
     String? sessionId,
     DateTime? createdAt,
@@ -145,7 +145,7 @@ class _DocumentOpViewImpl extends DocumentOpView {
     required _is.UuidValue clientOpId,
     int? authorId,
     _is.UuidValue? authorUuid,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required _iymqng84.DocumentOpKind kind,
     String? sessionId,
     required DateTime createdAt,
@@ -171,7 +171,7 @@ class _DocumentOpViewImpl extends DocumentOpView {
     _is.UuidValue? clientOpId,
     Object? authorId = _Undefined,
     _is.UuidValue? authorUuid = const _is.$UndefinedUuidValue(),
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     _iymqng84.DocumentOpKind? kind,
     Object? sessionId = _Undefined,
     DateTime? createdAt,

@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/comments/comment_service.dart';

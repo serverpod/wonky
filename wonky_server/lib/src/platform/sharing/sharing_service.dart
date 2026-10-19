@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:serverpod/serverpod.dart';
@@ -8,9 +7,11 @@ import '../activity/activity_service.dart';
 import '../common/actor.dart';
 import '../common/errors.dart';
 import '../common/models.dart';
+import '../common/rate_limiter.dart';
 import '../common/roles.dart';
 import '../common/time.dart';
 import '../drive/drive_service.dart';
+import '../drive/drive_user_state.dart';
 import '../notifications/notification_service.dart';
 import '../storage/storage_service.dart';
 import '../users/user_service.dart';
@@ -19,10 +20,31 @@ import 'acl_events.dart';
 
 /// Sharing (specs/06 §2, §4). Sharing changes are not undoable.
 abstract final class SharingService {
+  /// The columns a role change writes (never the whole grant row).
+  static List<Column<Object?>> _grantColumns(DriveItemPermissionTable t) => [
+    t.role,
+    t.grantedById,
+    t.grantedAt,
+    t.expiresAt,
+  ];
+
   static final _random = Random.secure();
   static const _tokenAlphabet =
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  /// Longest message of an access request.
+  static const maxRequestMessage = 1000;
+
+  /// Access requests per requester and item (specs/13 §4).
+  static final _requestLimiter = RateLimiter(
+    name: 'sharing.requestAccess',
+    limit: 5,
+    window: const Duration(hours: 1),
+  );
+
+  /// Clears the in-memory request limits (tests).
+  static void resetLimits() => _requestLimiter.reset();
 
   static String newToken() => String.fromCharCodes([
     for (var i = 0; i < 22; i++)
@@ -44,6 +66,22 @@ abstract final class SharingService {
       throw Errors.forbidden('You cannot share this item.');
     }
     return (item, role);
+  }
+
+  /// Refuses [userId] as the target of a role change or an ownership
+  /// transfer unless they already have access to [item] or are related to
+  /// [actor] (share or mention them first); unknown ids are not found.
+  static Future<void> _requireKnownTarget(
+    Session session,
+    Actor actor,
+    DriveItem item,
+    int userId,
+  ) async {
+    if (await AccessService.effectiveRole(session, userId, item) != null) {
+      return;
+    }
+    final related = await UserService.relatedIds(session, actor, [userId]);
+    if (!related.contains(userId)) throw Errors.notFound('User');
   }
 
   // ------------------------------------------------------------------ read
@@ -239,16 +277,13 @@ abstract final class SharingService {
         if (existing != null) {
           await DriveItemPermission.db.updateRow(
             session,
-            DriveItemPermission(
-              id: existing.id,
-              itemId: existing.itemId,
-              userId: existing.userId,
-              invitedEmail: existing.invitedEmail,
+            existing.copyWith(
               role: role,
               grantedById: actor.userId,
               grantedAt: now,
               expiresAt: expiresAt,
             ),
+            columns: _grantColumns,
             transaction: tx,
           );
         } else {
@@ -315,6 +350,7 @@ abstract final class SharingService {
     if (userId == item.ownerId) {
       throw Errors.invalid("The owner's role cannot be changed.");
     }
+    await _requireKnownTarget(session, actor, item, userId);
     final grant = await DriveItemPermission.db.findFirstRow(
       session,
       where: (t) =>
@@ -323,6 +359,18 @@ abstract final class SharingService {
           t.inheritedFromId.equals(null),
     );
     if (grant == null) {
+      // Only people who have the item already (inherited from a folder)
+      // get a direct grant here; anyone else goes through `share`, which
+      // notifies them and logs it (S-20, CQ-34).
+      final inherited = await DriveItemPermission.db.count(
+        session,
+        where: (t) => t.itemId.equals(item.id!) & t.userId.equals(userId),
+      );
+      if (inherited == 0) {
+        throw Errors.invalid(
+          'This person has no access yet. Share the item with them instead.',
+        );
+      }
       // Inherited only: add a direct grant overriding upwards.
       await DriveItemPermission.db.insertRow(
         session,
@@ -338,15 +386,13 @@ abstract final class SharingService {
     } else {
       await DriveItemPermission.db.updateRow(
         session,
-        DriveItemPermission(
-          id: grant.id,
-          itemId: grant.itemId,
-          userId: grant.userId,
+        grant.copyWith(
           role: role,
           grantedById: actor.userId,
           grantedAt: nowUtc(),
           expiresAt: expiresAt,
         ),
+        columns: _grantColumns,
       );
     }
     if (item.kind == DriveItemKind.folder) {
@@ -459,6 +505,8 @@ abstract final class SharingService {
     }
     final target = await UserProfile.db.findById(session, newOwnerUserId);
     if (target == null) throw Errors.notFound('User');
+    // Before the quota check, which would reveal the target's headroom.
+    await _requireKnownTarget(session, actor, item, newOwnerUserId);
     // (v2) The new owner must have room (Drive 03 §7.3).
     await StorageService.instance.checkRoom(
       session,
@@ -506,21 +554,22 @@ abstract final class SharingService {
     }
     final item = await DriveItem.db.findById(session, transfer.itemId);
     if (item == null) throw Errors.notFound();
+    // Claims the transfer: only the first of two concurrent answers wins.
+    Future<bool> claim(bool accepted, [Transaction? tx]) async =>
+        (await OwnershipTransfer.db.updateWhere(
+          session,
+          columnValues: (t) => [t.handledAt(nowUtc()), t.accepted(accepted)],
+          where: (t) => t.id.equals(transfer.id!) & t.handledAt.equals(null),
+          transaction: tx,
+        )).isNotEmpty;
     if (item.ownerId != transfer.fromUserId) {
-      await OwnershipTransfer.db.updateRow(
-        session,
-        transfer.copyWith(handledAt: nowUtc(), accepted: false),
-      );
+      await claim(false);
       throw Errors.conflict(
         'The owner changed since the transfer was offered.',
       );
     }
     await session.db.transaction((tx) async {
-      await OwnershipTransfer.db.updateRow(
-        session,
-        transfer.copyWith(handledAt: nowUtc(), accepted: accept),
-        transaction: tx,
-      );
+      if (!await claim(accept, tx)) throw Errors.notFound('Transfer');
       if (!accept) return;
       // (v2) Checked again inside the transfer (Drive 03 §7.3).
       await StorageService.instance.checkRoom(
@@ -530,12 +579,18 @@ abstract final class SharingService {
         reason: QuotaReason.transfer,
         transaction: tx,
       );
-      await DriveItem.db.updateWhere(
+      final moved = await DriveItem.db.updateWhere(
         session,
         columnValues: (t) => [t.ownerId(actor.userId)],
-        where: (t) => t.id.equals(item.id!),
+        where: (t) =>
+            t.id.equals(item.id!) & t.ownerId.equals(transfer.fromUserId),
         transaction: tx,
       );
+      if (moved.isEmpty) {
+        throw Errors.conflict(
+          'The owner changed since the transfer was offered.',
+        );
+      }
       await StorageService.instance.onOwnerChange(
         session,
         item,
@@ -659,7 +714,11 @@ abstract final class SharingService {
         ),
       );
     } else {
-      await ShareLink.db.updateRow(session, link.copyWith(token: newToken()));
+      await ShareLink.db.updateRow(
+        session,
+        link.copyWith(token: newToken()),
+        columns: (t) => [t.token],
+      );
     }
     return getSharing(session, actor, itemUuid);
   }
@@ -714,6 +773,16 @@ abstract final class SharingService {
     if (role == AccessRole.owner) {
       throw Errors.invalid('Request editor access.');
     }
+    final text = message?.trim();
+    if (text != null && text.length > maxRequestMessage) {
+      throw Errors.invalid('The message is too long.');
+    }
+    final retry = await _requestLimiter.check('${actor.userId}:${item.id}');
+    if (retry != null) {
+      throw Errors.limit(
+        'You asked for access to this item too often. Try again later.',
+      );
+    }
     final pending = await AccessRequest.db.findFirstRow(
       session,
       where: (t) =>
@@ -721,21 +790,31 @@ abstract final class SharingService {
           t.requesterId.equals(actor.userId) &
           t.handledAt.equals(null),
     );
-    final request = pending != null
-        ? await AccessRequest.db.updateRow(
-            session,
-            pending.copyWith(requestedRole: role, message: message),
-          )
-        : await AccessRequest.db.insertRow(
-            session,
-            AccessRequest(
-              itemId: item.id!,
-              requesterId: actor.userId,
-              requestedRole: role,
-              message: message?.trim(),
-              createdAt: nowUtc(),
-            ),
-          );
+    if (pending != null) {
+      // Updated quietly: the owner and editors were notified when it was
+      // created, unless a higher role is asked for now.
+      await AccessRequest.db.updateWhere(
+        session,
+        columnValues: (t) => [
+          t.requestedRole(role),
+          t.message(text),
+        ],
+        where: (t) => t.id.equals(pending.id!),
+      );
+      if (role.index <= pending.requestedRole.index) return;
+    }
+    final request =
+        pending ??
+        await AccessRequest.db.insertRow(
+          session,
+          AccessRequest(
+            itemId: item.id!,
+            requesterId: actor.userId,
+            requestedRole: role,
+            message: text,
+            createdAt: nowUtc(),
+          ),
+        );
     final recipients = <int>{item.ownerId};
     if (item.editorsCanShare) {
       final editors = await DriveItemPermission.db.find(
@@ -757,7 +836,7 @@ abstract final class SharingService {
         payload: {
           'requestId': request.id,
           'role': role.name,
-          'message': ?message,
+          'message': ?text,
         },
       );
     }
@@ -778,19 +857,24 @@ abstract final class SharingService {
     if (request.handledAt != null) {
       throw Errors.conflict('The request was already handled.');
     }
-    await AccessRequest.db.updateRow(
+    final grantRole = role ?? request.requestedRole;
+    if (approve && grantRole.role > myRole) throw Errors.forbidden();
+    // Conditional: of two people answering at once, only the first wins.
+    final claimed = await AccessRequest.db.updateWhere(
       session,
-      request.copyWith(
-        handledAt: nowUtc(),
-        handledById: actor.userId,
-        outcome: approve
-            ? AccessRequestOutcome.approved
-            : AccessRequestOutcome.denied,
-      ),
+      columnValues: (t) => [
+        t.handledAt(nowUtc()),
+        t.handledById(actor.userId),
+        t.outcome(
+          approve ? AccessRequestOutcome.approved : AccessRequestOutcome.denied,
+        ),
+      ],
+      where: (t) => t.id.equals(request.id!) & t.handledAt.equals(null),
     );
+    if (claimed.isEmpty) {
+      throw Errors.conflict('The request was already handled.');
+    }
     if (approve) {
-      final grantRole = role ?? request.requestedRole;
-      if (grantRole.role > myRole) throw Errors.forbidden();
       final requester = await UserProfile.db.findById(
         session,
         request.requesterId,
@@ -826,7 +910,7 @@ abstract final class SharingService {
     if (role == null) {
       throw Errors.forbidden('Link sharing is turned off for this item.');
     }
-    await DriveService.recordOpen(session, actor, item, role);
+    await DriveUserStates.recordOpen(session, actor, item, role);
     return InviteResolution(
       itemUuid: item.uuid,
       kind: item.kind,
@@ -835,34 +919,46 @@ abstract final class SharingService {
     );
   }
 
-  /// Daily job: removes expired grants and re-mirrors affected spaces.
+  /// Hourly job: removes expired grants in batches until none are left (or
+  /// [budget] is spent), rebuilds inherited grants of folders and
+  /// re-mirrors affected spaces and open documents (`AclEvents`).
   static Future<int> removeExpiredGrants(
     Session session, {
     DateTime? now,
+    int batchSize = 1000,
+    Duration budget = const Duration(minutes: 10),
   }) async {
     final at = now ?? nowUtc();
-    final expired = await DriveItemPermission.db.find(
-      session,
-      where: (t) => t.expiresAt < at,
-      limit: 1000,
-    );
-    final itemIds = {for (final e in expired) e.itemId};
-    final users = {for (final e in expired) ?e.userId};
-    await DriveItemPermission.db.deleteWhere(
-      session,
-      where: (t) => t.id.inSet({for (final e in expired) e.id!}),
-    );
-    for (final id in itemIds) {
-      final item = await DriveItem.db.findById(session, id);
-      if (item == null) continue;
-      if (item.kind == DriveItemKind.folder) {
-        await AccessService.rebuildInherited(session, item);
+    final watch = Stopwatch()..start();
+    var removed = 0;
+    while (watch.elapsed < budget) {
+      final expired = await DriveItemPermission.db.find(
+        session,
+        where: (t) => t.expiresAt < at,
+        orderBy: (t) => t.id,
+        limit: batchSize,
+      );
+      if (expired.isEmpty) break;
+      final ids = <int>{for (final e in expired) e.id!};
+      final usersByItem = <int, Set<int>>{};
+      for (final e in expired) {
+        final users = usersByItem.putIfAbsent(e.itemId, () => {});
+        if (e.userId != null) users.add(e.userId!);
       }
-      await AclEvents.changed(session, item, affectedUsers: users);
+      await DriveItemPermission.db.deleteWhere(
+        session,
+        where: (t) => t.id.inSet(ids),
+      );
+      removed += expired.length;
+      for (final MapEntry(key: id, value: users) in usersByItem.entries) {
+        final item = await DriveItem.db.findById(session, id);
+        if (item == null) continue;
+        if (item.kind == DriveItemKind.folder) {
+          await AccessService.rebuildInherited(session, item);
+        }
+        await AclEvents.changed(session, item, affectedUsers: users);
+      }
     }
-    return expired.length;
+    return removed;
   }
-
-  static String encodePayload(Map<String, Object?> payload) =>
-      jsonEncode(payload);
 }

@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -8,6 +11,7 @@ import 'package:wonky_server/src/platform/ai/assistant_service.dart';
 import 'package:wonky_server/src/platform/ai/llm/ai_client.dart';
 import 'package:wonky_server/src/platform/ai/llm/fake_ai_client.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
 import 'package:wonky_server/src/sheets/mcp/sheets_shadow.dart';
 
@@ -252,6 +256,8 @@ void main() {
         );
         final first = writing('Data!F1');
         expect(first.cells.single.after, 'Total');
+        expect(first.cells.single.before, isNull);
+        expect(writing('Report!A1').cells.single.before, isNull);
         expect(
           writing('Report!A1').cells.single.after,
           '=SUM(Data!C2:C7) → 590',
@@ -270,6 +276,9 @@ void main() {
           'spreadsheet': ss,
         });
         expect((info['sheets'] as List), hasLength(1));
+        // The shadow's copies were counted in the cache budget until the
+        // preview closed (CQ-35).
+        expect(HeadlessFileCache.externalBytes, 0);
         await expectLater(
           endpoints.sheetsAi.getPreview(anna.endpointSession, ready.previewId!),
           throwsA(isA<WonkyException>()),

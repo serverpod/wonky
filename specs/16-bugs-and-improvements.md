@@ -630,7 +630,7 @@ used for what it does best:
   - The model id is pinned, not `jev-latest`, because the thresholds below are tuned per model
     version. Upgrading means re-running the triage evaluation set (§15) and changing the config.
 - **`BoardGemini`** is a `DartanticAiClient` constructed directly with `internalGeminiApiKey`
-  (not through `AiKeys`). It uses the same one-shot tool pattern as `SlidesAiService._send`: a
+  (not through `AiKeys`). It uses the same one-shot tool pattern as the Slides AI features (`AiCall.send`): a
   tool the model must call once, read with the `_jsonIn` fallback.
 - **`BoardAiUsage`** (table `board_ai_usage`, one row per day, provider, model and feature)
   counts requests and input and output tokens. Global daily budgets
@@ -738,17 +738,31 @@ flattened screenshot) to catch readable emails, names or document text the autho
    bundles and reviews). Without Gemini, `summary` is the first 200 chars of the body.
 5. **Edits** by the author re-run Jev inline. A visible post stays visible unless a score reaches
    *Hold*.
+   - **Stale results**: a triage result is stored under a row lock and only into the AI-owned
+     columns (moderation, reason, `needsCheck`, labels unless confirmed, duplicate hint,
+     `triageState`, `triageJson`), and only when the post is not deleted, its moderation is
+     unchanged (an admin's decision during the AI call wins) and, unless it is still
+     `checking`, its title and body are unchanged (an edit runs its own triage). The background
+     path's fallbacks (no Jev, final failure) only apply while the post is still `checking`.
 6. **Comments**: one Jev request with only the moderation Nouls (`offensive`, `spam`,
    `personal_data`, `security`), inline at post time with the same bands. A comment that reaches
    *Hold* is stored `held`, and the author sees it with *Hidden pending review*.
+   - With a Jev key but today's budget spent, or when the check fails or times out, the comment
+     is stored `visible` with `needsCheck: true` and the reason *Not checked yet.*: it is listed
+     under *Check*, and the sweep (`wonky.boardSweep`) checks up to 50 such comments per run
+     once Jev is available again (held ones are hidden; a comment edited, moderated or deleted
+     meanwhile keeps its state). Without a Jev key comments are simply visible.
+   - Comment edits are checked again and stored conditionally (not moderated or deleted while
+     the check ran, else `conflict`); a new verdict replaces an earlier *Not checked yet.*
 
 ### 6.4 Similar posts and duplicates
 
-- No stored search column or index: Serverpod migrations must keep the schema identical to
-  `definition.sql`, so a hand-added `tsvector` column or GIN index would drift. `similar()` and
-  `list(query)` compute `setweight(to_tsvector('english', title), 'A') ||
-  setweight(to_tsvector('english', body), 'B')` in a raw SQL query. Even at tens of thousands of
-  posts this takes milliseconds, and the query is limited to visible posts.
+- The search document `setweight(to_tsvector('english', title), 'A') ||
+  setweight(to_tsvector('english', body), 'B')` is an expression with a GIN index
+  (`board_post_search_fts_idx`) and the title has a `pg_trgm` index for the substring match (when
+  the extension exists). Serverpod models cannot declare expression indexes and `definition.sql`
+  must stay the generated one, so `SearchIndexes` creates them at server start (CQ-25, 13 §3);
+  `similar()` and `list(query)` repeat the expression exactly (`BoardSearch.document`).
 - **Board search** (`list(query)`, as built in `BoardSearch`): a post matches when any of these
   holds (OR):
   - **full-text, word prefixes**: the query's words (runs of letters and digits, lowercased,
@@ -773,7 +787,7 @@ flattened screenshot) to catch readable emails, names or document text the autho
   problem or request?") reorders them. Only candidates with p ≥ 0.3 are shown, at most 5. This is
   about 0.1 s and a fraction of a cent per call, and it is rate-limited (§11). Without Jev, the
   full-text ranking is used as is.
-- `pg_trgm` is not required. P2: embeddings, if full-text search turns out too weak.
+- `pg_trgm` is optional (only the title substring index needs it). P2: embeddings, if full-text search turns out too weak.
 
 ## 7. Posts, votes and comments
 
@@ -848,7 +862,17 @@ renderer.
   - `MarkdownProfile.post` allows headings (rendered at most at h3 size), lists, code blocks,
     quotes, links and inline styles.
   - `MarkdownProfile.comment` allows inline styles, links, lists and code blocks.
-  - Images in Markdown are not rendered (shown as links). Raw HTML is shown as text.
+  - Images in Markdown are not rendered (shown as links). Raw HTML is shown as text, except
+    HTML comments (invisible); entities (`&amp;`, `&#96;`) are decoded.
+- **Composer ↔ renderer (CQ-50).** The composer writes with `MarkdownDocumentCodec`
+  (`package:markdown`), the renderer is hand-written; `wonky_app/test/markdown/markdown_round_trip_test.dart`
+  writes random composer documents (headings, nested bullet/numbered/task items, quotes, rules,
+  styles on whole words, links, Markdown-special characters) and checks that the renderer sees
+  the blocks, levels, markers, text, styles and links the composer reads back. It found and fixed:
+  escaped delimiters closing emphasis (`*2 \**`), entities the writer emits, `<!-- -->` between
+  code spans, `***x***`, escaped brackets in link text, and quote paragraphs separated by `>`.
+  Mid-word runs of mixed `*`/`**` can still differ (no CommonMark delimiter algorithm in the
+  renderer; a shared grammar is the longer-term fix).
 - **Document comments** switch from raw text to `WonkyMarkdown` with the comment profile. This is
   a visible improvement for Write, Sheets and Slides comments and matches what [07 §2](07-collaboration.md)
   already promises.
@@ -1024,6 +1048,10 @@ The board list itself is not live: it refreshes on focus and on *Load more*.
     the claimant gets a `boardClaim` notification;
   - **claims with 6 h left** (not yet warned) get a reminder notification (*Your claim on T-12
     expires in 6 hours*), with the actions *Link PR* and *Release*.
+  - Expiry and *Release* update the task conditionally (same status, claimant and claim time
+    as read; expiry also only while `claimExpiresAt ≤ now`), so a concurrent claim, PR link or
+    release is never overwritten with a stale row. A release that lost the race answers
+    `conflict` (*This task changed meanwhile*).
 - `inReview` tasks (PR linked) don't expire. A closed, unmerged PR releases the task (§13.6);
   admins can also release it by hand.
 
@@ -1306,7 +1334,14 @@ moderate and post in bulk):
 - comments: 30 per hour;
 - votes: 300 per hour;
 - flags: 30 per day;
-- similar-post queries (incl. Jev rerank): 60 per minute.
+- similar-post queries (incl. Jev rerank): 60 per minute;
+- edits of posts and comments together (each one is checked by Jev): 30 per hour
+  (`editsPerHour`).
+
+Signed out, `similar` and `list` with a query are limited per client address
+(`similarPerMinute`) and for all signed-out callers together (`signedOutSearchesPerMinute`,
+300 per minute, a bound that holds when addresses are forged or rotated). The search text is
+capped at 200 characters (a longer `list` query or `similar` title is cut).
 
 They are implemented with a generic `RateLimiter` extracted from `McpRateLimiter`
 (`platform/common/rate_limiter.dart`): Redis-backed with a memory fallback. MCP then reuses it.
@@ -1572,7 +1607,8 @@ wonky:
     flagsToHold: 3
     publishWhenTriageFails: true
     limits: {postsPerHour: 5, postsPerDay: 20, commentsPerHour: 30, votesPerHour: 300,
-             flagsPerDay: 30, similarPerMinute: 60}
+             flagsPerDay: 30, similarPerMinute: 60, editsPerHour: 30,
+             signedOutSearchesPerMinute: 300}
     ai:                                  # §6; keys: internalJevApiKey, internalGeminiApiKey
       jevModel: jev-1.13.0               # pinned; thresholds are tuned per version
       geminiModel: gemini-3.1-pro-preview  # prompts, bundles, PR reviews
@@ -1665,10 +1701,17 @@ Wonky server (GitHub App) ──► check "Wonky task"         pass ─► task 
 - **Webhook route**: `POST /api/github/webhook`, a Relic route in `wonky_server/lib/src/web/`,
   on the web server: the App's webhook URL is `https://wonky.work/api/github/webhook`
   (`api.wonky.work` is the API server and serves no web routes).
+  - Before it reads the body it answers from the headers alone: `202` while the integration is
+    disabled, `401` without the webhook secret or a `sha256=` `X-Hub-Signature-256` header,
+    `400` without `X-GitHub-Event`/`X-GitHub-Delivery`, `413` for a declared size over 5 MB.
+    Bodies are read up to 5 MB (GitHub's events used here are tens of KB).
   - It verifies `X-Hub-Signature-256` (HMAC-SHA256 with the webhook secret, constant-time
     compare) and rejects anything else with `401`.
   - It deduplicates on `X-GitHub-Delivery` (table `board_github_delivery`, purged after 7 days).
-  - It answers `202` at once; the work runs in `BoardGithubFutureCall.handle(deliveryId)`.
+  - It answers `202` at once; the work runs in `BoardGithubFutureCall.handle(deliveryId)`. A
+    delivery still unhandled after 30 minutes (its scheduling failed, or the instance stopped)
+    is scheduled again by the sweep (`BoardGithub.rescheduleLost`; each pass counts as an
+    attempt, so a failing one is dropped after 3).
 - **Client**: `platform/board/github/github_client.dart`, a small REST client with only the calls
   needed:
   - check runs (create, update);
@@ -1831,7 +1874,7 @@ tools defined in `packages/wonky_core/lib/mcp/board_tools.dart` and handlers in
   `board.publish_task`.
 
 The tools are read and write in one scope and are not offered to the in-app assistant
-([10](10-ai-assistant.md)). Tests: `wonky_server/test/platform/board/board_mcp_tools_test.dart`.
+([10](10-ai-assistant.md)). Tests: `wonky_server/test/integration/platform/board/board_mcp_tools_test.dart`.
 
 **Commands** (`shell.board.*`, catalog in [08 §5](08-commands-and-undo.md)):
 
@@ -1870,7 +1913,7 @@ A `notFound`/`conflict` answer makes the step partial (`UndoConflict`).
 
 Following [15](15-writing-tests.md):
 
-- **As built:** server tests in `wonky_server/test/platform/board/` (`board_access_test`,
+- **As built:** server tests in `wonky_server/test/integration/platform/board/` (pure logic in `test/unit/board/`) (`board_access_test`,
   `board_posts_test`, `board_votes_test`, `board_comments_test`, `board_tasks_test`,
   `board_triage_test`, `board_lifecycle_test`, `board_mcp_tools_test`, `ai/`, `github/`, with
   `support/board_harness.dart` and `support/fake_board_ai.dart`; the live evaluation set is
@@ -1878,7 +1921,7 @@ Following [15](15-writing-tests.md):
   (`commands/`, `pages/`, `report/`, `screenshot/`), `test/markdown/` and
   `test/comments/comment_thread_body_test.dart`. Light/dark goldens of the dialog, row, post page
   and editor are not written yet, and J-B1 is a browser walkthrough plus these suites (§17).
-- **Server** (`wonky_server/test/platform/board/`, `withServerpod`, `FakeJevClient`,
+- **Server** (`wonky_server/test/integration/platform/board/`, `test/unit/board/`, `withServerpod`, `FakeJevClient`,
   `FakeAiModelClient` for Gemini, fixed clock):
   - endpoint access matrix (§7.1) for signed out, signed in, author, admin and blocked users;
   - admin detection (domain, list, case, subdomain rejected), plus the guard test for email
@@ -1892,7 +1935,7 @@ Following [15](15-writing-tests.md):
   - votes (idempotency, down votes rejected on bugs, scores, merge vote move and undo);
   - claims (limit, conflict, expiry computed on read, the sweep job, warning once);
   - rate limits;
-  - GitHub (`test/platform/board/github/`, recorded webhook payloads and a fake GitHub API):
+  - GitHub (`test/integration/platform/board/github/`, `test/unit/board/github/`, recorded webhook payloads in `test/fixtures/github/` and a fake GitHub API):
     signature check, delivery dedupe, every gate row in §13.4, maintainer exemption, bot comment
     updated in place, auto-close after 7 days, review debounce and daily limit, the review comment
     rendered from a fake Gemini result, merged → done, closed → released, deploy → shipped only
@@ -1912,7 +1955,7 @@ Following [15](15-writing-tests.md):
   - goldens light/dark for the dialog, row, post page and editor.
 - **Router**: `/improvements*` is reachable signed out; other routes still redirect.
 - **MCP**: tool tests for `board.*`.
-- **Triage evaluation set** (`wonky_server/test/platform/board/eval/`, tag `live-ai`, not in CI):
+- **Triage evaluation set** (`wonky_server/test/integration/platform/board/ai/eval/`, tag `live-ai`, not in CI):
   about 200 labeled posts (real-looking bugs and ideas, rude-but-fine, offensive, spam, personal
   data, security reports, duplicates, adversarial self-classifying posts). Runs against the pinned
   Jev model, also with reversed Choice option order, and reports precision and recall per

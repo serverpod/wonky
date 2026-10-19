@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -11,6 +14,8 @@ import 'package:wonky_server/src/platform/storage/content_sizes.dart';
 import 'package:wonky_server/src/platform/storage/storage_events.dart';
 import 'package:wonky_server/src/platform/storage/storage_hooks.dart';
 import 'package:wonky_server/src/platform/storage/storage_service.dart';
+import 'package:wonky_server/src/sheets/revlog/sheets_server_writes.dart';
+import 'package:wonky_sheets_core/model.dart' show RowChange;
 
 import '../../../support/mcp_harness.dart';
 import '../../../support/streams.dart';
@@ -45,31 +50,48 @@ Future<int> _ownedCount(TestUser user) => DriveItem.db.count(
 Future<DriveItem> _row(TestUser user, UuidValue uuid) =>
     TestFiles.row(user.session, uuid);
 
-const _spaceIdOf =
-    '(SELECT id FROM offline_sync_spaces WHERE "uuidSpaceId" = @u::uuid)';
+/// The `rev_file` id of the spreadsheet item `@u`.
+const _fileIdOf =
+    '(SELECT f.id FROM rev_file f JOIN drive_item i '
+    'ON i."contentRef" = f."fileUuid" WHERE i.uuid = @u::uuid)';
 
 /// Rows of [table] stored for the spreadsheet [uuid].
 Future<int> _spaceRows(TestUser user, UuidValue uuid, String table) async {
   final r = await user.session.db.unsafeQuery(
-    'SELECT count(*) FROM "$table" WHERE "spaceId" = $_spaceIdOf',
+    'SELECT count(*) FROM "$table" WHERE "fileId" = $_fileIdOf',
     parameters: QueryParameters.named({'u': uuid.uuid}),
   );
   return r.first[0] as int;
 }
 
-/// Sets [assignment] on the first [n] rows (by sort key) of [table] of the
-/// spreadsheet [uuid] (a direct write: the estimator reads the tables).
+/// Sets [columns] on the first [n] rows (by sort key) of [table] of the
+/// spreadsheet [uuid], committed through RevLog.
 Future<void> _updateFirst(
   TestUser user,
   UuidValue uuid,
   String table,
-  String assignment,
+  Map<String, Object?> columns,
   int n,
-) => user.session.db.unsafeExecute(
-  'UPDATE "$table" SET $assignment WHERE id IN (SELECT id FROM "$table" '
-  'WHERE "spaceId" = $_spaceIdOf ORDER BY "sortKey" LIMIT $n)',
-  parameters: QueryParameters.named({'u': uuid.uuid}),
-);
+) async {
+  final item = await _row(user, uuid);
+  final ids = await user.session.db.unsafeQuery(
+    'SELECT id FROM "$table" WHERE "fileId" = $_fileIdOf '
+    'ORDER BY "sortKey" LIMIT $n',
+    parameters: QueryParameters.named({'u': uuid.uuid}),
+  );
+  await SheetsServerWrites.apply(
+    user.session,
+    actor: user.actor,
+    fileUuid: item.contentRef!,
+    changes: [
+      for (final r in ids)
+        RowChange.update(table, '${r[0]}', {
+          for (final k in columns.keys) k: null,
+        }, columns),
+    ],
+    label: 'Format',
+  );
+}
 
 /// Drive 03 §7.2, row by row.
 void main() {
@@ -575,6 +597,8 @@ void main() {
           anna,
           markdown: 'Some text to transfer.',
         );
+        // Ownership goes only to people with access (or related users).
+        await TestDrive.share(endpoints, doc, anna, bo, AccessRole.editor);
         final size = (await _row(anna, doc.uuid)).sizeBytes;
         final filler = await TestStorage.fill(endpoints, bo, 1000);
         await TestStorage.setQuota(bo, 1000 + size - 1);
@@ -606,6 +630,8 @@ void main() {
       test('when the new owner filled up before accepting then acceptance is '
           'refused and the offer stays open', () async {
         final doc = await TestDrive.document(endpoints, anna, markdown: 'Text');
+        // Ownership goes only to people with access (or related users).
+        await TestDrive.share(endpoints, doc, anna, bo, AccessRole.editor);
         final info = await endpoints.sharing.transferOwnership(
           anna.endpointSession,
           doc.uuid,
@@ -813,13 +839,13 @@ void main() {
         final item = await _row(anna, uuid);
         final empty = (await ContentSizes.estimate(anna.session, item))!;
 
-        await _updateFirst(anna, uuid, 'sheet_row', 'height = 40', 2);
-        await _updateFirst(anna, uuid, 'sheet_column', 'hidden = true', 1);
+        await _updateFirst(anna, uuid, 'sheet_row', {'height': 40.0}, 2);
+        await _updateFirst(anna, uuid, 'sheet_column', {'hidden': true}, 1);
         await _updateFirst(
           anna,
           uuid,
           'sheet_column',
-          '"formatJson" = \'{"b":1}\'',
+          {'formatJson': '{"b":1}'},
           1,
         );
         final formatted = (await ContentSizes.estimate(anna.session, item))!;
@@ -848,9 +874,18 @@ void main() {
           ],
         });
         final full = (await ContentSizes.estimate(anna.session, item))!;
-        final stored = (await SpaceSizeEstimator(
-          SheetsSizeEstimator().tables,
-        ).estimateSpace(anna.session, uuid))!;
+        // The stored size of the cell rows alone.
+        final stored =
+            (await anna.session.db.unsafeQuery(
+                  'SELECT coalesce(sum(pg_column_size(t.*)), 0)::bigint '
+                  'FROM cell t WHERE t."sheetId" IN (SELECT s.id FROM sheet s '
+                  'JOIN rev_file f ON f.id = s."fileId" '
+                  'WHERE f."fileUuid" = @u::uuid)',
+                  parameters: QueryParameters.named({
+                    'u': item.contentRef!.uuid,
+                  }),
+                )).first[0]!
+                as int;
 
         final perCell = (full - empty) / 2000;
         expect(perCell, inInclusiveRange(18, 32));

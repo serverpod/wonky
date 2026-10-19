@@ -126,7 +126,8 @@ class VersionContent {
             't': kind,
             'by': by.isEmpty ? 'multiple' : by,
             'at': 0,
-            if (kind == 'fmt') 'before': mark['before'] ?? const {},
+            if (kind == 'fmt')
+              'before': mark['before'] ?? const <String, Object?>{},
           };
         }
         if (changes.isNotEmpty && changes.last.$2 == offset) {

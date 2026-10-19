@@ -53,7 +53,8 @@ Editor createSlidesTextEditor({
   editables: {Editor.documentKey: document, Editor.composerKey: composer},
   requestHandlers: List.from(defaultRequestHandlers),
   reactionPipeline: [
-    ...defaultEditorReactions,
+    // super_editor builds the list with an untyped List.unmodifiable.
+    ...defaultEditorReactions.cast<EditReaction>(),
     const SlidesParagraphInheritReaction(),
   ],
 );

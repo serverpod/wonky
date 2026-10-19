@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_slides_core/scene.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../../l10n/slides_l10n.dart';
 import '../../stage/scene_painter.dart';
@@ -190,6 +191,7 @@ Future<String?> showShapeGalleryDialog(
   context: context,
   builder: (ctx) => ShadDialog(
     key: const ValueKey<String>('slides.dialog.shapeGallery'),
+    closeIcon: const WonkyDialogCloseButton(),
     title: Text(slidesL10n(ctx).shapeGalleryTitle),
     child: _ShapeGalleryDialogBody(selected: selected),
   ),

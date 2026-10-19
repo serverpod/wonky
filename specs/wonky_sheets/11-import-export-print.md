@@ -5,9 +5,9 @@ and ODS (dialog, pipeline, mappings, limits), **export** to XLSX, ODS, CSV/TSV, 
 JSON, and **print/PDF** (print settings route, live preview, pagination, cell rendering,
 headers and footers, page breaks).
 
-Read first: [02-data-model.md](02-data-model.md) (content encoding, ids, `SheetsWriter`, cell
+Read first: [02-data-model.md](02-data-model.md) (content encoding, ids, writes, cell
 limits), suite [05-drive-and-files.md](../05-drive-and-files.md) (`DriveEndpoint.import`,
-upload dialogs), suite [12-offline-and-sync.md](../12-offline-and-sync.md) §5 (cell
+upload dialogs), suite [12-offline-and-sync.md](../12-offline-and-sync.md) §4 (cell
 limits), [05-formula-engine.md](05-formula-engine.md) (function catalog, A1 codec),
 [06-formatting.md](06-formatting.md) (number formats, borders, fonts),
 [07-data-tools.md](07-data-tools.md) (DV, CF, filters, pivots),
@@ -89,7 +89,7 @@ formats as indices into a deduplicated `IrFormat` table (like XLSX `cellXfs`).
 
 ### 1.2 IR → spreadsheet rows (`IrToRowsPlanner`)
 Produces the row operations for a target location (§2.2). It is used by the client
-(`SheetsWriter`) and the server (`ServerSheetsWriter`):
+(the session) and the server (server changes, `SheetsServerWrites`):
 - Creates `Sheet`, `SheetRow`, `SheetColumn` entities with ids (UUIDv7) and evenly spaced
   `sortKey`s (`FractionalIndex.nBetween`), sized to `max(used + 1, 1000)` rows and
   `max(used, 26)` columns (Google Sheets: imports keep the file's grid but at least the default).
@@ -163,7 +163,7 @@ computed cells.
   `session.applyChanges`), big files while online as a **server import job** (§3.3; progress dialog
   with cancel, one `sheets.serverChange` undo step, the new sheet is activated once synced; the
   dialog says "This large file will be imported on the server"). *Create new spreadsheet* uses
-  `drive.import` online and a local reserved space offline. Files dropped on the grid open the
+  `drive.import` online and a client-created file offline (`initialize: false`, 02 §4). Files dropped on the grid open the
   dialog (*Insert new sheets*). Parsing and file writers run in `compute` on native, inline on web.
   The home/drive upload uses `SheetsImportHandler` (`SheetsAppConfig.importHandler`).
 - **Imported images are durable** (`SheetsPendingUploads`, `features/import_export/pending_uploads.dart`,
@@ -191,8 +191,10 @@ computed cells.
   breaks* switches to **break mode** (§7.6): the preview becomes `PageBreakCanvas` (draggable lines)
   and the panel keeps the list editor (keyboard alternative).
 - **Server**: `drive.import` with kind spreadsheet → `SheetsImportService` (csv/tsv/txt/xlsx/xlsm/
-  ods/json, `optionsJson` = ImportOptions, plan with *Create new spreadsheet*, batched writes with
-  `SheetsBulkWriter`, `registerSpreadsheet` ⇒ item UUID = space UUID); imports into an existing
+  ods/json, `optionsJson` = ImportOptions, plan with *Create new spreadsheet*, then
+  `registerSpreadsheet` creates the item and its RevLog file with no rows and the planned chunks
+  are committed with `SheetsBulkWriter` as server changes, the first creating the spreadsheet row
+  (RevLog spec 05 §8.3); a failed write deletes the new file again); imports into an existing
   spreadsheet: `SheetsImportJobs` + `SheetsImportEndpoint` (§3.3); MCP `drive.import` accepts
   spreadsheets and `drive.export` exports spreadsheets (`SheetsExportService`, xlsx/ods/pdf/html/csv/
   tsv/json, `sheet`/`range`/`dark_theme`).
@@ -268,7 +270,7 @@ from the activity feed (P2).
 
 ### 2.4 Undo
 - Imports into an existing spreadsheet are **one undo step** ("Import orders.csv"). Client-side:
-  normal `SheetsWriter` bulk step (chunked). Server-side: `sheets.serverChange` undo entry
+  normal session bulk step (one op group). Server-side: `sheets.serverChange` undo entry
   with the import's `changeId` ([10-collaboration-history.md](10-collaboration-history.md) A-10-5).
 - *Create new spreadsheet* is not undoable (Drive: move to trash).
 
@@ -289,10 +291,15 @@ from the activity feed (P2).
 Estimated cells: CSV = sampled average fields/line × (file size / average line length); XLSX =
 sum of `<dimension ref>` areas (or sheet XML sizes ÷ 40 bytes when missing).
 
+XLSX/ODS packages are checked when opened, before any part is inflated (zip bombs,
+`ZipPackage.open`): ≤ 10,000 entries and ≤ 256 MB declared uncompressed size in total, else
+`XlsxFormatException` "The file is too large to import…"; a part never inflates past the size
+its directory declares.
+
 ### 3.2 Client import
 Runs in a background isolate (desktop) or as chunked work on the main isolate with
 `scheduleTask` yielding every 8 ms (web; XLSX decoding is synchronous on web). Steps:
-parse → IR → `IrToRowsPlanner` → `SheetsWriter` chunks → model ingest. Progress dialog with
+parse → IR → `IrToRowsPlanner` → session `applyChanges` (outbox, op group) → model ingest. Progress dialog with
 Cancel (cancelling rolls back already written chunks via the undo step's inverse).
 
 ### 3.3 Server import
@@ -309,26 +316,31 @@ client                                   server
   │                                        │   queuePosition, reportJson, changeId, sheetIds, error}>
   │                                        │ the instance that queued it leases the user's oldest
   │                                        │   queued job (one running job per user, lease 2 min,
-  │                                        │   renewed per chunk): parse (isolate > 512 KB) → plan on
-  │                                        │   the headless model → SheetsBulkWriter.apply per chunk
-  │                                        │   of ≤ 5,000 row changes (ChangeLog "Import <file>",
-  │                                        │   kinds {import}) → one ServerChangeRecord
+  │                                        │   renewed every 40 s while it runs): parse (isolate
+  │                                        │   > 512 KB) → plan on the live headless model →
+  │                                        │   SheetsBulkWriter.apply per chunk of ≤ 5,000 row
+  │                                        │   changes (RevLog ops "Import <file>", kinds {import},
+  │                                        │   one record id) → one ServerChangeRecord
   │◄── done {changeId, report, sheetIds}   │
-  │ undo step sheets.serverChange(changeId); rows arrive through sync
+  │ undo step sheets.serverChange(changeId); the ops arrive through RevLog
 ```
 
 - As built: jobs run in the server process that queued them (no separate worker pool; the lease
   in the row keeps a second instance from running another job of the same user, and a job whose
   lease expired — the instance stopped — is reported `failed` "The import was interrupted").
+  A running job renews its lease every third of the lease duration for its whole run (also while
+  reading and parsing), and its progress and final updates only apply while this instance still
+  holds the lease; a job that lost it stops and reverts what it wrote (CQ-9).
   `watchImport` polls the row (300 ms) and works across instances.
 - Statuses (`SheetsImportStatus`): `queued`, `parsing`, `writing` (done/total = cells),
-  `finalizing` (change record, merge signal and change-log processing), `done` / `failed` /
-  `cancelled`. Errors: `errorCode` (`limit` for the cell limit, `invalid`, `forbidden`,
-  `unavailable`, `internal`) + message.
+  `finalizing` (change record and size refresh; the post-commit work runs in the RevLog hooks),
+  `done` / `failed` / `cancelled`. Errors: `errorCode` (`limit` for the cell limit, `invalid`,
+  `forbidden`, `unavailable`, `internal`) + message.
 - Cancel: `sheetsImport.cancelImport(jobId)`: a queued job ends at once; a running one stops
-  before its next chunk and the chunks already written are reverted (inverse applied with the
-  per-column skip rule). A failed chunk also reverts the written ones. The upload is deleted when
-  the job ends.
+  before its next chunk and the chunks already written are reverted (the inverse of the ops of
+  the job's record id, read back from the op log, applied with the per-column skip rule). A
+  failed chunk also reverts the written ones. The job never holds every row change in memory.
+  The upload is deleted when the job ends.
 - The client uses the job (11 §3.1) when online and the file is above the client thresholds
   (CSV/TSV > 20 MB or > 300k cells; XLSX/ODS > 5 MB or > 200k cells); `sheets.file.import` /
   `importData` take `onServer: true|false` to force a path. *Replace data at selected cell* sends
@@ -689,7 +701,7 @@ arrow or Esc returns to the grid.
   "printArea": null }                              // GridRange (P1: from XLSX Print_Area)
 ```
 
-- Changes in the print route are written through `SheetsWriter` (`sheets.print.updateSettings`,
+- Changes in the print route are written through the session (`sheets.print.updateSettings`,
   merge patch) and are undoable ("Change print settings"; slider/stepper bursts coalesce).
   With scope *Workbook*, a checkbox *Apply to all sheets* (default on) writes every sheet's
   settings in one step; otherwise each sheet prints with its own settings.
@@ -847,7 +859,7 @@ MCP: `drive.import` (suite) accepts `options: ImportOptions` for spreadsheets; S
 |---|--------|
 | A-11-1 | `Sheet` gains `printSettingsJson: String?` (schema §7.2; null = defaults). |
 | A-11-2 | Server table `SheetsImportJob(uuid, userId, authUserId, spreadsheetUuid, uploadFileId, fileName, format, optionsJson, activeSheetId?, status (`SheetsImportStatus`: queued/parsing/writing/finalizing/done/failed/cancelled), progressDone, progressTotal, reportJson?, sheetIdsJson?, changeId?, errorCode?, error?, cancelRequested, createdAt, updatedAt, leaseOwner?, leaseUntil?)` (as built: the report is stored inline as JSON, not as a file; jobs only import into existing spreadsheets). Client model `SheetsImportProgress`. |
-| A-11-3 | `ChangeLog.summaryJson.kinds` uses `import` for import writes (label "Import <file>"). |
+| A-11-3 | The op summary (`summaryJson.kinds`) uses `import` for import writes (label "Import <file>"). |
 
 ---
 

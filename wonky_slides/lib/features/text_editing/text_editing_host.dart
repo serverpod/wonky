@@ -9,7 +9,7 @@ import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/themes.dart' show BoxTextStyle, SuRect;
 import 'package:wonky_slides_core/session.dart' show SlidesRowsUndoEntry;
-import 'package:wonky_sync_kit/rows.dart' show RowOp;
+import 'package:wonky_revlog/rows.dart' show RowOp;
 
 import '../../l10n/slides_l10n.dart';
 import '../canvas/slide_canvas_controller.dart';

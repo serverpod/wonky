@@ -8,7 +8,8 @@ environment:
 resolution: workspace
 
 dev_dependencies:
-  lints: '>=3.0.0 <7.0.0'
+  wonky_lints:
+    path: ../wonky_lints
   test: ^1.25.5
 
 # The bundled Hunspell dictionaries (sources and licenses in

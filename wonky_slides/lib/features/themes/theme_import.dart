@@ -9,6 +9,7 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_slides_core/clipboard.dart' show SlidesClipboardCodec;
 import 'package:wonky_slides_core/copy.dart' show FileRehome;
 import 'package:wonky_sync_models/ids.dart' show IdGenerator, SlidesIds;
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/slides_l10n.dart';
 
@@ -329,6 +330,7 @@ class _PresentationPickerDialogState extends State<PresentationPickerDialog>
       },
       child: ShadDialog(
         key: const ValueKey<String>('slides.dialog.pickPresentation'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.themeImportPickTitle),
         actions: [
           ShadButton.outline(

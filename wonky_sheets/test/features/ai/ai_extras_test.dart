@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/testing.dart';
@@ -49,24 +50,22 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
   }
 
-  ChangeLog log({
+  AgentWrite log({
     required ActorKind kind,
     required String user,
     String session = 'server:mcp',
     GridRect rect = const GridRect(0, 0, 1, 1),
-  }) => ChangeLog(
-    id: UuidValue.fromString(const Uuid().v7()),
-    spreadsheetId: UuidValue.fromString(testItemUuid),
-    userId: UuidValue.fromString(user),
+  }) => AgentWrite(
+    id: const Uuid().v7(),
+    userUuid: user,
     actorKind: kind,
     sessionId: session,
-    label: 'MCP: set_values Sheet1!A1:B2',
     summaryJson: jsonEncode({
       'sheets': [s.sheetId],
       'ranges': [s.sheet.gridRange(rect).toJson()],
       'kinds': ['values'],
     }),
-    at: DateTime.now().toUtc(),
+    at: clock.now().toUtc(),
   );
 
   group('Given =AI() cells', () {

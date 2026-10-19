@@ -52,7 +52,7 @@ class KeymapService extends ChangeNotifier {
     required this.dispatcher,
     KeyPlatform? platform,
   }) : platform = platform ?? currentKeyPlatform {
-    registry.addListener(_rebuild);
+    registry.registrations.addListener(_rebuild);
     _rebuild();
   }
 
@@ -323,7 +323,7 @@ class KeymapService extends ChangeNotifier {
 
   @override
   void dispose() {
-    registry.removeListener(_rebuild);
+    registry.registrations.removeListener(_rebuild);
     super.dispose();
   }
 }

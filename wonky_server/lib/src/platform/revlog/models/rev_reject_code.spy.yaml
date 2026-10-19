@@ -1,0 +1,26 @@
+### Why an op was not committed (RevLog spec 04 §4).
+enum: RevRejectCode
+serialized: byName
+values:
+  ### Schema, type or limit violation, a foreign id, an immutable column.
+  - invalidChange
+  ### Op or message over the size limits.
+  - tooLarge
+  ### Cell cap, sheet count.
+  - limitExceeded
+  ### The op writes protected content the author may not edit.
+  - protectedRange
+  ### Role below Editor.
+  - forbiddenForRole
+  ### No access at all (session-level).
+  - forbidden
+  ### baseRevision is ahead of the server head.
+  - unknownBase
+  ### The payload's schema hash is not accepted.
+  - schemaMismatch
+  ### The file doesn't exist (yet).
+  - notFound
+  ### The file is trashed or being purged.
+  - fileReadOnly
+  ### Unexpected server error (retry with the same clientOpId).
+  - internal

@@ -302,10 +302,10 @@ abstract final class SheetsStructureHandlers {
         ? SheetsLimits.rowsInsertedPerCall
         : SheetsLimits.columnsInsertedPerCall;
     if (count > max) {
-      throw McpToolException(
-        SheetsErrorCode.limitExceeded,
+      throw McpToolException.limit(
         'At most $max ${d.name} can be inserted per call.',
-        details: {'limit': 'inserted_${d.name}', 'max': max},
+        limit: 'inserted_${d.name}',
+        max: max,
       );
     }
     final length = s.axis(d).length;

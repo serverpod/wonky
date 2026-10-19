@@ -1,5 +1,5 @@
 import 'package:wonky_sheets_core/model.dart';
-import 'package:wonky_sync_kit/undo.dart'
+import 'package:wonky_revlog/undo.dart'
     show RowsUndoEntry, RowsUndoHandler, RowsUndoTarget;
 
 import 'workbook_session.dart';
@@ -12,12 +12,15 @@ const sheetsRowsDomain = 'sheets.rows';
 /// current state with the per-column skip rule (`SheetsUndo`), so
 /// collaborators' later edits are never reverted.
 class SheetsRowsUndoEntry extends RowsUndoEntry {
-  SheetsRowsUndoEntry(List<RowChange> changes, {String label = ''})
-    : super(sheetsRowsDomain, changes, label: label);
+  SheetsRowsUndoEntry(
+    List<RowChange> changes, {
+    String label = '',
+    String? groupId,
+  }) : super(sheetsRowsDomain, changes, label: label, groupId: groupId);
 
   @override
   SheetsRowsUndoEntry withChanges(List<RowChange> changes) =>
-      SheetsRowsUndoEntry(changes, label: label);
+      SheetsRowsUndoEntry(changes, label: label, groupId: groupId);
 
   static SheetsRowsUndoEntry? fromJson(Map<String, Object?> json) {
     final decoded = RowsUndoEntry.decode(json);

@@ -13,6 +13,7 @@ import '../../theme/sheets_tokens.dart';
 import '../explore/explore_button.dart';
 import '../collab/presence/sheet_tab_presence.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
+import '../status/row_loading_status.dart';
 import '../status/selection_stats_button.dart';
 import '../toolbar/command_ui.dart';
 
@@ -197,6 +198,7 @@ class _SheetTabBarState extends State<SheetTabBar> {
                 onPressed: () => _scrollBy(120),
               ),
               const SizedBox(width: 8),
+              RowLoadingStatus(controller: c),
               ExploreButton(controller: c),
               const SizedBox(width: 4),
               SelectionStatsButton(controller: c),

@@ -101,7 +101,7 @@ void main() {
     });
 
     test('when a shape moves into the group then it stays where it is on '
-        'the slide, the group grows to hold it and undo restores it', () {
+        'the slide, the group grows to hold it and undo restores it', () async {
       final before = find(front).frame;
       final dump = deck.model.dump();
 
@@ -121,7 +121,7 @@ void main() {
       expect(DeckMaintenance.detect(deck.model), isEmpty);
 
       final handler = SlidesRowsUndoHandler(() => deck);
-      handler.undo(SlidesRowsUndoEntry(plan.changes, label: plan.label));
+      await handler.undo(SlidesRowsUndoEntry(plan.changes, label: plan.label));
       expect(deck.model.dump(), dump);
     });
 

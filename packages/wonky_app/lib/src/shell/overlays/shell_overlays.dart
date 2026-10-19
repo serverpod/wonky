@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+
 import 'dart:async';
 
 import 'package:flutter/services.dart';
@@ -129,7 +130,7 @@ class _ShellOverlaysState extends State<ShellOverlays> {
 /// The app version compared with `ProtocolInfo.minClientVersion`.
 const clientVersion = String.fromEnvironment(
   'WONKY_VERSION',
-  defaultValue: '2.0.0',
+  defaultValue: '3.0.0',
 );
 
 /// Compares dotted versions (`1.2.10` > `1.2.9`).

@@ -567,7 +567,24 @@ class FakeUserRepository implements UserRepository {
   );
 
   @override
-  Future<UserProfileView> getMe() async => profile;
+  Future<UserProfileView> getMe() async {
+    getMeCalls++;
+    final gate = getMeGate;
+    if (gate != null) await gate.future;
+    return profile;
+  }
+
+  /// Calls of [getMe].
+  int getMeCalls = 0;
+
+  /// When set, [getMe] waits for it (a slow network).
+  Completer<void>? getMeGate;
+
+  /// The profile [cachedMe] returns (a device that was signed in before).
+  UserProfileView? cachedProfile;
+
+  @override
+  Future<UserProfileView?> cachedMe() async => cachedProfile;
 
   @override
   Future<UserProfileView> updateProfile({

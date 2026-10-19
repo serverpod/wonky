@@ -1,9 +1,0 @@
-class: SubscribeResult
-fields:
-  spaceUuid: UuidValue
-  role: AccessRole
-  ### False for viewers/commenters (space role readOnly).
-  canWrite: bool
-  ### True when the membership already existed (no sync wait needed).
-  alreadyMember: bool
-  stats: SpaceStats

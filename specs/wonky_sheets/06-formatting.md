@@ -88,7 +88,7 @@ CF overlay  ▸  cell explicit  ▸  row.formatJson  ▸  column.formatJson  ▸
   (pivot).
 
 `row/column/sheet.formatJson` is a JSON object whose keys are the `Cell` format column names:
-`{"bold":true,"fillColor":"#FCE8B2","numberFormat":"0.00%"}`. Because it is a single synced
+`{"bold":true,"fillColor":"#FCE8B2","numberFormat":"0.00%"}`. Because it is a single
 column, concurrent edits to *different attributes of the same row's default format* are LWW for
 the whole JSON (documented limitation; rare in practice because whole-row/column formatting is
 infrequent and both edits re-apply on retry).
@@ -96,7 +96,7 @@ infrequent and both edits re-apply on retry).
 ### 1.3 Applying a format to ranges (`FormatWriter`)
 
 All formatting commands call `FormatWriter.apply(ranges, Map<FormatAttr, Object?> values)` inside
-one `SheetsWriter` transaction (1 undo step, chunked ≤ 5,000 row changes, 02 §7). Strategy per
+one session write (1 undo step, one op group chunked ≤ 5,000 row changes, 02 §7). Strategy per
 range kind (03 §6.1 `SelectionKind`):
 
 | Range kind | Writes |
@@ -411,6 +411,18 @@ class FormattedValue {
 - The same formatter is used by the grid painter, clipboard (TSV/HTML), CSV/PDF export (11), MCP
   `formatted` values (12), charts axes/labels (08) and `TEXT()` (05 reuses the parser/formatter;
   `TEXT` uses the same token semantics).
+- **As built (CQ-50):** `TEXT()`, `TO_TEXT`, `DOLLAR`, `FIXED` and QUERY `format` call
+  `NumberFormatTextFormatter` (the engine's default `textFormatter`), which formats through
+  `NumberPatternFormatter.instance` and flattens to `plainText`; the formula engine's own
+  1,100-line formatter is deleted, so `=TEXT(A1, "<A1's format>")` gives what A1 shows. Invalid
+  patterns and the internal `preset:*` ids give `#VALUE!`; an empty pattern gives `""` for
+  numbers. Where the two used to disagree, TEXT() now follows the display: a negative value
+  rounding to zero keeps its sign (`-0.00`), fractions keep their alignment padding (`" 1/3"`,
+  `"1    "`), the else section of a conditional format adds the minus sign, serials past
+  9999-12-31 format as dates/times (still open: `#####` like Excel?), month and weekday
+  abbreviations are CLDR's (`Dez.`, `März`), `AM/PM` keeps the pattern's case. Vectors:
+  `test/fixtures/text_format_vectors.tsv` (3,375 pairs where both agreed, en_US and de_DE) and
+  `test/formula/functions/text_format_vectors_test.dart`.
 
 ### 5.12 Rendering rules
 
@@ -506,7 +518,7 @@ Curated **bundled** cell fonts (no runtime Google Fonts; suite 02 §2), files un
 | Metric-compatible (XLSX fidelity) | Arimo (≈ Arial/Helvetica), Tinos (≈ Times New Roman), Cousine (≈ Courier New), Carlito (≈ Calibri), Caladea (≈ Cambria), Gelasio (≈ Georgia) |
 
 > **As built (phase 2).** Bundled: Inter, Geist, Geist Mono (from `shad`) and static OFL faces of
-> Open Sans, EB Garamond and JetBrains Mono (`wonky_sheets/assets/fonts/`, loaded on demand by
+> Open Sans, EB Garamond and JetBrains Mono (`wonky_fonts`' package assets, `packages/wonky_fonts/fonts/` — Sheets' own copy was dropped in CQ-64g —, loaded on demand by
 > `CellFonts`, `features/formatting/cell_fonts.dart`). Every other name — including the theme
 > presets' fonts — is stored unchanged and displayed by category (serif → EB Garamond, mono →
 > JetBrains Mono, else Inter); the picker labels it "X (displayed as Y)". The font menu has
@@ -1062,8 +1074,8 @@ MCP: the UI bridge can call every command via `ui.invoke_command`; headless tool
 `sheets.set_borders`, `sheets.merge_cells`, `sheets.list_conditional_formats`,
 `sheets.add_conditional_format`, `sheets.update_conditional_format`,
 `sheets.delete_conditional_format`, `sheets.set_theme`, `sheets.set_banding` — implemented with
-the same core classes (`FormatWriter` logic is mirrored server-side through the shared
-`SheetsWriter` interface).
+the same core classes (the shared `SheetsMutationPlanner`, committed on the server as a
+server change, 12 §2.4).
 
 ## 17. Acceptance criteria
 
@@ -1124,8 +1136,8 @@ the same core classes (`FormatWriter` logic is mirrored server-side through the 
   → `SheetsSettingsSection`); every key goes through `SheetsUserDefaults`
   (`features/formatting/sheets_user_defaults.dart`). New spreadsheets created on the client get
   the default locale, time zone, theme font (`CreateSpreadsheet {fontFamily}` writes it into
-  `themeJson.fonts.text`) and size; spreadsheets created on the server (templates, no reserved
-  space) keep the server defaults. Custom fill lists feed `PlanContext.customLists`
+  `themeJson.fonts.text`) and size; spreadsheets created on the server (`initialize: true`) get
+  them through `SheetsCreateDefaults`; template copies keep the template's settings (04 §11.24). Custom fill lists feed `PlanContext.customLists`
   (`WorkbookSessionBase.customLists`); *Reduce grid animations* stops the marching ants; *Show
   editor mode* hides the status-bar mode.
 - **Custom formulas** use `FormulaField` (`features/formatting/formula_field.dart`): syntax colors,
@@ -1144,7 +1156,7 @@ the same core classes (`FormatWriter` logic is mirrored server-side through the 
   the draft's range is outlined while the panel is open.
 - **Fonts**: bundled Inter, Roboto, Open Sans, Lato, Source Sans 3, Nunito, Montserrat, Geist,
   EB Garamond, Merriweather, Geist Mono, JetBrains Mono, Roboto Mono (Roboto/Roboto Mono Apache
-  2.0, the others OFL; licenses next to the TTFs in `assets/fonts/`). Merriweather, Montserrat and
+  2.0, the others OFL; licenses next to the TTFs in `packages/wonky_fonts/fonts/`). Merriweather, Montserrat and
   Nunito are the last static TTFs of `google/fonts` (before those families went variable); Source
   Sans 3 exists there only as a variable font, so `WonkySansThree-*.ttf` are static instances of it
   (wght 400/700, upright and italic, hinting and variation tables removed), renamed because

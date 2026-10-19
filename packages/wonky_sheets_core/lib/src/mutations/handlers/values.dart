@@ -1,3 +1,5 @@
+import 'package:wonky_sync_models/ids.dart';
+
 import '../../addressing/grid_geometry.dart';
 import '../../content/cell_content.dart';
 import '../../content/rich_text.dart';
@@ -47,6 +49,7 @@ Map<String, Object?> inputColumns(
   int col,
   CellInput input, {
   String? parseLocale,
+  String? Function()? numberFormat,
 }) {
   switch (input) {
     case ContentCellInput(:final content):
@@ -56,7 +59,9 @@ Map<String, Object?> inputColumns(
       return {CellCols.content: CellContent.fromValue(cv)?.encode()};
     case UserCellInput(:final text):
       final locale = parseLocale ?? b.locale;
-      final fmt = effectiveNumberFormat(b, s, rowId, colId);
+      final fmt = numberFormat != null
+          ? numberFormat()
+          : effectiveNumberFormat(b, s, rowId, colId);
       final parsed = InputParser.instance.parse(
         text,
         locale: locale,
@@ -121,12 +126,48 @@ MutationPlan planSetCellInputs(PlanBuilder b, SetCellInputs op) {
   String colIdAt(int i) => i < s.columns.length
       ? s.columns.idAt(i)
       : extraCols[i - s.columns.length];
+  // The effective number format is cell ▸ row ▸ column ▸ sheet: the row and
+  // column formats are read once per row and column, not per cell (a 1M
+  // cell paste, P9).
+  final sheetFormat = s.record?.format[FormatAttr.numberFormat] as String?;
+  final colIds = [for (var c = 0; c < width; c++) colIdAt(op.col + c)];
+  final colFormats = List<String?>.filled(width, null);
+  final colFormatKnown = List<bool>.filled(width, false);
   var cells = 0;
   for (var r = 0; r < height; r++) {
     final rowInputs = op.inputs[r];
+    final rowId = rowIdAt(op.row + r);
+    String? rowFormat;
+    var rowFormatKnown = false;
     for (var c = 0; c < rowInputs.length; c++) {
-      final rowId = rowIdAt(op.row + r);
-      final colId = colIdAt(op.col + c);
+      final colId = colIds[c];
+      final id = SheetsIds.cellId(s.id, rowId, colId);
+      final cur = b.current(SheetsTables.cell, id);
+      String? format() {
+        final explicit = cur?[CellCols.numberFormat] as String?;
+        if (explicit != null) return explicit;
+        if (!rowFormatKnown) {
+          rowFormatKnown = true;
+          rowFormat =
+              b.formatJsonOf(
+                    SheetsTables.sheetRow,
+                    rowId,
+                  )[FormatAttr.numberFormat]
+                  as String?;
+        }
+        if (rowFormat != null) return rowFormat;
+        if (!colFormatKnown[c]) {
+          colFormatKnown[c] = true;
+          colFormats[c] =
+              b.formatJsonOf(
+                    SheetsTables.sheetColumn,
+                    colId,
+                  )[FormatAttr.numberFormat]
+                  as String?;
+        }
+        return colFormats[c] ?? sheetFormat;
+      }
+
       final cols = inputColumns(
         b,
         s,
@@ -136,11 +177,13 @@ MutationPlan planSetCellInputs(PlanBuilder b, SetCellInputs op) {
         op.col + c,
         rowInputs[c],
         parseLocale: op.parseLocale,
+        numberFormat: format,
       );
-      b.writeCell(s.id, rowId, colId, cols);
+      b.writeCellOf(id, s.id, rowId, colId, cols, cur);
       cells++;
     }
   }
+
   b.summary.sheets.add(s.id);
   if (extraRows.isEmpty && extraCols.isEmpty) {
     b.addResolvedRange(

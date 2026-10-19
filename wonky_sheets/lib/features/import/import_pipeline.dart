@@ -14,7 +14,7 @@ import '../import_export/sheets_io.dart';
 import '../model/sheets_undo.dart';
 import '../model/workbook_session.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
-import '../sync/sheets_sessions.dart';
+import '../revlog/sheets_rev_log.dart';
 
 /// A file chosen for import (picker, drop, MCP).
 @immutable
@@ -366,25 +366,27 @@ Future<ImportedSpreadsheet> _importLocally(
     options,
     spreadsheetLocale: options.locale ?? 'en_US',
   );
-  final controller = await SheetsData.ready(s);
+  final controller = await SheetsRevLog.ready(s);
   if (controller == null) {
     throw StateError('Spreadsheets are not available on this device yet.');
   }
-  final uuid = await SheetsData.createSpreadsheet(
+  final uuid = await SheetsRevLog.createSpreadsheet(
     s,
     parentUuid: parentUuid,
     name: title.isEmpty ? null : title,
   );
   if (uuid == null) throw StateError('The spreadsheet could not be created.');
-  final session = controller.openSession(
+  final session = LoggedWorkbookSession.open(
+    controller,
     itemUuid: uuid,
-    spaceUuid: uuid,
+    fileUuid: uuid,
+    userId: s.me?.uuid.uuid ?? '',
     role: Role.owner,
   );
   try {
     await _whenReady(session);
-    // Chunked (11 §3.5): each chunk is queued for the replica while the
-    // next one is planned; not undoable, so the changes are not kept.
+    // Chunked (11 §3.5): each chunk goes into the outbox while the next
+    // one is planned; not undoable, so the changes are not kept.
     final chunks = IrToRowsPlanner.planChunked(
       parsed.document,
       session.model,

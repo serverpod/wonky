@@ -1,10 +1,10 @@
-import 'package:wonky_sync_kit/rows.dart'
+import 'package:wonky_revlog/rows.dart'
     show TableColumnwiseInserts, TableCoupledColumns;
 
 import 'slides_schema.dart';
 
 /// The table hooks of the `slides.rows` undo domain (02 §12.2) for the
-/// shared `UndoInverter` of `wonky_sync_kit`.
+/// shared `UndoInverter` of `wonky_revlog`.
 abstract final class SlidesUndoHooks {
   /// Coupled columns (02 P4): every writer that changes any column of a
   /// group writes the group's other columns too (when they change), and

@@ -8,7 +8,7 @@ import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:wonky_write/features/editor/applier/delta_applier.dart';
 import 'package:wonky_write/features/editor/dnd/drop_indicator.dart';
-import 'package:wonky_write/features/editor/dnd/external_drop.dart';
+import 'package:wonky_app/platform.dart';
 import 'package:wonky_write/features/editor/keyboard/editor_keyboard.dart';
 import 'package:wonky_write/features/editor/popovers/editor_popovers.dart';
 import 'package:wonky_write/features/editor/ui/wonky_editor.dart';

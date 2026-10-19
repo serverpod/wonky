@@ -52,8 +52,9 @@ class ChartObjectView extends StatefulWidget {
 
 class _ChartObjectViewState extends State<ChartObjectView>
     with TickerProviderStateMixin {
-  SceneHit? _hover;
-  Offset? _hoverAt;
+  /// The tooltip's target and position: its own listenable, so pointer
+  /// moves rebuild only the tooltip, never the chart (CQ-47).
+  final ValueNotifier<(SceneHit, Offset)?> _hover = ValueNotifier(null);
   Offset? _down;
   bool _overPlot = false;
   int? _orbitPointer;
@@ -106,6 +107,7 @@ class _ChartObjectViewState extends State<ChartObjectView>
     if (p != null) ChartPointerClaims.release(p);
     _orbit.dispose();
     _transition.dispose();
+    _hover.dispose();
     super.dispose();
   }
 
@@ -205,13 +207,7 @@ class _ChartObjectViewState extends State<ChartObjectView>
         ? (picked == null ? null : SceneHit(picked.tag, const SGroup([]), 0))
         : scene.hitTest(p.dx, p.dy);
     final next = chartTooltipApplies(hit?.tag) ? hit : null;
-    if (next?.tag != _hover?.tag ||
-        (next != null && _hoverAt != e.localPosition)) {
-      setState(() {
-        _hover = next;
-        _hoverAt = e.localPosition;
-      });
-    }
+    _hover.value = next == null ? null : (next, e.localPosition);
   }
 
   void _onUp(PointerUpEvent e, ChartScene scene) {
@@ -247,20 +243,22 @@ class _ChartObjectViewState extends State<ChartObjectView>
     if (scene.threeD != null) Chart3DBackends.ensureStarted();
     final w = widget.width * widget.zoom;
     final h = widget.height * widget.zoom;
-    Widget paint = CustomPaint(
-      size: Size(w, h),
-      painter: ChartScenePainter(
-        scene,
-        scale: widget.zoom,
-        gpu: Chart3DBackends.active,
-        gpuKey: c,
-        devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+    // Own layer: the tooltip above repaints alone (CQ-47).
+    Widget paint = RepaintBoundary(
+      child: CustomPaint(
+        size: Size(w, h),
+        painter: ChartScenePainter(
+          scene,
+          scale: widget.zoom,
+          gpu: Chart3DBackends.active,
+          gpuKey: c,
+          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+        ),
+        isComplex: true,
+        willChange: _orbit.active || _transition.isAnimating,
       ),
-      isComplex: true,
-      willChange: _orbit.active || _transition.isAnimating,
     );
     if (!widget.interactive) return paint;
-    final hover = _hover;
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (e) {
@@ -271,7 +269,7 @@ class _ChartObjectViewState extends State<ChartObjectView>
         if (_orbitPointer != e.pointer) return;
         _velocity.addPosition(e.timeStamp, e.localPosition);
         _orbit.update(e.localPosition);
-        if (_hover != null) setState(() => _hover = null);
+        _hover.value = null;
       },
       onPointerUp: (e) => _onUp(e, scene),
       onPointerCancel: (e) {
@@ -291,12 +289,8 @@ class _ChartObjectViewState extends State<ChartObjectView>
         onHover: (e) => _onHover(e, scene),
         onExit: (_) {
           c.hover3D = null;
-          if (_hover != null || _overPlot) {
-            setState(() {
-              _hover = null;
-              _overPlot = false;
-            });
-          }
+          _hover.value = null;
+          if (_overPlot) setState(() => _overPlot = false);
         },
         child: SizedBox(
           width: w,
@@ -305,18 +299,22 @@ class _ChartObjectViewState extends State<ChartObjectView>
             clipBehavior: Clip.none,
             children: [
               paint,
-              if (hover != null && _hoverAt != null)
-                ChartTooltip(
-                  cardKey: const ValueKey<String>('sheets.chart.tooltip'),
-                  at: _hoverAt!,
-                  bounds: Size(w, h),
-                  lines: chartTooltipLines(
-                    c.data,
-                    c.spec,
-                    hover.tag,
-                    locale: c.editor.locale,
-                  ),
-                ),
+              ValueListenableBuilder<(SceneHit, Offset)?>(
+                valueListenable: _hover,
+                builder: (context, hover, _) => hover == null
+                    ? const SizedBox.shrink()
+                    : ChartTooltip(
+                        cardKey: const ValueKey<String>('sheets.chart.tooltip'),
+                        at: hover.$2,
+                        bounds: Size(w, h),
+                        lines: chartTooltipLines(
+                          c.data,
+                          c.spec,
+                          hover.$1.tag,
+                          locale: c.editor.locale,
+                        ),
+                      ),
+              ),
             ],
           ),
         ),

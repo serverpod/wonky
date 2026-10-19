@@ -281,30 +281,41 @@ class _AssistantPanelState extends State<AssistantPanel> {
       return const Center(child: ShadSpinner());
     }
     if (c.entries.isEmpty) return _empty(context);
-    return ListView(
+    // Built lazily: a streamed delta rebuilds the visible entries only,
+    // not the whole conversation (review M-2).
+    final entries = c.entries;
+    final error = c.loadError;
+    final offset = error == null ? 0 : 1;
+    return ListView.builder(
       key: const ValueKey<String>('assistant.messages'),
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-      children: [
-        if (c.loadError != null)
-          Padding(
+      itemCount: entries.length + offset,
+      findChildIndexCallback: (key) {
+        if (key is! ValueKey<String>) return null;
+        final i = entries.indexWhere(
+          (e) => key.value == 'assistant.entry.${e.key}',
+        );
+        return i < 0 ? null : i + offset;
+      },
+      itemBuilder: (context, i) {
+        if (i < offset) {
+          return Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              c.loadError!,
-              style: ShadTheme.of(context).textTheme.muted,
-            ),
-          ),
-        for (final e in c.entries)
-          Padding(
-            key: ValueKey<String>('assistant.entry.${e.key}'),
-            padding: const EdgeInsets.only(bottom: 10),
-            child: switch (e) {
-              AssistantUserEntry() => _UserBubble(text: e.text),
-              AssistantReplyEntry() => _ReplyView(controller: c, reply: e),
-              AssistantResultEntry() => _ResultView(controller: c, result: e),
-            },
-          ),
-      ],
+            child: Text(error!, style: ShadTheme.of(context).textTheme.muted),
+          );
+        }
+        final e = entries[i - offset];
+        return Padding(
+          key: ValueKey<String>('assistant.entry.${e.key}'),
+          padding: const EdgeInsets.only(bottom: 10),
+          child: switch (e) {
+            AssistantUserEntry() => _UserBubble(text: e.text),
+            AssistantReplyEntry() => _ReplyView(controller: c, reply: e),
+            AssistantResultEntry() => _ResultView(controller: c, result: e),
+          },
+        );
+      },
     );
   }
 

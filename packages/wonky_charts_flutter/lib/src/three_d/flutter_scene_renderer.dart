@@ -137,18 +137,34 @@ vm.Vector4 _linear(int argb) => vm.Vector4(
 );
 
 /// One chart's Flutter Scene and the hash of the model its meshes show.
+///
+/// Meshes are grouped by (color, part). A model change rebuilds them all; a
+/// hover change (the hovered data is drawn lighter, so it moves to another
+/// color group) rebuilds only the groups whose chunks changed and keeps the
+/// others and the gridlines (CQ-47).
 class _GpuChart {
   final fs.Scene scene = fs.Scene()..maxGpuFramesInFlight = 0;
+  int? _contentHash;
   int? _hash;
   Chart3DLighting? _lighting;
   double? _span;
 
+  /// Mesh nodes by (color, part) with the indices (into
+  /// [Chart3DScene.chunks]) of the chunks they hold.
+  final Map<(int, Chart3DPart), (List<int>, fs.Node)> _groups = {};
+
   void sync(Chart3DScene s) {
     final model = s.model;
+    final content = model.contentHash;
+    if (content != _contentHash) {
+      _contentHash = content;
+      _hash = s.meshHash;
+      _rebuild(s);
+    }
     final hash = s.meshHash;
     if (hash != _hash) {
       _hash = hash;
-      _rebuild(s);
+      _syncGroups(s);
     }
     if (_lighting != model.lighting) {
       _lighting = model.lighting;
@@ -186,31 +202,54 @@ class _GpuChart {
     );
   }
 
+  /// Everything (the model changed): meshes first, then the gridlines.
   void _rebuild(Chart3DScene s) {
     scene.removeAll();
+    _groups.clear();
     final model = s.model;
     _span = (model.bounds.max - model.bounds.min).length;
-    final roughness = switch (model.lighting) {
+    _syncGroups(s);
+    _addLines(s);
+  }
+
+  /// One mesh per color and part; groups whose chunks are unchanged keep
+  /// their node.
+  void _syncGroups(Chart3DScene s) {
+    final roughness = switch (s.model.lighting) {
       Chart3DLighting.soft => 0.45,
       Chart3DLighting.bright => 0.28,
       Chart3DLighting.flat => 0.9,
     };
-    // One mesh per color and part.
-    final groups = <(int, Chart3DPart), List<Chart3DChunk>>{};
-    for (final c in s.chunks) {
-      (groups[(s.colorOf(c), c.item.part)] ??= []).add(c);
+    final chunks = s.chunks;
+    final groups = <(int, Chart3DPart), List<int>>{};
+    for (var i = 0; i < chunks.length; i++) {
+      final c = chunks[i];
+      (groups[(s.colorOf(c), c.item.part)] ??= []).add(i);
     }
-    for (final MapEntry(key: (color, part), value: chunks) in groups.entries) {
-      final geometry = _geometry(chunks);
+    for (final key in _groups.keys.toList()) {
+      final next = groups[key];
+      if (next == null || !listEquals(next, _groups[key]!.$1)) {
+        scene.remove(_groups.remove(key)!.$2);
+      }
+    }
+    for (final MapEntry(key: key, value: indices) in groups.entries) {
+      if (_groups.containsKey(key)) continue;
+      final (color, part) = key;
+      final geometry = _geometry([for (final i in indices) chunks[i]]);
       if (geometry == null) continue;
       final material = fs.PhysicallyBasedMaterial()
         ..baseColorFactor = _linear(color)
         ..metallicFactor = 0
         ..roughnessFactor = part == Chart3DPart.data ? roughness : 0.95
         ..doubleSided = true;
-      scene.add(fs.Node(mesh: fs.Mesh(geometry, material)));
+      final node = fs.Node(mesh: fs.Mesh(geometry, material));
+      scene.add(node);
+      _groups[key] = (indices, node);
     }
-    // Gridlines: thin strips lifted off their wall.
+  }
+
+  /// Gridlines: thin strips lifted off their wall.
+  void _addLines(Chart3DScene s) {
     final width = _span! * 0.0025;
     final lines = <int, List<Chart3DLine>>{};
     for (final l in s.lines) {

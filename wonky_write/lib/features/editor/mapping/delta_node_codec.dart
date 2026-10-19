@@ -466,9 +466,13 @@ class WonkyDeltaParser {
 
   /// Builds the rendered cells of a table embed: inline Markdown parsed into
   /// attributed text; row 0 is the header row; alignment from `align`.
-  static List<List<TextNode>> tableCellsFromEmbed(Map value) {
-    final rows = value['rows'] is List ? value['rows'] as List : const [];
-    final align = value['align'] is List ? value['align'] as List : const [];
+  static List<List<TextNode>> tableCellsFromEmbed(Map<Object?, Object?> value) {
+    final rows = value['rows'] is List
+        ? value['rows'] as List
+        : const <Object?>[];
+    final align = value['align'] is List
+        ? value['align'] as List
+        : const <Object?>[];
     var columns = 0;
     for (final row in rows) {
       if (row is List && row.length > columns) columns = row.length;

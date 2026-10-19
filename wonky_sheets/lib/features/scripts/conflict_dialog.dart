@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/sheets_l10n.dart';
 import 'editor/script_diff_view.dart';
@@ -168,6 +169,7 @@ class _ConflictDialogState extends State<_ConflictDialog>
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.scriptConflict'),
+        closeIcon: const WonkyDialogCloseButton(),
         constraints: BoxConstraints(maxWidth: width + 48),
         title: Text(l.scriptConflictTitle),
         description: Text(_body(l)),

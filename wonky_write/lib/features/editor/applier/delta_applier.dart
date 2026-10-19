@@ -1,9 +1,12 @@
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/super_editor.dart';
+import 'package:wonky_write_core/wonky_write_core.dart' show DeltaSelection;
 
 import '../mapping/delta_node_codec.dart';
 import '../mapping/document_mirror.dart';
+
+export 'package:wonky_write_core/wonky_write_core.dart' show DeltaSelection;
 
 /// The origin of a change applied by the [DeltaApplier].
 enum AppliedChangeOrigin {
@@ -23,61 +26,6 @@ class DeltaApplyError extends Error {
 
   @override
   String toString() => 'DeltaApplyError: $message';
-}
-
-/// Selection expressed as Delta offsets.
-@immutable
-class DeltaSelection {
-  const DeltaSelection(this.base, this.extent);
-
-  const DeltaSelection.collapsed(int offset) : this(offset, offset);
-
-  final int base;
-  final int extent;
-
-  bool get isCollapsed => base == extent;
-
-  int get start => base < extent ? base : extent;
-
-  int get end => base < extent ? extent : base;
-
-  int get length => end - start;
-
-  /// Transforms this selection through [change] (Write 03 §3): a collapsed
-  /// caret moves after text inserted at its position; an expanded selection
-  /// grows with text inserted inside it but not at its edges.
-  DeltaSelection transform(Delta change) {
-    if (isCollapsed) {
-      return DeltaSelection.collapsed(change.transformPosition(base));
-    }
-    final isForward = base <= extent;
-    final newStart = change.transformPosition(start);
-    final newEnd = change.transformPosition(end, force: false);
-    final clampedEnd = newEnd < newStart ? newStart : newEnd;
-    return isForward
-        ? DeltaSelection(newStart, clampedEnd)
-        : DeltaSelection(clampedEnd, newStart);
-  }
-
-  Map<String, Object?> toJson() => {'anchor': base, 'head': extent};
-
-  static DeltaSelection? fromJson(Object? json) {
-    if (json is! Map) return null;
-    final anchor = json['anchor'];
-    final head = json['head'];
-    if (anchor is! int || head is! int) return null;
-    return DeltaSelection(anchor, head);
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is DeltaSelection && other.base == base && other.extent == extent;
-
-  @override
-  int get hashCode => Object.hash(base, extent);
-
-  @override
-  String toString() => 'DeltaSelection($base → $extent)';
 }
 
 /// Applies change Deltas (from collaborators, undo, AI, MCP) to the live
@@ -249,8 +197,8 @@ class DeltaApplier {
     DocumentSelection? newSelection;
     if (transformedSelection != null) {
       newSelection = mirror.selectionAt(
-        transformedSelection.base.clamp(0, mirror.length - 1),
-        transformedSelection.extent.clamp(0, mirror.length - 1),
+        transformedSelection.anchor.clamp(0, mirror.length - 1),
+        transformedSelection.head.clamp(0, mirror.length - 1),
       );
     }
 
@@ -303,8 +251,8 @@ class DeltaApplier {
 
   void _setSelectionOnly(DeltaSelection selection) {
     final documentSelection = mirror.selectionAt(
-      selection.base.clamp(0, mirror.length - 1),
-      selection.extent.clamp(0, mirror.length - 1),
+      selection.anchor.clamp(0, mirror.length - 1),
+      selection.head.clamp(0, mirror.length - 1),
     );
     editor.execute([
       ChangeSelectionRequest(

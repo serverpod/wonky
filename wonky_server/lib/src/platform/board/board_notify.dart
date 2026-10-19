@@ -119,7 +119,7 @@ abstract final class BoardNotify {
   ) async {
     try {
       await send();
-    } on Exception catch (e) {
+    } on Object catch (e) {
       session.log('board: notification failed: $e', level: LogLevel.warning);
     }
   }

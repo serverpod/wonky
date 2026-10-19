@@ -195,7 +195,7 @@ List<Command<CommandArgs>> filterCommands(ShellServices s) => [
         return const CommandResult.failed('Column is not in the filter');
       }
       ed.revealCell(f.range.top, col);
-      final g = ed.lastGeometry;
+      final g = ed.geometry;
       final cell = g?.cellRect(f.range.top, col) ?? Rect.zero;
       filters.popover.value = FilterPopoverRequest(
         sheet.id,

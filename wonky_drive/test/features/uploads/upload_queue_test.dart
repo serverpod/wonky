@@ -157,6 +157,70 @@ void main() {
       expect(api.calls, isNot(contains('complete:a.txt')));
     });
 
+    test('when an upload is cancelled while createFileUpload is in flight '
+        'then the reservation it made is released (DR-2)', () async {
+      api.createGates['a.txt'] = Completer<void>();
+      final [t] = await q.enqueue([textFile('a.txt')]);
+      await settle();
+      expect(t.status, UploadStatus.starting);
+
+      await q.cancel(t.id);
+      await settle();
+      expect(api.calls, isNot(contains('cancel:a.txt')));
+
+      api.createGates['a.txt']!.complete();
+      await settle();
+
+      expect(t.status, UploadStatus.cancelled);
+      expect(api.calls.where((c) => c == 'cancel:a.txt'), hasLength(1));
+      expect(api.items, isEmpty);
+      expect(api.calls, isNot(contains('send:a.txt')));
+      expect(q.unreservedBytes, 0);
+    });
+
+    test('when an upload is cancelled while it is being completed and the '
+        'completion succeeds then the row is done and nothing is released '
+        '(DR-2)', () async {
+      api.completeGates['a.txt'] = Completer<void>();
+      final [t] = await q.enqueue([textFile('a.txt')]);
+      await settle();
+      expect(t.status, UploadStatus.verifying);
+
+      await q.cancel(t.id);
+      await settle();
+      api.completeGates['a.txt']!.complete();
+      await settle();
+
+      expect(api.calls, isNot(contains('cancel:a.txt')));
+      expect(t.status, UploadStatus.done);
+      expect(api.items.values.single.uploadState, FileUploadState.ready);
+    });
+
+    test('when an upload is cancelled while it is being completed and the '
+        'completion fails then the reservation is released (DR-2)', () async {
+      api
+        ..completeGates['a.txt'] = Completer<void>()
+        ..failNext(
+          'complete',
+          'a.txt',
+          WonkyException(
+            code: WonkyErrorCode.invalidArgument,
+            message: 'Incomplete',
+          ),
+        );
+      final [t] = await q.enqueue([textFile('a.txt')]);
+      await settle();
+
+      await q.cancel(t.id);
+      await settle();
+      api.completeGates['a.txt']!.complete();
+      await settle();
+
+      expect(t.status, UploadStatus.cancelled);
+      expect(api.calls.where((c) => c == 'cancel:a.txt'), hasLength(1));
+      expect(api.items, isEmpty);
+    });
+
     test('when the server is out of storage then the row fails with '
         '"out of storage" and Retry uploads it with new ids', () async {
       api.failNext(

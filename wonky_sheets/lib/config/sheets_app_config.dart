@@ -14,7 +14,7 @@ import '../features/scripts/editor/script_editor_screen.dart';
 import '../features/scripts/script_menus.dart';
 import '../features/settings/sheets_settings.dart';
 import '../features/sheet_editor/sheet_editor_screen.dart';
-import '../features/sync/sheets_sessions.dart' show SheetsData;
+import '../features/revlog/sheets_rev_log.dart' show SheetsRevLog;
 import '../l10n/sheets_l10n.dart';
 import '../mcp/ui_sheets_tools.dart';
 import 'sheets_menus.dart';
@@ -122,7 +122,7 @@ class SheetsAppConfig extends WonkyAppConfig {
   @override
   Future<void> onSignedIn(ShellServices services) async {
     await super.onSignedIn(services);
-    SheetsData.install(services);
+    SheetsRevLog.install(services);
     // Restores (history screen, shell stack) and MCP/AI changes undo on
     // the server (Sheets 10 A-10-5).
     services.undo.registerHandler(SheetsServerChangeHandler(services));
@@ -133,7 +133,7 @@ class SheetsAppConfig extends WonkyAppConfig {
   @override
   Future<void> onSigningOut(ShellServices services) async {
     ShellAssistant.uninstall(services);
-    await SheetsData.uninstall(services);
+    await SheetsRevLog.uninstall(services);
     await super.onSigningOut(services);
   }
 
@@ -156,7 +156,7 @@ class SheetsAppConfig extends WonkyAppConfig {
     UuidValue? parentUuid,
     UuidValue? templateUuid,
     String? name,
-  }) => SheetsData.createSpreadsheet(
+  }) => SheetsRevLog.createSpreadsheet(
     services,
     parentUuid: parentUuid,
     templateUuid: templateUuid,

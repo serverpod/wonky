@@ -22,6 +22,36 @@ void main() {
       expect(h.drive.item(doc.uuid).name, 'Q3 plan');
     });
 
+    test('when setting its description then undo and redo restore each '
+        'value', () async {
+      final r = await h.invoke('shell.drive.setDescription', {
+        'uuid': doc.uuid.uuid,
+        'description': '  Budget for Q3 ',
+      });
+      expect(r.isOk, isTrue);
+      expect(h.drive.item(doc.uuid).description, 'Budget for Q3');
+
+      await h.undo();
+      expect(h.drive.item(doc.uuid).description, isNull);
+
+      await h.redo();
+      expect(h.drive.item(doc.uuid).description, 'Budget for Q3');
+    });
+
+    test('when clearing its description then it is removed', () async {
+      await h.invoke('shell.drive.setDescription', {
+        'uuid': doc.uuid.uuid,
+        'description': 'x',
+      });
+
+      await h.invoke('shell.drive.setDescription', {
+        'uuid': doc.uuid.uuid,
+        'description': '',
+      });
+
+      expect(h.drive.item(doc.uuid).description, isNull);
+    });
+
     test('when undoing a rename then the old name is back', () async {
       await h.invoke('shell.drive.rename', {
         'uuid': doc.uuid.uuid,
@@ -104,5 +134,19 @@ void main() {
     await h.undo();
 
     expect(h.drive.item(uuid).trashedAt, isNotNull);
+  });
+
+  test('Given an open folder when creating a folder with an explicit null '
+      'parent then it is created in My Drive', () async {
+    final open = h.drive.seed(name: 'Open', kind: DriveItemKind.folder);
+    h.services.currentFolder.value = open;
+
+    final r = await h.invoke('shell.drive.newFolder', {
+      'name': 'Root level',
+      'parentUuid': null,
+    });
+
+    final uuid = UuidValue.fromString((r.data! as Map)['uuid'] as String);
+    expect(h.drive.item(uuid).parentUuid, isNull);
   });
 }

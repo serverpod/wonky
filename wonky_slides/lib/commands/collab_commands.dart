@@ -157,7 +157,11 @@ List<Command<CommandArgs>> collabCommands(ShellServices s) {
             (ed.selectedElementIds.length == 1
                 ? ed.selectedElementIds.single
                 : null);
-        if (id == null) return const CommandResult.failed('Select a text');
+        if (id == null) {
+          return CommandResult.failed(
+            slidesL10nOf(ed.services).errorSelectTextBox,
+          );
+        }
         final row = a.string('rowId');
         final col = a.string('columnId');
         final target = row != null && col != null

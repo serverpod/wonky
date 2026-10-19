@@ -319,6 +319,7 @@
   "cmdRestoreVersion": "Restore this version",
   "cmdSeeVersionHistory": "See version history",
   "cmdSelectAll": "Select all",
+  "cmdSetDescription": "Edit description",
   "cmdSetTheme": "App theme",
   "cmdSettings": "Settings",
   "cmdShare": "Share",

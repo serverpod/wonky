@@ -52,6 +52,7 @@ import '../../text_layout/slide_text_layout.dart';
 import '../../theme/layout/placeholder_type.dart';
 import '../../theme/resolve/resolved_theme.dart';
 import 'frame_scenes.dart';
+import 'pdf_image_prep.dart';
 import 'pdf_options_codec.dart';
 import 'pdf_page_plan.dart';
 import 'pdf_strings.dart';
@@ -123,6 +124,7 @@ final class SlidesPdfExporter implements SlidesPdfRenderer {
     this.maxPages = 500,
     this.maxImages = 2000,
     this.compress = true,
+    this.imageRunner,
   });
 
   /// Texts the PDF prints (bookmarks, headers, footers).
@@ -156,6 +158,12 @@ final class SlidesPdfExporter implements SlidesPdfRenderer {
   /// (`image_limit`).
   final int maxImages;
 
+  /// Runs the image work of each source (decode, downscale, color
+  /// matrix, blur, encode; CQ-44) elsewhere, e.g. in an isolate. Null
+  /// runs it on this isolate in steps between turns of the event loop
+  /// (web), so the page stays responsive and Cancel works.
+  final SlidesPdfImageRunner? imageRunner;
+
   /// Deflate streams.
   final bool compress;
 
@@ -166,9 +174,15 @@ final class SlidesPdfExporter implements SlidesPdfRenderer {
     if (isCancelled?.call() ?? false) throw const SlidesPdfCancelledException();
   }
 
+  final Stopwatch _slice = Stopwatch()..start();
+
+  /// Checks for cancellation and gives the event loop a turn once 12 ms
+  /// of work have passed since the last one.
   Future<void> _yield() async {
     _check();
+    if (_slice.elapsedMilliseconds < 12) return;
     await Future<void>.delayed(Duration.zero);
+    _slice.reset();
     _check();
   }
 
@@ -787,21 +801,10 @@ final class SlidesPdfExporter implements SlidesPdfRenderer {
       wantFill(s.background.overlay, s.width);
       walk(s.nodes);
     }
-    final decoded = <String, Future<(Uint8List, img.Image?)?>>{};
-    Future<(Uint8List, img.Image?)?> source(String src) =>
-        decoded.putIfAbsent(src, () async {
-          final ref = SlideImageRef(src);
-          Uint8List? bytes;
-          try {
-            bytes = resolver.cachedBytes(ref) ?? await resolver.bytes(ref);
-          } on Object {
-            bytes = null;
-          }
-          if (bytes == null || bytes.isEmpty) return null;
-          return (bytes, null);
-        });
-
-    final out = <String, SlidesPdfImage>{};
+    // Variants grouped by source: each source is fetched and decoded once
+    // (CQ-44), in order of first use.
+    final dpi = compact ? 150.0 : 300.0;
+    final bySource = <String, List<(String, SlidesPdfImageVariant)>>{};
     var count = 0;
     for (final MapEntry(:key, :value) in variants.entries) {
       if (count >= maxImages) {
@@ -809,75 +812,84 @@ final class SlidesPdfExporter implements SlidesPdfRenderer {
         break;
       }
       count++;
-      if (count % 8 == 0) await _yield();
       final (src, matrix, blur, widthSu) = value;
-      final data = await source(src);
-      if (data == null) {
+      (bySource[src] ??= []).add((
+        key,
+        SlidesPdfImageVariant(
+          matrix: matrix,
+          blur: blur,
+          widthSu: widthSu,
+          maxPx: math.max(64, (widthSu * ptPerSu / 72 * dpi).ceil()),
+        ),
+      ));
+    }
+
+    final out = <String, SlidesPdfImage>{};
+    for (final MapEntry(key: src, value: wanted) in bySource.entries) {
+      await _yield();
+      final ref = SlideImageRef(src);
+      Uint8List? bytes;
+      try {
+        bytes = resolver.cachedBytes(ref) ?? await resolver.bytes(ref);
+      } on Object {
+        bytes = null;
+      }
+      if (bytes == null || bytes.isEmpty) {
         warnings.add('image_missing');
         continue;
       }
-      final bytes = data.$1;
-      final dpi = compact ? 150.0 : 300.0;
-      final maxPx = math.max(64, (widthSu * ptPerSu / 72 * dpi).ceil());
-      try {
-        final isJpeg = img.JpegDecoder().isValidFile(bytes);
-        if (isJpeg && matrix == null && blur <= 0 && !compact) {
-          final pi = PdfImage.jpeg(doc, image: bytes);
-          out[key] = SlidesPdfImage(pi, pi.width, pi.height);
-          continue;
-        }
-        var image = img.decodeImage(bytes);
-        if (image == null) {
+      final job = <(String, SlidesPdfImageVariant)>[];
+      for (final (key, v) in wanted) {
+        try {
+          // JPEGs drawn as they are go in unchanged.
+          if (v.matrix == null &&
+              v.blur <= 0 &&
+              !compact &&
+              img.JpegDecoder().isValidFile(bytes)) {
+            final pi = PdfImage.jpeg(doc, image: bytes);
+            out[key] = SlidesPdfImage(pi, pi.width, pi.height);
+            continue;
+          }
+        } on Object {
           warnings.add('image_invalid');
           continue;
         }
-        if (image.width > maxPx) {
-          image = img.copyResize(
-            image,
-            width: maxPx,
-            interpolation: img.Interpolation.average,
-          );
-        }
-        if (matrix != null) image = _applyMatrix(image, matrix);
-        if (blur > 0) {
-          final radius = (blur * image.width / math.max(1, widthSu)).round();
-          if (radius > 0) image = img.gaussianBlur(image, radius: radius);
-        }
-        final PdfImage pi;
-        if (compact && !image.hasAlpha) {
-          pi = PdfImage.jpeg(
-            doc,
-            image: Uint8List.fromList(img.encodeJpg(image, quality: 80)),
-          );
-        } else {
-          pi = PdfImage.fromImage(doc, image: image);
-        }
-        out[key] = SlidesPdfImage(pi, image.width, image.height);
-      } on Object {
-        warnings.add('image_invalid');
+        job.add((key, v));
       }
-    }
-    return out;
-  }
-
-  /// Applies a 4×5 row-major color matrix (Flutter `ColorFilter.matrix`
-  /// semantics: offsets in 0–255) to a copy of [src].
-  static img.Image _applyMatrix(img.Image src, List<double> m) {
-    final out = src.convert(numChannels: 4);
-    for (final p in out) {
-      final r = p.r.toDouble(), g = p.g.toDouble();
-      final b = p.b.toDouble(), a = p.a.toDouble();
-      double row(int i) =>
-          m[i * 5] * r +
-          m[i * 5 + 1] * g +
-          m[i * 5 + 2] * b +
-          m[i * 5 + 3] * a +
-          m[i * 5 + 4];
-      p
-        ..r = row(0).clamp(0, 255)
-        ..g = row(1).clamp(0, 255)
-        ..b = row(2).clamp(0, 255)
-        ..a = row(3).clamp(0, 255);
+      if (job.isEmpty) continue;
+      final request = SlidesPdfImageJob(bytes, [
+        for (final (_, v) in job) v,
+      ], compact: compact);
+      final List<SlidesPdfPreparedImage?> prepared;
+      try {
+        prepared =
+            await (imageRunner?.call(request) ??
+                SlidesPdfImagePrep.run(request, yieldNow: _yield));
+      } on SlidesPdfCancelledException {
+        rethrow;
+      } on Object {
+        if (isCancelled?.call() ?? false) {
+          throw const SlidesPdfCancelledException();
+        }
+        warnings.add('image_invalid');
+        continue;
+      }
+      _check();
+      for (final (i, (key, _)) in job.indexed) {
+        final p = i < prepared.length ? prepared[i] : null;
+        if (p == null) {
+          warnings.add('image_invalid');
+          continue;
+        }
+        try {
+          final pi = p.jpeg != null
+              ? PdfImage.jpeg(doc, image: p.jpeg!)
+              : PdfImage(doc, image: p.rgba!, width: p.width, height: p.height);
+          out[key] = SlidesPdfImage(pi, p.width, p.height);
+        } on Object {
+          warnings.add('image_invalid');
+        }
+      }
     }
     return out;
   }

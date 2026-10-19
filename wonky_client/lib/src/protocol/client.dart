@@ -18,9 +18,6 @@ import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
     as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
-import 'package:serverpod_database/serverpod_database.dart' as _isd;
-import 'package:serverpod_offline_sync_client/serverpod_offline_sync_client.dart'
-    as _ipulbpi2;
 import 'package:wonky_client/src/protocol/platform/activity/activity_dashboard.dart'
     as _ilqfn3s9;
 import 'package:wonky_client/src/protocol/platform/activity/activity_event_view.dart'
@@ -153,6 +150,18 @@ import 'package:wonky_client/src/protocol/platform/presence/presence_event.dart'
     as _i1lme7np;
 import 'package:wonky_client/src/protocol/platform/presence/presence_update.dart'
     as _izu9ijhe;
+import 'package:wonky_client/src/protocol/platform/revlog/messages/rev_client_message.dart'
+    as _iedvhh7l;
+import 'package:wonky_client/src/protocol/platform/revlog/messages/rev_server_message.dart'
+    as _ibic7sfk;
+import 'package:wonky_client/src/protocol/platform/revlog/models/rev_file_info.dart'
+    as _ipiq4i7g;
+import 'package:wonky_client/src/protocol/platform/revlog/models/rev_op_view.dart'
+    as _iq15rk0l;
+import 'package:wonky_client/src/protocol/platform/revlog/models/rev_page.dart'
+    as _ivzrugmo;
+import 'package:wonky_client/src/protocol/platform/revlog/models/rev_page_request.dart'
+    as _isw8g0pp;
 import 'package:wonky_client/src/protocol/platform/sharing/invite_resolution.dart'
     as _idoq825d;
 import 'package:wonky_client/src/protocol/platform/sharing/item_sharing_settings.dart'
@@ -199,10 +208,6 @@ import 'package:wonky_client/src/protocol/sheets/models/revert_result.dart'
     as _i107v8u3;
 import 'package:wonky_client/src/protocol/sheets/models/sheets_activity_summary.dart'
     as _im0q5n3x;
-import 'package:wonky_client/src/protocol/sheets/models/space_stats.dart'
-    as _imzum1ra;
-import 'package:wonky_client/src/protocol/sheets/models/subscribe_result.dart'
-    as _ii9ou7kh;
 import 'package:wonky_client/src/protocol/sheets/scripts/models/script_authorization_view.dart'
     as _i7q8cl7e;
 import 'package:wonky_client/src/protocol/sheets/scripts/models/script_compile_response.dart'
@@ -276,8 +281,6 @@ import 'package:wonky_client/src/protocol/write/models/write_theme_view.dart'
 import 'package:wonky_client/src/protocol/write/models/write_version_document.dart'
     as _igd4fcl2;
 import 'protocol.dart' as _il2as5qe;
-import 'sync_tables.dart' as _ii3f3u05;
-import 'package:wonky_client/migrations/migration_registry.dart';
 
 /// By extending [EmailIdpBaseEndpoint], the email identity provider endpoints
 /// are made available on the server and enable the corresponding sign-in widget
@@ -1765,9 +1768,10 @@ class EndpointDrive extends _isc.EndpointRef {
     },
   );
 
-  /// Registers a deck created locally in a reserved `deck` space
-  /// (idempotent; Slides 02 §9.3). The item uuid is the space uuid. Never
-  /// refused for quota (content arrives through sync).
+  /// Registers a deck created on a device (idempotent; Slides 02 §9.3):
+  /// `createPresentation(fileUuid: spaceUuid, initialize: false)`; the
+  /// client's first op creates the rows (RevLog spec 04 §5). The item uuid
+  /// is the file uuid. Never refused for quota.
   _ida.Future<_iatsgjjq.DriveItemView> registerPresentation(
     _isc.UuidValue spaceUuid,
     _isc.UuidValue? parentUuid,
@@ -1785,18 +1789,24 @@ class EndpointDrive extends _isc.EndpointRef {
   /// Creates a presentation server-side (online; Slides 02 §9.3): a blank
   /// deck with the default theme and a title slide, or with [templateUuid]
   /// a copy of that presentation (SL-8; built-in presentation templates:
-  /// SL-22).
+  /// SL-22). With [fileUuid] the call is idempotent; [initialize] false
+  /// (default true) leaves the file at revision 0 for the client's creation op (RevLog
+  /// spec 04 §5).
   _ida.Future<_iatsgjjq.DriveItemView> createPresentation(
     _isc.UuidValue? parentUuid,
     String name,
-    _isc.UuidValue? templateUuid,
-  ) => caller.callServerEndpoint<_iatsgjjq.DriveItemView>(
+    _isc.UuidValue? templateUuid, {
+    _isc.UuidValue? fileUuid,
+    bool? initialize,
+  }) => caller.callServerEndpoint<_iatsgjjq.DriveItemView>(
     'drive',
     'createPresentation',
     {
       'parentUuid': parentUuid,
       'name': name,
       'templateUuid': templateUuid,
+      'fileUuid': fileUuid,
+      'initialize': initialize,
     },
   );
 
@@ -1981,6 +1991,9 @@ class EndpointE2eSupport extends _isc.EndpointRef {
 }
 
 /// "Report a problem" and client error reports (specs/03, 11 §5).
+///
+/// Public (error reports are sent before sign-in too), so calls are rate
+/// limited per signed-in user, or per client address when signed out.
 /// {@category Endpoint}
 class EndpointFeedback extends _isc.EndpointRef {
   EndpointFeedback(_isc.EndpointCaller caller) : super(caller);
@@ -2558,7 +2571,9 @@ class EndpointUser extends _isc.EndpointRef {
     },
   );
 
-  /// Summaries of users by id (authors, participants).
+  /// Summaries of users by id (authors, participants): only the caller and
+  /// users related to them (who share an item with them, as in
+  /// [searchUsers]); other ids are left out.
   _ida.Future<List<_iq7femvs.UserSummary>> getUsers(List<int> ids) =>
       caller.callServerEndpoint<List<_iq7femvs.UserSummary>>(
         'user',
@@ -2813,6 +2828,72 @@ class EndpointSheetsAi extends _isc.EndpointRef {
       );
 }
 
+/// Spreadsheet sessions over RevLog (RevLog spec 04 §1): `sheetsDoc.*`.
+/// {@category Endpoint}
+class EndpointSheetsDoc extends _isc.EndpointRef {
+  EndpointSheetsDoc(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'sheetsDoc';
+
+  /// Opens an editing/viewing session (04 §2).
+  _ida.Stream<_ibic7sfk.RevServerMessage> connect(
+    _isc.UuidValue fileUuid,
+    int knownRevision,
+    String tabId,
+    _ida.Stream<_iedvhh7l.RevClientMessage> input,
+  ) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_ibic7sfk.RevServerMessage>,
+        _ibic7sfk.RevServerMessage
+      >(
+        'sheetsDoc',
+        'connect',
+        {
+          'fileUuid': fileUuid,
+          'knownRevision': knownRevision,
+          'tabId': tabId,
+        },
+        {'input': input},
+      );
+
+  /// A bootstrap page (04 §3). Viewer+.
+  _ida.Future<_ivzrugmo.RevPage> page(
+    _isc.UuidValue fileUuid,
+    _isw8g0pp.RevPageRequest request,
+  ) => caller.callServerEndpoint<_ivzrugmo.RevPage>(
+    'sheetsDoc',
+    'page',
+    {
+      'fileUuid': fileUuid,
+      'request': request,
+    },
+  );
+
+  /// Ops in (fromRevision, toRevision] (04 §1, 05 §11).
+  _ida.Future<List<_iq15rk0l.RevOpView>> ops(
+    _isc.UuidValue fileUuid,
+    int fromRevision,
+    int toRevision,
+  ) => caller.callServerEndpoint<List<_iq15rk0l.RevOpView>>(
+    'sheetsDoc',
+    'ops',
+    {
+      'fileUuid': fileUuid,
+      'fromRevision': fromRevision,
+      'toRevision': toRevision,
+    },
+  );
+
+  /// Head revision, role and stats. Viewer+.
+  _ida.Future<_ipiq4i7g.RevFileInfo> info(_isc.UuidValue fileUuid) =>
+      caller.callServerEndpoint<_ipiq4i7g.RevFileInfo>(
+        'sheetsDoc',
+        'info',
+        {'fileUuid': fileUuid},
+      );
+}
+
 /// Online-only Sheets operations (suite 12 §2, Sheets 10, 12 §2.5).
 /// {@category Endpoint}
 class EndpointSheets extends _isc.EndpointRef {
@@ -2821,46 +2902,27 @@ class EndpointSheets extends _isc.EndpointRef {
   @override
   String get name => 'sheets';
 
-  /// Reserves up to [count] (≤ 5) empty spaces for offline creation.
-  _ida.Future<List<_isc.UuidValue>> reserveSpaces(int count) =>
-      caller.callServerEndpoint<List<_isc.UuidValue>>(
+  /// The caller's script user properties of a spreadsheet (RevLog spec
+  /// 02 §2.4, Sheets 09 §6.9). Viewer+; private per user.
+  _ida.Future<Map<String, String>> getUserProperties(_isc.UuidValue fileUuid) =>
+      caller.callServerEndpoint<Map<String, String>>(
         'sheets',
-        'reserveSpaces',
-        {'count': count},
+        'getUserProperties',
+        {'fileUuid': fileUuid},
       );
 
-  /// Grants membership of the spreadsheet's space (role mirrored from the
-  /// ACL) and adds it to the caller's active set.
-  _ida.Future<_ii9ou7kh.SubscribeResult> subscribe(_isc.UuidValue itemUuid) =>
-      caller.callServerEndpoint<_ii9ou7kh.SubscribeResult>(
-        'sheets',
-        'subscribe',
-        {'itemUuid': itemUuid},
-      );
-
-  _ida.Future<void> unsubscribe(_isc.UuidValue itemUuid) =>
-      caller.callServerEndpoint<void>(
-        'sheets',
-        'unsubscribe',
-        {'itemUuid': itemUuid},
-      );
-
-  /// Pending-change guard: re-grants spaces with unsynced local changes.
-  _ida.Future<List<_isc.UuidValue>> ensureSubscribed(
-    List<_isc.UuidValue> spaces,
-  ) => caller.callServerEndpoint<List<_isc.UuidValue>>(
+  /// Writes the caller's script user properties (null = delete). Viewer+.
+  _ida.Future<void> setUserProperties(
+    _isc.UuidValue fileUuid,
+    Map<String, String?> changes,
+  ) => caller.callServerEndpoint<void>(
     'sheets',
-    'ensureSubscribed',
-    {'spaces': spaces},
+    'setUserProperties',
+    {
+      'fileUuid': fileUuid,
+      'changes': changes,
+    },
   );
-
-  /// Row counts for download progress.
-  _ida.Future<_imzum1ra.SpaceStats> spaceStats(_isc.UuidValue itemUuid) =>
-      caller.callServerEndpoint<_imzum1ra.SpaceStats>(
-        'sheets',
-        'spaceStats',
-        {'itemUuid': itemUuid},
-      );
 
   /// Named functions of another spreadsheet for *Import function*
   /// (Sheets 07 §9.4): JSON list of `{name, formula, comment, metaJson}`.
@@ -2941,31 +3003,6 @@ class EndpointSheets extends _isc.EndpointRef {
       'url': url,
     },
   );
-}
-
-/// The Sheets sync stream (suite 12 §2.5): `session.offlineSync.sync` with
-/// `onMergeSuccess` processing. Clients use it as their
-/// `OfflineSyncClient` transport instead of the module endpoint.
-/// {@category Endpoint}
-class EndpointSheetsSync extends _isc.EndpointRef {
-  EndpointSheetsSync(_isc.EndpointCaller caller) : super(caller);
-
-  @override
-  String get name => 'sheetsSync';
-
-  _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent> sync({
-    required _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent> changes,
-    required bool once,
-  }) =>
-      caller.callStreamingServerEndpoint<
-        _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent>,
-        _ipulbpi2.OfflineSyncStreamEvent
-      >(
-        'sheetsSync',
-        'sync',
-        {'once': once},
-        {'changes': changes},
-      );
 }
 
 /// Server import jobs into an existing spreadsheet (Sheets 11 §3.3): big
@@ -3196,6 +3233,10 @@ class EndpointScript extends _isc.EndpointRef {
 
   /// The app opened the spreadsheet online: runs installable onOpen
   /// triggers (09 §8.7.3). Returns the number of runs.
+  ///
+  /// Opens beyond [openLimiter] (per user and spreadsheet) and
+  /// [openLimiterAll] (per spreadsheet, all users) run nothing and return
+  /// 0: the triggers run with their installer's authorization and quota.
   _ida.Future<int> notifyOpen(_isc.UuidValue spreadsheetUuid) =>
       caller.callServerEndpoint<int>(
         'script',
@@ -3471,9 +3512,74 @@ class EndpointSlidesCharts extends _isc.EndpointRef {
   );
 }
 
-/// Online-only Slides operations on deck spaces (Slides 02 §9, suite 12
-/// §2.6): reservations for offline creation, subscriptions (membership
-/// mirrored from the ACL), the pending-change guard and download progress.
+/// Deck sessions over RevLog (RevLog spec 04 §1, 08): `slidesDoc.*`.
+/// {@category Endpoint}
+class EndpointSlidesDoc extends _isc.EndpointRef {
+  EndpointSlidesDoc(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'slidesDoc';
+
+  /// Opens an editing/viewing session (04 §2).
+  _ida.Stream<_ibic7sfk.RevServerMessage> connect(
+    _isc.UuidValue fileUuid,
+    int knownRevision,
+    String tabId,
+    _ida.Stream<_iedvhh7l.RevClientMessage> input,
+  ) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_ibic7sfk.RevServerMessage>,
+        _ibic7sfk.RevServerMessage
+      >(
+        'slidesDoc',
+        'connect',
+        {
+          'fileUuid': fileUuid,
+          'knownRevision': knownRevision,
+          'tabId': tabId,
+        },
+        {'input': input},
+      );
+
+  /// A bootstrap page (04 §3). Viewer+.
+  _ida.Future<_ivzrugmo.RevPage> page(
+    _isc.UuidValue fileUuid,
+    _isw8g0pp.RevPageRequest request,
+  ) => caller.callServerEndpoint<_ivzrugmo.RevPage>(
+    'slidesDoc',
+    'page',
+    {
+      'fileUuid': fileUuid,
+      'request': request,
+    },
+  );
+
+  /// Ops in (fromRevision, toRevision] (04 §1, 05 §11).
+  _ida.Future<List<_iq15rk0l.RevOpView>> ops(
+    _isc.UuidValue fileUuid,
+    int fromRevision,
+    int toRevision,
+  ) => caller.callServerEndpoint<List<_iq15rk0l.RevOpView>>(
+    'slidesDoc',
+    'ops',
+    {
+      'fileUuid': fileUuid,
+      'fromRevision': fromRevision,
+      'toRevision': toRevision,
+    },
+  );
+
+  /// Head revision, role and stats. Viewer+.
+  _ida.Future<_ipiq4i7g.RevFileInfo> info(_isc.UuidValue fileUuid) =>
+      caller.callServerEndpoint<_ipiq4i7g.RevFileInfo>(
+        'slidesDoc',
+        'info',
+        {'fileUuid': fileUuid},
+      );
+}
+
+/// Online-only Slides operations (Slides 02 §9): undo and redo of server
+/// changes. Deck sessions are `slidesDoc.*` (RevLog spec 04 §1).
 /// {@category Endpoint}
 class EndpointSlides extends _isc.EndpointRef {
   EndpointSlides(_isc.EndpointCaller caller) : super(caller);
@@ -3481,52 +3587,10 @@ class EndpointSlides extends _isc.EndpointRef {
   @override
   String get name => 'slides';
 
-  /// Reserves up to [count] (≤ 5) empty deck spaces for offline creation.
-  _ida.Future<List<_isc.UuidValue>> reserveSpaces(int count) =>
-      caller.callServerEndpoint<List<_isc.UuidValue>>(
-        'slides',
-        'reserveSpaces',
-        {'count': count},
-      );
-
-  /// Grants membership of the deck's space (role mirrored from the ACL) and
-  /// adds it to the caller's active set of decks.
-  _ida.Future<_ii9ou7kh.SubscribeResult> subscribe(_isc.UuidValue itemUuid) =>
-      caller.callServerEndpoint<_ii9ou7kh.SubscribeResult>(
-        'slides',
-        'subscribe',
-        {'itemUuid': itemUuid},
-      );
-
-  _ida.Future<void> unsubscribe(_isc.UuidValue itemUuid) =>
-      caller.callServerEndpoint<void>(
-        'slides',
-        'unsubscribe',
-        {'itemUuid': itemUuid},
-      );
-
-  /// Pending-change guard: re-grants deck spaces with unsynced local
-  /// changes.
-  _ida.Future<List<_isc.UuidValue>> ensureSubscribed(
-    List<_isc.UuidValue> spaces,
-  ) => caller.callServerEndpoint<List<_isc.UuidValue>>(
-    'slides',
-    'ensureSubscribed',
-    {'spaces': spaces},
-  );
-
-  /// Row counts of the deck's space for download progress.
-  _ida.Future<_imzum1ra.SpaceStats> spaceStats(_isc.UuidValue itemUuid) =>
-      caller.callServerEndpoint<_imzum1ra.SpaceStats>(
-        'slides',
-        'spaceStats',
-        {'itemUuid': itemUuid},
-      );
-
   /// Undo of a server-side change (`slides.serverChange`: MCP, AI,
-  /// templates, restores): applies the recorded inverse with the
-  /// per-column skip rule (columns others changed since stay; coupled
-  /// columns stay together). Editor+.
+  /// restores): reverts the recorded ops with the per-column skip rule
+  /// (columns others changed since stay; coupled columns stay together).
+  /// Editor+.
   _ida.Future<_i107v8u3.RevertResult> revertChange(_isc.UuidValue changeId) =>
       caller.callServerEndpoint<_i107v8u3.RevertResult>(
         'slides',
@@ -3541,32 +3605,6 @@ class EndpointSlides extends _isc.EndpointRef {
         'slides',
         'reapplyChange',
         {'changeId': changeId},
-      );
-}
-
-/// The Slides sync stream (Slides 02 §9.1, suite 12 §2.5–2.6): the engine's
-/// sync over deck spaces + the personal space (patch OS-8) with
-/// `onMergeSuccess` processing of the deck change log. Clients use it as
-/// their `OfflineSyncClient` transport.
-/// {@category Endpoint}
-class EndpointSlidesSync extends _isc.EndpointRef {
-  EndpointSlidesSync(_isc.EndpointCaller caller) : super(caller);
-
-  @override
-  String get name => 'slidesSync';
-
-  _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent> sync({
-    required _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent> changes,
-    required bool once,
-  }) =>
-      caller.callStreamingServerEndpoint<
-        _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent>,
-        _ipulbpi2.OfflineSyncStreamEvent
-      >(
-        'slidesSync',
-        'sync',
-        {'once': once},
-        {'changes': changes},
       );
 }
 
@@ -4125,13 +4163,10 @@ class EndpointWriteTheme extends _isc.EndpointRef {
 class Modules {
   Modules(Client client) {
     serverpod_auth_idp = _iaic.Caller(client);
-    offline_sync = _ipulbpi2.Caller(client);
     serverpod_auth_core = _iacc.Caller(client);
   }
 
   late final _iaic.Caller serverpod_auth_idp;
-
-  late final _ipulbpi2.Caller offline_sync;
 
   late final _iacc.Caller serverpod_auth_core;
 }
@@ -4183,15 +4218,15 @@ class Client extends _isc.ServerpodClientShared {
     user = EndpointUser(this);
     version = EndpointVersion(this);
     sheetsAi = EndpointSheetsAi(this);
+    sheetsDoc = EndpointSheetsDoc(this);
     sheets = EndpointSheets(this);
-    sheetsSync = EndpointSheetsSync(this);
     sheetsImport = EndpointSheetsImport(this);
     script = EndpointScript(this);
     sheetsVersion = EndpointSheetsVersion(this);
     slidesAi = EndpointSlidesAi(this);
     slidesCharts = EndpointSlidesCharts(this);
+    slidesDoc = EndpointSlidesDoc(this);
     slides = EndpointSlides(this);
-    slidesSync = EndpointSlidesSync(this);
     slidesExport = EndpointSlidesExport(this);
     presentation = EndpointPresentation(this);
     slidesThemes = EndpointSlidesThemes(this);
@@ -4243,9 +4278,9 @@ class Client extends _isc.ServerpodClientShared {
 
   late final EndpointSheetsAi sheetsAi;
 
-  late final EndpointSheets sheets;
+  late final EndpointSheetsDoc sheetsDoc;
 
-  late final EndpointSheetsSync sheetsSync;
+  late final EndpointSheets sheets;
 
   late final EndpointSheetsImport sheetsImport;
 
@@ -4257,9 +4292,9 @@ class Client extends _isc.ServerpodClientShared {
 
   late final EndpointSlidesCharts slidesCharts;
 
-  late final EndpointSlides slides;
+  late final EndpointSlidesDoc slidesDoc;
 
-  late final EndpointSlidesSync slidesSync;
+  late final EndpointSlides slides;
 
   late final EndpointSlidesExport slidesExport;
 
@@ -4301,15 +4336,15 @@ class Client extends _isc.ServerpodClientShared {
     'user': user,
     'version': version,
     'sheetsAi': sheetsAi,
+    'sheetsDoc': sheetsDoc,
     'sheets': sheets,
-    'sheetsSync': sheetsSync,
     'sheetsImport': sheetsImport,
     'script': script,
     'sheetsVersion': sheetsVersion,
     'slidesAi': slidesAi,
     'slidesCharts': slidesCharts,
+    'slidesDoc': slidesDoc,
     'slides': slides,
-    'slidesSync': slidesSync,
     'slidesExport': slidesExport,
     'presentation': presentation,
     'slidesThemes': slidesThemes,
@@ -4323,60 +4358,6 @@ class Client extends _isc.ServerpodClientShared {
   @override
   Map<String, _isc.ModuleEndpointCaller> get moduleLookup => {
     'serverpod_auth_idp': modules.serverpod_auth_idp,
-    'offline_sync': modules.offline_sync,
     'serverpod_auth_core': modules.serverpod_auth_core,
   };
-
-  /// Creates a new client-side database session for the given path.
-  ///
-  /// The [path] is the file path to the SQLite database file. Since SQLite uses
-  /// WAL mode, note that `[path]-shm` and `[path]-wal` files might also exist
-  /// transiently for the database while the session is open.
-  ///
-  /// If [runMigrations] is true, pending migrations will be applied when
-  /// opening the database. Be careful when setting this to false, as it might
-  /// lead to inconsistencies between the models and the database.
-  ///
-  /// If [isDebugMode] is true, the database integrity will be verified after
-  /// the migrations are applied to provide feedback of possible issues. On a
-  /// Flutter application, this should be set to [kDebugMode].
-  _ida.Future<_isd.ClientDatabaseSession> createSession(
-    String path, {
-    bool runMigrations = true,
-    bool isDebugMode = false,
-  }) async {
-    return await _isd.ClientDatabaseSession.open(
-      path,
-      _il2as5qe.Protocol(),
-      clientMigrations: MigrationRegistry.migrations,
-      runMigrations: runMigrations,
-      isDebugMode: isDebugMode,
-    );
-  }
-
-  /// Creates a new client-side database session for the given path, wrapped
-  /// with the `serverpod_offline_sync` engine for the tables declared with
-  /// `database: sync`. See [createSession] for the [path], [runMigrations] and
-  /// [isDebugMode] parameters.
-  ///
-  /// The [persistentUserId] is the user all local operations belong to. When
-  /// omitted, the user must be passed through the transaction.
-  _ida.Future<_ipulbpi2.OfflineSyncDatabaseSession> createSyncSession(
-    String path, {
-    bool runMigrations = true,
-    bool isDebugMode = false,
-    _isc.UuidValue? persistentUserId,
-  }) async {
-    final session = _ipulbpi2.OfflineSyncDatabaseSession.wraps(
-      await createSession(
-        path,
-        runMigrations: runMigrations,
-        isDebugMode: isDebugMode,
-      ),
-      syncTables: _ii3f3u05.syncTables,
-      persistentUserId: persistentUserId,
-    );
-    await session.db.initialize();
-    return session;
-  }
 }

@@ -70,21 +70,17 @@ abstract final class AiUsageService {
       u.outputTokens +
       u.cacheReadTokens ~/ 10;
 
-  /// Budget tokens used today.
+  /// Budget tokens used today: [budgetTokens] summed over today's rows in
+  /// one query (the `ai_usage_user_at_idx` range), not row by row in Dart.
   static Future<int> usedToday(Session session, int userId) async {
-    final rows = await AiUsage.db.find(
-      session,
-      where: (t) => t.userId.equals(userId) & (t.at >= dayStart()),
+    final result = await session.db.unsafeQuery(
+      'SELECT COALESCE(SUM("inputTokens" + "cacheWriteTokens" + '
+      '"outputTokens" + "cacheReadTokens" / 10), 0)::bigint '
+      'FROM ai_usage WHERE "userId" = @user AND "at" >= @from',
+      parameters: QueryParameters.named({'user': userId, 'from': dayStart()}),
     );
-    var sum = 0;
-    for (final r in rows) {
-      sum +=
-          r.inputTokens +
-          r.cacheWriteTokens +
-          r.outputTokens +
-          r.cacheReadTokens ~/ 10;
-    }
-    return sum;
+    final value = result.isEmpty ? null : result.first.first;
+    return value is int ? value : int.tryParse('$value') ?? 0;
   }
 
   /// Records one response's usage and logs cache hits (to verify caching).
@@ -114,11 +110,15 @@ abstract final class AiUsageService {
     );
   }
 
-  /// Deletes usage older than 90 days (called with the daily job or tests).
-  static Future<void> purge(Session session) => AiUsage.db.deleteWhere(
-    session,
-    where: (t) => t.at < nowUtc().subtract(const Duration(days: 90)),
-  );
+  /// Deletes usage older than 90 days (the daily job); returns the count.
+  static Future<int> purge(Session session, {DateTime? now}) async {
+    final cutoff = (now ?? nowUtc()).subtract(const Duration(days: 90));
+    final deleted = await AiUsage.db.deleteWhere(
+      session,
+      where: (t) => t.at < cutoff,
+    );
+    return deleted.length;
+  }
 
   /// The status shown in the panel and settings: availability, the
   /// provider and whose key is used, whether the user may add a key.
@@ -173,15 +173,20 @@ abstract final class AiUsageService {
         detailsJson: '{"reason":"${s.reason}"}',
       );
     }
-    await requireBudget(session, userId);
+    // The status already summed today's usage: one query, not two.
+    _checkBudget(s.tokensUsedToday);
+  }
+
+  static void _checkBudget(int used) {
+    final budget = AiConfig.current.dailyTokenBudget;
+    if (budget > 0 && used >= budget) {
+      throw Errors.limit(budgetMessage, detailsJson: '{"reason":"budget"}');
+    }
   }
 
   static Future<void> requireBudget(Session session, int userId) async {
-    final budget = AiConfig.current.dailyTokenBudget;
-    if (budget <= 0) return;
-    if (await usedToday(session, userId) >= budget) {
-      throw Errors.limit(budgetMessage, detailsJson: '{"reason":"budget"}');
-    }
+    if (AiConfig.current.dailyTokenBudget <= 0) return;
+    _checkBudget(await usedToday(session, userId));
   }
 
   // ------------------------------------------------------------ concurrency

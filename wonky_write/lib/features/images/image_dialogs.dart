@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/write_l10n.dart';
 import 'image_services.dart';
@@ -139,6 +140,7 @@ class _ImageUrlDialogState extends State<ImageUrlDialog> {
     final cs = theme.colorScheme;
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.imageUrl'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(widget.title ?? l.imageUrlTitle),
       constraints: const BoxConstraints(maxWidth: 520),
       actions: [
@@ -350,6 +352,7 @@ class _ImageAltDialogState extends State<ImageAltDialog> {
     final theme = ShadTheme.of(context);
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.imageAlt'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.imageAltText),
       description: Text(l.imageAltDescription),
       constraints: const BoxConstraints(maxWidth: 460),

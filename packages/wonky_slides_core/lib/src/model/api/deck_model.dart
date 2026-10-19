@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 import 'package:wonky_sync_models/ids.dart' show FractionalIndex;
 
 import '../../schema/slides_schema.dart';
@@ -370,6 +370,15 @@ final class DeckModel implements DeckReader {
         _themeOrder = null;
     }
   }
+
+  /// Puts the updated row [slide] into the cached slide order in place (a
+  /// change of columns the order doesn't depend on: notes, title, …).
+  void _replaceInOrder(SlideRec slide) {
+    final order = _slideOrder;
+    if (order == null) return;
+    final i = order.indexWhere((s) => s.id == slide.id);
+    _slideOrder = i < 0 ? null : List.unmodifiable([...order]..[i] = slide);
+  }
 }
 
 /// Collects the events of one ingestion.
@@ -405,7 +414,15 @@ final class _BatchBuilder {
     final r = (next ?? old)!;
     final diff = _diff(old, next);
     if (diff.isEmpty) return;
-    model._invalidateOrder(r.table);
+    if (next is SlideRec &&
+        old != null &&
+        !diff.contains(SlidesCols.sortKey) &&
+        !diff.contains(SlideCols.groupId)) {
+      // Notes, title, … : the order stays, only the row is replaced.
+      model._replaceInOrder(next);
+    } else {
+      model._invalidateOrder(r.table);
+    }
     switch (r) {
       case DeckRec():
         (_deckColumns ??= {}).addAll(diff);
@@ -421,6 +438,9 @@ final class _BatchBuilder {
         slides.slideIds.add(r.id);
         if (old == null) slides.added.add(r.id);
         if (next == null) slides.removed.add(r.id);
+        if (old != null && next != null) {
+          (slides.columns[r.id] ??= {}).addAll(diff);
+        }
         if (old == null ||
             next == null ||
             diff.contains(SlidesCols.sortKey) ||

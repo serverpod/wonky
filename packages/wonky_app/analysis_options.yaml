@@ -1,9 +1,11 @@
-include: package:flutter_lints/flutter.yaml
+include: package:wonky_lints/flutter.yaml
 
 analyzer:
   exclude:
     - build/**
-  language:
-    strict-casts: true
-    strict-inference: true
-    strict-raw-types: true
+
+linter:
+  rules:
+    # TODO(CQ-64e): turn on (wonky_lints default); 79 discarded futures
+    # (sync callbacks calling async code) need `unawaited(…)` or an await.
+    discarded_futures: false

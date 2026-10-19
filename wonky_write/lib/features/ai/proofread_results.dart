@@ -49,7 +49,8 @@ class ProofreadResults extends ChangeNotifier {
     switch (e.type) {
       case 'issues':
         issues.addAll([
-          for (final i in e.issues ?? const []) ProofreadIssueState(i),
+          for (final i in e.issues ?? const <ProofreadIssue>[])
+            ProofreadIssueState(i),
         ]);
         sectionsDone = e.sectionsDone ?? sectionsDone;
         sectionsTotal = e.sectionsTotal ?? sectionsTotal;

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart' hide RichText;
+import 'package:wonky_core/wonky_core.dart' show InvocationSource;
 import 'package:wonky_sheets_core/model.dart' show RichText;
 import 'package:wonky_sheets_core/formula.dart';
 
@@ -427,10 +428,12 @@ class CellEditorController extends ChangeNotifier {
 
   /// Writes the text to the target cell (or the whole selection with
   /// [toSelection]) through `sheets.cell.setInput`, then moves the active
-  /// cell (03 §8.4).
+  /// cell (03 §8.4). [source] is the invocation source of the write (an agent
+  /// typing through `ui.sheets.type_in_cell` passes `mcp`).
   Future<bool> commit({
     CommitMove move = CommitMove.enter,
     bool toSelection = false,
+    InvocationSource source = InvocationSource.ui,
   }) async {
     final s = _session;
     if (s == null) return false;
@@ -482,7 +485,7 @@ class CellEditorController extends ChangeNotifier {
         'sheetId': s.sheetId,
         'rowId': s.rowId,
         'colId': s.colId,
-      });
+      }, source);
     } else if (input != s.original || toSelection) {
       ok = await host.invokeCommand(
         toSelection
@@ -494,6 +497,7 @@ class CellEditorController extends ChangeNotifier {
           'rowId': s.rowId,
           'colId': s.colId,
         },
+        source,
       );
     }
     switch (move) {

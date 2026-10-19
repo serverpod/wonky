@@ -19,11 +19,13 @@ import '../sheet_editor/sheet_editor_controller.dart';
 import 'package:wonky_sheets_core/model.dart' show CellWidgetKind;
 
 import 'a11y/grid_semantics.dart';
+import 'grid_touch.dart';
 import 'paint/layers/content_layers.dart';
 import 'paint/layers/overlay_layers.dart';
 import 'selection/grid_selection.dart';
 import 'viewport/grid_geometry.dart';
 import 'viewport/grid_pass.dart';
+import 'viewport/grid_scroll_controller.dart';
 
 /// Opens the context menu of a grid region at a global position.
 typedef GridContextMenuCallback =
@@ -67,15 +69,19 @@ class GridArea extends StatefulWidget {
   State<GridArea> createState() => _GridAreaState();
 }
 
-class _GridAreaState extends State<GridArea>
-    with SingleTickerProviderStateMixin {
+class _GridAreaState extends State<GridArea> with TickerProviderStateMixin {
   SheetEditorController get c => widget.controller;
 
   late final Ticker _ants;
   _Drag _drag = _Drag.none;
   Offset? _lastPointer;
   Timer? _autoScroll;
-  MouseCursor _cursor = SystemMouseCursors.cell;
+
+  /// The pointer cursor: its own listenable, so a cursor change rebuilds
+  /// only the [MouseRegion], never the passes (S-07).
+  final ValueNotifier<MouseCursor> _cursor = ValueNotifier(
+    SystemMouseCursors.cell,
+  );
   int _resizeIndex = -1;
   double _resizeStart = 0;
   double _resizeOrigin = 0;
@@ -138,10 +144,13 @@ class _GridAreaState extends State<GridArea>
     HardwareKeyboard.instance.removeHandler(_onModifierKey);
     _ants.dispose();
     _autoScroll?.cancel();
+    _touch.dispose();
+    _fling?.dispose();
+    _cursor.dispose();
     super.dispose();
   }
 
-  GridGeometry? get _g => c.lastGeometry;
+  GridGeometry? get _g => c.geometry;
 
   bool get _mod {
     final kb = HardwareKeyboard.instance;
@@ -267,7 +276,7 @@ class _GridAreaState extends State<GridArea>
   // ---------------------------------------------------------------------------
   // Pointer.
 
-  bool _isDoubleClick(Offset p) {
+  bool _isDoubleClick(Offset p, {double slop = 6}) {
     final now = DateTime.now();
     final last = _lastDown;
     final lastPos = _lastDownPos;
@@ -276,10 +285,12 @@ class _GridAreaState extends State<GridArea>
     return last != null &&
         lastPos != null &&
         now.difference(last) < const Duration(milliseconds: 400) &&
-        (p - lastPos).distance < 6;
+        (p - lastPos).distance < slop;
   }
 
-  void _onDown(PointerDownEvent e) {
+  /// A primary or secondary press (mouse, stylus; a touch tap or long
+  /// press through [_touch]).
+  void _press(PointerDownEvent e, {bool touch = false}) {
     final p = e.localPosition;
     final region = _region(p);
     final g = _g;
@@ -297,7 +308,7 @@ class _GridAreaState extends State<GridArea>
     for (final h in c.gridHooks.hitHandlers) {
       if (h.onPointerDown(g, p, e)) return;
     }
-    final dbl = _isDoubleClick(p);
+    final dbl = _isDoubleClick(p, slop: touch ? kDoubleTapSlop : 6);
 
     if (region.corner) {
       if (_onFreezeBar(p, rows: true)) {
@@ -546,11 +557,129 @@ class _GridAreaState extends State<GridArea>
     widget.onContextMenu?.call(kind, e.position);
   }
 
+  void _onDown(PointerDownEvent e) {
+    _stopFling();
+    if (e.kind == PointerDeviceKind.touch) {
+      _touch.down(e);
+      return;
+    }
+    _press(e);
+  }
+
   void _onMove(PointerMoveEvent e) {
+    if (_touch.tracks(e.pointer)) {
+      _touch.move(e);
+      return;
+    }
+    _dragTo(e);
+  }
+
+  void _onUp(PointerUpEvent e) {
+    if (_touch.tracks(e.pointer)) {
+      _touch.up(e);
+      return;
+    }
+    _release();
+  }
+
+  /// The OS or browser took the pointer (focus lost, system gesture): the
+  /// drag in progress is aborted, not committed (S-08).
+  void _onCancel(PointerCancelEvent e) {
+    if (_touch.tracks(e.pointer)) {
+      _touch.cancel(e);
+      return;
+    }
+    _cancelDrag();
+  }
+
+  void _dragTo(PointerMoveEvent e) {
     if (_drag == _Drag.none) return;
     _lastPointer = e.localPosition;
     _applyDrag(e.localPosition);
     _ensureAutoScroll();
+  }
+
+  /// Ends the drag in progress without invoking its command: no fill,
+  /// move, resize, freeze or paint format is written.
+  void _cancelDrag() {
+    final drag = _drag;
+    _drag = _Drag.none;
+    if (drag == _Drag.move) _setCursor(SystemMouseCursors.cell);
+    _autoScroll?.cancel();
+    _autoScroll = null;
+    c.drag.value = null;
+    _dragSource = null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Touch (S-01): a tap selects, one finger scrolls with momentum, a long
+  // press then drag selects a range (or fills, moves, resizes), two fingers
+  // pinch-zoom (50–200 %).
+
+  late final GridTouchTracker _touch = GridTouchTracker(
+    onTap: (down, up) {
+      _press(down, touch: true);
+      _release();
+    },
+    onLongPress: (down) => _press(down, touch: true),
+    onDragMove: _dragTo,
+    onDragEnd: (_) => _release(),
+    onDragCancel: _cancelDrag,
+    onPan: (delta) => c.scroll.scrollBy(-delta.dx, -delta.dy),
+    onFling: _startFling,
+    onPinchStart: () => _pinchZoom = c.scroll.zoom,
+    onPinchUpdate: (scale, focal, focalDelta) {
+      c.scroll.scrollBy(-focalDelta.dx, -focalDelta.dy);
+      final z = (_pinchZoom * scale).clamp(
+        GridScrollController.minZoom,
+        GridScrollController.maxZoom,
+      );
+      if ((z * 20).round() / 20 != c.scroll.zoom) _zoomAround(z, focal);
+    },
+  );
+
+  double _pinchZoom = 1;
+  Ticker? _fling;
+  ClampingScrollSimulation? _flingX;
+  ClampingScrollSimulation? _flingY;
+  Offset _flingLast = Offset.zero;
+
+  /// Scrolls on after a touch pan with the finger's [velocity].
+  void _startFling(Velocity velocity) {
+    _stopFling();
+    final v = -velocity.pixelsPerSecond;
+    if (v.distance < kMinFlingVelocity) return;
+    final sx = ClampingScrollSimulation(position: 0, velocity: v.dx);
+    final sy = ClampingScrollSimulation(position: 0, velocity: v.dy);
+    _flingX = sx;
+    _flingY = sy;
+    _flingLast = Offset.zero;
+    final ticker = _fling ??= createTicker(_onFlingTick);
+    ticker.start();
+  }
+
+  void _onFlingTick(Duration elapsed) {
+    final sx = _flingX;
+    final sy = _flingY;
+    if (sx == null || sy == null) return;
+    final t = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
+    final at = Offset(sx.x(t), sy.x(t));
+    final delta = at - _flingLast;
+    _flingLast = at;
+    final before = Offset(c.scroll.x, c.scroll.y);
+    c.scroll.scrollBy(delta.dx, delta.dy);
+    final moved = Offset(c.scroll.x, c.scroll.y) != before;
+    // Done, or stopped by the edges of the sheet.
+    if ((sx.isDone(t) && sy.isDone(t)) || (!moved && delta.distance > 0.5)) {
+      _stopFling();
+    }
+  }
+
+  void _stopFling() {
+    _flingX = null;
+    _flingY = null;
+    final f = _fling;
+    if (f != null && f.isActive) f.stop();
   }
 
   void _applyDrag(Offset p) {
@@ -669,7 +798,8 @@ class _GridAreaState extends State<GridArea>
     }
   }
 
-  void _onUp(PointerEvent e) {
+  /// The end of a press: commits the drag in progress.
+  void _release() {
     final drag = _drag;
     _drag = _Drag.none;
     if (drag == _Drag.move) _setCursor(SystemMouseCursors.cell);
@@ -926,7 +1056,7 @@ class _GridAreaState extends State<GridArea>
   }
 
   void _setCursor(MouseCursor cursor) {
-    if (cursor != _cursor && mounted) setState(() => _cursor = cursor);
+    if (mounted) _cursor.value = cursor;
   }
 
   /// Pressing or releasing the copy modifier mid-drag switches move ⇄ copy
@@ -1023,16 +1153,20 @@ class _GridAreaState extends State<GridArea>
                   clipBehavior: Clip.hardEdge,
                   children: [
                     Positioned.fill(
-                      child: MouseRegion(
-                        cursor: _cursor,
-                        onHover: _onHover,
-                        onExit: (_) => _setHover(null),
+                      child: ValueListenableBuilder<MouseCursor>(
+                        valueListenable: _cursor,
+                        builder: (context, cursor, child) => MouseRegion(
+                          cursor: cursor,
+                          onHover: _onHover,
+                          onExit: (_) => _setHover(null),
+                          child: child,
+                        ),
                         child: Listener(
                           behavior: HitTestBehavior.opaque,
                           onPointerDown: _onDown,
                           onPointerMove: _onMove,
                           onPointerUp: _onUp,
-                          onPointerCancel: _onUp,
+                          onPointerCancel: _onCancel,
                           onPointerSignal: _onSignal,
                           onPointerPanZoomStart: _onPanZoomStart,
                           onPointerPanZoomUpdate: _onPanZoomUpdate,
@@ -1122,7 +1256,7 @@ class _Scrollbars extends StatelessWidget {
     return ListenableBuilder(
       listenable: s,
       builder: (context, _) {
-        final g = controller.lastGeometry;
+        final g = controller.geometry;
         if (g == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) (context as Element).markNeedsBuild();
@@ -1248,7 +1382,7 @@ class _AddRowsFooterState extends State<_AddRowsFooter> {
     return ListenableBuilder(
       listenable: Listenable.merge([c.scroll, c.contentSignal]),
       builder: (context, _) {
-        final g = c.lastGeometry;
+        final g = c.geometry;
         if (g == null || !c.canEdit) return const SizedBox.shrink();
         final last = g.sheet.rows.length;
         if (g.main.rowEnd < last - 1) return const SizedBox.shrink();

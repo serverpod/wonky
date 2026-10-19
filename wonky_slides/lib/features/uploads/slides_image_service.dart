@@ -5,7 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart'
-    show FileUrlView, StoredFileKind, StoredFileStatus, UuidValue;
+    show
+        FileUrlView,
+        StoredFileKind,
+        StoredFileStatus,
+        UuidValue,
+        WonkyException;
 import 'package:wonky_slides_core/interfaces.dart';
 import 'package:wonky_slides_core/scene.dart' show SlideImageRef;
 
@@ -26,10 +31,16 @@ import 'slides_pending_uploads.dart';
 ///    while another user's upload is still pending), `https://` sources go
 ///    through the image proxy (`file.fetchImage`).
 ///
-/// Downloaded bytes are kept in a bounded LRU (64 MB). One instance per
-/// open deck ([of]).
-class SlidesImageService extends ChangeNotifier implements SlideImageResolver {
-  SlidesImageService._(this.editor);
+/// Downloaded bytes are kept in a bounded LRU (64 MB); bytes inserted on
+/// this device move there once their upload is done. Loads that fail
+/// for now (offline, server errors) throw [SlideImageTransientException]
+/// and [retries] fires when the connection comes back (CQ-43). One
+/// instance per open deck ([of]); [dispose] cancels the polls.
+class SlidesImageService extends ChangeNotifier
+    implements RetryingSlideImageResolver {
+  SlidesImageService._(this.editor) {
+    _s.connectivity.addListener(_onConnectivity);
+  }
 
   static final Expando<SlidesImageService> _registry = Expando(
     'SlidesImageService',
@@ -38,6 +49,10 @@ class SlidesImageService extends ChangeNotifier implements SlideImageResolver {
   /// The image service of [editor] (created on first use).
   static SlidesImageService of(DeckEditorController editor) =>
       _registry[editor] ??= SlidesImageService._(editor);
+
+  /// The image service of [editor] if one was created.
+  static SlidesImageService? maybeOf(DeckEditorController editor) =>
+      _registry[editor];
 
   final DeckEditorController editor;
 
@@ -53,6 +68,53 @@ class SlidesImageService extends ChangeNotifier implements SlideImageResolver {
   final Map<String, (Uint8List, String, String)> _refused = {};
   final LinkedHashMap<String, Uint8List> _downloaded = LinkedHashMap();
   int _downloadedBytes = 0;
+  final StreamController<void> _retries = StreamController.broadcast();
+  final Set<Completer<void>> _sleeping = {};
+  late bool _online = _s.connectivity.online;
+  bool _disposed = false;
+
+  @override
+  Stream<void> get retries => _retries.stream;
+
+  void _onConnectivity() {
+    final online = _s.connectivity.online;
+    if (online && !_online && !_disposed) _retries.add(null);
+    _online = online;
+  }
+
+  /// Stops polling for pending uploads of other users and stops listening
+  /// to the connection (the deck closed).
+  @override
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _s.connectivity.removeListener(_onConnectivity);
+    for (final c in _sleeping) {
+      c.complete();
+    }
+    _sleeping.clear();
+    unawaited(_retries.close());
+    if (identical(_registry[editor], this)) _registry[editor] = null;
+    super.dispose();
+  }
+
+  /// Waits [d], or less when disposed.
+  Future<void> _sleep(Duration d) {
+    final c = Completer<void>();
+    _sleeping.add(c);
+    final t = Timer(d, () {
+      if (!c.isCompleted) c.complete();
+    });
+    return c.future.whenComplete(() {
+      t.cancel();
+      _sleeping.remove(c);
+    });
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
 
   /// Test hook: replaces the server for remote bytes (`https://` sources
   /// and signed downloads of `wonky-file://` sources by file uuid).
@@ -223,7 +285,7 @@ class SlidesImageService extends ChangeNotifier implements SlideImageResolver {
     }
     final bytes = await this.bytes(SlideImageRef('$scheme${copy.uuid}'));
     if (bytes == null) throw StateError('Image not found');
-    _local[copy.uuid] = bytes;
+    _remember(copy.uuid, bytes);
     return (copy.uuid, bytes);
   }
 
@@ -238,10 +300,17 @@ class SlidesImageService extends ChangeNotifier implements SlideImageResolver {
   @override
   Uint8List? cachedBytes(SlideImageRef ref) {
     final key = _key(ref.src);
+    final local = _local[key];
+    if (local != null) {
+      // Uploaded: the bounded LRU keeps the bytes from now on.
+      if (!isUploading(key) && !isOutOfStorage(key)) {
+        _local.remove(key);
+        _remember(key, local);
+      }
+      return local;
+    }
     final hit =
-        _local[key] ??
-        _queue?.cachedBytesOf(key) ??
-        editor.session.images.cachedBytes(ref);
+        _queue?.cachedBytesOf(key) ?? editor.session.images.cachedBytes(ref);
     if (hit != null) return hit;
     final d = _downloaded.remove(key);
     if (d != null) _downloaded[key] = d;
@@ -261,8 +330,14 @@ class SlidesImageService extends ChangeNotifier implements SlideImageResolver {
     try {
       b = await _remote(key);
     } catch (e) {
-      debugPrint('Loading slide image $key failed: $e');
-      return null;
+      // Gone or no access: unavailable for good. Offline, a transport or
+      // server error: the image cache tries again later.
+      if (e is SlideImageTransientException) rethrow;
+      if (e is WonkyException) {
+        debugPrint('Loading slide image $key failed: $e');
+        return null;
+      }
+      throw SlideImageTransientException(e);
     }
     if (b != null) _remember(key, b);
     return b;
@@ -283,6 +358,8 @@ class SlidesImageService extends ChangeNotifier implements SlideImageResolver {
   }
 
   void _remember(String key, Uint8List b) {
+    final old = _downloaded.remove(key);
+    if (old != null) _downloadedBytes -= old.length;
     _downloaded[key] = b;
     _downloadedBytes += b.length;
     while (_downloadedBytes > maxCacheBytes && _downloaded.length > 1) {
@@ -294,22 +371,33 @@ class SlidesImageService extends ChangeNotifier implements SlideImageResolver {
   Future<Uint8List?> _remote(String key) async {
     final hook = remoteLoader;
     if (hook != null) return hook(key);
+    if (_disposed) return null;
+    if (!_s.connectivity.online) {
+      throw const SlideImageTransientException('offline');
+    }
     if (key.startsWith('https://')) return fetchRemote(key);
     final uuid = UuidValue.withValidation(key);
     var delay = const Duration(seconds: 2);
     final deadline = DateTime.now().add(const Duration(hours: 1));
     while (true) {
       final FileUrlView view = await _s.repositories.files.getUrl(uuid);
+      if (_disposed) return null;
       if (view.status == StoredFileStatus.ready && view.url != null) {
         final r = await http.get(Uri.parse(view.url!));
-        return r.statusCode == 200 ? r.bodyBytes : null;
+        return switch (r.statusCode) {
+          200 => r.bodyBytes,
+          403 || 404 || 410 => null,
+          _ => throw SlideImageTransientException('HTTP ${r.statusCode}'),
+        };
       }
       if (view.status == StoredFileStatus.failed ||
           DateTime.now().isAfter(deadline)) {
         return null;
       }
-      // Another user's upload that hasn't finished yet.
-      await Future<void>.delayed(delay);
+      // Another user's upload that hasn't finished yet (stops when the
+      // deck closes).
+      await _sleep(delay);
+      if (_disposed) return null;
       delay = delay * 2 > const Duration(seconds: 30)
           ? const Duration(seconds: 30)
           : delay * 2;

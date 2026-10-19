@@ -201,25 +201,55 @@ final class OoxmlRel {
 final class ZipPackage {
   ZipPackage._(this._files);
 
-  /// Opens [bytes]; throws [XlsxFormatException] for non-zip data.
-  factory ZipPackage.open(Uint8List bytes) {
+  /// Most bytes the parts of a package may unpack to (zip bombs): 256 MB,
+  /// about 1M cells (`sheets.maxCellsPerSpreadsheet`) of verbose XML.
+  static const defaultMaxUnpackedBytes = 256 * 1024 * 1024;
+
+  /// Most entries a package may have.
+  static const defaultMaxEntries = 10000;
+
+  /// Opens [bytes]; throws [XlsxFormatException] for non-zip data and for
+  /// packages with more than [maxEntries] entries or whose parts declare
+  /// more than [maxUnpackedBytes] in total. Only the directory is read
+  /// here; the `archive` package never inflates a part past its declared
+  /// size, so the declared total bounds what reading the parts can
+  /// allocate.
+  factory ZipPackage.open(
+    Uint8List bytes, {
+    int maxUnpackedBytes = defaultMaxUnpackedBytes,
+    int maxEntries = defaultMaxEntries,
+  }) {
     if (bytes.length < 4 || bytes[0] != 0x50 || bytes[1] != 0x4b) {
       throw const XlsxFormatException(
         'The file is not a ZIP package (XLSX/ODS)',
       );
     }
+    final Archive archive;
     try {
-      final archive = ZipDecoder().decodeBytes(bytes);
-      final files = <String, ArchiveFile>{};
-      for (final f in archive.files) {
-        if (f.isFile) files[f.name.replaceAll('\\', '/')] = f;
-      }
-      return ZipPackage._(files);
-    } on XlsxFormatException {
-      rethrow;
+      archive = ZipDecoder().decodeBytes(bytes);
     } catch (e) {
       throw XlsxFormatException('The ZIP package is damaged ($e)');
     }
+    if (archive.files.length > maxEntries) {
+      throw XlsxFormatException(
+        'The file is too large to import: it has more than $maxEntries '
+        'parts.',
+      );
+    }
+    final files = <String, ArchiveFile>{};
+    var unpacked = 0;
+    for (final f in archive.files) {
+      if (!f.isFile) continue;
+      unpacked += f.size;
+      if (unpacked > maxUnpackedBytes) {
+        throw XlsxFormatException(
+          'The file is too large to import: it unpacks to more than '
+          '${maxUnpackedBytes ~/ (1024 * 1024)} MB.',
+        );
+      }
+      files[f.name.replaceAll('\\', '/')] = f;
+    }
+    return ZipPackage._(files);
   }
 
   final Map<String, ArchiveFile> _files;

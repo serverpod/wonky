@@ -3,8 +3,9 @@
 **Wonky Slides** is the presentation app of the Wonky Work suite: a collaborative,
 **offline-first** slide editor and presenter for the web (v2 is web only; the desktop target
 compiles but desktop features are deferred, suite 01 A13), built with Flutter + `shad` on
-the shared shell (`packages/wonky_app`) and the single Serverpod server. Its storage uses the same
-offline-sync engine as Wonky Sheets (`serverpod_offline_sync`, one deck = one space, decision D6).
+the shared shell (`packages/wonky_app`) and the single Serverpod server. It syncs through RevLog
+like Wonky Sheets ([17](../17-revlog-sync.md): one deck = one file with a server-sequenced op log
+and an offline outbox; data design shared with Sheets, decision D6).
 
 **Vision — the best of the popular presentation apps, in one coherent tool:**
 
@@ -51,7 +52,7 @@ Priority: **P0** = required for the Slides release of its milestone ([12](12-imp
 ### 2.1 Decks, slides, groups
 | Feature | Pri | Spec |
 |---------|-----|------|
-| Create/open/rename deck (unified Drive, offline creation via reserved spaces) | P0 | [02 §9.3](02-data-model.md), suite 05 |
+| Create/open/rename deck (unified Drive, offline creation with client UUIDs) | P0 | [02 §9.3](02-data-model.md), suite 05 |
 | Slide navigator: thumbnails, select, multi-select, drag reorder, new/duplicate/delete, skip | P0 | [04 §5](04-screens-menus-toolbar.md) |
 | **Slide groups**: create (Mod+G), rename, color, collapse/expand (per user), drag group, duplicate, delete, skip, ungroup | P0 | [04 §5](04-screens-menus-toolbar.md), [02 §3.4](02-data-model.md) |
 | Copy/paste slides **and groups** within and across decks (with elements, builds, code states, linked charts, images) | P0 (across decks P0) | [03 §12](03-editor-canvas-and-objects.md) |
@@ -193,19 +194,19 @@ The authoritative list is [02 §13](02-data-model.md). Summary:
 How collaboration works in Wonky Slides (feeds help texts and the assistant; mechanics in
 [02](02-data-model.md) and [09](09-collaboration-history.md)):
 
-1. **Your edits are saved on this device immediately** and reach collaborators within a couple of
-   seconds; typing in a text box shows up live. Offline, everything keeps working and syncs when
+1. **Your edits are saved on this device immediately** and reach collaborators in well under a
+   second; typing in a text box shows up live. Offline, everything keeps working and syncs when
    you reconnect.
 2. **Different objects, no conflicts.** Anna editing slide 3 while Bo edits slide 7 — or two
    different shapes on the same slide — never interfere.
 3. **Same object, different properties merge.** If Anna moves a shape while Bo changes its color,
    it ends up moved *and* recolored.
-4. **Same property: the last change wins.** Two people moving the same shape at once: the later
-   move wins.
+4. **Same property: the last change wins.** Two people moving the same shape at once: the move
+   that reaches the server last wins (for offline edits: the one synced last).
 5. **Text boxes are claimed while someone types.** When Anna is editing a text box, others see
    "Anna is editing" and the text is read-only for them (they can still *Edit anyway*). If two
-   people edit the same text at the same time anyway (or offline), the later version wins and the
-   other person is offered their overwritten text back.
+   people edit the same text at the same time anyway (or offline), the version that reaches the
+   server last wins and the other person is offered their overwritten text back.
 6. **Slides and groups keep their identity.** Moving, duplicating or regrouping slides by
    different people merges: each slide ends where its last move put it. If someone deletes a
    group while you add a slide to it, your slide moves to the end of the deck instead of
@@ -235,7 +236,8 @@ How collaboration works in Wonky Slides (feeds help texts and the assistant; mec
 | Version history (view, name, restore) | — | — | ✓ | ✓ |
 | Share, move, rename | — | — | ✓ (if allowed) | ✓ |
 
-Viewers and commenters open the deck with space role `readOnly`; the editor runs in **view mode**:
+Viewers and commenters open the deck read-only (the server accepts ops from Editor+ only); the
+editor runs in **view mode**:
 no canvas editing, mutating commands disabled with "You have view access" / "You have comment
 access", and a *Present* button as the primary action. Collapsing groups and every per-user view
 state work for all roles. Linked charts render from the snapshot for users without access to the
@@ -247,16 +249,17 @@ spreadsheet.
 
 | Package / folder | Content | Main specs |
 |------------------|---------|-----------|
-| `packages/wonky_sync_models` (`lib/src/models/slides/`, `lib/src/ids/slides_ids.dart`) | Synced Slides models, enums, `SlidesIds` | 02 |
+| `wonky_server/lib/src/slides/models/rows/` | The 12 deck tables and their 7 enums (server tables of the deck's RevLog file; enums shared with the client) | 02 |
+| `packages/wonky_sync_models` (`lib/src/ids/slides_ids.dart`) | `SlidesIds` (deterministic ids), `FractionalIndex` | 02 |
 | `packages/wonky_slides_core` (pure Dart, **new**) | `DeckModel`, records, indexes, `SlidesMutationPlanner`, text schema + validator + style resolution, theme resolution + built-in themes/layouts, `SlideSceneBuilder`, layout/auto-fit (`TextLayoutEngine` interface), connectors routing, animation **timeline model** (06), code diff/type-in model (07, on `wonky_core/diff.dart`), chart link data (08, on `wonky_charts`), **PDF renderer** (10), snapshot codec + diff (09), `DeckCopier`, clipboard payload codec, headless deck for MCP (11), outline extraction | 02, 03, 05–11 |
 | `packages/wonky_charts`, `packages/wonky_charts_flutter` (**new**, extracted from Sheets, D7) | Chart engine + 3D scene + renderers | 08, suite 01 |
 | `packages/wonky_code`, `packages/wonky_code_flutter` (**new**, extracted from Write, D7, v2 review Q3) | Pure: tokenizer (TextMate + highlight.js), language list, palettes, code layout/type-in · Flutter: `CodeView`, `CodeEditorField` | 07, suite 01 |
 | `packages/wonky_numfmt`, `wonky_rich_text`, `wonky_fonts`, `wonky_spellcheck` (**new**, v2 review Q4/Q23/Q27) | Number formats (from Sheets) · Delta inline schema + codec (from Write) · font registry + TTFs · Hunspell engine (from Write) | 08, 02, 05, 03 |
-| `packages/wonky_sync_kit` + `wonky_sync_kit_flutter` (**new**, 12 §5.1–5.2) | Pure: `RowChange`/`MutationPlan`/`UndoInverter`/`SyncTxAdapter` · Flutter: replica + sync controller + writer + change journal, extracted from Sheets | 02, 12 |
+| `packages/wonky_revlog` + `wonky_revlog_flutter` (shared with Sheets, [17](../17-revlog-sync.md)) | Pure: `RowChange`/`MutationPlan`/`UndoInverter`, `RevSchema`, codec, apply rules, overlay, client state machine · Flutter: local cache and outbox, transport, per-file connection, `RevLogClient` | 02, 17 |
 | `wonky_slides` (Flutter app, **new**) | Editor, canvas, navigator, inspector, notes, grid/outline views, themes/master editing UI, builds UI, code/chart UI, presenting, print/PDF preview, history, collab, MCP UI tools, AI UI | 03–11 |
-| `wonky_server` `lib/src/slides/` (**new**) | Spaces (deck kind), `slidesSync` endpoint, change-log consumer, versions, chart-link status, exports (PDF), templates, headless + `slides.*` MCP tools, AI | 08–12 |
+| `wonky_server` `lib/src/slides/` (**new**) | Deck tables, RevLog binding and hooks (`revlog/`), `slidesDoc` endpoint, deck creation and copies, versions, chart-link status, exports (PDF), templates, headless + `slides.*` MCP tools, AI | 08–12 |
 
-`wonky_slides/lib/features/` folders (unit of parallel work): `sync/`, `model/`, `editor_screen/`,
+`wonky_slides/lib/features/` folders (unit of parallel work): `revlog/`, `model/`, `editor_screen/`,
 `canvas/`, `selection/`, `snapping/`, `elements/{text,shape,line,image,table,icon,code,chart,group}/`,
 `text_editing/`, `navigator/`, `groups/`, `inspector/`, `notes/`, `grid_view/`, `outline_view/`,
 `themes/`, `masters/`, `layers/`, `stage/` (shared slide renderer, 06 §12.1), `motion/` (player, 06),
@@ -265,12 +268,13 @@ spreadsheet.
 `home/`, `assistant/`, `ai/`, `accessibility/`. Each spec lists the folders it owns.
 
 Dependency rules (authoritative list: suite 01 §2.1): `wonky_slides_core` → `wonky_core`,
-`wonky_sync_models` (model types + ids only), `wonky_sync_kit`, `wonky_charts`, `wonky_numfmt`,
-`wonky_code`, `wonky_rich_text`, `wonky_fonts`, `pdf`, `image`, `vector_math`, `crypto`;
-`wonky_slides` → `wonky_app`, `wonky_ui`, `wonky_slides_core`, `wonky_sync_kit_flutter`,
-`wonky_charts_flutter`, `wonky_code_flutter`, vendored `super_editor`, `super_clipboard`,
-`printing`, `file_saver`, `file_picker`, `flutter_scene`, `wonky_sync_models`,
-`serverpod_offline_sync_client`, `serverpod_database`. **Slides packages never
+`wonky_revlog` (and `wonky_sync_kit`, which only re-exports its rows until the kit is deleted),
+`wonky_sync_models` (ids only), `wonky_charts`, `wonky_numfmt`, `wonky_code`,
+`wonky_rich_text`, `wonky_fonts`, `pdf`, `image`, `vector_math`, `crypto`;
+`wonky_slides` → `wonky_app`, `wonky_ui`, `wonky_slides_core`, `wonky_revlog`,
+`wonky_revlog_flutter`, `wonky_charts_flutter`, `wonky_code_flutter`, vendored `super_editor`,
+`super_clipboard`, `printing`, `file_saver`, `file_picker`, `flutter_scene`, `wonky_sync_models`
+(ids only). **Slides packages never
 import Write or Sheets app/core packages** (and vice versa); shared code moves to shared packages.
 
 ---
@@ -282,7 +286,7 @@ import Write or Sheets app/core packages** (and vice versa); shared code moves t
 | # | File | Content |
 |---|------|---------|
 | 01 | [01-overview.md](01-overview.md) | This file: vision, personas, features, priorities, non-goals, limits, concurrency semantics, roles, packages, glossary. |
-| 02 | [02-data-model.md](02-data-model.md) | **Authoritative** synced tables, ids, text schema, style JSON, in-memory model, planner, writer, undo, invariants, limits. |
+| 02 | [02-data-model.md](02-data-model.md) | **Authoritative** deck tables, ids, text schema, style JSON, in-memory model, planner, writer, undo, invariants, limits. |
 | 03 | [03-editor-canvas-and-objects.md](03-editor-canvas-and-objects.md) | Canvas, selection, transforms, snapping, every element kind, format painter, keyboard, clipboard, find/replace, spelling, accessibility, performance. |
 | 04 | [04-screens-menus-toolbar.md](04-screens-menus-toolbar.md) | Screens, editor layout, **slide navigator and groups**, inspector, notes, grid/outline views, complete menubar, toolbar, context menus, panels, dialogs, status bar. **Canonical command-id registry for menus.** |
 | 05 | [05-themes-layouts-masters.md](05-themes-layouts-masters.md) | Theme model, built-in themes, layouts, masters & placeholders, master editing, importing themes, slide sizes. |
@@ -304,11 +308,12 @@ import Write or Sheets app/core packages** (and vice versa); shared code moves t
 | [03 · App shell](../03-app-shell-and-navigation.md) | Routes, editor header, shared menus, single-window rule (no presenting exception in v2). |
 | [04 · Auth & accounts](../04-auth-and-accounts.md) | Settings split (Slides settings vs Wonky Work settings, D4), `UserPreferences.slidesDefaults`. |
 | [05 · Drive](../05-drive-and-files.md) and `specs/wonky_drive/` | Unified Drive, `presentation` kind, app home filtered to presentations, quota, templates, thumbnails. |
-| [06 · Sharing](../06-sharing-and-permissions.md) | Roles, space membership mirroring. |
+| [06 · Sharing](../06-sharing-and-permissions.md) | Roles (the drive ACL, checked on every op). |
 | [07 · Collaboration](../07-collaboration.md) | Presence protocol, comments, versions framework. |
 | [08 · Commands & undo](../08-commands-and-undo.md) | Command model, keymap scopes, undo domains `slides.rows`, `slides.serverChange`. |
 | [09 · MCP](../09-mcp.md), [10 · AI](../10-ai-assistant.md) | Tool conventions, UI bridge, assistant panel. |
-| [12 · Offline & sync](../12-offline-and-sync.md) | Engine facts, spaces, active set, reserved spaces, U11 journal. |
+| [12 · Offline & sync](../12-offline-and-sync.md) | Local stores, web storage (OPFS), the drive op queue. |
+| [17 · RevLog sync](../17-revlog-sync.md) | Files, ops and revisions, outbox, opening, conflicts and outcomes, server changes, headless models (Slides binding: part 6 §1.2, §7.2). |
 
 ---
 
@@ -316,7 +321,7 @@ import Write or Sheets app/core packages** (and vice versa); shared code moves t
 
 | Term | Meaning |
 |------|---------|
-| **Deck** | A presentation file (= one sync space). |
+| **Deck** | A presentation file (= one RevLog file). |
 | **Slide** | One page of a deck, built from a **layout**; has elements, notes, builds and a transition. |
 | **Slide group** | A named, colored section of consecutive slides in the navigator; moves/copies/skips as a unit; collapse state is per user. |
 | **Top level** | The ordered list of groups and ungrouped slides (02 §3.4). |

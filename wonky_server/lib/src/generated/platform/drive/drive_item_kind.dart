@@ -17,7 +17,7 @@ enum DriveItemKind implements _is.SerializableModel {
   document,
   spreadsheet,
 
-  /// (v2) A Wonky Slides deck: one offline-sync space (Slides 02 §9).
+  /// (v2) A Wonky Slides deck: one RevLog file (specs/17).
   presentation,
 
   /// (v2) An uploaded file (Drive 02 §1): bytes in a `driveFile` StoredFile.

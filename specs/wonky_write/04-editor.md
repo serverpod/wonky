@@ -1089,7 +1089,7 @@ It edits a **draft** (`TableDraft`, an immutable model with its own local undo s
 | Toolbar | Insert row above / below, Insert column left / right, Delete row, Delete column, Move row ↑/↓, Move column ←/→, Column alignment `ShadToggleGroup` (None/Left/Center/Right), inline **B I S `code` link** buttons (they wrap the focused cell's selection in Markdown syntax), Sort column A→Z / Z→A (P2), ⋮ (Copy as Markdown, Delete table) |
 | Grid | Row 0 (header, visually bold, sticky) + body rows. Each cell is a single-line `ShadInput`-styled field that edits the **inline Markdown source** of the cell. Unfocused cells show the rendered inline Markdown |
 | Row/column headers | Gutter with row numbers and column letters. Click selects the row or column. Drag handles reorder (P1). Right-click opens the row/column menu |
-| Footer | Size label "4 × 3", **Cancel**, **Done** (primary) |
+| Footer | Size label "4 × 3", **Cancel**, **Done** (primary); the title bar's X is Cancel |
 
 Keyboard (scope `dialog`):
 
@@ -1100,7 +1100,7 @@ Keyboard (scope `dialog`):
 | ↑ ↓ | Cell above / below. ← → at text boundaries move to the adjacent cell |
 | Mod+Enter | Done |
 | Esc | Cancel. Asks "Discard changes to this table?" if the draft is dirty |
-| Mod+Z / Mod+Shift+Z | Draft-local undo / redo |
+| Mod+Z / Mod+Shift+Z | Draft-local undo / redo. Keystrokes in one cell are one step; the first edit after a structural change, an undo or a redo, or in another cell starts a new one |
 | Mod+B / I / E, Mod+Shift+X, Mod+K | Wrap the cell selection with `**` `*` `` ` `` `~~`, or open a link mini-field |
 | Mod+V | Cell text paste. TSV/CSV/HTML-table clipboard content fills cells from the focused cell and grows the table (P1) |
 
@@ -1675,6 +1675,11 @@ Pages are **computed, never stored**. Manual page breaks are not supported (01 �
    content**: the page chrome layer is rebuilt after each content layout and schedules it. So
    heights that change without an editor rebuild (an image that finishes loading, a web font,
    an upload preview replaced by the uploaded file, a collaborator's edit) are re-measured.
+   The measure is **incremental** (CQ-42): a block whose node instance and component size are
+   unchanged since the last measure keeps its natural rect, shifted by how far the blocks above
+   it moved; only changed blocks, and the first unchanged block after them (to learn that
+   shift), are measured through the layout. A caret move measures nothing; a keystroke two
+   blocks. A new layout, page setup or zoom measures everything again.
 2. Walk the blocks and fill pages of height `contentH = pageH − marginTop − marginBottom`:
    - A block that fits on the current page is placed there.
    - A block that would **start** in a page's bottom margin or in the gap between pages (for
@@ -1953,6 +1958,64 @@ only components whose view model changed. Mitigations are mandatory:
 ~2,500 nodes, 20 tables, 40 images, 30 code blocks) and `bench_2m_chars.md` measure keystroke
 latency, scroll FPS, open time, replace-all, paste of 100 KB, and remote op apply rate (100
 ops/s). Regressions over 10 % fail the job.
+
+**As built (CQ-38, CQ-42, CQ-49)**:
+
+- **Perf suite**: `wonky_write/test/perf/` (tag `perf`, skipped by default; `flutter test -t
+  perf --run-skipped test/perf`, with `WONKY_PROFILE=1 … --enable-vmservice` it prints the
+  VM CPU profile of each scenario). `bench_100_pages` is generated (`BenchDocument`: 50
+  sections, 2,355 blocks, 53k words, 420k characters, 20 tables, 40 images, 30 code blocks,
+  12 comment anchors, 6 suggestions). `write_perf_test.dart` drives the real document screen in a widget
+  test (one action + one 16 ms frame per sample; debug JIT, debug invariant checks and
+  semantics off) with median budgets of about twice the measured numbers;
+  `sync_perf_test.dart` times the sync client primitives. Not wired into CI yet; profile-mode
+  runs and `bench_2m_chars` are open. Medians on a Windows dev machine, before → after:
+
+  | Scenario (100 pages) | Before | After |
+  |---|---|---|
+  | Keystroke, Pageless, comment margin | 487 ms | 124–134 ms |
+  | Keystroke, Pages | 486 ms | 146 ms |
+  | Caret move, Pages | 414 ms | 69 ms |
+  | Keystroke, Suggesting | 483 ms | 130 ms |
+  | Keystroke with 2,000 find matches | 199 ms¹ | 107 ms |
+  | Select all / collapse | 824 ms | 440 ms |
+  | Keystroke + server ack round trip | 142 ms¹ | 121 ms |
+  | Remote op (200 undo steps) | 427 ms | 105 ms |
+  | Ack prediction (normalize) | 9.7 ms | 0.3 ms |
+  | Remote op on the server document | 0.9 ms | 0.07 ms |
+
+  ¹ measured after the editor changes, before the item's own change (W-13, CQ-49).
+  What is left is mostly `super_editor` itself: on every document change its presenter
+  creates a view model for every block and runs every style phase over all of them, and the
+  layout (a `Column`) relays out and repaints the whole document (no viewport
+  virtualisation, P2 below).
+- **The editor widget is not rebuilt per keystroke**: `WonkyEditor` reuses its `SuperEditor`
+  widget while its inputs are unchanged (a new instance rebuilt `super_editor`'s layout, which
+  walks every component); the screen rebuilds the editor only when the comment margin appears
+  or disappears, not on every comments/suggestions notify.
+- **Comments and suggestions per block**: `MirrorOverlays` keeps the overlay pieces
+  (`CommentAnchors.pieces` / `SuggestionIndex.pieces`) of each mirror entry (immutable, per
+  node), so a keystroke rescans one block; anchors and pending suggestions are summed from the
+  cached pieces instead of serializing and re-parsing the whole document. Suggesting mode
+  rewrites a change against a window around it (one character either side), not the whole
+  document (a debug assertion compares with the full rewrite).
+- **Style phases**: code highlighting returns the same highlighted view model while a block's
+  input is equal (no copy and re-attribution of every token per keystroke) and forgets deleted
+  blocks; tables no longer mutate the presenter's view model (they were rebuilt on every
+  pass). `super_editor` patch SE-9 computes the selected nodes once per pass (select-all was
+  O(n²)); `attributed_text` patch AT-2 builds log messages only when logged.
+- **Layers**: find matches and collaborators' selections are measured only for the visible
+  part of the document plus one screen above and below (a binary search over block tops);
+  scrolling past that measures again.
+- **Images** decode at the display width (`ResizeImage`, width × device pixel ratio rounded up
+  to 256 px; never upscaled). The decode semaphore and offscreen placeholders of point 5 are
+  open.
+- **Toolbar format state** walks the selection's attribute runs without copying text and stops
+  at the first run without the format.
+- **Undo persistence** hashes the document only when the stacks are stored: when the app is
+  hidden and when the document closes (was: 800 ms after every change).
+- Not built yet: large-document mode, chunked/isolate mapping on open, the scroll/open/paste
+  benchmarks.
 
 **P2 contingency**: if budgets fail at 2M chars, contribute or fork a sliver-based lazy layout
 for `super_editor` (components outside viewport ± N screens use cached heights) behind a

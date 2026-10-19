@@ -158,7 +158,7 @@ class TriggerQueryTracker {
       Delta()
         ..retain(query.start)
         ..delete(query.end - query.start),
-      label: 'Slash command',
+      label: controller.strings().undoSlashCommand,
       selectionAfter: DeltaSelection.collapsed(query.start),
     );
   }

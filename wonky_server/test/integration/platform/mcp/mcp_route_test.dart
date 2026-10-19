@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -93,6 +96,55 @@ void main() {
       },
     );
 
+    test('when a request without a token is over the size cap then it is '
+        'refused from its headers (401, not 413: the body is never '
+        'read)', () async {
+      final req = await http.postUrl(url);
+      req.headers.contentType = ContentType.json;
+      req.add(List<int>.filled(McpHttpHandler.maxBodyChars + 1, 0x20));
+      final res = await req.close();
+      await res.drain<void>();
+
+      expect(res.statusCode, 401);
+    });
+
+    /// Posts [bytes] bytes; the status, or null when the server closed the
+    /// connection before the response arrived. A server that refuses a
+    /// request while its body is still arriving may close the connection
+    /// with unread bytes, which the client sees as a reset (Linux).
+    Future<int?> post(String token, int bytes) async {
+      try {
+        final req = await http.postUrl(url);
+        req.headers
+          ..set('authorization', 'Bearer $token')
+          ..contentType = ContentType.json;
+        req.add(List<int>.filled(bytes, 0x20));
+        final res = await req.close();
+        await res.drain<void>();
+        return res.statusCode;
+      } on IOException {
+        return null;
+      }
+    }
+
+    test('when a request with a valid token sends a body over the cap then '
+        'it is refused (413, or the connection is closed)', () async {
+      final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
+      final h = await McpHarness.forUser(anna);
+
+      final status = await post(h.secret, McpHttpHandler.maxBodyChars + 1);
+
+      expect(status, anyOf(413, isNull));
+      // The route keeps serving after the refusal.
+      final r = await send('POST', body: rpc(1, 'tools/list'), token: h.secret);
+      expect(r.status, 200);
+    });
+
+    test('when a request has an invalid token then it is refused with 401 '
+        '(checked before the body is read, CQ-13)', () async {
+      expect(await post('wkpat_x', 16), 401);
+    });
+
     test('when a revoked token is sent then it is rejected', () async {
       final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
       final h = await McpHarness.forUser(anna);
@@ -129,7 +181,7 @@ void main() {
           token: h.secret,
           body: rpc(1, 'initialize', {
             'protocolVersion': '2025-06-18',
-            'capabilities': {},
+            'capabilities': <String, Object?>{},
             'clientInfo': {'name': 'curl', 'version': '1'},
           }),
         );
@@ -232,7 +284,7 @@ void main() {
           token: a.secret,
           body: rpc(1, 'initialize', {
             'protocolVersion': '2025-06-18',
-            'capabilities': {},
+            'capabilities': <String, Object?>{},
             'clientInfo': {'name': 'x', 'version': '1'},
           }),
         );
@@ -261,7 +313,7 @@ void main() {
           token: h.secret,
           body: rpc(1, 'initialize', {
             'protocolVersion': '2025-06-18',
-            'capabilities': {},
+            'capabilities': <String, Object?>{},
             'clientInfo': {'name': 'x', 'version': '1'},
           }),
         );
@@ -316,7 +368,7 @@ void main() {
         send(
           rpc(1, 'initialize', {
             'protocolVersion': '2025-06-18',
-            'capabilities': {},
+            'capabilities': <String, Object?>{},
             'clientInfo': {'name': 'stdio-test', 'version': '1'},
           }),
         );

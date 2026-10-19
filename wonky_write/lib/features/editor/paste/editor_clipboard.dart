@@ -1,4 +1,5 @@
 import 'package:dart_quill_delta/dart_quill_delta.dart';
+import 'package:wonky_write_core/wonky_write_core.dart' show DeltaUtils;
 
 import '../commands/write_editor_commands.dart';
 import '../controller/write_editor_controller.dart';
@@ -61,7 +62,7 @@ class EditorClipboard {
       selection.start,
       selection.length,
       '',
-      label: 'Cut',
+      label: controller.strings().undoCut,
     );
     return true;
   }
@@ -108,7 +109,10 @@ class EditorClipboard {
     if (content.plainText.length > maxPasteLength ||
         (content.html?.length ?? 0) > maxPasteLength * 4) {
       controller.notify(
-        const EditorNotice(EditorNoticeKind.message, 'This paste is too large'),
+        EditorNotice(
+          EditorNoticeKind.message,
+          controller.strings().editorPasteTooLarge,
+        ),
       );
       return false;
     }
@@ -134,17 +138,20 @@ class EditorClipboard {
         }
       }
     }
-    if (controller.length + decoded.delta.length >
+    if (controller.length + DeltaUtils.documentLength(decoded.delta) >
         controller.maxDocumentChars) {
       controller.notify(const EditorNotice(EditorNoticeKind.documentFull));
       return false;
     }
-    final change = commands.insertFragment(decoded.delta, label: 'Paste');
+    final change = commands.insertFragment(
+      decoded.delta,
+      label: controller.strings().undoPaste,
+    );
     if (decoded.droppedFormatting) {
       controller.notify(
-        const EditorNotice(
+        EditorNotice(
           EditorNoticeKind.formattingDropped,
-          "Some formatting wasn't kept — Markdown supports bold, italic, strikethrough, code and links",
+          controller.strings().editorFormattingDropped,
         ),
       );
     }

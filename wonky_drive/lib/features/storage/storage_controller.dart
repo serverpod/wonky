@@ -279,19 +279,35 @@ class StoragePageController extends ChangeNotifier {
             !_folderNames.containsKey(i.parentUuid!.uuid))
           i.parentUuid!,
     };
+    if (missing.isEmpty) return;
     for (final p in missing) {
       _folderNames[p.uuid] = null;
-      unawaited(
-        services.drive
-            .get(p)
-            .then((f) => f.name, onError: (Object _) => '')
-            .then((name) {
-              _folderNames[p.uuid] = name;
-              _notify();
-            }),
-      );
     }
+    unawaited(_lookUpFolders(missing.toList()));
   }
+
+  /// Looks up [parents] as one batch (DR-4): at most [folderLookups] at a
+  /// time, one rebuild when all are known. A failed lookup is not cached
+  /// (the next page load retries it).
+  Future<void> _lookUpFolders(List<UuidValue> parents) async {
+    for (var i = 0; i < parents.length; i += folderLookups) {
+      final chunk = parents.skip(i).take(folderLookups);
+      await Future.wait([
+        for (final p in chunk)
+          services.drive
+              .get(p)
+              .then<void>(
+                (f) => _folderNames[p.uuid] = f.name,
+                onError: (Object _) => _folderNames.remove(p.uuid),
+              ),
+      ]);
+      if (_disposed) return;
+    }
+    _notify();
+  }
+
+  /// Parallel folder lookups of the Location column.
+  static const folderLookups = 8;
 
   void setFilter(StorageFilter f) {
     if (f == _filter) return;
@@ -439,7 +455,7 @@ class StoragePageController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _reloadTimer?.cancel();
-    _sub?.cancel();
+    unawaited(_sub?.cancel());
     services.driveRefresh.removeListener(_onRefresh);
     services.storage.removeListener(_onStorage);
     if (services.driveSelectAll == selectAll) services.driveSelectAll = null;

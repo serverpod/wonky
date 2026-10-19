@@ -58,7 +58,7 @@ class _DocumentTitleFieldState extends State<DocumentTitleField> {
     super.initState();
     widget.controller?._state = this;
     _focus.addListener(() {
-      if (!_focus.hasFocus && _editing) _commit();
+      if (!_focus.hasFocus && _editing) unawaited(_commit());
     });
   }
 

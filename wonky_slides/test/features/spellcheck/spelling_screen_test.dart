@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -106,10 +108,12 @@ void main() {
         size: const Size(360, 720),
         brightness: brightness,
       );
-      showSpellingDialog(
-        ctx,
-        session: SlidesSpellingSession(d.editor),
-        keys: SpellingKeys.slides,
+      unawaited(
+        showSpellingDialog(
+          ctx,
+          session: SlidesSpellingSession(d.editor),
+          keys: SpellingKeys.slides,
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.byKey(SpellingKeys.slides.dialog), findsOneWidget);
@@ -118,12 +122,14 @@ void main() {
       await tester.pumpAndSettle();
 
       await d.run('slides.spelling.addToDictionary', {'word': 'Wonky'});
-      showPersonalDictionaryDialog(
-        ctx,
-        words: () => SlidesSpelling.of(d.editor).personalWords,
-        onAdd: SlidesSpelling.of(d.editor).addToDictionary,
-        onRemove: SlidesSpelling.of(d.editor).removeFromDictionary,
-        keys: SpellingKeys.slides,
+      unawaited(
+        showPersonalDictionaryDialog(
+          ctx,
+          words: () => SlidesSpelling.of(d.editor).personalWords,
+          onAdd: SlidesSpelling.of(d.editor).addToDictionary,
+          onRemove: SlidesSpelling.of(d.editor).removeFromDictionary,
+          keys: SpellingKeys.slides,
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.byKey(SpellingKeys.slides.dictionary), findsOneWidget);

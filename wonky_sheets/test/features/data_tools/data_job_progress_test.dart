@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -76,7 +78,7 @@ void main() {
       final seen = <double>[];
       var toast = false;
       var done = false;
-      run.then((_) => done = true);
+      unawaited(run.then((_) => done = true));
       for (var i = 0; i < 400 && !done; i++) {
         await tester.pump(const Duration(milliseconds: 16));
         final p = DataJobs.progressOf(s.editor)?.value;
@@ -115,7 +117,7 @@ void main() {
     expect(DataJobs.isRunning(s.editor), isTrue);
     DataJobs.cancel(s.editor);
     var done = false;
-    run.then((_) => done = true);
+    unawaited(run.then((_) => done = true));
     for (var i = 0; i < 100 && !done; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }

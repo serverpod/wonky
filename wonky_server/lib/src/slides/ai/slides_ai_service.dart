@@ -8,26 +8,24 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show McpScope, Role;
 import 'package:wonky_slides_core/ai.dart';
 import 'package:wonky_slides_core/model.dart';
-import 'package:wonky_sync_kit/rows.dart' show RowChange, composeRowChanges;
+import 'package:wonky_revlog/rows.dart' show RowChange, composeRowChanges;
 
-import '../../platform/ai/ai_keys.dart';
+import '../../platform/ai/ai_call.dart';
 import '../../platform/ai/ai_models.dart';
-import '../../platform/ai/ai_usage_service.dart';
-import '../../platform/ai/assistant_service.dart'
-    show AssistantErrors, AssistantService;
 import '../../platform/ai/llm/ai_client.dart';
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
+import '../../platform/common/isolate_runner.dart';
 import '../../platform/common/models.dart';
 import '../../platform/files/file_service.dart';
+import '../../platform/mcp/mcp_errors.dart';
 import '../../platform/mcp/tool_executor.dart';
 import '../../platform/mcp/tool_support.dart';
 import '../../platform/mcp/wonky_mcp_server.dart';
-import '../headless/headless_deck_cache.dart';
 import '../mcp/slides_mcp_support.dart';
 import '../mcp/slides_input.dart';
 import '../mcp/slides_read_handlers.dart';
-import '../sync/server_slides_writer.dart';
+import '../revlog/slides_server_writes.dart';
 import 'slides_context_builder.dart';
 import 'slides_prompts.dart';
 import 'slides_shadow.dart';
@@ -36,7 +34,7 @@ import 'slides_shadow.dart';
 /// a presentation (outline, then a deterministic build), rewrite text,
 /// speaker notes, alt text, design-idea ranking, and the AI changes preview
 /// of Suggest-mode assistant runs (§6.3). Model calls run here with the
-/// user's provider ([AiKeys.backendFor]); proposals are returned to the
+/// user's provider ([AiCall]); proposals are returned to the
 /// app, which applies them as ordinary commands (one `slides.rows` undo
 /// step), except building an outline and applying a preview, which write
 /// on the server as one change (`slides.serverChange` undo step).
@@ -73,92 +71,18 @@ abstract final class SlidesAiService {
     clientName: 'Assistant',
   );
 
-  static Future<AiBackend> _backend(Session session, Actor actor) async {
-    await AiUsageService.requireAvailable(session, actor.userId);
-    await AiUsageService.requireBudget(session, actor.userId);
-    final backend = await AiKeys.backendFor(session, actor.userId);
-    if (backend == null) {
-      throw WonkyException(
-        code: WonkyErrorCode.unavailable,
-        message: AiUsageService.notConfiguredMessage,
-      );
-    }
-    return backend;
-  }
-
-  static Future<(SlidesTarget, AiBackend)> _open(
+  static Future<(SlidesTarget, AiCall)> _open(
     Session session,
     Actor actor,
     UuidValue itemUuid, {
     Role min = Role.editor,
   }) async {
-    final backend = await _backend(session, actor);
-    final t = await _guard(
+    final ai = await AiCall.open(session, actor);
+    final t = await McpErrors.guard(
       () => SlidesMcp.openRef(_ctx(session, actor), itemUuid.uuid, min: min),
     );
-    return (t, backend);
+    return (t, ai);
   }
-
-  /// Maps tool errors to endpoint exceptions.
-  static Future<T> _guard<T>(Future<T> Function() body) async {
-    try {
-      return await body();
-    } on McpToolException catch (e) {
-      throw WonkyException(
-        code: switch (e.code) {
-          McpErrorCode.notFound => WonkyErrorCode.notFound,
-          McpErrorCode.forbidden => WonkyErrorCode.forbidden,
-          McpErrorCode.busy => WonkyErrorCode.busy,
-          'being_edited' || McpErrorCode.conflict => WonkyErrorCode.conflict,
-          _ => WonkyErrorCode.invalidArgument,
-        },
-        message: e.message,
-        detailsJson: jsonEncode({'code': e.code, 'details': e.details}),
-      );
-    }
-  }
-
-  static Future<AiResponse> _send(
-    Session session,
-    Actor actor,
-    AiBackend backend,
-    AiRequest request, {
-    AiCancelToken? cancel,
-    void Function(String)? onText,
-  }) async {
-    final release = AiUsageService.acquire(actor.userId);
-    try {
-      final r = await backend.client.send(
-        request,
-        cancel: cancel,
-        onText: onText,
-      );
-      await AiUsageService.record(
-        session,
-        userId: actor.userId,
-        model: r.model ?? request.model,
-        feature: request.feature,
-        usage: r.usage,
-      );
-      if (r.stopReason == AiStopReason.refusal) throw _refusal();
-      return r;
-    } on AiApiException catch (e) {
-      if (e.type == 'refusal') throw _refusal();
-      throw WonkyException(
-        code: WonkyErrorCode.unavailable,
-        message: AssistantErrors.message(e),
-        detailsJson: jsonEncode({'code': AssistantErrors.code(e)}),
-      );
-    } finally {
-      release();
-    }
-  }
-
-  static WonkyException _refusal() => WonkyException(
-    code: WonkyErrorCode.invalidArgument,
-    message: AssistantService.refusalText,
-    detailsJson: jsonEncode({'code': 'refusal'}),
-  );
 
   /// The input of the first call of [tool] in [r], or null.
   static Map<String, Object?>? toolInput(AiResponse r, String tool) {
@@ -348,10 +272,10 @@ abstract final class SlidesAiService {
       throw Errors.invalid('Describe the presentation first.');
     }
     if (text.length > 100000) throw Errors.tooLarge('The text is too long.');
-    final backend = await _backend(session, actor);
+    final ai = await AiCall.open(session, actor);
     String? deck;
     if (itemUuid != null) {
-      final t = await _guard(
+      final t = await McpErrors.guard(
         () => SlidesMcp.openRef(
           _ctx(session, actor),
           itemUuid.uuid,
@@ -361,10 +285,10 @@ abstract final class SlidesAiService {
       deck = SlidesContextBuilder.build(t.model, title: t.item.name).summary;
     }
     final previous = AiOutline.tryDecode(request.outlineJson);
-    final quality = await AiUsageService.quality(session, actor.userId);
+    final quality = await ai.quality(session);
     final tier = AiTier.document(quality);
-    final ai = AiRequest(
-      model: backend.model(tier),
+    final aiRequest = AiRequest(
+      model: ai.model(tier),
       effort: tier.effort,
       maxTokens: 32000,
       system: SlidesPrompts.outline,
@@ -373,12 +297,10 @@ abstract final class SlidesAiService {
       userId: 'u${actor.userId}',
       feature: 'slides_outline',
     );
-    return _stream(session, actor, (s2, cancel, emit) async {
-      final r = await _send(
+    return _stream(session, ai, (s2, cancel, emit) async {
+      final r = await ai.send(
         s2,
-        actor,
-        backend,
-        ai,
+        aiRequest,
         cancel: cancel,
         onText: (d) => emit(
           InlineAiEvent(type: InlineAiEventType.textDelta, text: d),
@@ -459,7 +381,7 @@ abstract final class SlidesAiService {
       ),
     );
     Future<Map<String, Object?>> call(String tool, Map<String, Object?> a) =>
-        _guard(() async {
+        McpErrors.guard(() async {
           final out = await _executor.call(ctx, tool, a);
           final err = out.error;
           if (err != null) throw err;
@@ -573,11 +495,11 @@ abstract final class SlidesAiService {
     if (request.markdown.length > 20000) {
       throw Errors.tooLarge('The text is too long.');
     }
-    final (_, backend) = await _open(session, actor, itemUuid);
-    final quality = await AiUsageService.quality(session, actor.userId);
+    final (_, ai) = await _open(session, actor, itemUuid);
+    final quality = await ai.quality(session);
     final tier = AiTier.rewrite(quality);
-    final ai = AiRequest(
-      model: backend.model(tier),
+    final aiRequest = AiRequest(
+      model: ai.model(tier),
       effort: tier.effort,
       maxTokens: 8000,
       system: SlidesPrompts.rewrite,
@@ -585,12 +507,10 @@ abstract final class SlidesAiService {
       userId: 'u${actor.userId}',
       feature: 'slides_rewrite',
     );
-    return _stream(session, actor, (s2, cancel, emit) async {
-      final r = await _send(
+    return _stream(session, ai, (s2, cancel, emit) async {
+      final r = await ai.send(
         s2,
-        actor,
-        backend,
-        ai,
+        aiRequest,
         cancel: cancel,
         onText: (d) => emit(
           InlineAiEvent(type: InlineAiEventType.textDelta, text: d),
@@ -607,57 +527,22 @@ abstract final class SlidesAiService {
     });
   }
 
-  /// Runs [body] in its own session and streams its events; errors become
-  /// `error` / `refusal` events.
+  /// Runs [body] as an [AiCall.stream] run and emits the event it returns;
+  /// errors become `error` / `refusal` events.
   static Stream<InlineAiEvent> _stream(
     Session session,
-    Actor actor,
+    AiCall ai,
     Future<InlineAiEvent> Function(
       Session s,
       AiCancelToken cancel,
       void Function(InlineAiEvent) emit,
     )
     body,
-  ) {
-    final cancel = AiCancelToken();
-    final out = StreamController<InlineAiEvent>();
-    out.onCancel = cancel.cancel;
-    final pod = session.serverpod;
-    void emit(InlineAiEvent e) {
-      if (!out.isClosed) out.add(e);
-    }
-
-    unawaited(() async {
-      final s2 = await pod.createSession(enableLogging: false);
-      try {
-        emit(await body(s2, cancel, emit));
-      } on AiCancelledException {
-        // Closed by the client.
-      } on WonkyException catch (e) {
-        final refusal = e.detailsJson?.contains('"refusal"') ?? false;
-        emit(
-          InlineAiEvent(
-            type: refusal ? InlineAiEventType.refusal : InlineAiEventType.error,
-            error: e.message,
-            errorCode: refusal ? 'refusal' : e.code.name,
-          ),
-        );
-      } on Object catch (e) {
-        pod.logVerbose('Slides AI failed: $e');
-        emit(
-          InlineAiEvent(
-            type: InlineAiEventType.error,
-            error: 'Something went wrong. Please try again.',
-            errorCode: 'internal',
-          ),
-        );
-      } finally {
-        await s2.close();
-        if (!out.isClosed) unawaited(out.close());
-      }
-    }());
-    return out.stream;
-  }
+  ) => ai.stream(
+    session,
+    (s, cancel, emit) async => emit(await body(s, cancel, emit)),
+    onFailure: (f) => f.inlineEvent,
+  );
 
   // ------------------------------------------------------ speaker notes
 
@@ -731,7 +616,7 @@ abstract final class SlidesAiService {
     String style = 'script',
     String mode = 'fillEmpty',
   }) async {
-    final (t, backend) = await _open(session, actor, itemUuid);
+    final (t, ai) = await _open(session, actor, itemUuid);
     final m = t.model;
     final ids = <String>[
       for (final id
@@ -741,7 +626,7 @@ abstract final class SlidesAiService {
     ].take(maxNotesSlides).toList();
     if (ids.isEmpty) return const [];
     final summary = SlidesContextBuilder.build(m, title: t.item.name).summary;
-    final quality = await AiUsageService.quality(session, actor.userId);
+    final quality = await ai.quality(session);
     final tier = AiTier.document(quality);
     final out = <SlidesAiNote>[];
     for (var i = 0; i < ids.length; i += notesBatch) {
@@ -749,13 +634,11 @@ abstract final class SlidesAiService {
         i,
         i + notesBatch > ids.length ? ids.length : i + notesBatch,
       );
-      await AiUsageService.requireBudget(session, actor.userId);
-      final r = await _send(
+      await ai.requireBudget(session);
+      final r = await ai.send(
         session,
-        actor,
-        backend,
         AiRequest(
-          model: backend.model(tier),
+          model: ai.model(tier),
           effort: tier.effort,
           maxTokens: 16000,
           system: SlidesPrompts.notes,
@@ -853,7 +736,7 @@ abstract final class SlidesAiService {
     UuidValue itemUuid,
     List<String> elementIds,
   ) async {
-    final (t, backend) = await _open(session, actor, itemUuid);
+    final (t, ai) = await _open(session, actor, itemUuid);
     final m = t.model;
     final elements = elementIds.isEmpty
         ? missingAltText(m)
@@ -903,14 +786,12 @@ abstract final class SlidesAiService {
       asked.add(e);
     }
     if (asked.isEmpty) return out;
-    final quality = await AiUsageService.quality(session, actor.userId);
+    final quality = await ai.quality(session);
     final tier = AiTier.document(quality);
-    final r = await _send(
+    final r = await ai.send(
       session,
-      actor,
-      backend,
       AiRequest(
-        model: backend.model(tier),
+        model: ai.model(tier),
         effort: tier.effort,
         maxTokens: 8000,
         system: SlidesPrompts.altText,
@@ -969,21 +850,51 @@ abstract final class SlidesAiService {
         data.offsetInBytes,
         data.lengthInBytes,
       );
-      var image = img.decodeImage(bytes);
-      if (image == null) return null;
-      final side = image.width > image.height ? image.width : image.height;
-      if (side > imageMaxSide) {
-        image = image.width >= image.height
-            ? img.copyResize(image, width: imageMaxSide)
-            : img.copyResize(image, height: imageMaxSide);
-      }
-      return DataPart(
-        Uint8List.fromList(img.encodeJpg(image, quality: 85)),
-        mimeType: 'image/jpeg',
-      );
+      if (!imageWithinLimit(bytes)) return null;
+      // Off the request isolate (a large image takes a while to decode).
+      final jpeg = await _aiJpegInIsolate(bytes);
+      return jpeg == null ? null : DataPart(jpeg, mimeType: 'image/jpeg');
     } on Object {
       return null;
     }
+  }
+
+  /// Images with more pixels than this are not decoded for the AI (a
+  /// small compressed file can expand to gigabytes).
+  static const imageMaxPixels = 40 * 1000 * 1000;
+
+  /// Whether [bytes] is an image whose header declares at most
+  /// [imageMaxPixels] (read from the header, without decoding).
+  static bool imageWithinLimit(Uint8List bytes) {
+    final decoder = img.findDecoderForData(bytes);
+    if (decoder == null) return false;
+    final info = decoder.startDecode(bytes);
+    if (info == null || info.width <= 0 || info.height <= 0) return false;
+    return info.width * info.height <= imageMaxPixels;
+  }
+
+  /// [aiJpeg] in a new isolate (the closure captures only [bytes]).
+  static Future<Uint8List?> _aiJpegInIsolate(Uint8List bytes) =>
+      IsolateRunner.run(
+        () => aiJpeg(bytes),
+        name: 'slides-ai-image',
+        timeout: const Duration(seconds: 20),
+      );
+
+  /// [bytes] as a JPEG ≤ [imageMaxSide] px, or null when it is not an
+  /// image within [imageMaxPixels]. Synchronous (run in an isolate).
+  static Uint8List? aiJpeg(Uint8List bytes) {
+    if (!imageWithinLimit(bytes)) return null;
+    final decoder = img.findDecoderForData(bytes);
+    var image = decoder?.decode(bytes, frame: 0);
+    if (image == null) return null;
+    final side = image.width > image.height ? image.width : image.height;
+    if (side > imageMaxSide) {
+      image = image.width >= image.height
+          ? img.copyResize(image, width: imageMaxSide)
+          : img.copyResize(image, height: imageMaxSide);
+    }
+    return img.encodeJpg(image, quality: 85);
   }
 
   // ------------------------------------------------------- design ideas
@@ -1027,7 +938,7 @@ abstract final class SlidesAiService {
     String slideId,
     List<String> candidates,
   ) async {
-    final (t, backend) = await _open(
+    final (t, ai) = await _open(
       session,
       actor,
       itemUuid,
@@ -1044,12 +955,10 @@ abstract final class SlidesAiService {
       lines.add(_clip(c, 300));
     }
     if (ids.isEmpty) return const [];
-    final r = await _send(
+    final r = await ai.send(
       session,
-      actor,
-      backend,
       AiRequest(
-        model: backend.model(rankTier),
+        model: ai.model(rankTier),
         effort: rankTier.effort,
         maxTokens: 4000,
         system: SlidesPrompts.rankDesigns,
@@ -1138,7 +1047,7 @@ abstract final class SlidesAiService {
           t.kind.equals(DriveItemKind.presentation),
     );
     if (item == null) throw Errors.notFound('Presentation');
-    await _guard(
+    await McpErrors.guard(
       () => SlidesMcp.openRef(
         _ctx(session, actor),
         item.uuid.uuid,
@@ -1159,9 +1068,9 @@ abstract final class SlidesAiService {
     final changes = composeRowChanges([
       for (final c in selected) ...?p.changes[c.callId],
     ]);
-    final write = await HeadlessDeckCache.withWriteLock(
+    final write = await SlidesServerWrites.withWriteLock(
       p.space,
-      () => ServerSlidesWriter.applyRecorded(
+      () => SlidesServerWrites.applyRecorded(
         session,
         actor: actor.copyWith(kind: ActorKind.ai),
         item: item,

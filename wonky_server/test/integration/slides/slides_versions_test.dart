@@ -8,18 +8,15 @@ import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/versions/version_service.dart';
-import 'package:wonky_server/src/sheets/sync/sync_db.dart';
-import 'package:wonky_server/src/slides/changelog/deck_drive_mirror.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_server/src/slides/headless/deck_text_claims.dart';
 import 'package:wonky_server/src/slides/headless/headless_deck.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
-import 'package:wonky_server/src/slides/versions/deck_change_log_pruning.dart';
 import 'package:wonky_server/src/slides/versions/slides_version_provider.dart';
 import 'package:wonky_slides_core/history.dart';
 import 'package:wonky_slides_core/model.dart' show ElementKind, SlidesText;
 import 'package:wonky_slides_core/ops.dart';
 
-import '../../support/sheets_device.dart' show installDeviceAuthentication;
+import '../../support/slides_rev_hooks.dart';
 import '../../support/test_drive.dart';
 import '../../support/test_users.dart';
 import '../../support/wonky_serverpod.dart';
@@ -29,8 +26,8 @@ String _text(String s) => jsonEncode([
 ]);
 
 /// Version history of decks (Slides 09 §4–§5, 12 §4 SL-39): capture,
-/// snapshot index with authors, restore as one revertible change, copies,
-/// permissions and change-log pruning.
+/// snapshot index with authors (the ops between captures), restore as one
+/// revertible change, copies and permissions.
 void main() {
   withWonkyServerpod('Given a deck edited by Anna and Bo', (
     sessionBuilder,
@@ -42,17 +39,19 @@ void main() {
     late DriveItemView item;
     late String box;
 
+    SlidesRevHooks.install();
     setUpAll(() {
       server = sessionBuilder.build();
-      installDeviceAuthentication(server);
       DeckTextClaims.probeWait = const Duration(milliseconds: 300);
     });
 
     tearDown(() {
-      DeckDriveMirror.reset();
       DeckTextClaims.clear();
-      HeadlessDeckCache.clear();
+      HeadlessFileCache.clear();
     });
+
+    /// Runs the deck's post-commit hooks (versions, comments, activity).
+    Future<void> drain() => SlidesRevHooks.drain(server, item.uuid);
 
     Future<ServerHeadlessDeck> open(TestUser u) =>
         const SlidesHeadlessProvider().open(
@@ -62,14 +61,14 @@ void main() {
 
     Future<String> boxText() async {
       final e = await SlideElement.db.findById(
-        syncSessionOf(server),
+        server,
         UuidValue.withValidation(box),
       );
       return SlidesText.plainText(e?.text).trim();
     }
 
     Future<int> slideCount() async => (await Slide.db.find(
-      syncSessionOf(server),
+      server,
       where: (t) => t.deckId.equals(item.uuid),
     )).length;
 
@@ -97,6 +96,7 @@ void main() {
         ]),
       );
       box = (w.plan.result['elementIds']! as List).single as String;
+      await drain();
     });
 
     test('when a version is named then its snapshot holds the deck and its '
@@ -108,6 +108,7 @@ void main() {
       );
       await (await open(bo)).write(SetText(ElementText(box), _text('Bo')));
       await (await open(anna)).write(const AddSlides());
+      await drain();
 
       final v1 = await endpoints.version.nameCurrent(
         anna.endpointSession,
@@ -201,10 +202,14 @@ void main() {
         expect(r.changeId, isNotNull);
         expect(await boxText(), 'Hello');
         expect(await slideCount(), 1);
-        final log = await DeckChangeLog.db.find(
-          syncSessionOf(server),
-          where: (t) => t.deckId.equals(item.uuid),
-          orderBy: (t) => t.at,
+        final file = await RevFile.db.findFirstRow(
+          server,
+          where: (t) => t.fileUuid.equals(item.uuid),
+        );
+        final log = await RevOp.db.find(
+          server,
+          where: (t) => t.fileId.equals(file!.id!),
+          orderBy: (t) => t.revision,
         );
         expect(log.last.label, startsWith('Restore version "Start"'));
 
@@ -252,12 +257,14 @@ void main() {
           null,
         );
         await deck.write(DeleteElements([box]));
+        await drain();
         final orphaned = await endpoints.comment.getThread(
           anna.endpointSession,
           thread.uuid,
         );
 
         await endpoints.version.restore(anna.endpointSession, item.uuid, v0.id);
+        await drain();
         final revived = await endpoints.comment.getThread(
           anna.endpointSession,
           thread.uuid,
@@ -316,12 +323,12 @@ void main() {
       expect(copy.name, 'Pitch (start)');
       expect(copy.uuid, isNot(item.uuid));
       final slides = await Slide.db.find(
-        syncSessionOf(server),
+        server,
         where: (t) => t.deckId.equals(copy.contentRef!),
       );
       expect(slides, hasLength(1));
       final deck = await Deck.db.findById(
-        syncSessionOf(server),
+        server,
         copy.contentRef!,
       );
       expect(deck!.title, 'Pitch (start)');
@@ -379,6 +386,7 @@ void main() {
       await deck.write(SetText(ElementText(box), _text('One')));
       await (await open(anna)).write(SetText(ElementText(box), _text('Two')));
       await (await open(anna)).write(AddSlides(afterSlideId: first));
+      await drain();
 
       final d = (await DriveItem.db.findFirstRow(
         server,
@@ -394,38 +402,6 @@ void main() {
       final summary = jsonDecode(events.single.summary) as Map;
       expect(summary['slideIds'], hasLength(2));
       expect(summary['slideIds'], contains(first));
-    });
-
-    test('when change-log rows are older than 30 days then pruning deletes '
-        'them with their receipts and keeps newer ones', () async {
-      final db = syncSessionOf(server);
-      final rows = await DeckChangeLog.db.find(
-        db,
-        where: (t) => t.deckId.equals(item.uuid),
-      );
-      expect(rows, isNotEmpty);
-
-      final pruned = await DeckChangeLogPruning.pruneOld(
-        server,
-        now: DateTime.now().toUtc().add(const Duration(days: 31)),
-      );
-
-      expect(pruned, greaterThanOrEqualTo(rows.length));
-      expect(
-        await DeckChangeLog.db.find(
-          db,
-          where: (t) => t.deckId.equals(item.uuid),
-        ),
-        isEmpty,
-      );
-      expect(
-        await DeckChangeLogReceipt.db.find(
-          server,
-          where: (t) => t.deckUuid.equals(item.uuid),
-        ),
-        isEmpty,
-      );
-      expect(await DeckChangeLogPruning.pruneOld(server), 0);
     });
   });
 }

@@ -71,10 +71,12 @@ void main() {
     await gesture.addPointer(location: Offset.zero);
     addTearDown(gesture.removePointer);
     var found = false;
+    var last = Offset.zero;
     // Sweep the plot until a bar is hit.
     for (var x = 40.0; x < 380 && !found; x += 6) {
       for (var y = 60.0; y < 220 && !found; y += 10) {
-        await gesture.moveTo(Offset(x, y));
+        last = Offset(x, y);
+        await gesture.moveTo(last);
         await tester.pump();
         found = find
             .byKey(const ValueKey<String>('charts.tooltip'))
@@ -84,6 +86,30 @@ void main() {
     }
     expect(found, isTrue);
     expect(tester.takeException(), isNull);
+
+    // CQ-47: moving within the bar moves the tooltip without rebuilding
+    // (or repainting) the chart, which sits behind its own boundary.
+    final paint = find.descendant(
+      of: find.byType(ChartView),
+      matching: find.byType(CustomPaint),
+    );
+    final before = tester.widget<CustomPaint>(paint.first);
+    final at = tester.getTopLeft(
+      find.byKey(const ValueKey<String>('charts.tooltip')),
+    );
+
+    await gesture.moveTo(last + const Offset(1, 1));
+    await tester.pump();
+
+    expect(identical(tester.widget<CustomPaint>(paint.first), before), isTrue);
+    expect(
+      find.ancestor(of: paint.first, matching: find.byType(RepaintBoundary)),
+      findsWidgets,
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey<String>('charts.tooltip'))),
+      isNot(at),
+    );
   });
 
   testWidgets('Given a 3D type icon and the data table dialog when they are '

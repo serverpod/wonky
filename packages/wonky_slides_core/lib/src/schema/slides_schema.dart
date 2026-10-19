@@ -1,9 +1,9 @@
 /// Names of the synced Slides tables and their columns (specs/wonky_slides/02
 /// §3, schema release S-1).
 ///
-/// Row changes (`RowChange` of `wonky_sync_kit`) and the generic ingestion
+/// Row changes (`RowChange` of `wonky_revlog`) and the generic ingestion
 /// API of the deck model use these names. Column names equal the Serverpod
-/// field names of the `database: sync` models in `wonky_sync_models`
+/// field names of the RevLog table models of the server
 /// (relations become `<name>Id`); `test/schema/slides_schema_test.dart`
 /// checks them against the generated tables.
 ///

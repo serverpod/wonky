@@ -4,8 +4,9 @@ import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_sheets_core/formula.dart' show CellPos, FRich, ImageValue;
 import 'package:wonky_sheets_core/model.dart';
 
+import '../features/history/change_labels.dart';
 import '../features/images/image_blob_cache.dart';
-import '../features/images/image_clipboard.dart';
+import 'package:wonky_app/platform.dart' show ImageClipboard;
 import '../features/images/image_dialogs.dart';
 import '../features/images/image_io.dart';
 import '../features/images/image_prepare.dart';
@@ -370,7 +371,7 @@ List<Command<CommandArgs>> _imageCommands(ShellServices s) => [
             [UserCellInput(imageFormula(src, mode: a.integer('mode')))],
           ],
           parseLocale: 'en_US',
-          label: 'Insert image',
+          label: SheetsChangeLabels.insertImage,
         ),
       );
       return ok({'cell': CellPos(target.rect.top, target.rect.left).a1});
@@ -476,7 +477,7 @@ List<Command<CommandArgs>> _imageCommands(ShellServices s) => [
             [UserCellInput(imageFormula(src))],
           ],
           parseLocale: 'en_US',
-          label: 'Insert image',
+          label: SheetsChangeLabels.insertImage,
         ),
       );
       _objs(ed).select(null);

@@ -84,6 +84,15 @@ any), the current selection, the user's role on the document, the `UndoService`,
 - Menus/toolbars use `CommandButton(id: …)`, `CommandMenuItem(id: …)` widgets from `wonky_app`
   that read title/icon/shortcut/enabled/checked from the registry and rebuild on relevant changes.
   **No menu or toolbar may call business logic directly.**
+- **Two change signals** (CQ-39): the registry notifies when commands *or their state* may
+  have changed. Registration is synchronous; `notifyStateChanged()` (the active document
+  changed, selection moved, role changed, undo ran) is coalesced to at most one notification
+  per frame, delivered at the start of the next frame. `CommandRegistry.registrations`
+  notifies only on register/unregister; the `KeymapService` rebuilds its chord table on that
+  signal alone, never per keystroke. The editor scaffold rebuilds only its menubar from the
+  registry; toolbars, panels and status widgets listen to what they show, and the document
+  body is never rebuilt from a command-state signal (`editor_scaffold_rebuilds_test.dart`
+  counts the rebuilds).
 
 ### 1.2 Keyboard shortcuts
 
@@ -204,6 +213,17 @@ separator or changing a paste-special mode from the paste chip).
 **shell stack** for drive operations, exposes `canUndo/canRedo/undoLabel/redoLabel` as
 `ValueListenable`s, and exposes `beginTransaction(label)` / `commit()` / `rollback()`.
 
+The dispatcher's transaction is **scoped to the command's async call chain**
+(`beginTransaction(scoped: true)` + `runInTransaction`, a forked zone): `currentTransaction`
+returns it only for code running in that chain (and for sync stream listeners it notifies, so
+Write's local-change listener records into it). A keystroke or another command that runs while
+a command awaits (a long sort, a data job, an agent command) records its own step, and a
+failing command's rollback only reverts its own entries. Undo, redo and `undoTo` are
+**queued**: each starts after the previous one finished (a held ⌘Z) and picks the top step
+only then; the step stays on its stack until its handlers ran. When a handler throws (other
+than `UndoConflict`), the entries not applied stay undoable, those applied go to redo (both
+marked partial), and the error surfaces.
+
 ### 3.3 Domain strategies
 
 | Domain | Entry content | Undo action | Rebase on remote change |
@@ -211,10 +231,10 @@ separator or changing a paste-special mode from the paste chip).
 | `write.content` | Inverse Quill Delta of the local change | Submit the inverse delta as a new local op | `inverse = remoteDelta.transform(inverse, priority)` (OT transform; see Write sync spec) |
 | `write.meta` | `{field, before, after}` for title/theme/page setup | Write `before` via endpoint | If server value ≠ `after` (someone else changed it), entry is dropped (no-op) |
 | `write.theme` | Theme JSON before/after | Save theme `before` | Same as `write.meta` |
-| `sheets.rows` (generic sync rows) | List of `{table, rowId, op: insert/update/delete, columnsBefore, columnsAfter}` | Write inverse via sync DB transaction naming only those columns | Per column: if current value ≠ `after`, that column is skipped ("someone else changed it"). If all columns skipped, the entry is a no-op |
-| `sheets.serverChange` | `{changeId}` of a change executed server-side on the user's behalf (version restore, server import, AI/MCP loops) | `SheetsEndpoint.revertChange(changeId)` (redo: `reapplyChange`) — server applies the per-column skip rule | Server-side, same rule as `sheets.rows` |
-| `slides.rows` (v2) | Same shape as `sheets.rows` over the Slides synced tables (generic `UndoInverter` from the shared sync kit) | Inverse rows via the Slides writer, naming only those columns | Per-column skip rule as `sheets.rows` ([Slides 02](wonky_slides/02-data-model.md)) |
-| `slides.serverChange` (v2) | `{changeId}` of a server-executed Slides change (version restore, MCP/AI) | `SlidesEndpoint.revertChange` / `reapplyChange` | Server-side, same rule |
+| `sheets.rows` (RevLog rows) | List of `{table, rowId, op: insert/update/delete, columnsBefore, columnsAfter}`, plus the plan's `groupId` | Apply the inverse to the model and append it to the outbox, naming only those columns ([17](17-revlog-sync.md) part 6 §1). If the server rejects the plan's group, the entry is removed (or made inert when buried, 17 part 6 §4.6) | Per column: if current value ≠ `after`, that column is skipped ("someone else changed it"). If all columns skipped, the entry is a no-op |
+| `sheets.serverChange` | `{changeId}` of a change executed server-side on the user's behalf (version restore, server import, AI/MCP loops) | `SheetsEndpoint.revertChange(changeId)` (redo: `reapplyChange`): the server inverts the applied forms of the record's op group (`rev_op` with its `recordId`, `before` values included) with the per-column skip rule and submits the result as a new server change (17 part 5 §8.2) | Server-side, same rule as `sheets.rows` |
+| `slides.rows` (v2) | Same shape as `sheets.rows` over the Slides tables (generic `UndoInverter` from `wonky_revlog`) | As `sheets.rows`, through the deck session's outbox | Per-column skip rule as `sheets.rows` ([Slides 02](wonky_slides/02-data-model.md)) |
+| `slides.serverChange` (v2) | `{changeId}` of a server-executed Slides change (version restore, MCP/AI) | `SlidesEndpoint.revertChange` / `reapplyChange`, from the record's ops as for Sheets | Server-side, same rule |
 | `drive` | `{itemId, op, before, after}`; (v2) `{op: upload, itemUuids}` for an upload batch | Call drive endpoint with `before`; (v2) upload: `drive.trash(itemUuids)` (redo: `restore`) | Same as `write.meta`; items deleted forever meanwhile are skipped |
 | `comments` | Comment snapshot | Restore/delete/edit via endpoint | Drop if the thread was deleted |
 
@@ -229,7 +249,7 @@ When an undo step becomes **partially** no-op due to remote changes, the UI show
 - MCP exposes `ui.undo`/`ui.redo` (live session) and the headless `write.undo`/`sheets.undo`
   (v2: `slides.undo`) are **not** offered (headless tools have no client stack). Instead headless tools return a
   `changeId`, and headless `*.revert_change(changeId)` reverts that change using the same
-  inverse data recorded server-side for 24 hours.
+  server-side record (24 hours; Sheets and Slides: the record's RevLog ops, 17 part 5 §8.2).
 
 ### 3.5 Edit menu contract (all editors)
 
@@ -253,6 +273,20 @@ undo per step, executed in order).
 
 - Every command has a unit test that runs `execute` then `undo` then `redo` and asserts state
   equality (structural equality of document/rows, and selection).
+- **Sweep (as built, CQ-54).** `sweepCommands` (`wonky_app/testing.dart`) runs every registered
+  command of a namespace on a fresh fixture (arguments sampled from its schema, or given per id)
+  and checks: a recorded step changed the document, undo restores it and redo restores the change;
+  nothing changes the document without an undo step or after failing; one invocation records at
+  most one step. Commands that need a dialog, the platform or other arguments are reported as not
+  run; commands that change the document without a step by design are listed with the reason
+  (`noUndoStep`: creating a file, *Available offline*, the lazily created Sheets script project).
+  One test per app: `wonky_app/test/commands/shell_command_sweep_test.dart` (`shell.*`),
+  `wonky_write/test/features/commands/command_sweep_test.dart`,
+  `wonky_sheets/test/commands/command_sweep_test.dart`,
+  `wonky_slides/test/commands/command_sweep_test.dart`,
+  `wonky_drive/test/commands/command_sweep_test.dart`, each with a floor of fully round-tripped
+  commands (raise it when adding fixture arguments). The per-command tests above stay where a
+  command needs a richer fixture or checks the selection.
 - Property test for Write: random local+remote op sequences; after undoing all local steps, the
   document equals "initial + remote ops only".
 - Property test for Sheets: random edits from two simulated clients; undo of client A never
@@ -269,7 +303,7 @@ through the active document controller, never re-register these ids):
 |------|-------------|
 | Navigation | `shell.nav.home`, `shell.nav.back`, `shell.nav.forward`, `shell.nav.quickSwitcher`, `shell.nav.commandPalette`, `shell.focus.nextRegion`, `shell.focus.previousRegion`, (v2) `shell.nav.openInDrive {folderUuid?}` (app homes: the same folder in Wonky Drive) |
 | File | `shell.file.new {kind}` ((v2) kind adds `presentation`; from another app it navigates to that app's `/new`), `shell.file.newFromTemplate`, `shell.file.open`, `shell.file.import`, `shell.file.print`, `shell.file.download {format}`, `shell.file.details` |
-| Drive | `shell.drive.newFolder`, `shell.drive.rename`, `shell.drive.move`, `shell.drive.copy`, `shell.drive.addShortcut`, `shell.drive.setStarred`, `shell.drive.togglePinnedOffline`, `shell.drive.trash`, `shell.drive.restore`, `shell.drive.deleteForever`, `shell.drive.emptyTrash`, `shell.drive.upload` ((v2) in Drive: upload arbitrary files, undoable batch; in app homes: *Import file…* of the app's convertible types) |
+| Drive | `shell.drive.newFolder` (an explicit `parentUuid: null` is My Drive's root; the Move dialog's *New folder* uses it), `shell.drive.rename`, `shell.drive.setDescription {description}` (the details panel's field; undo domain `drive`), `shell.drive.move`, `shell.drive.copy`, `shell.drive.addShortcut`, `shell.drive.setStarred`, `shell.drive.togglePinnedOffline`, `shell.drive.trash`, `shell.drive.restore`, `shell.drive.deleteForever`, `shell.drive.emptyTrash`, `shell.drive.upload` ((v2) in Drive: upload arbitrary files, undoable batch; in app homes: *Import file…* of the app's convertible types) |
 | Sharing | `shell.sharing.open`, `shell.sharing.copyLink`, `shell.sharing.requestAccess` |
 | Edit | `shell.edit.undo`, `shell.edit.redo`, `shell.edit.undoHistory`, `shell.edit.undoTo {stepIndex}`, `shell.edit.cut`, `shell.edit.copy`, `shell.edit.paste`, `shell.edit.pasteWithoutFormatting`, `shell.edit.selectAll` |
 | Comments | `shell.comments.create`, `shell.comments.reply`, `shell.comments.resolve`, `shell.comments.reopen`, `shell.comments.delete`, `shell.comments.activate {threadUuid}`, `shell.comments.togglePanel` (show through the app's `CommentsHost` when set, else the comments side panel; suite 07 §2.3) |

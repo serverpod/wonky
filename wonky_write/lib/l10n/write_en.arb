@@ -3081,5 +3081,186 @@
   "printUpdatingPreview": "Updating the preview",
   "@printUpdatingPreview": {
     "description": "Accessibility label of the spinner shown while the PDF is regenerated."
-  }
+  },
+  "undoTyping": "Typing",
+  "@undoTyping": {
+    "description": "Undo step label of typed text (Undo history)."
+  },
+  "undoDelete": "Delete",
+  "undoEdit": "Edit",
+  "undoSlashCommand": "Slash command",
+  "undoClearFormatting": "Clear formatting",
+  "undoIndent": "Indent",
+  "undoOutdent": "Outdent",
+  "undoCheckItem": "Check item",
+  "undoUncheckItem": "Uncheck item",
+  "undoInsertLink": "Insert link",
+  "undoEditLink": "Edit link",
+  "undoRemoveLink": "Remove link",
+  "undoInsertDivider": "Insert divider",
+  "undoInsertImage": "Insert image",
+  "undoInsertTable": "Insert table",
+  "undoInsertText": "Insert text",
+  "undoSetCodeLanguage": "Set code language",
+  "undoExitCodeBlock": "Exit code block",
+  "undoMoveBlock": "Move block",
+  "undoDuplicate": "Duplicate",
+  "undoAltText": "Alt text",
+  "undoReplaceImage": "Replace image",
+  "undoEditTable": "Edit table",
+  "undoInsertRow": "Insert row",
+  "undoInsertColumn": "Insert column",
+  "undoDeleteRow": "Delete row",
+  "undoDeleteColumn": "Delete column",
+  "undoMoveRow": "Move row",
+  "undoMoveColumn": "Move column",
+  "undoColumnAlignment": "Column alignment",
+  "undoPaste": "Paste",
+  "undoReplace": "Replace",
+  "announceFormatOn": "{format} on",
+  "@announceFormatOn": {
+    "description": "Screen-reader announcement after turning an inline format on (format: Bold, Italic…).",
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "announceFormatOff": "{format} off",
+  "@announceFormatOff": {
+    "description": "Screen-reader announcement after turning an inline format off.",
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "announceListLevel": "Level {level}",
+  "@announceListLevel": {
+    "description": "Screen-reader announcement of a list item's nesting level after indenting.",
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "editorDocumentTitle": "Document",
+  "@editorDocumentTitle": {
+    "description": "Accessibility label of the editor when the document has no title."
+  },
+  "editorHint": "Type / for commands, or just start writing",
+  "@editorHint": {
+    "description": "Placeholder of an empty document (editor default)."
+  },
+  "editorImageNoDescription": "image, no description",
+  "@editorImageNoDescription": {
+    "description": "Accessibility label of an image without alt text."
+  },
+  "editorImageUnavailable": "Image unavailable",
+  "editorImageWaitingForUpload": "Waiting for upload",
+  "editorImageWaitingForUploadFrom": "Waiting for upload from {name}",
+  "@editorImageWaitingForUploadFrom": {
+    "description": "Placeholder of an image another collaborator is still uploading.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "editorCancelUpload": "Cancel upload",
+  "editorUploadFailed": "Upload failed",
+  "editorTableLabel": "table, {columns} columns, {rows} rows",
+  "@editorTableLabel": {
+    "description": "Accessibility label of a table.",
+    "placeholders": {
+      "columns": {
+        "type": "int"
+      },
+      "rows": {
+        "type": "int"
+      }
+    }
+  },
+  "editorEditTable": "Edit table",
+  "@editorEditTable": {
+    "description": "Tooltip of the table's edit button."
+  },
+  "editorQuoteLabel": "quote",
+  "@editorQuoteLabel": {
+    "description": "Accessibility label of a quote block."
+  },
+  "editorCodeBlockLabel": "code block, {language}",
+  "@editorCodeBlockLabel": {
+    "description": "Accessibility label of a code block.",
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "editorCodeLanguage": "Code language",
+  "editorCopyCode": "Copy code",
+  "editorCheckboxLabel": "checkbox",
+  "@editorCheckboxLabel": {
+    "description": "Accessibility label of a checklist item's checkbox."
+  },
+  "editorUnsupportedContent": "Unsupported content ({type})",
+  "@editorUnsupportedContent": {
+    "description": "Placeholder of an embed of an unknown type.",
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "editorSeparatorLabel": "separator",
+  "@editorSeparatorLabel": {
+    "description": "Accessibility label of a horizontal line."
+  },
+  "undoCut": "Cut",
+  "undoEditCell": "Edit cell",
+  "undoCopyText": "Copy text",
+  "undoMoveText": "Move text",
+  "editorPasteTooLarge": "This paste is too large",
+  "editorFormattingDropped": "Some formatting wasn't kept — Markdown supports bold, italic, strikethrough, code and links",
+  "editorUnderlineHint": "Underline isn't available in Markdown — use italic or bold.",
+  "editorUnderlineHintTheme": "Underline isn't available in Markdown — use italic or bold, or change how emphasis looks in Format › Theme.",
+  "editorTableDeleted": "This table was deleted",
+  "editorCellRemoved": "This cell was removed while you were editing",
+  "editorNoResults": "No results",
+  "editorNoPeopleFound": "No people found",
+  "editorWonkyDocument": "Wonky document",
+  "@editorWonkyDocument": {
+    "description": "Title of a link card for a Wonky document whose name is unknown."
+  },
+  "editorLinkOpen": "Open",
+  "editorLinkCopy": "Copy link",
+  "editorLinkEdit": "Edit",
+  "editorLinkRemove": "Remove",
+  "slashText": "Text",
+  "slashHeading": "Heading {level}",
+  "@slashHeading": {
+    "description": "Slash menu item.",
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "slashBulletedList": "Bulleted list",
+  "slashNumberedList": "Numbered list",
+  "slashChecklist": "Checklist",
+  "slashQuote": "Quote",
+  "slashCodeBlock": "Code block",
+  "slashDivider": "Divider",
+  "slashImage": "Image",
+  "slashImageFromUrl": "Image from URL",
+  "slashTable": "Table",
+  "slashLink": "Link",
+  "slashMentionPerson": "Mention person",
+  "slashComment": "Comment",
+  "slashEmoji": "Emoji…",
+  "slashSpecialCharacters": "Special characters…",
+  "slashAskAi": "Ask AI…",
+  "slashContinueWriting": "Continue writing"
 }

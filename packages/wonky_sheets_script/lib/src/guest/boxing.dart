@@ -3,8 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dart_eval/dart_eval_bridge.dart';
 import 'package:dart_eval/stdlib/core.dart';
-// ignore: implementation_imports
-import 'package:dart_eval/src/eval/runtime/class.dart' show $InstanceImpl;
+import 'package:dart_eval/dart_eval_internals.dart' show $InstanceImpl;
 
 import '../protocol/values.dart';
 import 'cell_error_binding.dart';

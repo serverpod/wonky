@@ -8,13 +8,10 @@ import 'package:wonky_write/features/ai/ai_commands.dart';
 import 'package:wonky_write/features/ai/ai_preview_overlay.dart' show wordDiff;
 import 'package:wonky_write/features/ai/proofread_results.dart';
 import 'package:wonky_write/features/ai/write_ai_controller.dart';
-import 'package:wonky_write/features/editor/applier/delta_applier.dart'
-    show DeltaSelection;
 import 'package:wonky_write/features/editor/controller/editor_types.dart';
 import 'package:wonky_write/features/screen/write_document_controller.dart';
 import 'package:wonky_write/features/themes/document_theme.dart';
-import 'package:wonky_write_core/wonky_write_core.dart'
-    hide DeltaSelection, ThemeCatalog;
+import 'package:wonky_write_core/wonky_write_core.dart' hide ThemeCatalog;
 
 import '../document/support/session_harness.dart';
 import '../sync/support/fake_document_server.dart';

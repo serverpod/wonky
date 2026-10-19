@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 import 'package:wonky_sync_models/ids.dart';
 
 import 'package:wonky_charts/wonky_charts.dart' show ChartSourceSnapshot;

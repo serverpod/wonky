@@ -1,7 +1,7 @@
 import 'package:wonky_slides_core/model.dart' show DeckModel;
 import 'package:wonky_slides_core/ops.dart' show SlidesPlan;
 import 'package:wonky_slides_core/schema.dart' show SlidesTables;
-import 'package:wonky_sync_kit/rows.dart' show RowOp;
+import 'package:wonky_revlog/rows.dart' show RowOp;
 
 import '../../platform/mcp/tool_support.dart';
 

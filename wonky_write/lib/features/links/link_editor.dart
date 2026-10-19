@@ -123,7 +123,10 @@ class _LinkEditorState extends State<LinkEditor> {
         q.length < 2 ||
         q.contains('://') ||
         q.contains('.')) {
-      if (_docs.isNotEmpty) setState(() => _docs = const []);
+      // Drop a search still in flight, and rebuild anyway: the heading
+      // suggestions and Apply follow the text.
+      _request++;
+      setState(() => _docs = const []);
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 250), () async {

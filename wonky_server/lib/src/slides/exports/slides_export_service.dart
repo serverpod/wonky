@@ -7,19 +7,24 @@ import 'package:crypto/crypto.dart' show sha256;
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_slides_core/interfaces.dart';
+import 'package:wonky_slides_core/model.dart' show DeckModel;
 import 'package:wonky_slides_core/pdf.dart';
+import 'package:wonky_slides_core/schema.dart' show SlidesTables;
 import 'package:wonky_slides_core/scene.dart' show SlideImageRef;
 
 import '../../platform/activity/activity_service.dart';
 import '../../platform/common/actor.dart';
 import '../../platform/common/errors.dart';
+import '../../platform/common/isolate_runner.dart';
 import '../../platform/common/json.dart';
+import '../../platform/common/lru_map.dart';
 import '../../platform/common/models.dart';
 import '../../platform/common/time.dart';
 import '../../platform/files/file_service.dart';
 import '../../write/export/server_fonts.dart' show FileSystemFontProvider;
 import '../../write/export/server_images.dart' show SafeImageFetcher;
 import '../headless/headless_deck.dart';
+import '../revlog/slides_revlog.dart';
 
 /// Server-side Slides exports (Slides 10 §11.4–§11.5, `slidesExport`): the
 /// deck from the headless cache (Slides 11 §2.1), rendered by the shared
@@ -45,7 +50,9 @@ abstract final class SlidesExportService {
       SafeImageFetcher.fetch;
 
   static final Map<int, int> _running = {};
-  static final Map<String, _CachedResult> _results = {};
+
+  /// Recent results by request key (bounded; entries also expire).
+  static final LruMap<String, _CachedResult> _results = LruMap(256);
 
   /// The provider over `web/fonts/` (read once per process).
   static BundledFileFontProvider defaultFonts() =>
@@ -73,6 +80,7 @@ abstract final class SlidesExportService {
     String optionsJson, {
     int? revision,
     void Function(String phase, double progress)? onProgress,
+    IsolateCancelToken? cancel,
   }) async {
     final fmt = format.toLowerCase().trim();
     if (!formats.contains(fmt)) {
@@ -87,6 +95,9 @@ abstract final class SlidesExportService {
       );
     }
     onProgress?.call('loading', 0.02);
+    // Read before the model: the model is at least at this revision, so a
+    // result is never keyed newer than its content.
+    final head = await SlidesRevlog.headRevision(session, itemUuid);
     final deck = await const SlidesHeadlessProvider().open(
       HeadlessDeckContext(session, actor),
       itemUuid.uuid,
@@ -109,22 +120,15 @@ abstract final class SlidesExportService {
     final fileName =
         '${options.fileName ?? SlidesPdfOptionsCodec.sanitizeFileName(title)}'
         '.pdf';
-    final contentHash = sha256
-        .convert(
-          utf8.encode(
-            jsonEncode(
-              model.dump(),
-              toEncodable: (v) => v is DateTime ? v.toIso8601String() : '$v',
-            ),
-          ),
-        )
-        .toString();
+    // Keyed on the deck's revision (no hash of the whole deck per request).
     final key = sha256
         .convert(
           utf8.encode(
             [
               itemUuid.uuid,
-              contentHash,
+              head,
+              item.name,
+              item.modifiedAt.toIso8601String(),
               fmt,
               jsonEncode(SlidesPdfOptionsCodec.toJson(options)),
               fontsVersion,
@@ -153,34 +157,45 @@ abstract final class SlidesExportService {
         actor,
         itemId: item.id!,
         fetchRemote: fetchRemoteImage,
+        cacheBytes: false,
       );
+      // A consistent copy of the live model for the worker isolate.
+      final rows = [
+        for (final t in SlidesTables.dependencyOrder)
+          for (final r in model.records(t)) (t, r.toColumns()),
+      ];
       final SlidesPdfResult result;
       try {
-        result =
-            await SlidesPdfExporter(
-                  onProgress: (phase, p) =>
-                      onProgress?.call(phase, 0.05 + p * 0.85),
-                )
-                .render(
-                  model,
-                  options,
-                  SlidesExportResources(
-                    fonts: fonts(),
-                    images: images,
-                    info: SlidesPdfDocumentInfo(
-                      title: title,
-                      author: owner?.displayName,
-                      subject: item.description,
-                      modified: item.modifiedAt,
-                      revision: contentHash,
-                    ),
-                  ),
-                )
-                .timeout(exportTimeout);
+        result = await IsolateRunner.runWithChannel(
+          _renderWork(
+            model.deckId,
+            rows,
+            options,
+            SlidesPdfDocumentInfo(
+              title: title,
+              author: owner?.displayName,
+              subject: item.description,
+              modified: item.modifiedAt,
+              revision: '$head',
+            ),
+            fonts,
+          ),
+          name: 'slides-export',
+          timeout: exportTimeout,
+          cancel: cancel,
+          onRequest: (src) => images.bytes(SlideImageRef(src! as String)),
+          onMessage: (m) {
+            if (m case (final String phase, final double p)) {
+              onProgress?.call(phase, 0.05 + p * 0.85);
+            }
+          },
+        );
       } on TimeoutException {
         throw Errors.unavailable(
           'The export took too long. Try fewer slides or the compact quality.',
         );
+      } on IsolateCancelledException {
+        throw Errors.unavailable('The export was cancelled.');
       }
       onProgress?.call('uploading', 0.92);
       final bytes = Uint8List.fromList(result.bytes);
@@ -208,21 +223,49 @@ abstract final class SlidesExportService {
             ImportWarningView(kind: w, message: warningMessage(w)),
         ],
       );
-      _results[key] = _CachedResult(file.fileUuid, expires, view);
+      _results.put(key, _CachedResult(file.fileUuid, expires, view));
       await _logExport(session, item, actor, fmt);
       onProgress?.call('done', 1);
       return view;
     } finally {
-      _running[actor.userId] = (_running[actor.userId] ?? 1) - 1;
+      final left = (_running[actor.userId] ?? 1) - 1;
+      if (left <= 0) {
+        _running.remove(actor.userId);
+      } else {
+        _running[actor.userId] = left;
+      }
     }
   }
+
+  /// The worker of an export: builds the deck from [rows] and renders it
+  /// with images asked from the calling isolate. A separate function, so
+  /// the closure captures only these arguments (never the session).
+  static FutureOr<SlidesPdfResult> Function(IsolateChannel) _renderWork(
+    String deckId,
+    List<(String, Map<String, Object?>)> rows,
+    SlidesPdfOptions options,
+    SlidesPdfDocumentInfo info,
+    FontProviderFactory fonts,
+  ) =>
+      (channel) =>
+          SlidesPdfExporter(
+            onProgress: (phase, p) => channel.post((phase, p)),
+          ).render(
+            DeckModel.fromRows(deckId, rows),
+            options,
+            SlidesExportResources(
+              fonts: fonts(),
+              images: _ChannelImageResolver(channel),
+              info: info,
+            ),
+          );
 
   static Future<ExportResultView?> _cached(
     Session session,
     Actor actor,
     String key,
   ) async {
-    final hit = _results[key];
+    final hit = _results.get(key);
     if (hit == null) return null;
     if (!hit.expiresAt.isAfter(nowUtc().add(const Duration(minutes: 20)))) {
       _results.remove(key);
@@ -272,6 +315,7 @@ abstract final class SlidesExportService {
   };
 
   /// Progress events; the last one is `done` or `error` (10 §11.5).
+  /// Cancelling the subscription kills the render.
   static Stream<ExportProgressEvent> exportWithProgress(
     Session session,
     Actor actor,
@@ -280,7 +324,10 @@ abstract final class SlidesExportService {
     String optionsJson, {
     int? revision,
   }) {
-    final controller = StreamController<ExportProgressEvent>();
+    final cancel = IsolateCancelToken();
+    final controller = StreamController<ExportProgressEvent>(
+      onCancel: cancel.cancel,
+    );
     unawaited(() async {
       try {
         final result = await export(
@@ -290,6 +337,7 @@ abstract final class SlidesExportService {
           format,
           optionsJson,
           revision: revision,
+          cancel: cancel,
           onProgress: (phase, progress) {
             if (controller.isClosed || phase == 'done') return;
             controller.add(
@@ -349,14 +397,20 @@ final class _CachedResult {
 /// [SlideImageResolver] of server exports: `wonky-file://<uuid>` reads the
 /// stored bytes (files of the deck, or files the actor can read), `https://`
 /// goes through the SSRF-safe [SafeImageFetcher]; failures resolve to null
-/// (the PDF warns `image_missing`). Results are cached per export.
+/// (the PDF warns `image_missing`). Results are cached per export unless
+/// [cacheBytes] is false (the server export: the renderer keeps what it
+/// needs, so bytes are not held twice).
 class ServerSlideImageResolver implements SlideImageResolver {
   ServerSlideImageResolver(
     this.session,
     this.actor, {
     required this.itemId,
     this.fetchRemote = SafeImageFetcher.fetch,
+    this.cacheBytes = true,
   });
+
+  /// Whether loaded bytes are kept for later requests.
+  final bool cacheBytes;
 
   final Session session;
   final Actor actor;
@@ -373,7 +427,7 @@ class ServerSlideImageResolver implements SlideImageResolver {
 
   @override
   Future<Uint8List?> bytes(SlideImageRef ref) =>
-      _cache.putIfAbsent(ref.src, () => _load(ref));
+      cacheBytes ? _cache.putIfAbsent(ref.src, () => _load(ref)) : _load(ref);
 
   Future<Uint8List?> _load(SlideImageRef ref) async {
     try {
@@ -398,6 +452,29 @@ class ServerSlideImageResolver implements SlideImageResolver {
         'Export image ${ref.src} unavailable: $e',
         level: LogLevel.debug,
       );
+      return null;
+    }
+  }
+
+  @override
+  Future<Uri?> url(SlideImageRef ref) async => null;
+}
+
+/// [SlideImageResolver] of the export isolate: asks the calling isolate
+/// ([ServerSlideImageResolver] there) for each image's bytes.
+final class _ChannelImageResolver implements SlideImageResolver {
+  _ChannelImageResolver(this.channel);
+
+  final IsolateChannel channel;
+
+  @override
+  Uint8List? cachedBytes(SlideImageRef ref) => null;
+
+  @override
+  Future<Uint8List?> bytes(SlideImageRef ref) async {
+    try {
+      return await channel.request(ref.src) as Uint8List?;
+    } on Object {
       return null;
     }
   }

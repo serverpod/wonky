@@ -2,7 +2,7 @@
 
 Read first: [02-data-model.md](02-data-model.md) (tables used here: `BasicFilter`, `FilterView`,
 `DataValidationRule`, `PivotTable`, `NamedRange`, `ProtectedRange`, `DimensionGroup`,
-`EmbeddedObject` kind `slicer`, `Cell`, `ChangeLog`), [05-formula-engine.md](05-formula-engine.md)
+`EmbeddedObject` kind `slicer`, `Cell`, the op log), [05-formula-engine.md](05-formula-engine.md)
 (evaluation, `FormulaCodec`, `ReferenceRewriter`, offload jobs), suite
 [08-commands-and-undo.md](../08-commands-and-undo.md) and
 [06-sharing-and-permissions.md](../06-sharing-and-permissions.md). Menu entries, panel
@@ -39,11 +39,11 @@ MCP tool implementations: [12-mcp-and-ai.md](12-mcp-and-ai.md).
 
 Global rules for every feature:
 
-- **Everything works offline** on the local replica; every computed artifact (hidden rows, invalid
+- **Everything works offline** on the local model; every computed artifact (hidden rows, invalid
   markers, pivot output, stats, find results) is computed on the device by `wonky_sheets_core`
   (server uses the same code headlessly for MCP).
-- **One command = one undo step** through `SheetsWriter` (02 §7); large writes are chunked
-  (≤ 5,000 row changes per transaction) but remain one step.
+- **One command = one undo step** through the session (02 §7); large writes are chunked
+  (≤ 5,000 row changes per op, one op group) but remain one step.
 - **Every action is a command** with a stable id (§20) and is MCP-controllable through
   `ui.invoke_command`; dialogs are `WonkyDialogSpec`s (suite 09 §6.2); headless tools are listed
   in §21.
@@ -141,8 +141,8 @@ Long operations run as a `DataJob` (`data_tools/jobs/data_job.dart`):
 1. **Compute phase** — pure function over immutable column snapshots, run through
    `ComputeOffload` ([05 §10.3](05-formula-engine.md#103-offload-jobs)) when above its threshold;
    reports progress (0–1) and honours a `CancellationToken`.
-2. **Write phase** — `SheetsWriter` chunks (≤ 5,000 row changes/transaction), still one undo
-   step. Cancelling during writes rolls back the already-written chunks by applying their inverse
+2. **Write phase** — session write, chunked into ops of ≤ 5,000 row changes (one group), still
+   one undo step. Cancelling during writes rolls back the already-written chunks by applying their inverse
    (the job ends with no net change and no undo step).
 
 `DataJobRunner` shows a `ShadSonner` toast after 500 ms ("Sorting 412,000 rows… 37 %" with
@@ -204,7 +204,9 @@ entity reorder keeps such edits, comments and cell history on the right record.
 2. **Text**: case-insensitive comparison using a deterministic collation key (Unicode
    NFKD → strip combining marks → simple case folding, then the original string ordinal as tie-
    breaker), so "apple" < "Banana" < "cherry", "é" sorts with "e". Digits in text compare
-   character-wise (no natural sort, Sheets parity).
+   character-wise (no natural sort, Sheets parity). One implementation, `Collation`
+   (`formula/values/collation.dart`, LRU-cached keys), shared by `SORT()`/`SORTN()`, Data › Sort,
+   filter views and pivot groups (CQ-50; `SORT()` computes the keys once per row).
 3. **Booleans**: FALSE < TRUE.
 4. **Errors** (by `ERROR.TYPE` code).
 5. **Blank cells always last**, in both ascending and descending order (Sheets parity). A formula
@@ -304,7 +306,7 @@ remove duplicates (§12.1).
 | **Slicer** (§5) | `EmbeddedObject(kind: slicer)` | everyone | editors (viewers: local override) | yes (filters its range like the basic filter) |
 
 Filter views and temporary views never change formula results, keeping computed values identical
-on every replica (05 §12).
+on every client (05 §12).
 
 ### 3.2 Criteria model (`BasicFilter.criteriaJson`, `FilterView.criteriaJson`)
 
@@ -759,7 +761,7 @@ A cell has at most one effective rule (Sheets). On *Done*:
 
 All in one step. If concurrent offline edits still produce overlaps, the **effective rule for a
 cell is the containing rule with the greatest `(createdAt, id)`** — deterministic on every
-replica; the panel shows a warning icon on shadowed rules. Rules are capped at 1,000 rectangles
+client; the panel shows a warning icon on shadowed rules. Rules are capped at 1,000 rectangles
 (further subtraction results merge into bounding rows with a toast).
 
 `Remove all in selection` (`sheets.dv.clearRange {range}`) subtracts the selection from every
@@ -1256,7 +1258,7 @@ warningOnly, editorsJson, createdBy}` (02 §3.4).
   everyone, the owner and the creator included (they guard against accidental edits).
 - Who may change/remove a protection: the owner and users allowed to edit it. Others see it
   read-only in the panel (lock icon, "You can't edit this protection").
-- Commenters/viewers can't edit anything anyway (space `readOnly`).
+- Commenters/viewers can't edit anything anyway (the server refuses their ops).
 
 ### 10.2 Panel (`sheets.panel.protected`)
 
@@ -1319,15 +1321,33 @@ Row/column resize and hide are allowed (Sheets parity). Commands touching both p
 unprotected cells abort entirely (03 §16). Dialogs/UX: 03 §16. `ProtectedIndex` (interval index
 per sheet) makes checks O(log n) per rectangle.
 
-- **Server-side**: MCP tools and server scripts run the same guard on the server replica (error
-  code `protected_range`; warning-only ranges are writable with `warnings` in the result, 03 §16).
-- **Advisory** (suite 06 §3): a modified client could bypass protections; an offline edit made
-  before a protection reached the device is not reverted.
+- **Server-side tools**: MCP tools and server scripts run the same guard on the headless model
+  before planning (error code `protected_range`; warning-only ranges are writable with
+  `warnings` in the result, 03 §16).
+- **Enforced by the sequencer** (suite [17](../17-revlog-sync.md) part 5 §3.5): every op except
+  `system` ops on a file with protections (or one that writes `protected_range` rows) is
+  checked against the server's model at the previous revision with the same core code:
+  `ProtectionCheck.ofApplied` (`wonky_sheets_core/lib/src/data_tools/protection/`) derives the
+  intents from the op's applied changes (row/column structure from inserted, deleted and moved
+  rows/columns; range repairs that only repoint references at rows the same op deletes are
+  exempt, `BoundaryRepair`) and runs `ProtectionGuard`. Updating or deleting a protection needs
+  `canManage`. A blocked intent rejects the **whole op** (`protectedRange`, with the
+  protections hit); warning-only protections never block on the server. This covers server
+  changes too (MCP, AI, scripts with the run-as user, imports, revert/reapply).
+- **Offline edits and stale clients**: an edit made offline before a protection arrived, by an
+  editor removed from a protection, or by a stale or modified client is rejected when it syncs:
+  the client rolls the group back, removes its undo step and shows the blocked message (03 §16;
+  [10 §9](10-collaboration-history.md)). The client gate stays for the dialogs and the
+  warning-only confirmation.
+- **Version restore** pre-checks the whole diff with the guard before writing and refuses with
+  "This version changes protected ranges you can't edit" (10 §5.3), so it never commits
+  partially.
 
 > **As built.** Enforcement is a write gate on `SheetEditorController.apply`: the operation is
 > planned without applying and its `WriteIntent`s are derived from the row changes
-> (`features/protection/write_intents.dart`; row/column structure from the operation, inserts count
-> only inside a protection). Blocked → "Protected cell or object" dialog (agents: failed
+> (`WriteIntents`, in `wonky_sheets_core/lib/src/data_tools/protection/write_intents.dart` so the
+> client gate, MCP and the sequencer share it; row/column structure from the operation, inserts
+> count only inside a protection). Blocked → "Protected cell or object" dialog (agents: failed
 > `protected_range: …`); warning-only → "Heads up!" confirm; after OK the command resumes at the
 > blocked write (`applyConfirmed` in commands with dialogs, 03 §16), others rerun. The
 > permissions dialog (`ProtectionPermissionsDialog`, MCP-describable like a `WonkyDialogSpec`:
@@ -1582,7 +1602,7 @@ the last row, and structured references in formulas (`=SUM(Sales[Revenue])`, gra
 ```yaml
 class: SheetTable
 table: sheet_table
-database: sync
+serverOnly: true             # a file table (02 §3), plus a sheetsSchema entry
 fields:
   sheet: Sheet?, relation(name=sheet_tables, onDelete=Cascade)
   name: String                 # unique per spreadsheet, same rules as named ranges

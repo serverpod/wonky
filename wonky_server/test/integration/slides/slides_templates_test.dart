@@ -1,28 +1,26 @@
-// The owner's device runs in its own isolate and syncs over HTTP.
 @Tags(['integration'])
-@Timeout(Duration(minutes: 3))
 library;
 
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/drive/templates/builtin_templates.dart';
-import 'package:wonky_server/src/sheets/sync/sync_db.dart';
-import 'package:wonky_server/src/slides/changelog/deck_drive_mirror.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
+import 'package:wonky_server/src/slides/revlog/slides_revlog.dart';
 import 'package:wonky_server/src/slides/templates/slides_template_decks.dart';
 import 'package:wonky_slides_core/maintenance.dart';
 import 'package:wonky_slides_core/templates.dart';
 
-import '../../support/sheets_device.dart' show installDeviceAuthentication;
-import '../../support/slides_device.dart';
+import '../../support/slides_rev_device.dart';
+import '../../support/slides_rev_hooks.dart';
 import '../../support/test_storage.dart';
 import '../../support/test_users.dart';
 import '../../support/wonky_serverpod.dart';
 
 /// Built-in presentation templates (Slides 04 §15, 12 §4 SL-22): the
 /// gallery lists them, `drive.createPresentation(templateUuid)` builds
-/// their decks on the server and devices sync them like any deck.
+/// their decks on the server (the creation op of a RevLog file) and devices
+/// load them like any deck.
 void main() {
   withWonkyServerpod('Given the built-in presentation templates', (
     sessionBuilder,
@@ -30,15 +28,12 @@ void main() {
   ) {
     late Session server;
 
+    SlidesRevHooks.install();
     setUpAll(() {
       server = sessionBuilder.build();
-      installDeviceAuthentication(server);
     });
 
-    tearDown(() {
-      DeckDriveMirror.reset();
-      HeadlessDeckCache.clear();
-    });
+    tearDown(HeadlessFileCache.clear);
 
     test('when listing presentation templates, then the five built-ins come '
         'with the core uuids, card styles, preview text and sizes', () async {
@@ -95,7 +90,7 @@ void main() {
 
         expect(item.kind, DriveItemKind.presentation);
         expect(item.name, 'From ${t.name}');
-        final db = syncSessionOf(server);
+        final db = server;
         final deck = await Deck.db.findById(db, item.uuid);
         expect(deck!.title, 'From ${t.name}');
         expect(deck.createdBy, user.authUserId);
@@ -115,11 +110,18 @@ void main() {
           where: (x) => x.deckId.equals(item.uuid),
         );
         expect(themes.single.sourceKey, startsWith('builtin:${t.themeKey}@'));
-        final log = await DeckChangeLog.db.find(
+        final file = await RevFile.db.findFirstRow(
           db,
-          where: (l) => l.deckId.equals(item.uuid),
+          where: (f) => f.fileUuid.equals(item.uuid),
         );
-        expect(log.single.label, 'Create presentation');
+        final ops = await RevOp.db.find(
+          db,
+          where: (o) => o.fileId.equals(file!.id!),
+          orderBy: (o) => o.revision,
+        );
+        expect(ops.first.label, 'Create presentation');
+        expect(file!.initPending, isFalse);
+        await SlidesRevHooks.drain(server, item.uuid);
         final fresh = await DriveItem.db.findFirstRow(
           server,
           where: (d) => d.uuid.equals(item.uuid),
@@ -130,18 +132,18 @@ void main() {
           t,
         ).split('\n').first.substring(2);
         expect(fresh.searchText, contains(title));
-        final headless = await HeadlessDeckCache.open(server, item.uuid);
-        expect(DeckMaintenance.detect(headless.model), isEmpty);
+        final headless = await SlidesRevlog.model(server, item.uuid);
+        expect(DeckMaintenance.detect(headless), isEmpty);
         expect(
-          headless.model.slides.length,
+          headless.slides.length,
           preview.slides.length,
           reason: 'every row was written',
         );
       });
     }
 
-    test('when the owner opens a template deck on a device and syncs, then '
-        'the whole deck is in the replica (available offline)', () async {
+    test('when the owner opens a template deck on a device, then the whole '
+        'deck is in the replica (available offline)', () async {
       final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
       final t = SlidesTemplates.byKey('slides.workshop')!;
       final item = await endpoints.drive.createPresentation(
@@ -151,18 +153,16 @@ void main() {
         UuidValue.fromString(t.uuid),
       );
 
-      final a = await SlidesDevice.open(server, anna.authUserId);
-      final sub = await a.subscribe(item.uuid);
-      expect(sub.canWrite, isTrue);
-      await a.sync();
+      final a = await SlidesRevDevice.open(anna, item.uuid);
+      addTearDown(a.close);
+      expect(a.role, AccessRole.owner);
 
-      final counts = await a.tableCounts(item.uuid);
       final preview = SlidesTemplateDecks.preview(t).model;
-      expect(counts['slide'], preview.slides.length);
-      expect(counts['slide_group'], preview.groups.length);
-      expect(counts['code_state'], 2, reason: 'two code slides');
-      expect(counts['slide_table_cell'], greaterThan(10));
-      expect(await a.title(item.uuid), 'Workshop');
+      expect(a.model.count('slide'), preview.slides.length);
+      expect(a.model.count('slide_group'), preview.groups.length);
+      expect(a.model.count('code_state'), 2, reason: 'two code slides');
+      expect(a.model.count('slide_table_cell'), greaterThan(10));
+      expect(a.title, 'Workshop');
     });
 
     test('when the quota is too small, then nothing is created; templates of '

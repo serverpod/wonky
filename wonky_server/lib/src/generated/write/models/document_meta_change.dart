@@ -12,7 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 /// LWW metadata change (Write 03 §6). The title lives on DriveItem.
 abstract class DocumentMetaChange
@@ -37,7 +37,7 @@ abstract class DocumentMetaChange
     required String beforeJson,
     required String afterJson,
     int? authorId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required DateTime createdAt,
   }) = _DocumentMetaChangeImpl;
 
@@ -54,7 +54,7 @@ abstract class DocumentMetaChange
       beforeJson: jsonSerialization['beforeJson'] as String,
       afterJson: jsonSerialization['afterJson'] as String,
       authorId: jsonSerialization['authorId'] as int?,
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       createdAt: _is.DateTimeJsonExtension.fromJson(
@@ -83,7 +83,7 @@ abstract class DocumentMetaChange
 
   int? authorId;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   DateTime createdAt;
 
@@ -101,7 +101,7 @@ abstract class DocumentMetaChange
     String? beforeJson,
     String? afterJson,
     int? authorId,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     DateTime? createdAt,
   });
   @override
@@ -175,7 +175,7 @@ class _DocumentMetaChangeImpl extends DocumentMetaChange {
     required String beforeJson,
     required String afterJson,
     int? authorId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required DateTime createdAt,
   }) : super._(
          id: id,
@@ -201,7 +201,7 @@ class _DocumentMetaChangeImpl extends DocumentMetaChange {
     String? beforeJson,
     String? afterJson,
     Object? authorId = _Undefined,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     DateTime? createdAt,
   }) {
     return DocumentMetaChange(
@@ -256,8 +256,8 @@ class DocumentMetaChangeUpdateTable
     value,
   );
 
-  _is.ColumnValue<_i810rwvy.ActorKind, _i810rwvy.ActorKind> actorKind(
-    _i810rwvy.ActorKind value,
+  _is.ColumnValue<_ipbpecg8.ActorKind, _ipbpecg8.ActorKind> actorKind(
+    _ipbpecg8.ActorKind value,
   ) => _is.ColumnValue(
     table.actorKind,
     value,
@@ -324,7 +324,7 @@ class DocumentMetaChangeTable extends _is.Table<int?> {
 
   late final _is.ColumnInt authorId;
 
-  late final _is.ColumnEnum<_i810rwvy.ActorKind> actorKind;
+  late final _is.ColumnEnum<_ipbpecg8.ActorKind> actorKind;
 
   late final _is.ColumnDateTime createdAt;
 

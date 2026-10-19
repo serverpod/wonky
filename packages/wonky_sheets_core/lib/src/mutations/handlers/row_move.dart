@@ -199,6 +199,7 @@ Iterable<double> applyRowPermutationSteps(
   // elsewhere → re-pin references into the block.
   if (hooks != null) {
     final total = b.model.sheets.fold<int>(0, (a, x) => a + x.cells.count);
+    final oldTokens = StoredFormula.idTokens(oldIds);
     var seen = 0;
     for (final sheet in b.model.sheets) {
       for (final cell in sheet.cells.all) {
@@ -223,7 +224,7 @@ Iterable<double> applyRowPermutationSteps(
               toCol: c,
             );
           }
-        } else if (!StoredFormula.mayReference(f, oldIds)) {
+        } else if (!StoredFormula.referencesAny(f, oldTokens)) {
           continue;
         }
         final repinned = hooks.repinRows(

@@ -16,7 +16,7 @@ import 'dart:math' as math;
 
 import 'package:wonky_charts/wonky_charts.dart' show ChartSnapshotColumns;
 import 'package:wonky_rich_text/wonky_rich_text.dart' show Delta;
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 import 'package:wonky_sync_models/ids.dart';
 
 import '../charts/chart_overrides.dart';

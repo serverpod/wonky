@@ -54,17 +54,53 @@ class _SelectionStatsButtonState extends State<SelectionStatsButton> {
     super.dispose();
   }
 
+  /// Cells visited per step: the first step runs right after the debounce,
+  /// further steps in later event-loop turns (S-03, CQ-41).
+  static const stepCells = 50000;
+
+  /// Increments on every selection or content change: a running
+  /// computation stops (the model may have changed under it).
+  int _generation = 0;
+
   void _schedule() {
+    _generation++;
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 100), _compute);
   }
 
   void _compute() {
     if (!mounted) return;
+    final generation = ++_generation;
     final multi = selectionIsMulti(c);
+    if (!multi) {
+      setState(() {
+        _multi = false;
+        _stats = SelectionStats.empty;
+      });
+      return;
+    }
+    final acc = SelectionStatsAccumulator(c);
+    if (acc.step(stepCells)) {
+      setState(() {
+        _multi = true;
+        _stats = acc.result;
+      });
+      return;
+    }
+    // A large selection: the shown value stays until the new one is
+    // complete.
+    unawaited(_continue(acc, generation));
+  }
+
+  Future<void> _continue(SelectionStatsAccumulator acc, int generation) async {
+    while (true) {
+      await Future<void>(() {});
+      if (!mounted || generation != _generation) return;
+      if (acc.step(stepCells)) break;
+    }
     setState(() {
-      _multi = multi;
-      _stats = multi ? SelectionStats.of(c) : SelectionStats.empty;
+      _multi = true;
+      _stats = acc.result;
     });
   }
 

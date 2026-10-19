@@ -271,7 +271,12 @@ class FilePreviewController extends ChangeNotifier {
           _startPolling();
           return;
         }
-        data = await api.fetch(u, maxBytes: PreviewLimits.maxBytes);
+        // Text and CSV show the first megabyte: only that much (plus one
+        // byte, so the viewer knows it is cut) is downloaded and cached
+        // (DR-3).
+        data = _textual(t)
+            ? await api.fetch(u, firstBytes: PreviewLimits.textBytes + 1)
+            : await api.fetch(u, maxBytes: PreviewLimits.maxBytes);
         host.cache.put(key, data);
       } on Object catch (e) {
         if (id != _loadId || _disposed) return;
@@ -292,6 +297,9 @@ class FilePreviewController extends ChangeNotifier {
     bytes = data;
     await _prepare(id, v, t, data);
   }
+
+  static bool _textual(PreviewType t) =>
+      t.viewer == PreviewViewer.text || t.viewer == PreviewViewer.csv;
 
   Future<void> _prepare(
     int id,
@@ -417,8 +425,17 @@ class FilePreviewController extends ChangeNotifier {
       siblings = _ready(host.siblings);
       folderName = host.siblingsFolderName;
       _notify();
+      // Stepping through the folder: the recent listing still holds this
+      // file, so it isn't listed again (DR-6).
+      final at = host.siblingsListedAt;
+      if (at != null &&
+          host.now().difference(at) < FilePreviewHost.siblingsMaxAge &&
+          host.siblings.any((s) => s.uuid == v.uuid)) {
+        return;
+      }
     }
     try {
+      final listedAt = host.now();
       final files = await api.filesIn(parent);
       String? name;
       try {
@@ -430,7 +447,8 @@ class FilePreviewController extends ChangeNotifier {
       host
         ..siblingsOf = parent
         ..siblings = files
-        ..siblingsFolderName = name;
+        ..siblingsFolderName = name
+        ..siblingsListedAt = listedAt;
       siblings = _ready(files);
       folderName = name;
       _notify();

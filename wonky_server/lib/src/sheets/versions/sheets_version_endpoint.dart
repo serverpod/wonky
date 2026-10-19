@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 
 import '../../platform/comments/comment_copier.dart';
 import '../../platform/common/errors.dart';
+import '../../platform/common/isolate_runner.dart';
 import '../../platform/common/models.dart';
-import '../../platform/drive/drive_service.dart';
+import '../../platform/drive/drive_copies.dart';
 import '../../platform/files/file_service.dart';
 import '../../platform/sharing/access_service.dart';
 import '../../platform/users/user_service.dart';
@@ -43,12 +46,10 @@ class SheetsVersionEndpoint extends Endpoint {
     );
     final stored = index?.changedRangesJson;
     if (stored != null && stored.startsWith('{')) return stored;
-    final (from, to) = await SheetsVersionChanges.windowOf(session, version);
     final (ranges, approx) = await SheetsVersionChanges.rangesBetween(
       session,
       item.contentRef!,
-      from: from,
-      to: to,
+      await SheetsVersionChanges.windowOf(session, version),
     );
     return SheetsVersionChanges.encode(ranges, approx: approx);
   }
@@ -72,13 +73,13 @@ class SheetsVersionEndpoint extends Endpoint {
       versionId,
       min: Role.editor,
     );
-    final (from, to) = await SheetsVersionChanges.windowOf(session, version);
+    final immediatePrevious = await ItemVersion.db.findFirstRow(
+      session,
+      where: (t) => t.itemId.equals(item.id!) & (t.id < version.id!),
+      orderBy: (t) => t.id.desc(),
+    );
     final previous = previousVersionId == null
-        ? await ItemVersion.db.findFirstRow(
-            session,
-            where: (t) => t.itemId.equals(item.id!) & (t.id < version.id!),
-            orderBy: (t) => t.id.desc(),
-          )
+        ? immediatePrevious
         : (await VersionService.requireVersion(
             session,
             actor,
@@ -87,7 +88,9 @@ class SheetsVersionEndpoint extends Endpoint {
             min: Role.editor,
           )).$2;
     final immediate =
-        previous == null || previous.createdAt == from || from == null;
+        previous == null ||
+        immediatePrevious == null ||
+        previous.id == immediatePrevious.id;
     final index = await SheetsSnapshotIndex.db.findFirstRow(
       session,
       where: (t) => t.itemVersionId.equals(version.id!),
@@ -99,18 +102,20 @@ class SheetsVersionEndpoint extends Endpoint {
       }
     }
     final current = await _snapshot(session, version);
-    final before = previous == null
-        ? const <String, Map<String, Map<String, dynamic>>>{}
-        : await _snapshot(session, previous);
+    final before = previous == null ? null : await _snapshot(session, previous);
     final (ranges, _) = await SheetsVersionChanges.rangesBetween(
       session,
       item.contentRef!,
-      from: previous?.createdAt,
-      to: to,
+      SheetsVersionChanges.between(previous, version),
     );
-    final bytes = SheetsVersionChanges.gzipJson(
-      SheetsVersionChanges.attributedDiff(before, current, ranges),
-    );
+    final Uint8List bytes;
+    try {
+      bytes = await _diffIn(before, current, ranges);
+    } on TimeoutException {
+      throw Errors.unavailable(
+        'Comparing these versions took too long. Try again later.',
+      );
+    }
     final file = await FileService.storeServerFile(
       session,
       ownerId: item.ownerId,
@@ -129,7 +134,32 @@ class SheetsVersionEndpoint extends Endpoint {
     return FileService.getUrl(session, actor, file.fileUuid);
   }
 
-  static Future<Map<String, Map<String, Map<String, dynamic>>>> _snapshot(
+  /// Time limit of one diff (the worker isolate is killed after it).
+  static const diffTimeout = Duration(seconds: 90);
+
+  /// Decodes the snapshots [before] and [current], diffs and gzips them
+  /// in a worker isolate (the shared `IsolateRunner`): two full snapshots
+  /// are never decoded on the request isolate.
+  static Future<Uint8List> _diffIn(
+    Uint8List? before,
+    Uint8List current,
+    List<AuthoredRange> ranges,
+  ) => IsolateRunner.run(
+    () => SheetsVersionChanges.gzipJson(
+      SheetsVersionChanges.attributedDiff(
+        before == null
+            ? const <String, Map<String, Map<String, dynamic>>>{}
+            : SheetsVersionProvider.decode(before),
+        SheetsVersionProvider.decode(current),
+        ranges,
+      ),
+    ),
+    name: 'sheets-version-diff',
+    timeout: diffTimeout,
+  );
+
+  /// The stored (gzip NDJSON) snapshot of [version].
+  static Future<Uint8List> _snapshot(
     Session session,
     ItemVersion version,
   ) async {
@@ -138,9 +168,7 @@ class SheetsVersionEndpoint extends Endpoint {
     final file = await FileService.byUuid(session, id);
     if (file == null) throw Errors.expired('The snapshot is no longer stored.');
     final data = await FileService.readBytes(session, file);
-    return SheetsVersionProvider.decode(
-      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-    );
+    return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
   }
 
   /// The *Copy comments* / *Share with the same people* options of a copy
@@ -183,7 +211,8 @@ class SheetsVersionEndpoint extends Endpoint {
     } on Object {
       throw Errors.invalid('anchorIdMapJson must be a JSON object.');
     }
-    if (copyComments) {
+    // Viewers copy comments only when they may see them (CQ-6).
+    if (copyComments && CommentCopier.mayCopy(source, role)) {
       await session.db.transaction(
         (tx) => CommentCopier.copyThreads(
           session,
@@ -195,7 +224,7 @@ class SheetsVersionEndpoint extends Endpoint {
       );
     }
     if (copySharing) {
-      await DriveService.copyGrants(session, actor, source, target);
+      await DriveCopies.copyGrants(session, actor, source, target);
     }
   }
 }

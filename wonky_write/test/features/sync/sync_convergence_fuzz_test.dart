@@ -4,7 +4,7 @@ library;
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wonky_write/features/sync/connection_keeper.dart';
+import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_write/features/sync/document_sync_controller.dart';
 import 'package:wonky_write_core/testing.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';

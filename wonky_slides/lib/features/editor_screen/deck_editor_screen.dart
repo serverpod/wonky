@@ -25,7 +25,7 @@ import '../comments/slides_comments.dart';
 import '../history/local_conflicts.dart';
 import '../../mcp/slides_ui_bridge.dart';
 import '../model/deck_session.dart';
-import '../sync/slides_data.dart' show openDeckSession;
+import '../revlog/slides_rev_log.dart' show openDeckSession;
 import '../layouts/layout_gallery.dart' show galleryLayouts;
 import '../themes/theme_previews.dart';
 import '../toolbar/slides_toolbar.dart';
@@ -33,6 +33,7 @@ import 'chrome_prefs.dart';
 import 'deck_body.dart';
 import '../spellcheck/spelling_actions.dart' show canvasSpellingMenu;
 import '../text_editing/text_editing_host.dart' show textEditingOf;
+import '../uploads/slides_image_service.dart';
 import 'deck_document_controller.dart';
 import 'deck_editor_controller.dart';
 import 'deck_loading_view.dart';
@@ -183,6 +184,8 @@ class _DeckEditorScreenState extends State<DeckEditorScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       canvas?.dispose();
       if (editor != null) ThemePreviews.maybeOf(editor)?.dispose();
+      // Cancels polls for other users' pending uploads (CQ-43).
+      if (editor != null) SlidesImageService.maybeOf(editor)?.dispose();
       editor?.dispose();
       doc.dispose();
       if (session != null) unawaited(session.dispose());

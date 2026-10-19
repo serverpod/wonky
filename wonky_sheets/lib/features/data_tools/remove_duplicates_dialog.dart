@@ -171,6 +171,7 @@ class _RemoveDuplicatesDialogState extends State<RemoveDuplicatesDialog>
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.removeDuplicates'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.dedupeTitle),
         description: Text(l.dedupeRange(widget.rangeA1)),
         actions: [

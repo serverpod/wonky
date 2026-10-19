@@ -145,7 +145,7 @@ void main() {
 
     test('when typing --- and Enter then a divider is inserted', () {
       given(line(''), 0).type('---\n');
-      expect(h.delta.operations.first.data, isA<Map>());
+      expect(h.delta.operations.first.data, isA<Map<Object?, Object?>>());
     });
   });
 

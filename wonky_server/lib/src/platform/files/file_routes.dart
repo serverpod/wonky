@@ -10,8 +10,11 @@ import 'package:wonky_core/wonky_core.dart' show Role;
 
 import '../common/models.dart';
 import '../sharing/access_service.dart';
+import '../config/wonky_config.dart';
+import 'download_budget.dart';
 import 'file_names.dart';
 import 'file_url_tokens.dart';
+import 'storage_reads.dart';
 
 /// The byte routes of uploaded files on the web server (Drive 02 §3.3, §8;
 /// suite 13 §6). Both authenticate with the short-lived, user-bound token
@@ -118,11 +121,18 @@ class FileDownloadRoute extends _InternalSessionRoute {
     if (role < Role.editor && !item.nonEditorsCanExport) {
       return FileRoutes.text(403, 'Downloads are turned off for this file.');
     }
-    final data = await session.storage.retrieveFile(
-      storageId: file.storageId,
-      path: file.path,
-    );
-    final bytes = Uint8List.sublistView(data);
+    final isHead = request.method == Method.head;
+    if (!isHead &&
+        !DownloadBudget.tryCharge(
+          grant.userId,
+          file.sizeBytes,
+          limit: WonkyConfig.current.downloadBytesPerDay,
+        )) {
+      return FileRoutes.text(
+        429,
+        "You've downloaded a lot today. Try again tomorrow.",
+      );
+    }
     final type = item.mimeType ?? FileTypes.octetStream;
     final headers = Headers.build((h) {
       for (final e in FileRoutes.securityHeaders.entries) {
@@ -136,12 +146,18 @@ class FileDownloadRoute extends _InternalSessionRoute {
     } on Object {
       mime = MimeType.octetStream;
     }
+    // Streamed from storage in 1 MB pieces (never the whole file in
+    // memory, CQ-30); the stream opens its own session.
     return Response(
       200,
       headers: headers,
-      body: request.method == Method.head
+      body: isHead
           ? Body.empty()
-          : Body.fromData(bytes, mimeType: mime),
+          : Body.fromDataStream(
+              StorageReads.stream(session.serverpod, file),
+              mimeType: mime,
+              contentLength: file.sizeBytes,
+            ),
     );
   }
 }

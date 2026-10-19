@@ -123,6 +123,10 @@ final class ModelEngineBinding {
   /// changes, undo), and deletes or inserts need not be contiguous: every
   /// contiguous run is reported on its own so that the engine dirties ranges
   /// spanning each deletion/insertion point.
+  ///
+  /// Only the window between the common prefix and the common suffix of the
+  /// two orders is diffed (ids are unique, so everything outside it survived in
+  /// place): a small edit in a long axis costs no hashing of the whole axis.
   void _axis(String sheetId, Dimension d) {
     final s = model.sheet(sheetId);
     if (s == null) return;
@@ -130,24 +134,36 @@ final class ModelEngineBinding {
     final before = _order[(sheetId, d)] ?? const <String>[];
     _order[(sheetId, d)] = now;
     final gd = d == Dimension.rows ? GridDimension.rows : GridDimension.columns;
-    final nowIndex = {for (var i = 0; i < now.length; i++) now[i]: i};
-    final beforeSet = before.toSet();
+    var lo = 0;
+    final common = before.length < now.length ? before.length : now.length;
+    while (lo < common && before[lo] == now[lo]) {
+      lo++;
+    }
+    var beforeEnd = before.length, nowEnd = now.length;
+    while (beforeEnd > lo &&
+        nowEnd > lo &&
+        before[beforeEnd - 1] == now[nowEnd - 1]) {
+      beforeEnd--;
+      nowEnd--;
+    }
+    final nowIndex = {for (var i = lo; i < nowEnd; i++) now[i]: i};
+    final beforeSet = {for (var i = lo; i < beforeEnd; i++) before[i]};
 
     // Deletes: runs of consecutive deleted ids in the old order. The reported
     // index is where the gap is in the new order (after the last surviving
-    // predecessor).
-    var i = 0;
-    while (i < before.length) {
+    // predecessor; the common prefix survived in place).
+    var i = lo;
+    while (i < beforeEnd) {
       if (nowIndex.containsKey(before[i])) {
         i++;
         continue;
       }
       final start = i;
-      while (i < before.length && !nowIndex.containsKey(before[i])) {
+      while (i < beforeEnd && !nowIndex.containsKey(before[i])) {
         i++;
       }
-      var gap = 0;
-      for (var k = start - 1; k >= 0; k--) {
+      var gap = lo;
+      for (var k = start - 1; k >= lo; k--) {
         final p = nowIndex[before[k]];
         if (p != null) {
           gap = p + 1;
@@ -162,14 +178,14 @@ final class ModelEngineBinding {
     }
 
     // Inserts: runs of consecutive new ids in the new order.
-    i = 0;
-    while (i < now.length) {
+    i = lo;
+    while (i < nowEnd) {
       if (beforeSet.contains(now[i])) {
         i++;
         continue;
       }
       final start = i;
-      while (i < now.length && !beforeSet.contains(now[i])) {
+      while (i < nowEnd && !beforeSet.contains(now[i])) {
         i++;
       }
       engine.axisChanged(sheetId, gd, AxisChange.inserted(start, i - start));
@@ -177,12 +193,12 @@ final class ModelEngineBinding {
 
     // Moves: surviving ids whose relative order changed.
     final survivedBefore = [
-      for (final id in before)
-        if (nowIndex.containsKey(id)) id,
+      for (var k = lo; k < beforeEnd; k++)
+        if (nowIndex.containsKey(before[k])) before[k],
     ];
     final survivedNow = [
-      for (final id in now)
-        if (beforeSet.contains(id)) id,
+      for (var k = lo; k < nowEnd; k++)
+        if (beforeSet.contains(now[k])) now[k],
     ];
     final moved = <String>[
       for (var k = 0; k < survivedNow.length; k++)

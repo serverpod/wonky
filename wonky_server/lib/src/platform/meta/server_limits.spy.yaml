@@ -2,7 +2,6 @@
 class: ServerLimits
 fields:
   maxCellsPerSpreadsheet: int
-  maxActiveSpacesPerUser: int
   maxSheetsPerSpreadsheet: int
   maxDocumentChars: int
   maxImageUploadBytes: int

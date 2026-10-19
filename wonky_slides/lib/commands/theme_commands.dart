@@ -79,7 +79,7 @@ List<Command<CommandArgs>> themeCommands(ShellServices s) => [
     ),
     run: (ctx, ed, a) {
       final source = a.values['source'];
-      final src = source is Map ? source : const {};
+      final src = source is Map ? source : const <Object?, Object?>{};
       final builtin = a.string('builtin') ?? src['builtin'] as String?;
       var themeId = a.string('themeId') ?? src['deckThemeId'] as String?;
       if ((builtin == null) == (themeId == null)) {
@@ -95,7 +95,9 @@ List<Command<CommandArgs>> themeCommands(ShellServices s) => [
           ? const <String>[]
           : (explicit.isNotEmpty ? explicit : _selectedSlides(ed));
       if (!all && slides.isEmpty) {
-        return const CommandResult.failed('No slides selected');
+        return CommandResult.failed(
+          slidesL10nOf(ed.services).errorNoSlidesSelected,
+        );
       }
       if (ed.order.length > 0 || !all) {
         ed.apply(ctx, ApplyThemeToSlides(themeId!, slides, setDefault: all));

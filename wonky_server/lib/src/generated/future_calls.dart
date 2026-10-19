@@ -20,8 +20,11 @@ import '../platform/files/file_preview_future_call.dart' as _iw6v1fyh;
 import '../platform/jobs/maintenance_future_call.dart' as _imgsvm9k;
 import '../platform/notifications/notification_email_future_call.dart'
     as _i1dis1nt;
+import '../platform/sharing/acl_future_call.dart' as _ivytsclb;
 import '../platform/storage/storage_future_call.dart' as _iel4dsm1;
 import '../sheets/scripts/script_scheduler_future_call.dart' as _iq0nfb3f;
+import 'future_calls_generated_models/acl_future_call_fan_out_model.dart'
+    as _ihl3axv2;
 import 'future_calls_generated_models/board_future_call_summarize_model.dart'
     as _icgheary;
 import 'future_calls_generated_models/board_future_call_triage_model.dart'
@@ -92,8 +95,11 @@ class FutureCalls extends _is.FutureCallDispatch<_FutureCallRef> {
           MaintenanceCaptureVersionsFutureCall(),
       'MaintenanceSendDigestsFutureCall': MaintenanceSendDigestsFutureCall(),
       'MaintenanceCleanupFilesFutureCall': MaintenanceCleanupFilesFutureCall(),
+      'MaintenanceRevlogSweepFutureCall': MaintenanceRevlogSweepFutureCall(),
+      'MaintenanceExpireGrantsFutureCall': MaintenanceExpireGrantsFutureCall(),
       'MaintenanceDailyFutureCall': MaintenanceDailyFutureCall(),
       'NotificationEmailSendFutureCall': NotificationEmailSendFutureCall(),
+      'AclFanOutFutureCall': AclFanOutFutureCall(),
       'StorageBackfillFutureCall': StorageBackfillFutureCall(),
       'StorageReconcileFutureCall': StorageReconcileFutureCall(),
       'StorageRefreshItemSizeFutureCall': StorageRefreshItemSizeFutureCall(),
@@ -231,6 +237,8 @@ class _FutureCallRef {
     _invokeFutureCall,
   );
 
+  late final acl = _AclFutureCallDispatcher(_invokeFutureCall);
+
   late final storage = _StorageFutureCallDispatcher(_invokeFutureCall);
 
   late final scriptScheduler = _ScriptSchedulerFutureCallDispatcher(
@@ -345,6 +353,20 @@ class _MaintenanceFutureCallDispatcher {
     );
   }
 
+  Future<void> revlogSweep() {
+    return _invokeFutureCall(
+      'MaintenanceRevlogSweepFutureCall',
+      null,
+    );
+  }
+
+  Future<void> expireGrants() {
+    return _invokeFutureCall(
+      'MaintenanceExpireGrantsFutureCall',
+      null,
+    );
+  }
+
   Future<void> daily() {
     return _invokeFutureCall(
       'MaintenanceDailyFutureCall',
@@ -364,6 +386,28 @@ class _NotificationEmailFutureCallDispatcher {
     );
     return _invokeFutureCall(
       'NotificationEmailSendFutureCall',
+      object,
+    );
+  }
+}
+
+class _AclFutureCallDispatcher {
+  _AclFutureCallDispatcher(this._invokeFutureCall);
+
+  final _InvokeFutureCall _invokeFutureCall;
+
+  Future<void> fanOut(
+    int itemId,
+    String kind,
+    List<int> affectedUsers,
+  ) {
+    var object = _ihl3axv2.AclFutureCallFanOutModel(
+      itemId: itemId,
+      kind: kind,
+      affectedUsers: affectedUsers,
+    );
+    return _invokeFutureCall(
+      'AclFanOutFutureCall',
       object,
     );
   }
@@ -574,10 +618,36 @@ class MaintenanceCleanupFilesFutureCall extends _is.FutureCall
   }
 }
 
+/// Every 5 minutes: RevLog hook sweep (RevLog spec 05 §10): files whose
+/// post-commit hooks lag or whose retry is due.
+class MaintenanceRevlogSweepFutureCall extends _is.FutureCall
+    implements _is.InvokableFutureCall {
+  @override
+  _ida.Future<void> invoke(
+    _is.Session session,
+    _is.SerializableModel? object,
+  ) async {
+    await _imgsvm9k.MaintenanceFutureCall().revlogSweep(session);
+  }
+}
+
+/// Hourly: expired grants (specs/06 §2: access ends at expiry, also for
+/// open sync spaces and documents), until none are left.
+class MaintenanceExpireGrantsFutureCall extends _is.FutureCall
+    implements _is.InvokableFutureCall {
+  @override
+  _ida.Future<void> invoke(
+    _is.Session session,
+    _is.SerializableModel? object,
+  ) async {
+    await _imgsvm9k.MaintenanceFutureCall().expireGrants(session);
+  }
+}
+
 /// Daily: trash purge, (v2) expired uploads and folder kind masks,
-/// version thinning, op-log and change-log pruning,
-/// active-set eviction, expired grants, server change records, deleted
-/// themes and the diff cache.
+/// version thinning, op-log and change-log pruning, active-set eviction,
+/// server change records, deleted themes, the diff cache, old AI usage
+/// and old notifications.
 class MaintenanceDailyFutureCall extends _is.FutureCall
     implements _is.InvokableFutureCall {
   @override
@@ -604,6 +674,25 @@ class NotificationEmailSendFutureCall
       await _i1dis1nt.NotificationEmailFutureCall().send(
         session,
         object.notificationId,
+      );
+    }
+  }
+}
+
+class AclFanOutFutureCall
+    extends _is.FutureCall<_ihl3axv2.AclFutureCallFanOutModel>
+    implements _is.InvokableFutureCall<_ihl3axv2.AclFutureCallFanOutModel> {
+  @override
+  _ida.Future<void> invoke(
+    _is.Session session,
+    _ihl3axv2.AclFutureCallFanOutModel? object,
+  ) async {
+    if (object != null) {
+      await _ivytsclb.AclFutureCall().fanOut(
+        session,
+        object.itemId,
+        object.kind,
+        object.affectedUsers,
       );
     }
   }

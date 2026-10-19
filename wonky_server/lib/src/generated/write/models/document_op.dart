@@ -12,7 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 import '../../write/models/document_op_kind.dart' as _iymqng84;
 
 /// One applied operation (Write 02 §3).
@@ -39,7 +39,7 @@ abstract class DocumentOp
     required int revision,
     required _is.UuidValue clientOpId,
     int? authorId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     String? sessionId,
     required _iymqng84.DocumentOpKind kind,
     required int baseRevision,
@@ -57,7 +57,7 @@ abstract class DocumentOp
         jsonSerialization['clientOpId'],
       ),
       authorId: jsonSerialization['authorId'] as int?,
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       sessionId: jsonSerialization['sessionId'] as String?,
@@ -89,7 +89,7 @@ abstract class DocumentOp
 
   int? authorId;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   String? sessionId;
 
@@ -117,7 +117,7 @@ abstract class DocumentOp
     int? revision,
     _is.UuidValue? clientOpId,
     int? authorId,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     String? sessionId,
     _iymqng84.DocumentOpKind? kind,
     int? baseRevision,
@@ -200,7 +200,7 @@ class _DocumentOpImpl extends DocumentOp {
     required int revision,
     required _is.UuidValue clientOpId,
     int? authorId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     String? sessionId,
     required _iymqng84.DocumentOpKind kind,
     required int baseRevision,
@@ -232,7 +232,7 @@ class _DocumentOpImpl extends DocumentOp {
     int? revision,
     _is.UuidValue? clientOpId,
     Object? authorId = _Undefined,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     Object? sessionId = _Undefined,
     _iymqng84.DocumentOpKind? kind,
     int? baseRevision,
@@ -282,8 +282,8 @@ class DocumentOpUpdateTable extends _is.UpdateTable<DocumentOpTable> {
     value,
   );
 
-  _is.ColumnValue<_i810rwvy.ActorKind, _i810rwvy.ActorKind> actorKind(
-    _i810rwvy.ActorKind value,
+  _is.ColumnValue<_ipbpecg8.ActorKind, _ipbpecg8.ActorKind> actorKind(
+    _ipbpecg8.ActorKind value,
   ) => _is.ColumnValue(
     table.actorKind,
     value,
@@ -385,7 +385,7 @@ class DocumentOpTable extends _is.Table<int?> {
 
   late final _is.ColumnInt authorId;
 
-  late final _is.ColumnEnum<_i810rwvy.ActorKind> actorKind;
+  late final _is.ColumnEnum<_ipbpecg8.ActorKind> actorKind;
 
   late final _is.ColumnString sessionId;
 

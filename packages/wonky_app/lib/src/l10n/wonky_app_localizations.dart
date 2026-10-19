@@ -1144,6 +1144,12 @@ abstract class WonkyAppLocalizations {
   /// **'Select all'**
   String get cmdSelectAll;
 
+  /// No description provided for @cmdSetDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit description'**
+  String get cmdSetDescription;
+
   /// No description provided for @cmdSetTheme.
   ///
   /// In en, this message translates to:

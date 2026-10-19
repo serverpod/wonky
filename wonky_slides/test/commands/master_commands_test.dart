@@ -391,7 +391,7 @@ void main() {
       final bad = await run('slides.theme.update', {
         'themeId': theme(),
         'columns': {
-          'colorsJson': {'v': 1, 'light': {}},
+          'colorsJson': {'v': 1, 'light': <String, Object?>{}},
         },
       });
       expect(bad.status, CommandStatus.failed);

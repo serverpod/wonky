@@ -44,6 +44,34 @@ final class DeltaSelection {
   /// Whether the selection is a caret.
   bool get isCollapsed => anchor == head;
 
+  /// This selection through [change] (Write 03 §3): a collapsed caret moves
+  /// after text inserted at its position; an expanded selection grows with
+  /// text inserted inside it but not at its edges, and keeps its direction.
+  DeltaSelection transform(Delta change) {
+    if (isCollapsed) {
+      return DeltaSelection.collapsed(change.transformPosition(anchor));
+    }
+    final isForward = anchor <= head;
+    final newStart = change.transformPosition(start);
+    final newEnd = change.transformPosition(end, force: false);
+    final clampedEnd = newEnd < newStart ? newStart : newEnd;
+    return isForward
+        ? DeltaSelection(newStart, clampedEnd)
+        : DeltaSelection(clampedEnd, newStart);
+  }
+
+  /// JSON (`{anchor, head}`; undo stacks, presence).
+  Map<String, Object?> toJson() => {'anchor': anchor, 'head': head};
+
+  /// The selection in [json], or null when it isn't one.
+  static DeltaSelection? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final anchor = json['anchor'];
+    final head = json['head'];
+    if (anchor is! int || head is! int) return null;
+    return DeltaSelection(anchor, head);
+  }
+
   @override
   bool operator ==(Object other) =>
       other is DeltaSelection && other.anchor == anchor && other.head == head;
@@ -52,7 +80,7 @@ final class DeltaSelection {
   int get hashCode => Object.hash(anchor, head);
 
   @override
-  String toString() => 'DeltaSelection($anchor, $head)';
+  String toString() => 'DeltaSelection($anchor → $head)';
 }
 
 /// OT operations with a documented, tested convention.
@@ -116,6 +144,89 @@ abstract final class WonkyOt {
     return DeltaUtils.canonical(document.compose(change));
   }
 
+  /// [apply] for a canonical [document] (a server document): the same
+  /// result, but only the document's ops around the change are composed
+  /// and canonicalized — the others are reused as they are, instead of
+  /// being copied and rebuilt (the Write client applies every remote op and
+  /// acknowledgement to its server document, CQ-49).
+  static Delta applyToCanonical(Delta document, Delta change) {
+    final docLength = DeltaUtils.documentLength(document);
+    final base = DeltaUtils.baseLength(change);
+    if (base > docLength) {
+      throw DeltaApplyException(
+        'Change spans $base characters but the document has $docLength',
+      );
+    }
+    // The base range the change touches: [lo, hi).
+    var offset = 0;
+    int? lo;
+    var hi = 0;
+    for (final op in change.operations) {
+      final length = op.length!;
+      if (op.isInsert) {
+        lo ??= offset;
+        if (offset > hi) hi = offset;
+        continue;
+      }
+      if (op.isRetain && op.isPlain) {
+        offset += length;
+        continue;
+      }
+      lo ??= offset;
+      offset += length;
+      if (offset > hi) hi = offset;
+    }
+    final ops = document.operations;
+    if (lo == null || ops.isEmpty) return apply(document, change);
+    // The ops holding the character before the range and the one at its
+    // end: those are untouched, so the result keeps their attributes at the
+    // window's edges and nothing merges across them.
+    final before = lo > 0 ? lo - 1 : 0;
+    var first = -1;
+    var last = ops.length - 1;
+    var start = 0;
+    var position = 0;
+    for (var i = 0; i < ops.length; i++) {
+      final op = ops[i];
+      if (!op.isInsert) return apply(document, change);
+      final end = position + op.length!;
+      if (first < 0 && end > before) {
+        first = i;
+        start = position;
+      }
+      if (end > hi) {
+        last = i;
+        break;
+      }
+      position = end;
+    }
+    if (first < 0) return apply(document, change);
+    final local = Delta();
+    var skip = start;
+    for (final op in change.operations) {
+      if (skip > 0) {
+        final length = op.length!;
+        if (length <= skip) {
+          skip -= length;
+          continue;
+        }
+        local.retain(length - skip, op.attributes);
+        skip = 0;
+        continue;
+      }
+      local.push(op);
+    }
+    local.trim();
+    final window = DeltaUtils.canonical(
+      Delta.fromOperations(ops.sublist(first, last + 1)).compose(local),
+    );
+    return Delta.fromOperations([
+      ...ops.sublist(0, first),
+      ...window.operations,
+      ...ops.sublist(last + 1),
+    ]);
+  }
+
   /// Inverse of [change] against [base] (the document before [change]):
   /// `base∘change∘invert(change, base) == base`. Linear in the sizes of both
   /// deltas. Throws [DeltaApplyException] when [change] does not fit.
@@ -172,18 +283,6 @@ abstract final class WonkyOt {
     int position, {
     bool pushOnInsert = true,
   }) => change.transformPosition(position, force: pushOnInsert);
-
-  /// Transforms a selection through [change] (both ends).
-  static DeltaSelection transformSelection(
-    Delta change,
-    DeltaSelection selection, {
-    bool pushOnInsert = true,
-  }) {
-    return DeltaSelection(
-      transformPosition(change, selection.anchor, pushOnInsert: pushOnInsert),
-      transformPosition(change, selection.head, pushOnInsert: pushOnInsert),
-    );
-  }
 
   /// Transforms a range `[start, start + length)` through [change]; inserts
   /// at the range boundaries do not extend it (comment composer, AI preview

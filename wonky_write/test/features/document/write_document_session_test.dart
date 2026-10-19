@@ -5,10 +5,8 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 import 'package:wonky_ui/wonky_ui.dart' show SyncState;
 import 'package:wonky_write/features/document/write_document_session.dart';
-import 'package:wonky_write/features/editor/applier/delta_applier.dart'
-    show DeltaSelection;
 import 'package:wonky_write/features/editor/controller/editor_types.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../sync/support/fake_document_server.dart';
 import 'support/session_harness.dart';

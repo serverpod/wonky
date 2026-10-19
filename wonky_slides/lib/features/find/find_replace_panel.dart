@@ -9,7 +9,7 @@ import 'package:wonky_slides_core/find.dart';
 
 import '../../l10n/slides_l10n.dart';
 import '../editor_screen/deck_editor_controller.dart';
-import 'find_bar.dart' show FindIconButton, findStatusText;
+import 'find_bar.dart' show findStatusText;
 import 'find_controller.dart';
 
 /// *Find and replace* (03 §13, ⇧⌘H): a non-modal panel over the canvas

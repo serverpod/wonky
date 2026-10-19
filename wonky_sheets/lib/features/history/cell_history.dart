@@ -4,11 +4,12 @@ import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart'
-    show CellHistoryEntry, CellHistoryPage, ChangeLog, UserSummary, UuidValue;
+    show CellHistoryEntry, CellHistoryPage, UserSummary, UuidValue;
+import 'package:wonky_revlog_flutter/wonky_revlog_flutter.dart' show RevOpMeta;
 import 'package:wonky_sheets_core/model.dart';
 
 import '../sheet_editor/sheet_editor_controller.dart';
-import '../sync/synced_workbook_session.dart';
+import '../revlog/logged_workbook_session.dart';
 
 /// The cell whose history is shown (ids; merged cells use the top-left).
 @immutable
@@ -74,8 +75,9 @@ class CellHistoryItem {
   );
 }
 
-/// Reads local `ChangeLog` rows (last 30 days) of a spreadsheet.
-typedef LocalChangeLogSource = Future<List<ChangeLog>> Function();
+/// Reads the local op metadata (last 30 days) of a spreadsheet (RevLog spec
+/// 06 §3.3).
+typedef LocalChangeLogSource = Future<List<RevOpMeta>> Function();
 
 /// Reads a page of server `CellHistory` (older entries; online only).
 typedef ServerCellHistorySource =
@@ -184,7 +186,7 @@ class CellHistoryController extends ChangeNotifier {
   // ------------------------------------------------------------- parsing
 
   static CellHistoryItem fromServer(CellHistoryEntry e) => CellHistoryItem(
-    changeLogId: e.changeLogId.uuid,
+    changeLogId: '${e.revision}',
     at: e.at,
     actorKind: e.actorKind.name,
     label: e.label,
@@ -196,24 +198,24 @@ class CellHistoryController extends ChangeNotifier {
   /// Entries of [target] in local change log [rows]: per-cell details, or
   /// bulk value changes whose ranges cover the cell.
   static List<CellHistoryItem> localItems(
-    List<ChangeLog> rows,
+    List<RevOpMeta> rows,
     CellHistoryTarget target,
     WorkbookModel model,
   ) {
     final cutoff = clock.now().subtract(localWindow);
     final out = <CellHistoryItem>[];
     for (final r in rows) {
-      if (r.at.isBefore(cutoff)) continue;
-      final detail = r.detailJson;
+      if (r.committedAt.isBefore(cutoff)) continue;
+      final detail = r.detail == null ? null : jsonEncode(r.detail);
       if (detail != null) {
         final cell = _detailCell(detail, target);
         if (cell == null) continue;
         out.add(
           CellHistoryItem(
-            changeLogId: r.id.uuid,
-            at: r.at,
-            userUuid: r.userId.uuid,
-            actorKind: r.actorKind.name,
+            changeLogId: '${r.revision}',
+            at: r.committedAt,
+            userUuid: r.authorUuid ?? '',
+            actorKind: r.actorKind,
             label: r.label,
             before: cell.$1,
             after: cell.$2,
@@ -221,13 +223,13 @@ class CellHistoryController extends ChangeNotifier {
         );
         continue;
       }
-      if (_bulkCovers(r.summaryJson, target, model)) {
+      if (_bulkCovers(jsonEncode(r.summary ?? const {}), target, model)) {
         out.add(
           CellHistoryItem(
-            changeLogId: r.id.uuid,
-            at: r.at,
-            userUuid: r.userId.uuid,
-            actorKind: r.actorKind.name,
+            changeLogId: '${r.revision}',
+            at: r.committedAt,
+            userUuid: r.authorUuid ?? '',
+            actorKind: r.actorKind,
             label: r.label,
             bulk: true,
           ),
@@ -313,14 +315,8 @@ CellHistoryController cellHistoryFor(
 ) {
   final session = editor.session;
   LocalChangeLogSource? local;
-  if (session is SyncedWorkbookSession) {
-    local = () => ChangeLog.db.find(
-      session.host.replica.session,
-      where: (t) =>
-          t.spreadsheetId.equals(session.spaceUuid) &
-          (t.at > clock.now().subtract(CellHistoryController.localWindow)),
-      limit: 20000,
-    );
+  if (session is LoggedWorkbookSession) {
+    local = () => session.recentOps(CellHistoryController.localWindow);
   }
   final client = editor.services.client;
   ServerCellHistorySource? server;

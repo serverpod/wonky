@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_app/uploads.dart' show MemoryPendingUploadStore;
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_rich_text/wonky_rich_text.dart' show Delta;
 import 'package:wonky_slides/l10n/slides_l10n.dart';
@@ -204,7 +205,7 @@ void main() {
       d.editor.setCurrentSlide(slide);
       final net = ConnectivityService(ping: () async {});
       uploads = SlidesPendingUploads(
-        store: MemorySlidesUploadStore(),
+        store: MemoryPendingUploadStore(),
         files: FakeFiles(),
         connectivity: net,
       );

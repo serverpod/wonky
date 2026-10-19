@@ -59,3 +59,30 @@ jobs:
 
       - name: Check package dependency rules
         run: dart run tool/check_dependencies.dart
+
+  # Committed generated code is up to date (CQ-64b): Serverpod, gen-l10n and
+  # the pseudo-locales, the spec index, the RevLog schemas and the Sheets
+  # script API index are regenerated and must match the checkout.
+  generated:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: '4.1.0-beta.3'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{env.FLUTTER_VERSION}}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install Serverpod CLI
+        run: |
+          dart install serverpod_cli@$VERSION
+          echo "${XDG_STATE_HOME:-$HOME/.local/state}/Dart/install/bin" >> "$GITHUB_PATH"
+
+      - name: Check generated files
+        run: bash tool/check_generated.sh

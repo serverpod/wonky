@@ -12,7 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:wonky_server/src/generated/protocol.dart' as _il4umwa0;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 import '../../platform/users/user_summary.dart' as _itg9e9ms;
 
 abstract class WriteThemeRevisionView
@@ -29,7 +29,7 @@ abstract class WriteThemeRevisionView
     required int version,
     required String json,
     _itg9e9ms.UserSummary? savedBy,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required DateTime createdAt,
   }) = _WriteThemeRevisionViewImpl;
 
@@ -44,7 +44,7 @@ abstract class WriteThemeRevisionView
           : _il4umwa0.Protocol().deserialize<_itg9e9ms.UserSummary>(
               jsonSerialization['savedBy'],
             ),
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       createdAt: _is.DateTimeJsonExtension.fromJson(
@@ -59,7 +59,7 @@ abstract class WriteThemeRevisionView
 
   _itg9e9ms.UserSummary? savedBy;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   DateTime createdAt;
 
@@ -71,7 +71,7 @@ abstract class WriteThemeRevisionView
     String? json,
     _itg9e9ms.UserSummary? savedBy =
         const _UndefinedWriteThemeRevisionView$savedBy(),
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     DateTime? createdAt,
   });
   @override
@@ -114,7 +114,7 @@ class _WriteThemeRevisionViewImpl extends WriteThemeRevisionView {
     required int version,
     required String json,
     _itg9e9ms.UserSummary? savedBy,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required DateTime createdAt,
   }) : super._(
          version: version,
@@ -133,7 +133,7 @@ class _WriteThemeRevisionViewImpl extends WriteThemeRevisionView {
     String? json,
     _itg9e9ms.UserSummary? savedBy =
         const _UndefinedWriteThemeRevisionView$savedBy(),
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     DateTime? createdAt,
   }) {
     return WriteThemeRevisionView(

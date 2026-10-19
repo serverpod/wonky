@@ -1,5 +1,5 @@
-import 'package:wonky_sync_kit/rows.dart' show RowChange;
-import 'package:wonky_sync_kit/undo.dart'
+import 'package:wonky_revlog/rows.dart' show RowChange;
+import 'package:wonky_revlog/undo.dart'
     show RowsUndoEntry, RowsUndoHandler, RowsUndoTarget;
 
 import '../schema/slides_undo_hooks.dart';
@@ -16,12 +16,15 @@ const slidesServerChangeDomain = 'slides.serverChange';
 /// (the shared kit's [RowsUndoEntry]).
 class SlidesRowsUndoEntry extends RowsUndoEntry {
   /// Creates an entry.
-  SlidesRowsUndoEntry(List<RowChange> changes, {String label = ''})
-    : super(slidesRowsDomain, changes, label: label);
+  SlidesRowsUndoEntry(
+    List<RowChange> changes, {
+    String label = '',
+    String? groupId,
+  }) : super(slidesRowsDomain, changes, label: label, groupId: groupId);
 
   @override
   SlidesRowsUndoEntry withChanges(List<RowChange> changes) =>
-      SlidesRowsUndoEntry(changes, label: label);
+      SlidesRowsUndoEntry(changes, label: label, groupId: groupId);
 
   /// Decodes a persisted entry, or null when malformed.
   static SlidesRowsUndoEntry? fromJson(Map<String, Object?> json) {

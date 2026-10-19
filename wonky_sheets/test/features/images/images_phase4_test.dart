@@ -6,7 +6,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_sheets/features/clipboard/system_clipboard.dart';
 import 'package:wonky_sheets/features/images/image_blob_cache.dart';
-import 'package:wonky_sheets/features/images/image_clipboard.dart';
+import 'package:wonky_app/platform.dart'
+    show ClipboardImage, ImageClipboard, MemoryImageClipboard;
 import 'package:wonky_sheets/features/images/image_io.dart';
 import 'package:wonky_sheets/features/images/image_object_view.dart';
 import 'package:wonky_sheets/features/images/image_prepare.dart';

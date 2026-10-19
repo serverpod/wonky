@@ -4,14 +4,14 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_sheets_core/wonky_sheets_core.dart'
     hide ActorKind, CellInput;
 
-import '../../platform/cluster/cluster_bus.dart';
+import '../../platform/common/actor.dart';
+import '../../platform/common/errors.dart';
 import '../../platform/common/models.dart';
 import '../../platform/mcp/tool_support.dart';
-import '../changelog/change_log_consumer.dart';
+import '../changelog/agent_cursors.dart';
 import '../headless/headless_workbook.dart';
 import '../headless/headless_workbook_provider.dart';
-import '../sync/server_sheets_writer.dart';
-import '../sync/sheets_sync_service.dart';
+import '../revlog/sheets_server_writes.dart';
 import 'sheets_bulk_writer.dart';
 import 'sheets_mcp_support.dart';
 import 'sheets_shadow.dart';
@@ -67,9 +67,9 @@ class SheetsWriteOutcome {
 /// The mutation pipeline of the `sheets.*` tools (Sheets 12 §2.3–2.4):
 /// serialized per spreadsheet, planned with [SheetsMutationPlanner] against
 /// the headless model, checked against protected ranges and the AI
-/// destructive guard, committed with [ServerSheetsWriter] (chunked
-/// transactions, `ChangeLog` rows, a [ServerChangeRecord] for
-/// `changes.revert`) and written through to the cached model.
+/// destructive guard, committed as RevLog server changes (chunked ops
+/// checked again by the sequencer, a [ServerChangeRecord] for
+/// `changes.revert`); the cached model follows the committed ops.
 abstract final class SheetsWrites {
   static const planner = SheetsMutationPlanner();
 
@@ -180,6 +180,11 @@ abstract final class SheetsWrites {
           callId: callId,
         );
       }
+      // The plans were applied to the shared headless model so that later
+      // steps see the earlier ones. Undo that before committing: the
+      // sequencer checks protections against the model before the op, and
+      // the committed op reaches the model through the file's ops.
+      rollback();
       final UuidValue changeId;
       final AppliedChanges applied;
       try {
@@ -191,16 +196,18 @@ abstract final class SheetsWrites {
           label: label,
           plans: plans,
         );
-      } on Object {
-        rollback();
-        HeadlessWorkbookProvider.markStale(t.space);
+      } on WonkyException catch (e) {
+        if (Errors.isProtectedRange(e)) {
+          throw McpToolException(SheetsErrorCode.protectedRange, e.message);
+        }
         rethrow;
       }
-      if (applied.skipped.isNotEmpty ||
-          applied.applied.length != changes.length) {
-        HeadlessWorkbookProvider.markStale(t.space);
-      }
-      await afterCommit(ctx.session, t.space);
+      await showCursor(
+        ctx.session,
+        t.item,
+        ctx.actor,
+        SheetsBulkWriter.summaryOf(plans, const {}, changes),
+      );
       return SheetsWriteOutcome(
         changeId: changeId,
         plans: plans,
@@ -211,6 +218,21 @@ abstract final class SheetsWrites {
     });
   }
 
+  /// Shows the agent cursor of an MCP/AI write (RevLog spec 05 §6.2: inline
+  /// after the commit, best effort).
+  static Future<void> showCursor(
+    Session session,
+    DriveItem item,
+    Actor actor,
+    ChangeSummary summary,
+  ) async {
+    try {
+      await AgentCursors.show(session, item, actor, summary);
+    } on Object catch (e) {
+      session.log('Agent cursor failed: $e', level: LogLevel.warning);
+    }
+  }
+
   /// The model a call's results are read from: the AI preview shadow when
   /// the call was recorded in one, else the live workbook.
   static WorkbookModel modelAfter(ToolContext ctx, SheetsTarget t) {
@@ -219,47 +241,6 @@ abstract final class SheetsWrites {
         ? shadow.wb.model
         : t.model;
   }
-
-  /// After a server write: tells the other instances (their headless
-  /// caches patch) and processes the new `ChangeLog` rows (activity, cell
-  /// history, modified time).
-  static Future<void> afterCommit(Session session, UuidValue space) async {
-    try {
-      await ClusterBus.post(
-        session,
-        SheetsSyncService.mergedChannel(space),
-        SheetsMergedSignal(spaceUuid: space, hlc: ownSignal),
-      );
-    } on Object catch (e) {
-      session.log(
-        'Merge signal for $space failed: $e',
-        level: LogLevel.warning,
-      );
-    }
-    if (SheetsSyncService.processInline) {
-      await ChangeLogConsumer.processSpace(session, space);
-      return;
-    }
-    final pod = session.serverpod;
-    unawaited(() async {
-      final internal = await pod.createSession(enableLogging: false);
-      try {
-        await ChangeLogConsumer.processSpace(internal, space);
-      } on Object catch (e, st) {
-        internal.log(
-          'Change log processing of $space failed: $e',
-          level: LogLevel.error,
-          stackTrace: st,
-        );
-      } finally {
-        await internal.close();
-      }
-    }());
-  }
-
-  /// The `hlc` of merge signals this instance posts for its own tool
-  /// writes (its own cache is written through already).
-  static String get ownSignal => HeadlessWorkbookProvider.ownSignal;
 
   static McpToolException _confirmation(String tool, String reason) =>
       McpToolException(

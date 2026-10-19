@@ -6,11 +6,10 @@ import 'package:shad/shad.dart' show LucideIcons;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../../l10n/write_l10n.dart';
 import '../document/write_document_session.dart';
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
 import '../editor/controller/editor_types.dart';
 import '../screen/write_document_controller.dart';
 import 'ai_selection_menu.dart' show aiLanguageLabel, aiToneLabel;
@@ -773,7 +772,7 @@ class WriteAiController extends ChangeNotifier {
         : AssistantReplyStatus.failed;
     entry.error = results.error;
     c.refresh();
-    assistant?.refreshStatus();
+    unawaited(assistant?.refreshStatus());
   }
 
   /// The preview title (and undo label) of rewrite [action]; [tone] is a

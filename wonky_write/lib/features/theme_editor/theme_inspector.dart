@@ -436,7 +436,7 @@ class _InspectorBody extends StatelessWidget {
     }
   }
 
-  static bool _isPerSide(Map m) =>
+  static bool _isPerSide(Map<Object?, Object?> m) =>
       m.keys.any((k) => const {'top', 'right', 'bottom', 'left'}.contains(k));
 
   static String _weightLabel(WriteLocalizations l, String w) => switch (w) {
@@ -1011,7 +1011,7 @@ class _BorderEditor extends StatelessWidget {
     this.enabled = true,
   });
 
-  final Map? value;
+  final Map<Object?, Object?>? value;
   final Map<PaletteKey, int> palette;
   final bool enabled;
   final ValueChanged<Map<String, Object?>?> onChanged;

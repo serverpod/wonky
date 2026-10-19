@@ -13,7 +13,7 @@ import 'package:wonky_slides_core/schema.dart' show ElementCols;
 import 'package:wonky_slides_core/session.dart' show SlidesRowsUndoEntry;
 import 'package:wonky_slides_core/snapping.dart';
 import 'package:wonky_slides_core/themes.dart' show SuRect;
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 import 'package:wonky_sync_models/ids.dart' show Base62Uuid;
 
 import '../features/canvas/slide_canvas_controller.dart';
@@ -342,7 +342,11 @@ List<Command<CommandArgs>> canvasCommands(ShellServices s) => [
     run: (ctx, ed, a) {
       final e = ed.model.element(a.requireString('id'));
       if (e == null) return const CommandResult.failed('No such object');
-      if (e.locked) return const CommandResult.failed('This object is locked.');
+      if (e.locked) {
+        return CommandResult.failed(
+          slidesL10nOf(ed.services).errorObjectLocked,
+        );
+      }
       final data = _decode(e.str(ElementCols.dataJson));
       final adjust = {
         ...?(data['adjust'] as Map?)?.cast<String, Object?>(),
@@ -827,7 +831,9 @@ List<Command<CommandArgs>> canvasCommands(ShellServices s) => [
       if (axis == null) return const CommandResult.failed('Unknown axis');
       final guides = _guides(ed);
       if (guides.length >= UserGuides.maxGuides) {
-        return const CommandResult.failed('Too many guides');
+        return CommandResult.failed(
+          slidesL10nOf(ed.services).errorTooManyGuides,
+        );
       }
       final size = ed.model.deck;
       final at =
@@ -1176,14 +1182,16 @@ CommandResult _setLineEnds(
   if (rec == null || rec.kind != ElementKind.line) {
     return const CommandResult.failed('Not a line');
   }
-  if (rec.locked) return const CommandResult.failed('This object is locked.');
+  if (rec.locked) {
+    return CommandResult.failed(slidesL10nOf(ed.services).errorObjectLocked);
+  }
   final s = a.values['start'], e = a.values['end'];
   if (s is! Map || e is! Map) {
     return const CommandResult.failed('start and end are required');
   }
   final els = selectionOf(ed).elements;
   final parent = els?.parentOf(id);
-  (double, double) point(Map p) {
+  (double, double) point(Map<Object?, Object?> p) {
     final x = (p['x'] as num).toDouble(), y = (p['y'] as num).toDouble();
     if (parent == null) return (x, y);
     final f = FrameTransforms.toChild(
@@ -1198,7 +1206,7 @@ CommandResult _setLineEnds(
   final (ex, ey) = point(e);
   final x = sx < ex ? sx : ex, y = sy < ey ? sy : ey;
   final w = (sx - ex).abs(), h = (sy - ey).abs();
-  Map<String, Object?> end(Map p, double px, double py) {
+  Map<String, Object?> end(Map<Object?, Object?> p, double px, double py) {
     final el = p['elementId'];
     return {
       'x': w == 0 ? 0 : _round((px - x) / w),

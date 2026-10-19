@@ -47,9 +47,6 @@ void main() {
       for (final v in UploadConflictMode.values) {
         expect(protocol.deserialize<UploadConflictMode>(v.name), v);
       }
-      for (final v in SpaceKind.values) {
-        expect(protocol.deserialize<SpaceKind>(v.name), v);
-      }
     });
 
     test('when comparing categories then core and protocol names match', () {

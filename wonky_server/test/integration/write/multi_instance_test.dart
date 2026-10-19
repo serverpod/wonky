@@ -1,3 +1,7 @@
+@Tags(['integration'])
+library;
+
+import 'package:clock/clock.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/cluster/cluster.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
@@ -113,7 +117,7 @@ void main() {
           DocBusMessage(
             type: 'hello',
             originSessionId: 'ghost',
-            participant: participant('ghost', DateTime.now().toUtc()),
+            participant: participant('ghost', clock.now().toUtc()),
           ),
         );
         final joined = await c.next<DocParticipantJoined>();

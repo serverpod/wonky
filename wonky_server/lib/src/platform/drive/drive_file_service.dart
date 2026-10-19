@@ -9,6 +9,7 @@ import 'package:wonky_core/wonky_core.dart' show Role;
 import '../../sheets/imports/sheets_import_service.dart';
 import '../../write/export/write_import_service.dart';
 import '../activity/activity_service.dart';
+import '../cluster/cluster.dart';
 import '../cluster/cluster_bus.dart';
 import '../common/actor.dart';
 import '../common/errors.dart';
@@ -18,6 +19,7 @@ import '../config/wonky_config.dart';
 import '../files/file_names.dart';
 import '../files/file_preview_service.dart';
 import '../files/file_type_sniffer.dart';
+import '../files/storage_reads.dart';
 import '../files/file_url_tokens.dart';
 import '../sharing/access_service.dart';
 import '../storage/storage_service.dart';
@@ -87,10 +89,13 @@ abstract final class DriveFileService {
     if (request.conflict == UploadConflictMode.replace) {
       throw Errors.unavailable('Replacing files is not available yet.');
     }
-    await _checkRates(session, actor, request.sizeBytes);
-
     final path = _path(actor, request.fileUuid, name);
     final (item, file) = await session.db.transaction((tx) async {
+      // The limits are checked under a per-user lock in the transaction
+      // that inserts the upload (CQ-34): two parallel starts can't both
+      // pass the last free slot.
+      await Cluster.lockIn(session, 'uploads:${actor.userId}', tx);
+      await _checkRates(session, actor, request.sizeBytes, tx);
       final parent = await DriveService.parentFor(
         session,
         actor,
@@ -255,6 +260,7 @@ abstract final class DriveFileService {
     Session session,
     Actor actor,
     int bytes,
+    Transaction transaction,
   ) async {
     final config = WonkyConfig.current;
     final pending = await DriveItem.db.count(
@@ -262,6 +268,7 @@ abstract final class DriveFileService {
       where: (t) =>
           t.ownerId.equals(actor.userId) &
           t.uploadState.equals(FileUploadState.uploading),
+      transaction: transaction,
     );
     if (pending >= config.maxPendingUploadsPerUser) {
       throw Errors.limit('Too many uploads at once. Wait for some to finish.');
@@ -280,6 +287,7 @@ abstract final class DriveFileService {
         'hour': now.subtract(const Duration(hours: 1)),
         'day': now.subtract(const Duration(days: 1)),
       }),
+      transaction: transaction,
     );
     final perHour = rows.first[0] as int;
     final perDay = rows.first[1] as int;
@@ -308,22 +316,32 @@ abstract final class DriveFileService {
       await _fail(session, item, file, notify: true);
       throw Errors.invalid('The upload was incomplete. Try again.');
     }
-    final Uint8List bytes;
+    // Only the head and the tail are read (CQ-30): the sniffer needs the
+    // first 4 KB and a ZIP's central directory at the end.
+    final size = await StorageReads.length(session, file);
+    if (size == null || size != file.sizeBytes) {
+      await _fail(session, item, file, notify: true);
+      throw Errors.invalid('The upload was incomplete. Try again.');
+    }
+    final Uint8List head;
+    final Uint8List? tail;
     try {
-      final data = await session.storage.retrieveFile(
-        storageId: file.storageId,
-        path: file.path,
+      (head, tail) = await StorageReads.sample(
+        session,
+        file,
+        size: size,
+        head: FileTypeSniffer.sampleSize,
+        tail: FileTypeSniffer.tailSize,
       );
-      bytes = Uint8List.sublistView(data);
-    } on Exception {
+    } on Object {
       await _fail(session, item, file, notify: true);
       throw Errors.invalid('The upload was incomplete. Try again.');
     }
-    if (bytes.length != file.sizeBytes) {
-      await _fail(session, item, file, notify: true);
-      throw Errors.invalid('The upload was incomplete. Try again.');
-    }
-    final sniffed = FileTypeSniffer.sniff(bytes, fileName: item.name);
+    final sniffed = FileTypeSniffer.sniff(
+      head,
+      fileName: item.name,
+      tail: tail,
+    );
     final category = FileCategory.values.byName(
       sniffed.categoryFor(item.name).name,
     );
@@ -331,7 +349,9 @@ abstract final class DriveFileService {
       ..._decodeMeta(item.fileMetaJson),
       if (sniffed.isText) ...{
         'encoding': sniffed.encoding,
-        'lines': _lineCount(bytes),
+        'lines': tail == null
+            ? _lineCount(head)
+            : await _streamedLineCount(session, file),
       },
     };
     final now = nowUtc();
@@ -340,7 +360,7 @@ abstract final class DriveFileService {
         await StorageService.instance.commitReservation(
           session,
           file.fileUuid,
-          bytes.length,
+          size,
           transaction: tx,
         );
         await DriveItem.db.updateWhere(
@@ -349,7 +369,7 @@ abstract final class DriveFileService {
             t.uploadState(FileUploadState.ready),
             t.mimeType(sniffed.mimeType),
             t.fileCategory(category),
-            t.sizeBytes(bytes.length),
+            t.sizeBytes(size),
             t.fileMetaJson(meta.isEmpty ? null : jsonEncode(meta)),
             t.modifiedAt(now),
             t.modifiedById(actor.userId),
@@ -375,7 +395,7 @@ abstract final class DriveFileService {
           ActivityType.uploaded,
           summary: {
             'name': item.name,
-            'sizeBytes': bytes.length,
+            'sizeBytes': size,
             'mimeType': sniffed.mimeType,
           },
           transaction: tx,
@@ -394,6 +414,28 @@ abstract final class DriveFileService {
       await FilePreviewService.schedule(session, ready.id!);
     }
     return DriveViews.one(session, actor.userId, ready, role: Role.owner);
+  }
+
+  /// Lines of a text object larger than a sample, counted while it
+  /// streams (never held whole).
+  static Future<int> _streamedLineCount(
+    Session session,
+    StoredFile file,
+  ) async {
+    var lines = 1;
+    var last = 0;
+    var any = false;
+    await for (final chunk in StorageReads.stream(session.serverpod, file)) {
+      for (final b in chunk) {
+        if (b == 0x0A) lines++;
+      }
+      if (chunk.isNotEmpty) {
+        any = true;
+        last = chunk.last;
+      }
+    }
+    if (!any) return 0;
+    return last == 0x0A ? lines - 1 : lines;
   }
 
   static int _lineCount(Uint8List bytes) {
@@ -819,6 +861,10 @@ abstract final class DriveFileService {
     final file = await _storedFile(session, source);
     if (file == null) throw Errors.notFound('File');
     final name = FileNames.sanitize(newName);
+    // The target folder is checked before any bytes are stored, so a
+    // refused copy leaves nothing behind (it is checked again in the
+    // transaction below).
+    await DriveService.parentFor(session, actor, parentUuid);
     await StorageService.instance.checkRoom(
       session,
       userId: actor.userId,
@@ -837,7 +883,49 @@ abstract final class DriveFileService {
       byteData: data,
     );
     final now = nowUtc();
-    final item = await session.db.transaction((tx) async {
+    final DriveItem item;
+    try {
+      item = await _insertCopy(
+        session,
+        actor,
+        source,
+        file,
+        name: name,
+        parentUuid: parentUuid,
+        fileUuid: fileUuid,
+        path: path,
+        size: data.lengthInBytes,
+        now: now,
+      );
+    } on Object {
+      // The bytes would be untracked without their rows.
+      try {
+        await session.storage.deleteFile(storageId: storageId, path: path);
+      } on Object catch (e) {
+        session.log('Copy cleanup failed: $e', level: LogLevel.warning);
+      }
+      rethrow;
+    }
+    final copy = (await DriveItem.db.findById(session, item.id!))!;
+    if (FilePreviewService.wantsPreview(copy)) {
+      await FilePreviewService.schedule(session, copy.id!);
+    }
+    return copy;
+  }
+
+  static Future<DriveItem> _insertCopy(
+    Session session,
+    Actor actor,
+    DriveItem source,
+    StoredFile file, {
+    required String name,
+    required UuidValue? parentUuid,
+    required UuidValue fileUuid,
+    required String path,
+    required int size,
+    required DateTime now,
+  }) async {
+    return session.db.transaction((tx) async {
       final parent = await DriveService.parentFor(
         session,
         actor,
@@ -869,7 +957,7 @@ abstract final class DriveFileService {
           path: path,
           fileName: FileNames.ascii(name),
           mimeType: file.mimeType,
-          sizeBytes: data.lengthInBytes,
+          sizeBytes: size,
           status: StoredFileStatus.ready,
           createdAt: now,
           completedAt: now,
@@ -879,16 +967,11 @@ abstract final class DriveFileService {
       await StorageService.instance.setItemSize(
         session,
         item,
-        data.lengthInBytes,
+        size,
         transaction: tx,
       );
       return item;
     });
-    final copy = (await DriveItem.db.findById(session, item.id!))!;
-    if (FilePreviewService.wantsPreview(copy)) {
-      await FilePreviewService.schedule(session, copy.id!);
-    }
-    return copy;
   }
 
   // --------------------------------------------------------------- expiry

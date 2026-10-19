@@ -1,0 +1,34 @@
+### One animation step on a slide (Slides 02 §3.7; behavior and effect
+### catalog: 06).
+class: SlideBuild
+table: slide_build
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  slide: Slide?, relation(onDelete=Cascade, deferred)
+  ### Always set (nullable only by the FK convention).
+  element: SlideElement?, relation(onDelete=Cascade, deferred)
+  kind: BuildKind
+  ### Effect key, e.g. "fade", "moveIn", "typewriter", "codeHighlight" (06).
+  effect: String
+  ### Order on the slide.
+  sortKey: String
+  trigger: BuildTrigger
+  delayMs: int, default=0
+  durationMs: int
+  ### Easing expression (06 §4.3): "easeOut", "cubic(0.2,0,0,1)", "spring(0.5,0.25)".
+  easing: String
+  ### Direction, delivery, motion path, step refs ... (06 §2.2, 07, 08).
+  optionsJson: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  slide_build_file_idx:
+    fields: fileId, id
+  slide_build_slide_idx:
+    fields: slideId, sortKey
+  slide_build_element_idx:
+    fields: elementId

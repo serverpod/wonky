@@ -132,7 +132,9 @@ class WonkyImageComponentBuilder implements ComponentBuilder {
     final isSelected = selection != null && !selection.isCollapsed;
     return Semantics(
       image: true,
-      label: viewModel.alt.isEmpty ? 'image, no description' : viewModel.alt,
+      label: viewModel.alt.isEmpty
+          ? writeL10n(componentContext.context).editorImageNoDescription
+          : viewModel.alt,
       child: GestureDetector(
         onTap: editable || callbacks.onImageTap == null
             ? null
@@ -168,6 +170,23 @@ class WonkyImageComponentBuilder implements ComponentBuilder {
       ),
     );
   }
+}
+
+/// [provider] decoded at most at the display width (Write 04 §36.5, W-05):
+/// a 12 MP photo shown 640 px wide is decoded at 640 × the device pixel
+/// ratio, not at full resolution. The width is rounded up to 256 px steps
+/// so that resizing the window doesn't decode again on every frame; images
+/// narrower than that are decoded as they are (never upscaled). The shown
+/// size doesn't change: the decoded image is still at least as wide as the
+/// space it is fitted into.
+ImageProvider atDisplaySize(
+  ImageProvider provider,
+  double width,
+  double devicePixelRatio,
+) {
+  if (!width.isFinite || width <= 0) return provider;
+  final pixels = ((width * devicePixelRatio) / 256).ceil() * 256;
+  return ResizeImage(provider, width: pixels);
 }
 
 class _WonkyImage extends StatefulWidget {
@@ -302,7 +321,14 @@ class _WonkyImageState extends State<_WonkyImage> {
         return ValueListenableBuilder<ImageUploadStatus?>(
           valueListenable: _upload,
           builder: (context, upload, _) {
-            final provider = upload?.localPreview ?? _provider;
+            final source = upload?.localPreview ?? _provider;
+            final provider = source == null
+                ? null
+                : atDisplaySize(
+                    source,
+                    maxWidth,
+                    MediaQuery.maybeDevicePixelRatioOf(context) ?? 1,
+                  );
             _trackSize(context, provider);
             final maxHeight = widget.maxHeight;
             Widget content;
@@ -311,7 +337,9 @@ class _WonkyImageState extends State<_WonkyImage> {
               content = _placeholder(
                 maxWidth,
                 icon: Icons.broken_image_outlined,
-                label: widget.alt.isEmpty ? 'Image unavailable' : widget.alt,
+                label: widget.alt.isEmpty
+                    ? writeL10n(context).editorImageUnavailable
+                    : widget.alt,
                 retry: true,
               );
             } else if (provider == null) {
@@ -320,7 +348,11 @@ class _WonkyImageState extends State<_WonkyImage> {
                 size: _loadingSize(maxWidth),
                 icon: Icons.image_outlined,
                 label: upload?.phase == ImageUploadPhase.pending
-                    ? 'Waiting for upload${upload?.uploaderName == null ? '' : ' from ${upload!.uploaderName}'}'
+                    ? (upload?.uploaderName == null
+                          ? writeL10n(context).editorImageWaitingForUpload
+                          : writeL10n(context).editorImageWaitingForUploadFrom(
+                              upload!.uploaderName!,
+                            ))
                     : null,
               );
             } else {
@@ -438,7 +470,7 @@ class _WonkyImageState extends State<_WonkyImage> {
                   TextButton(
                     key: const ValueKey(WonkyEditorKeys.imageRetry),
                     onPressed: _retry,
-                    child: const Text('Retry'),
+                    child: Text(writeL10n(context).imageRetry),
                   ),
               ],
             ),
@@ -481,7 +513,7 @@ class _UploadOverlay extends StatelessWidget {
                 ),
               ),
             IconButton(
-              tooltip: 'Cancel upload',
+              tooltip: writeL10n(context).editorCancelUpload,
               onPressed: onCancel,
               icon: const Icon(Icons.close, color: Colors.white),
             ),
@@ -523,7 +555,7 @@ class _FailedOverlay extends StatelessWidget {
                 child: Text(
                   outOfStorage
                       ? l.imageNotUploadedOutOfStorage
-                      : 'Upload failed',
+                      : l.editorUploadFailed,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -594,25 +626,34 @@ class WonkyTableComponentBuilder implements ComponentBuilder {
     SingleColumnLayoutComponentViewModel viewModel,
   ) {
     if (viewModel is! MarkdownTableViewModel) return null;
+    var tableModel = viewModel;
     final inline = editable ? inlineEditing : null;
     // Selected tables show the ring, not a translucent fill over the cells
-    // (which would also cover the cell being edited).
-    if (inline != null) viewModel.selectionColor = const Color(0x00000000);
+    // (which would also cover the cell being edited). On a copy: the
+    // presenter keeps `viewModel` to compare with the next pass, and a
+    // mutated one never equals it, so every table would be rebuilt on every
+    // keystroke (W-12).
+    if (inline != null) {
+      tableModel = tableModel.copy() as MarkdownTableViewModel
+        ..selectionColor = const Color(0x00000000);
+    }
     final table = inline == null
-        ? _inner.createComponent(componentContext, viewModel)
+        ? _inner.createComponent(componentContext, tableModel)
         : MarkdownTableComponent(
             componentKey: componentContext.componentKey,
-            viewModel: viewModel,
+            viewModel: tableModel,
             cellBuilder: inlineTableCellBuilder(inline, theme),
           );
     if (table == null) return null;
-    final selection = viewModel.selection?.nodeSelection;
+    final selection = tableModel.selection?.nodeSelection;
     final isSelected =
         selection is UpstreamDownstreamNodeSelection && !selection.isCollapsed;
-    final rows = viewModel.cells.length;
-    final columns = rows == 0 ? 0 : viewModel.cells.first.length;
+    final rows = tableModel.cells.length;
+    final columns = rows == 0 ? 0 : tableModel.cells.first.length;
     return Semantics(
-      label: 'table, $columns columns, $rows rows',
+      label: writeL10n(
+        componentContext.context,
+      ).editorTableLabel(columns, rows),
       child: GestureDetector(
         onDoubleTap:
             !editable || inline != null || callbacks.onEditTable == null
@@ -627,7 +668,7 @@ class WonkyTableComponentBuilder implements ComponentBuilder {
                     '${WonkyEditorKeys.tableEdit}.${viewModel.nodeId}',
                   ),
                   icon: Icons.edit_outlined,
-                  tooltip: 'Edit table',
+                  tooltip: writeL10n(componentContext.context).editorEditTable,
                   onTap: (_) => callbacks.onEditTable!(viewModel.nodeId),
                 ),
           child: DecoratedBox(
@@ -696,7 +737,7 @@ class WonkyParagraphComponentBuilder implements ComponentBuilder {
     if (component == null) return null;
     if (blockType == blockquoteAttribution) {
       return Semantics(
-        label: 'quote',
+        label: writeL10n(componentContext.context).editorQuoteLabel,
         child: CustomPaint(
           painter: _QuoteBarPainter(
             color: theme.quoteBarColor,
@@ -780,7 +821,7 @@ class _CodeBlockChrome extends StatelessWidget {
     final language = node == null ? '' : codeLanguageOf(node);
     final label = CodeLanguages.displayName(language);
     return Semantics(
-      label: 'code block, $label',
+      label: writeL10n(context).editorCodeBlockLabel(label),
       child: _HoverChrome(
         chrome: Row(
           mainAxisSize: MainAxisSize.min,
@@ -789,7 +830,7 @@ class _CodeBlockChrome extends StatelessWidget {
               builder: (chipContext) => _ChromeButton(
                 key: ValueKey('${WonkyEditorKeys.codeLanguageChip}.$nodeId'),
                 label: label,
-                tooltip: 'Code language',
+                tooltip: writeL10n(context).editorCodeLanguage,
                 onTap: !editable || callbacks.onCodeLanguageTap == null
                     ? null
                     : (rect) => callbacks.onCodeLanguageTap!(nodeId, rect),
@@ -799,7 +840,7 @@ class _CodeBlockChrome extends StatelessWidget {
             _ChromeButton(
               key: ValueKey('${WonkyEditorKeys.codeCopy}.$nodeId'),
               icon: Icons.copy_outlined,
-              tooltip: 'Copy code',
+              tooltip: writeL10n(context).editorCopyCode,
               onTap: (_) {
                 if (callbacks.onCopyCode != null) {
                   callbacks.onCopyCode!(nodeId);
@@ -1008,7 +1049,7 @@ class WonkyTaskComponentBuilder implements ComponentBuilder {
     }
     return Semantics(
       checked: viewModel.isComplete,
-      label: 'checkbox',
+      label: writeL10n(componentContext.context).editorCheckboxLabel,
       child: component,
     );
   }
@@ -1047,7 +1088,9 @@ class WonkyEmbedComponentBuilder implements ComponentBuilder {
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
-          'Unsupported content (${viewModel.type})',
+          writeL10n(
+            componentContext.context,
+          ).editorUnsupportedContent(viewModel.type),
           style: TextStyle(color: theme.mutedColor),
         ),
       ),
@@ -1104,7 +1147,7 @@ class WonkyRuleComponentBuilder implements ComponentBuilder {
     final isSelected =
         selection is UpstreamDownstreamNodeSelection && !selection.isCollapsed;
     return Semantics(
-      label: 'separator',
+      label: writeL10n(componentContext.context).editorSeparatorLabel,
       child: DecoratedBox(
         position: DecorationPosition.foreground,
         decoration: BoxDecoration(

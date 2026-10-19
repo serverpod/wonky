@@ -28,6 +28,27 @@ abstract final class Errors {
         detailsJson: detailsJson,
       );
 
+  /// A write into protected ranges the author may not edit (RevLog spec 05
+  /// §3.5): `forbidden` with `{"reason": "protected_range", …}` details
+  /// (MCP maps it to its `protected_range` error).
+  static WonkyException protectedRange(String message, {String? detailsJson}) {
+    final details = <String, Object?>{
+      if (detailsJson != null)
+        ...(jsonDecode(detailsJson) as Map).cast<String, Object?>(),
+      'reason': 'protected_range',
+    };
+    return WonkyException(
+      code: WonkyErrorCode.forbidden,
+      message: message,
+      detailsJson: jsonEncode(details),
+    );
+  }
+
+  /// Whether [e] is a [protectedRange] error.
+  static bool isProtectedRange(WonkyException e) =>
+      e.code == WonkyErrorCode.forbidden &&
+      (e.detailsJson?.contains('"protected_range"') ?? false);
+
   static WonkyException tooLarge(String message) =>
       WonkyException(code: WonkyErrorCode.tooLarge, message: message);
 

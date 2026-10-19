@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+/// The asset folder of the bundled static faces: `wonky_fonts`' package
+/// assets, shared with the other apps (the server keeps a copy in
+/// `wonky_server/web/fonts/`; `bundled_fonts_test` checks they match).
+const fontAssetDir = 'packages/wonky_fonts/fonts';
+
 /// Cell fonts (06 §6.1, `CellFontRegistry`): the families the font picker
 /// offers, how any stored family name is rendered on screen and on-demand
 /// loading of the bundled faces.
@@ -10,9 +15,9 @@ import 'package:flutter/services.dart';
 /// Bundled: Inter, Geist and Geist Mono (shipped with `shad`) and the static
 /// faces of Roboto, Roboto Mono (Apache 2.0), Open Sans, Lato, Source Sans 3,
 /// Nunito, Montserrat, EB Garamond, Merriweather and JetBrains Mono (OFL)
-/// under `assets/fonts/` (declared as plain assets, so web doesn't download
-/// them at start-up; [ensureLoaded] registers a family the first time a cell
-/// uses it). Source Sans 3 is shipped as `WonkySansThree-*.ttf`: static
+/// from `wonky_fonts` ([fontAssetDir]: plain package assets, so web doesn't
+/// download them at start-up; [ensureLoaded] registers a family the first
+/// time a cell uses it). Source Sans 3 is shipped as `WonkySansThree-*.ttf`: static
 /// instances of the variable font, renamed because "Source" is a Reserved
 /// Font Name. Every other name (imports, pastes) is stored unchanged and
 /// rendered by category: serif → EB Garamond, mono (Courier Prime, Courier
@@ -241,7 +246,7 @@ abstract final class CellFonts {
       try {
         final loader = FontLoader(family);
         for (final f in _faces[family]!) {
-          loader.addFont(rootBundle.load('assets/fonts/$f'));
+          loader.addFont(rootBundle.load('$fontAssetDir/$f'));
         }
         await loader.load();
         _loaded.add(family);

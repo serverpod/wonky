@@ -9,6 +9,7 @@ import 'package:wonky_sheets_core/formula.dart'
     show GridRect, CellPos, ColumnLetters;
 import 'package:wonky_sheets_core/model.dart';
 
+import '../features/history/change_labels.dart';
 import '../features/cell_editor/cell_editor_controller.dart';
 import '../features/clipboard/clipboard_service.dart';
 import '../features/dialogs/sheets_dialogs.dart';
@@ -107,7 +108,7 @@ List<Command<CommandArgs>> cellCommands(ShellServices s) => [
             [UserCellInput(input)],
           ],
           parseLocale: ed.locale,
-          label: 'Typing',
+          label: SheetsChangeLabels.typing,
         ),
       );
       return ok({'cell': CellPos(r, c).a1});
@@ -175,7 +176,7 @@ List<Command<CommandArgs>> cellCommands(ShellServices s) => [
                 ],
             ],
             parseLocale: ed.locale,
-            label: 'Typing',
+            label: SheetsChangeLabels.typing,
           ),
         );
       }

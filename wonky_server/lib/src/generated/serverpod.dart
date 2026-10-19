@@ -12,11 +12,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:io' as _idi;
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
-    as _izehhkf5;
 import 'endpoints.dart' as _iavctuc6;
 import 'protocol.dart' as _il2as5qe;
-import 'sync_tables.dart' as _ii3f3u05;
 export 'package:serverpod/serverpod.dart' hide Serverpod;
 export 'future_calls.dart' show ServerpodFutureCallsGetter;
 
@@ -29,10 +26,6 @@ export 'future_calls.dart' show ServerpodFutureCallsGetter;
 /// ```dart
 /// final pod = Serverpod(args);
 /// ```
-///
-/// The `serverpod_offline_sync` engine is initialized with the tables
-/// declared with `database: sync`, wrapping any provided
-/// [databaseInterceptor] with `offlineSyncDatabaseInterceptor`.
 class Serverpod extends _is.Serverpod {
   Serverpod(
     List<String> args, {
@@ -63,19 +56,6 @@ class Serverpod extends _is.Serverpod {
          securityContextConfig: securityContextConfig,
          experimentalFeatures: experimentalFeatures,
          runtimeParametersBuilder: runtimeParametersBuilder,
-         databaseInterceptor:
-             (
-               session,
-               inner,
-             ) => _izehhkf5.offlineSyncDatabaseInterceptor(
-               session,
-               databaseInterceptor?.call(
-                     session,
-                     inner,
-                   ) ??
-                   inner,
-             ),
-       ) {
-    initializeOfflineSync(syncTables: _ii3f3u05.syncTables);
-  }
+         databaseInterceptor: databaseInterceptor,
+       );
 }

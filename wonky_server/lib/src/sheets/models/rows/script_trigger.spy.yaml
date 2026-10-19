@@ -1,0 +1,23 @@
+### An installable script trigger.
+class: ScriptTrigger
+table: script_trigger
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  project: ScriptProject?, relation(onDelete=Cascade, deferred)
+  kind: TriggerKind
+  functionName: String
+  scheduleJson: String?
+  ### Installer; must keep edit access.
+  runAsUserId: UuidValue
+  enabled: bool, default=true
+  ### {fireForMcp, notify}.
+  optionsJson: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  script_trigger_file_idx:
+    fields: fileId, id

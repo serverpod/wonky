@@ -4,10 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_app/wonky_app.dart' show UndoService, UndoStackKey;
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_write/features/document/write_undo.dart';
-import 'package:wonky_write/features/editor/applier/delta_applier.dart'
-    show DeltaSelection;
 import 'package:wonky_write_core/testing.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 const _stack = UndoStackKey('doc');
 
@@ -258,6 +256,113 @@ void main() {
           },
         );
       }
+    }
+  });
+
+  group('Given random entries and remote changes on the same document', () {
+    for (final seed in [1, 7, 42, 1234, 98765]) {
+      test('when rebasing an entry (seed $seed) then the result equals the '
+          'OT transforms, also for disjoint changes (W-11 fast path)', () {
+        final random = Random(seed);
+        final gen = DeltaGen(random);
+        final edits = EditGen(random, deltaGen: gen);
+        var disjoint = 0;
+        for (var run = 0; run < 300; run++) {
+          final doc = gen.document();
+          final u = edits.change(doc);
+          final r = edits.change(doc);
+          if (DeltaUtils.isNoop(u) || DeltaUtils.isNoop(r)) continue;
+          final len = DeltaUtils.documentLength(doc);
+          final entry = WriteContentUndoEntry(
+            change: u,
+            select: DeltaSelection.collapsed(random.nextInt(len)),
+            counterSelect: DeltaSelection.collapsed(random.nextInt(len)),
+          );
+
+          final (rebased, rPrime) = entry.rebaseOver(r);
+          final uPrime = WonkyOt.transform(r, u, aWinsTies: true);
+          final rExpected = WonkyOt.transform(u, r, aWinsTies: false);
+
+          final reason = 'run $run u $u r $r';
+          if (identical(rebased?.change, u)) disjoint++;
+          expect(
+            DeltaUtils.canonical(rPrime),
+            DeltaUtils.canonical(rExpected),
+            reason: reason,
+          );
+          if (DeltaUtils.isNoop(uPrime)) {
+            expect(rebased, isNull, reason: reason);
+            continue;
+          }
+          expect(
+            DeltaUtils.canonical(rebased!.change),
+            DeltaUtils.canonical(uPrime),
+            reason: reason,
+          );
+          expect(
+            rebased.select,
+            entry.select!.transform(rExpected),
+            reason: reason,
+          );
+          expect(
+            rebased.counterSelect,
+            entry.counterSelect!.transform(r),
+            reason: reason,
+          );
+        }
+        expect(disjoint, greaterThan(0));
+      });
+    }
+  });
+
+  // CQ-50 (W-16): the session rebases with `rebaseWriteStacks` (fast path,
+  // identity-preserving); `WonkyOt.rebaseStack` is the core's reference of
+  // the same selective-undo rule (Write 03 §4). This pins them together.
+  group('Given a random undo stack and a remote change', () {
+    for (final seed in [1, 7, 42, 1234, 98765]) {
+      test('when rebasing the stack (seed $seed) then every entry equals the '
+          'core reference WonkyOt.rebaseStack', () {
+        final random = Random(seed);
+        final gen = DeltaGen(random);
+        final edits = EditGen(random, deltaGen: gen);
+        for (var run = 0; run < 100; run++) {
+          var doc = gen.document();
+          final steps = <UndoStep>[];
+          final inverses = <Delta>[];
+          for (var i = 0; i < 4; i++) {
+            final change = edits.change(doc);
+            if (DeltaUtils.isNoop(change)) continue;
+            final inverse = WonkyOt.invert(change, doc);
+            doc = WonkyOt.apply(doc, change);
+            inverses.add(inverse);
+            steps.add(
+              UndoStep(
+                id: '$i',
+                label: 'Edit',
+                entries: [WriteContentUndoEntry(change: inverse)],
+              ),
+            );
+          }
+          final remote = edits.change(doc);
+          if (steps.isEmpty || DeltaUtils.isNoop(remote)) continue;
+
+          final result = rebaseWriteStacks(steps, const [], remote)!;
+          final (expected, _) = WonkyOt.rebaseStack(inverses, remote);
+
+          final actual = [
+            for (final step in steps)
+              DeltaUtils.canonical(
+                result
+                        .results[step.entries.single as WriteContentUndoEntry]
+                        ?.change ??
+                    Delta(),
+              ),
+          ];
+          expect(actual, [
+            for (final e in expected) DeltaUtils.canonical(e),
+          ], reason: 'run $run');
+        }
+      });
     }
   });
 }

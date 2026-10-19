@@ -1,0 +1,33 @@
+- id: pmt-mortgage
+  formula: =PMT(0.05/12,360,200000)
+  expect: {value: -1073.64324602428}
+  tolerance: 1.0e-9
+  source: manual
+  note: 200,000 over 30 years at 5 % a year, monthly
+- id: pmt-zero-rate
+  formula: =PMT(0,10,1000)
+  expect: {value: -100}
+  source: manual
+- id: pv-zero-rate
+  formula: =PV(0,10,-100)
+  expect: {value: 1000}
+  source: manual
+- id: fv-zero-rate
+  formula: =FV(0,10,-100)
+  expect: {value: 1000}
+  source: manual
+- id: npv-two-flows
+  formula: =NPV(0.1,100,100)
+  expect: {value: 173.55371900826447}
+  source: manual
+  note: 100/1.1 + 100/1.21
+- id: irr-one-period
+  formula: =IRR({-100,110})
+  expect: {value: 0.1}
+  tolerance: 1.0e-9
+  source: manual
+- id: fv-annuity
+  formula: =FV(0.1,2,-100)
+  expect: {value: 210}
+  source: manual
+  note: 100 * 1.1 + 100

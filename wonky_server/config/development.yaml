@@ -87,7 +87,6 @@ wonky:
     experimentalCharts: true
   sheets:
     maxCellsPerSpreadsheet: 1000000
-    maxActiveSpacesPerUser: 30
     scriptTimeoutMs: 30000
     scriptDailyQuotaMs: 5400000
     scriptServerTimeoutMs: 360000
@@ -96,9 +95,10 @@ wonky:
   write:
     snapshotEveryNOps: 500
     maxDocumentChars: 2000000
-  # v2 (M8): new enum values (DriveItemKind.presentation/file, …) that v1
-  # clients cannot read (specs/01 §7); the apps default to WONKY_VERSION 2.0.0.
-  minClientVersion: 2.0.0
+  # M13 (RevLog): the CRDT sync protocol is gone, so 2.x clients cannot
+  # sync (specs/01 §7, specs/17 RD-17); the apps default to WONKY_VERSION
+  # 3.0.0. (v2 raised it to 2.0.0 for enum values v1 clients cannot read.)
+  minClientVersion: 3.0.0
   # The /mcp endpoint (specs/09-mcp.md §1–2, read by
   # lib/src/platform/mcp/mcp_config.dart). Requests with an Origin header must
   # match allowedOrigins; the Host header must match allowedHosts.

@@ -21,6 +21,16 @@ final class RangeIndex<K, N> {
   bool _built = false;
   final List<(GridRect, Set<N>)> _pending = [];
 
+  /// [_pending] by block of [_blockRows] rows (entries spanning at most
+  /// [_maxBlocks] blocks are listed in each); wider entries in
+  /// [_pendingWide]. A stab looks at one block instead of every pending
+  /// entry: a bulk load adds thousands of keys while it stabs the index for
+  /// every cell it writes.
+  final Map<int, List<(GridRect, Set<N>)>> _pendingByBlock = {};
+  final List<(GridRect, Set<N>)> _pendingWide = [];
+  static const _blockRows = 16;
+  static const _maxBlocks = 8;
+
   RangeIndex(this.resolve);
 
   int get keyCount => _sets.length;
@@ -35,7 +45,7 @@ final class RangeIndex<K, N> {
     _sets[key] = set;
     if (_built) {
       final r = resolve(key);
-      if (r != null) _pending.add((r, set));
+      if (r != null) _addPending(r, set);
       if (_pending.length > 64 + _rects.length ~/ 8) _built = false;
     }
   }
@@ -49,6 +59,20 @@ final class RangeIndex<K, N> {
       // the (now empty) set may still be referenced by the built structure; it is skipped
     }
   }
+
+  void _addPending(GridRect r, Set<N> set) {
+    _pending.add((r, set));
+    final first = _blockOf(r.top), last = _blockOf(r.bottom);
+    if (last - first >= _maxBlocks) {
+      _pendingWide.add((r, set));
+      return;
+    }
+    for (var b = first; b <= last; b++) {
+      (_pendingByBlock[b] ??= []).add((r, set));
+    }
+  }
+
+  static int _blockOf(int row) => row < 0 ? 0 : row ~/ _blockRows;
 
   /// Marks the resolved rectangles stale (axis inserts/deletes/moves).
   void invalidate() => _built = false;
@@ -65,6 +89,8 @@ final class RangeIndex<K, N> {
     _maxBottom = List<int>.filled(_rects.length, 0);
     _buildMax(0, _rects.length - 1);
     _pending.clear();
+    _pendingByBlock.clear();
+    _pendingWide.clear();
     _built = true;
   }
 
@@ -88,7 +114,25 @@ final class RangeIndex<K, N> {
   void intersect(GridRect rect, void Function(N node) sink) {
     if (!_built) _build();
     _query(0, _rects.length - 1, rect, sink);
-    for (final (r, s) in _pending) {
+    if (_pending.isEmpty) return;
+    final first = _blockOf(rect.top), last = _blockOf(rect.bottom);
+    if (last - first >= 4 * _maxBlocks) {
+      for (final (r, s) in _pending) {
+        if (r.intersects(rect)) s.forEach(sink);
+      }
+      return;
+    }
+    for (var b = first; b <= last; b++) {
+      final entries = _pendingByBlock[b];
+      if (entries == null) continue;
+      for (final (r, s) in entries) {
+        // Each entry once: in the first block it shares with the query.
+        final from = _blockOf(r.top);
+        if ((from > first ? from : first) != b) continue;
+        if (r.intersects(rect)) s.forEach(sink);
+      }
+    }
+    for (final (r, s) in _pendingWide) {
       if (r.intersects(rect)) s.forEach(sink);
     }
   }

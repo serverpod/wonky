@@ -11,3 +11,7 @@ indexes:
   write_diff_cache_idx:
     fields: documentId, fromRevision, toRevision
     unique: true
+  ### Daily purge (`write.purgeDiffCache`).
+  write_diff_cache_created_idx:
+    fields: createdAt
+    type: brin

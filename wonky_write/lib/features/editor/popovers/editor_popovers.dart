@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../l10n/write_l10n.dart';
 import '../plugins/slash_items.dart';
 import '../styles/editor_theme.dart';
 
@@ -110,7 +111,7 @@ class SlashMenu extends StatelessWidget {
               ? Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
-                    'No results',
+                    writeL10n(context).editorNoResults,
                     style: TextStyle(color: theme.mutedColor, fontSize: 13),
                   ),
                 )
@@ -186,7 +187,7 @@ class MentionPicker extends StatelessWidget {
               ? Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
-                    'No people found',
+                    writeL10n(context).editorNoPeopleFound,
                     style: TextStyle(color: theme.mutedColor, fontSize: 13),
                   ),
                 )
@@ -294,10 +295,11 @@ class LinkHoverCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = writeL10n(context);
     final uri = Uri.tryParse(url);
     final isInternal = url.startsWith('wonky://');
     final heading = isInternal
-        ? (title ?? 'Wonky document')
+        ? (title ?? l.editorWonkyDocument)
         : (uri?.host.isNotEmpty == true ? uri!.host : url);
     return _PopoverCard(
       key: cardKey,
@@ -337,13 +339,33 @@ class LinkHoverCard extends StatelessWidget {
               ),
             ),
             if (actions.onOpen != null)
-              _icon(Icons.open_in_new, 'Open', actions.onOpen!, 'open'),
+              _icon(
+                Icons.open_in_new,
+                l.editorLinkOpen,
+                actions.onOpen!,
+                'open',
+              ),
             if (actions.onCopy != null)
-              _icon(Icons.copy_outlined, 'Copy link', actions.onCopy!, 'copy'),
+              _icon(
+                Icons.copy_outlined,
+                l.editorLinkCopy,
+                actions.onCopy!,
+                'copy',
+              ),
             if (actions.onEdit != null)
-              _icon(Icons.edit_outlined, 'Edit', actions.onEdit!, 'edit'),
+              _icon(
+                Icons.edit_outlined,
+                l.editorLinkEdit,
+                actions.onEdit!,
+                'edit',
+              ),
             if (actions.onRemove != null)
-              _icon(Icons.link_off, 'Remove', actions.onRemove!, 'remove'),
+              _icon(
+                Icons.link_off,
+                l.editorLinkRemove,
+                actions.onRemove!,
+                'remove',
+              ),
           ],
         ),
       ),

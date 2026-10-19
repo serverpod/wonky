@@ -5,7 +5,7 @@ import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/motion.dart';
 import 'package:wonky_slides_core/schema.dart';
 import 'package:wonky_slides_core/testing.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 /// Two blank slides A → B for Magic Move tests: elements are added to a
 /// slide with an optional shared match key (the duplicate-slide workflow).

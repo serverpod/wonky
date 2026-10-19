@@ -32,7 +32,7 @@ abstract class DocRemoteOp extends _iototaiw.DocServerMessage
     int? authorId,
     _isc.UuidValue? authorUuid,
     String? authorSessionId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required _idnphvog.DocumentOpKind kind,
     String? onBehalfOfSessionId,
     String? groupId,
@@ -49,7 +49,7 @@ abstract class DocRemoteOp extends _iototaiw.DocServerMessage
               jsonSerialization['authorUuid'],
             ),
       authorSessionId: jsonSerialization['authorSessionId'] as String?,
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       kind: _idnphvog.DocumentOpKind.fromJson(
@@ -70,7 +70,7 @@ abstract class DocRemoteOp extends _iototaiw.DocServerMessage
 
   String? authorSessionId;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   _idnphvog.DocumentOpKind kind;
 
@@ -88,7 +88,7 @@ abstract class DocRemoteOp extends _iototaiw.DocServerMessage
     int? authorId,
     _isc.UuidValue? authorUuid = const _isc.$UndefinedUuidValue(),
     String? authorSessionId,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     _idnphvog.DocumentOpKind? kind,
     String? onBehalfOfSessionId,
     String? groupId,
@@ -140,7 +140,7 @@ class _DocRemoteOpImpl extends DocRemoteOp {
     int? authorId,
     _isc.UuidValue? authorUuid,
     String? authorSessionId,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required _idnphvog.DocumentOpKind kind,
     String? onBehalfOfSessionId,
     String? groupId,
@@ -166,7 +166,7 @@ class _DocRemoteOpImpl extends DocRemoteOp {
     Object? authorId = _Undefined,
     _isc.UuidValue? authorUuid = const _isc.$UndefinedUuidValue(),
     Object? authorSessionId = _Undefined,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     _idnphvog.DocumentOpKind? kind,
     Object? onBehalfOfSessionId = _Undefined,
     Object? groupId = _Undefined,

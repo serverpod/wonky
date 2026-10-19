@@ -3,8 +3,10 @@ class: ProtocolInfo
 fields:
   serverVersion: String
   minClientVersion: String
-  ### Offline-sync schema hash; clients with a different hash must update.
-  syncTablesHash: String
+  ### RevSchema hashes of the synced apps (`sheets:<hash>,slides:<hash>`,
+  ### RevLog spec 02 §4.3). A file stream also announces the hashes it
+  ### accepts (`RevInit.acceptedHashes`).
+  revSchemaHash: String
   runMode: String
   features: FeatureFlags
   limits: ServerLimits

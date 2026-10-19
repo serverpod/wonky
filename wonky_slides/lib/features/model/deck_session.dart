@@ -4,8 +4,8 @@ import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_slides_core/interfaces.dart' show SlideImageResolver;
 import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/ops.dart';
-import 'package:wonky_sync_kit/rows.dart' show CurrentRowReader, RowChange;
-import 'package:wonky_sync_kit/undo.dart' show RowsUndoTarget;
+import 'package:wonky_revlog/rows.dart' show CurrentRowReader, RowChange;
+import 'package:wonky_revlog/undo.dart' show RowsUndoTarget;
 import 'package:wonky_ui/wonky_ui.dart' show SyncStatus;
 
 /// Loading state of a [DeckSession] (suite 12 §2.3: "Downloading
@@ -44,12 +44,11 @@ final class DeckUnavailable extends DeckLoadState {
 /// write path (Slides 02 §11–12, 12 §5.3). Mirrors Sheets'
 /// `WorkbookSession`.
 ///
-/// The contract between the data layer (`features/sync`, `features/model`)
+/// The contract between the data layer (`features/revlog`, `features/model`)
 /// and everything above it (stage, canvas, commands, panels, MCP UI tools):
 /// - [execute] plans an operation with the shared `SlidesMutationPlanner`,
 ///   applies the plan to [model] synchronously (the UI repaints at once) and
-///   persists it asynchronously (≤ 5,000 changes per transaction plus the
-///   `DeckChangeLog` row). It does not record undo: the editor controller
+///   sends it as ops (RevLog outbox). It does not record undo: the editor controller
 ///   pushes a `slides.rows` step (`SlidesRowsUndoEntry`) with the plan.
 /// - [applyChanges] persists already-computed changes (undo/redo, AI); the
 ///   session is the `RowsUndoTarget` of `SlidesRowsUndoHandler`.
@@ -57,7 +56,7 @@ final class DeckUnavailable extends DeckLoadState {
 ///   arrive through `model.changes` like local ones; [remoteBatches]
 ///   carries only the remote ones.
 ///
-/// Implementations: `SyncedDeckSession` (replica, `features/sync`, SL-9)
+/// Implementations: `LoggedDeckSession` (RevLog, `features/revlog`)
 /// and [MemoryDeckSession] (tests, version views, previews, AI suggest
 /// mode); both extend `DeckSessionBase`, which mixes in the core
 /// `DeckWritePath`.
@@ -104,6 +103,10 @@ abstract class DeckSession implements RowsUndoTarget {
 
   /// Completes when everything applied so far is stored locally.
   Future<void> flush();
+
+  /// The sync group [plan] was sent in (RevLog spec 06 §4.6); null when the
+  /// session doesn't sync.
+  String? groupOf(SlidesPlan plan) => null;
 
   /// Batches that came from other devices or the server.
   Stream<DeckChangeBatch> get remoteBatches;

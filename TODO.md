@@ -13,13 +13,13 @@ committed and verified).
 
 ## Wonky Write — deferred features (in planned order)
 
-1. ☑ **Theme editor UI** (Write 06 §10): `/themes/:uuid?doc=` with a live preview (sample or the document, light/dark, pages/pageless, zoom), a catalog-driven inspector for every theme property, contrast warnings with *Fix*, dark derivation and overrides, duplicate/rename/delete/restore, revisions, conflict dialog, *Apply to document* and *Set as my default*; all `write.theme.*` commands, undoable. Still open: hover-outlining of matching blocks in the preview.
-2. ☑ **Import/export formats** (Write 07): DOCX, ODT, RTF and EPUB exporters plus DOCX, ODT and RTF importers in `wonky_write_core`. Exporting and re-importing our own files gives back the same document for all 8 themes, except that RTF brings heading numbers back as text. Server `writeExport.export` covers all 10 formats, with bundled fonts in `web/fonts` and images read from storage; `drive.import` and `convertForInsert` accept HTML, DOCX, ODT and RTF. In the app, File › Download lists every format, and File › Import / Insert from file accept them; the import banner shows on first open. Still open:
+1. ◐ **Theme editor UI** (Write 06 §10): `/themes/:uuid?doc=` with a live preview (sample or the document, light/dark, pages/pageless, zoom), a catalog-driven inspector for every theme property, contrast warnings with *Fix*, dark derivation and overrides, duplicate/rename/delete/restore, revisions, conflict dialog, *Apply to document* and *Set as my default*; all `write.theme.*` commands, undoable. Still open: hover-outlining of matching blocks in the preview.
+2. ◐ **Import/export formats** (Write 07): DOCX, ODT, RTF and EPUB exporters plus DOCX, ODT and RTF importers in `wonky_write_core`. Exporting and re-importing our own files gives back the same document for all 8 themes, except that RTF brings heading numbers back as text. Server `writeExport.export` covers all 10 formats, with bundled fonts in `web/fonts` and images read from storage; `drive.import` and `convertForInsert` accept HTML, DOCX, ODT and RTF. In the app, File › Download lists every format, and File › Import / Insert from file accept them; the import banner shows on first open. Still open:
    - the server export cache and the isolate pool; large documents still export on the client;
    - SVG images in DOCX/ODT/RTF/EPUB (rendered as placeholders);
    - comments in DOCX/ODT exports and embedded DOCX fonts (both P2);
    - LibreOffice and epubcheck validation in CI.
-3. ☑ **MCP** (suite 09, Write 09) — `/mcp` Streamable HTTP route on the web server (custom
+3. ◐ **MCP** (suite 09, Write 09) — `/mcp` Streamable HTTP route on the web server (custom
    `mcp_dart` transport; MCP 2026-07-28 stateless + initialize-era sessions), PAT bearer auth
    with scopes, host/origin checks and rate limits; `ToolExecutor` with `drive.*`, `write.*`
    (23 tools), `comments.*`, `versions.*`, `changes.revert`, resources and prompts; UI bridge
@@ -33,11 +33,11 @@ committed and verified).
    - the UI-bridge hub is per server instance (no cross-instance relay yet);
    - `ui.write.get_layout_info` does not report the visible Delta range yet.
 
-4. ☑ **AI assistant** (suite 10, Write 09 §5): server `AnthropicClient` (HTTP + SSE, retries with backoff/`retry-after`, refusal fallbacks, beta features that degrade on a 400) and agent loop (`assistant` endpoint: chat stream, threads, stop, destructive-change confirmation, inline rewrite/continue/summarize/outline/explain, proofread with the strict `report_issues` tool; tools generated from the MCP registry and bound to the open document; prompt caching; daily token budget, 2 concurrent requests, `AiUsage`); one run = one undo step "AI: …" on the requesting client (`onBehalfOfSessionId`/`groupId`); the shared `AssistantPanel` (threads, streaming Markdown, tool chips with Show/Undo, context chips, Stop, quick prompts, Edit/Suggest, privacy notice, "AI isn't configured" state); inline AI (selection ✨ menu, `/ai`, Mod+J prompt, preview with Replace/Insert below/Try again/Refine/Discard and a word diff, continue writing, AI suggestions with `via: ai`); Tools › Summarize document / Generate outline / Proofread document; Settings › AI (enable, quality, usage, clear history). Enable it with `anthropicApiKey` in `config/passwords.yaml`. Still open:
+4. ◐ **AI assistant** (suite 10, Write 09 §5): server `AnthropicClient` (HTTP + SSE, retries with backoff/`retry-after`, refusal fallbacks, beta features that degrade on a 400) and agent loop (`assistant` endpoint: chat stream, threads, stop, destructive-change confirmation, inline rewrite/continue/summarize/outline/explain, proofread with the strict `report_issues` tool; tools generated from the MCP registry and bound to the open document; prompt caching; daily token budget, 2 concurrent requests, `AiUsage`); one run = one undo step "AI: …" on the requesting client (`onBehalfOfSessionId`/`groupId`); the shared `AssistantPanel` (threads, streaming Markdown, tool chips with Show/Undo, context chips, Stop, quick prompts, Edit/Suggest, privacy notice, "AI isn't configured" state); inline AI (selection ✨ menu, `/ai`, Mod+J prompt, preview with Replace/Insert below/Try again/Refine/Discard and a word diff, continue writing, AI suggestions with `via: ai`); Tools › Summarize document / Generate outline / Proofread document; Settings › AI (enable, quality, usage, clear history). Enable it with `anthropicApiKey` in `config/passwords.yaml`. Still open:
    - the `ui.write.get_ai_preview` UI-bridge tool, and `write.compare_versions` / `write.get_theme` for the assistant (they don't exist as MCP tools yet);
    - a live check against the real API (no key in development); the run and concurrency registry is per server instance;
    - continue writing shows its ghost text in a card at the caret, not inline in the text layout.
-5. ☑ **Offline persistence** (suite 12 §1): per-user `write_cache_<userId>.db` on `sqlite_async`
+5. ◐ **Offline persistence** (suite 12 §1): per-user `write_cache_<userId>.db` on `sqlite_async`
    (web: `sqlite3.wasm` + `db_worker.js` in `wonky_write/web/`, OPFS or IndexedDB; desktop: a
    file) with `LocalDocument` (+ server op log), the durable `LocalPendingOp` outbox (written
    before sending, 2 s chunks, resent with the same `clientOpId`, `RebaseTooOld` → "Save my
@@ -53,41 +53,133 @@ committed and verified).
    - "Offline storage is limited in this browser" for the IndexedDB fallback;
    - deleting the database file on desktop (tables are truncated, as on the web).
 
-6. ☑ **Spellcheck** (Write 04 §28): pure-Dart Hunspell checker in `wonky_write_core` (`package:wonky_write_core/spellcheck.dart`: affixes, flags, compounding, REP/MAP/KEY/TRY + n-gram suggestions, tokenizer with the skip rules); bundled en-US, en-GB, fr-FR, es-ES, nl-NL, sv-SE, da-DK dictionaries (open licenses, `assets/dictionaries/LICENSES.md`), loaded on first need and parsed in 8 ms frame slices; red wavy underlines, context-menu suggestions, Ignore, Add to dictionary (synced personal dictionary), Tools › Spelling (Check spelling… dialog with Change / Change all, Next error ⌘', Underline errors, Ignore UPPERCASE, Personal dictionary…), per-document language. Still open:
+6. ◐ **Spellcheck** (Write 04 §28): pure-Dart Hunspell checker in `wonky_write_core` (`package:wonky_write_core/spellcheck.dart`: affixes, flags, compounding, REP/MAP/KEY/TRY + n-gram suggestions, tokenizer with the skip rules); bundled en-US, en-GB, fr-FR, es-ES, nl-NL, sv-SE, da-DK dictionaries (open licenses, `assets/dictionaries/LICENSES.md`), loaded on first need and parsed in 8 ms frame slices; red wavy underlines, context-menu suggestions, Ignore, Add to dictionary (synced personal dictionary), Tools › Spelling (Check spelling… dialog with Change / Change all, Next error ⌘', Underline errors, Ignore UPPERCASE, Personal dictionary…), per-document language. Still open:
    - de-DE, it-IT, nb-NO (GPL-only upstream) and pt-BR, pl-PL (size) dictionaries; licenses in About;
    - a Web Worker / isolate for checking very large documents.
-7. ☑ **Editor extras:** SE-4 in-place table cell editing (click a cell, Tab/Enter navigation, Markdown source per cell, one "Edit cell" step per commit); drag and drop (SE-6 selection move/copy, block drag via the handle with drop line and auto-scroll, web OS drops of images, documents and text/HTML); emoji picker (Insert › Emoji, `/emoji`, `:` trigger) and special characters dialog; image lightbox (focus mode and typewriter scrolling were built and later removed). Still open:
+7. ◐ **Editor extras:** SE-4 in-place table cell editing (click a cell, Tab/Enter navigation, Markdown source per cell, one "Edit cell" step per commit); drag and drop (SE-6 selection move/copy, block drag via the handle with drop line and auto-scroll, web OS drops of images, documents and text/HTML); emoji picker (Insert › Emoji, `/emoji`, `:` trigger) and special characters dialog; image lightbox (focus mode and typewriter scrolling were built and later removed). Still open:
    - OS drag and drop in native desktop builds (needs a drop plugin);
    - the emoji picker in wonky_ui for comment reactions; self-hosted fallback fonts (`fontFallbackBaseUrl`);
    - table cells: caret inside cells in the document itself (cells are edited through a per-cell field).
-8. ☑ **Notifications** (07 §4, §6): pluggable `EmailSender` (Resend HTTP API with the passwords `resendApiKey` + `emailFrom`, otherwise logged), mention/assignment emails right away (`NotificationEmailFutureCall`), the 15-minute digest for the other kinds (or one email each with `digest: false`), honoring Settings › Notifications (mentions, replies, shares, access requests, suggestions, digest); notifications popover (grouping, excerpts, All/Unread, paging, settings link, keyboard); activity dashboard server side (`ActivityEndpoint`: viewers for Editors+ from the share set, view and comment trend charts, "Show my view history"; the dashboard dialog was removed from the UI, 07 §6); paged activity feed in the details panel. Still open:
+8. ◐ **Notifications** (07 §4, §6): pluggable `EmailSender` (Resend HTTP API with the passwords `resendApiKey` + `emailFrom`, otherwise logged), mention/assignment emails right away (`NotificationEmailFutureCall`), the 15-minute digest for the other kinds (or one email each with `digest: false`), honoring Settings › Notifications (mentions, replies, shares, access requests, suggestions, digest); notifications popover (grouping, excerpts, All/Unread, paging, settings link, keyboard); activity dashboard server side (`ActivityEndpoint`: viewers for Editors+ from the share set, view and comment trend charts, "Show my view history"; the dashboard dialog was removed from the UI, 07 §6); paged activity feed in the details panel. Still open:
    - localized emails (server emails are English);
    - undo for *Mark all as read*;
    - deep links from emails to the comment thread.
 9. ◐ **Quality**:
-   - ☑ CI runs analyze, format and tests for every workspace package (+ vendored `super_editor`/`attributed_text` suites) and `tool/check_dependencies.dart` (01 §2.1); open violation: `wonky_sheets_core` imports `vector_math` without declaring it; Sheets packages still have analyzer infos and unformatted files, so the analyze/format jobs fail until they are cleaned up;
+   - CI (CQ-64, specs/01 §2 "CI"): analyze, format, the dependency check (incl. unused dependencies and test imports) and the generated-code check on every PR; tests per package plus the vendored suites; the `--wasm` build of every app with bundle-size budgets (`build.yml`); goldens in a pinned Linux container (`goldens.yml`); nightly `slow`, perf and long property runs (`nightly.yml`) and the Write E2E journeys (`e2e.yml`); weekly macOS builds and a `pub outdated` report. Open: the coverage gate of specs/15 §10, export validation (LibreOffice, epubcheck, poppler), the web E2E runner;
    - ☑ i18n: wonky_app and wonky_write strings in ARB (`write_en.arb`, `wonky_app_en.arb`), `en_XA` pseudo-locale (`tool/pseudo_locale.dart`, `--dart-define=WONKY_LOCALE=en_XA`); the menubar overflows at 1024 px under en_XA; `ar_XB` (RTL) is not generated yet;
    - ☑ accessibility: labeled icon buttons, `textContrastGuideline` + `labeledTapTargetGuideline` in the screen-level tests (home, settings, Write screen, notifications);
    - ◐ E2E journeys in `wonky_write/integration_test` (macOS; nightly `e2e.yml`): 1, 2, 5, 6 and 8 (MCP drive/write tools; `ui.invoke_command` not yet) pass locally; web needs `flutter drive` + chromedriver; journeys 3, 4, 7, 9, 10 are open;
-   - ☐ golden tests on CI (masters must be regenerated on Linux; the light destructive color changed);
-   - ☐ a performance suite.
+   - ◐ golden tests: `goldens.yml` compares the masters on CI Linux; none are committed yet (generate them with `tool/update_goldens.sh` or the workflow's `update` run, then commit the PNGs); Write, Slides and `wonky_ui` have no goldens yet;
+   - ◐ performance suites: Write and Slides `perf`, Sheets core benchmarks (nightly, `nightly.yml`); a shell rebuild counter is open (CQ-38).
 10. ☐ **Deployment** (deferred to a later iteration; the release build served at `/write/` already loads and works in development):
     - verify production builds served by the server at `/write/` and `/sheets/` (`serverpod run flutter_build`), with WASM and cross-origin-isolation headers;
     - the sign-in is shared on the single origin; in development the two `flutter run` origins (8101 and 8102) don't share it.
 11. ☐ **Desktop** (deferred to a later iteration; v2 is web only, `specs/01-architecture.md` A13 — the desktop targets must keep compiling) (macOS first): packaging, native menubar, keychain sharing between apps, four binaries with `wonkydrive://` / `wonkywrite://` / `wonkysheets://` / `wonkyslides://` URL schemes, OS drag and drop in native builds, desktop printing extras, Slides presenting in native full screen (`window_manager`).
 12. ☐ **Multi-window presenting** (deferred, v2 review Q5/Q29/Q30): a presenting-only second window for Slides' audience view — Window Management API on the web, Flutter multi-window (fallback `desktop_multi_window`) on desktop — reusing the presentation-session messages (`specs/wonky_slides/10-presenting-and-pdf.md` §5.3). v2 presents in one window with the audience on another device or browser.
-13. ☐ **v2** (Drive, Slides, suite changes): specified and planned as work packages — `specs/14-roadmap.md` §2.1–§2.2, `specs/wonky_drive/05-implementation-plan.md` (D-1…D-18), `specs/wonky_slides/12-implementation-plan.md` (SL-1…SL-45); decisions in `specs/v2-review.md`.
+
+## Repository, tooling and CI — open items (CQ-64 follow-ups)
+
+- **Line endings:** `.gitattributes` (`* text=auto eol=lf`, binaries) is in place; right after the
+  next commit run `git add --renormalize .` once and commit it alone. It changes the 12 OFL
+  license texts whose index copy has CRLF or mixed endings (`*/fonts/OFL-*.txt`); everything else
+  is already LF in the index.
+- **SDK lower bounds:** the pubspecs say `sdk: ^3.12.2` while the lock file needs Dart ≥ 3.13.0
+  (Flutter lower bounds are raised to `^3.47.0`). Raising `sdk` to `^3.13.0` changes the language
+  version and with it the formatter style of 615 files; do it in a quiet window together with a
+  repo-wide `dart format` (one commit), then keep `wonky_client`'s pubspec in step.
+- **`discarded_futures`** is off in `wonky_app` (79), Write (13), Sheets (18) and Slides (27)
+  (`TODO(CQ-64e)` in their `analysis_options.yaml`); fix with `unawaited(…)` or awaits and turn it on.
+- **Golden masters:** none committed yet; generate them on Linux (`tool/update_goldens.sh` with
+  Docker, or the `Goldens` workflow with `update`) and commit the PNGs. `tool/*.sh` were created on
+  Windows without the executable bit (CI calls them with `bash`); `git update-index --chmod=+x`
+  when committing.
+- **Bundle size** (2026-10-18, `tool/build_web.dart`): `main.dart.wasm` Drive 6.3 MB, Write 9.1 MB,
+  Sheets 12.5 MB, Slides 11.0 MB; assets 25–35 MB per app, of which the spellcheck dictionaries
+  are 13 MB in every app (Drive included; serve them once from the server, R-18). No app-level
+  deferred loading yet (R-7): candidates are the script editor, theme editors, chart editor,
+  import/export and presenter mode (`deferred as` behind route builders; check dart2wasm's
+  deferred-module support first). Budgets: `tool/web_budgets.json`.
+- **`package:pdf/src` imports** (Write, Sheets, Slides PDF exporters): `PdfString` (deterministic
+  `/CreationDate`) is not exported by `pdf` and no public API sets the date, so the three
+  `implementation_imports` stay; check them on every `pdf` upgrade (or move them into one adapter
+  if a shared pdf helper package appears).
+- **`dart_eval` pins the workspace to analyzer 8.x** (`third_party/dart_eval`, Sheets 09 §23):
+  plan — port the compiler's AST use to analyzer 13 (≈ 93 errors in dart_eval + 15 in
+  `wonky_sheets_script`, measured against 13.3), run the dart_eval suite and the script
+  conformance tests, then bump the lock in a quiet window. Isolating it instead (a non-workspace
+  compiler package run as a separate process by the server) is not small: Serverpod Cloud only
+  uploads workspace packages and the server compiles in-process. The script host no longer
+  imports `dart_eval/src` (patch DE-22).
+- **Forks:** `super_editor`'s own suite runs in CI (`tests.yml`, `third-party`; its upstream
+  goldens live in `test_goldens/`, which is not vendored); upstreaming SE-1…SE-9 is open (PATCHES.md).
+  `serverpod_offline_sync` is deleted (obsolete since RevLog).
+- **Still missing in CI:** the coverage gate for `*_core` (specs/15 §10), export validation
+  (LibreOffice, epubcheck, poppler), the web E2E runner, Dependabot (a weekly `pub outdated`
+  report runs instead), `wonky_sheets` `en_XA`, `ar_XB`.
 
 ## Known issues
+
+- **Unlabelled dialog barriers:** `showShadDialog`'s `barrierLabel` defaults to `''`, so the
+  barrier of every open dialog is a tappable node without a label (`labeledTapTargetGuideline`
+  fails once a dialog is opened through it); pass a label (e.g. *Close*) at the call sites or
+  wrap `showShadDialog` in `wonky_ui`.
+- **Full-text search scans** (CQ-25, specs/13 §3 "Search indexes"): the drive and board search
+  documents have no GIN index, because Serverpod's startup schema check reports expression indexes
+  as a mismatch at every boot. Add the indexes back (e.g. as `SearchIndexes` entries) when search
+  gets slow or when Serverpod can declare expression indexes / suppress the check for them.
 
 - Version restore uses the shell's server-side restore; undoing it restores the restore point (Write 08 §4.5).
 - When a role is downgraded while editing, pending ops that are no longer allowed are discarded through a resync, not converted into suggestions.
 - Recurring server jobs are re-registered on every server start under fixed identifiers.
 - Search uses no full-text GIN index yet.
 - shad tooltips and popovers swallow Esc; the toolbar works around this with `ToolbarEscapeScope`.
-- Offline-sync patch OS-9: the background projection rebuild after a synced-schema change holds the server-wide CRDT node lock (the one every tracked write takes) for one space's projection at a time, so a release that changes a *Sheets* table would pause server writes for each big spreadsheet's rebuild (seconds); reads of a still-pending space serve its previous projection. Fine for the Slides releases S-2/S-3 (decks are small); a per-space lock would remove the pause (suite 12 §4).
 - PDF exports (client and server) cover Latin, Greek and Cyrillic with the bundled TTFs; CJK, Arabic and emoji fall back to placeholders until the fallback fonts are added.
 - WYSIWYG Markdown composer (`wonky_rich_editor`, specs/16 §7.3): ☐ a code block's language can only be set when typing the fence; ☐ browser check of IME typing (the first keys after a click, fixed in the widget, see §7.3), paste, copy as Markdown, the spelling menu and the link dialog in the release builds; ☐ the composer's spelling language is the device locale (no per-field language).
+
+## RevLog sync — open items
+
+Sheets and Slides sync through RevLog (`specs/17-revlog-sync.md`); the CRDT engine, the sync
+kit and the sync spaces were removed in R8. Deferred:
+
+- ☐ **Save my changes as a copy** when the server rejects an op (permission lost, file deleted,
+  protection).
+- ☐ **Conflict review fed by outcomes:** feed the conflict review from the server's op
+  outcomes (what was overwritten or skipped).
+- ☐ **Unsynced-data download** for a local cache that cannot be opened: offer its unsynced
+  changes as a file before the cache is cleared.
+- ☐ **Slides character-level text merge:** concurrent edits of the same text box are column
+  "last arrival wins"; merge text at character level.
+- ☐ **`cascaded` info toast** (P2): tell the user when their op removed rows they did not
+  touch directly (cascade of a delete).
+- ☐ Optional: rename `wonky_sync_models` (now only id helpers) and the `sheets/spaces/` server
+  folder; the `spaceUuid` parameters of `drive.registerSpreadsheet`/`registerPresentation`
+  (the file UUID) keep their name because queued drive ops store it; the version snapshot
+  headers of the cores still accept a legacy `syncTablesHash` field.
+- ☐ The RevLog limits are code constants; read them from a `revlog:` config section
+  (`specs/01-architecture.md` §6).
+- ☐ **Performance gates missed in R6** (`plans/sheets-sync-migration/baseline.md`, spec 17 part 7;
+  Windows desktop, debug JIT, embedded Postgres, 1M = 38,461 rows × 26 columns):
+  - **P7 client margin** (< 15 s for 1M): 12.6–14.5 s with SQLite since R7, of which ~2.6 s
+    is the in-process page serving of the test; most of the rest is the model and the formula
+    engine taking 1M cells on the UI isolate (~3.4 s) and the store's id index, built in one
+    sorted insert when the download completes (~1.9 s); a bulk model load and building that
+    index lazily (the open model knows every cell's row) are the next steps.
+  - **P3/P4 on the CI machine:** R7 p95 11.4 ms (100 changes) and 250 ms (5,000 changes) on
+    this desktop, 282 ms for P4 while other suites ran; re-measure on the CI machine.
+  - **Not measured:** P2 (two instances need Redis), web (OPFS) for P6/P7/P8 (the web runs the
+    cache's page writes as statements: `computeWithDatabase` needs the native worker), and the
+    e2e P1 against `serverpod start`.
+  - Resolved in R7 (client, spec 17 As built 24): P8 reopen from the cache (28.6–47.1 s →
+    0.28–0.43 s, viewport-first), P6 on the client (1.44–2.0 → 0.89–1.12 s), P9 local import
+    (30–32 → 17.3–18.6 s) and the cache size (695–733 → 107–108 MiB for 1M cells).
+  - Resolved in R7 (wire and server, spec 17 As built 25): P7 server side (31.2 → 7.1–7.3 s;
+    page format version 2, typed-array page reads, parallel pages decoded off the UI isolate),
+    P10 import into a new file (63–69 → 37.6–38.0 s) and into an existing sheet (58 → 41–42 s;
+    binary-array writes, in-place updates, creation prefetch from memory, one encoding per op),
+    P4 (288–322 → 250 ms) and the cell table's `fillfactor` (85, P11 210 → 238 B).
+- ☐ The generated client still carries the five client-database migrations of the CRDT era
+  (`wonky_client/lib/migrations/`); no app opens that database any more. Remove them when the
+  generator supports dropping the client database.
 
 ## Wonky Sheets — open items
 
@@ -120,15 +212,10 @@ Everything below is deferred; the app works without it. Areas are in rough prior
    submenus opened from a menu at the right edge cover their parent instead of flipping left
    (shad's anchor only falls back vertically); a filter-view sort of 25k rows blocks the page
    for ~10 s; the open-spreadsheet skeleton still shows document lines.
-3. ☐ **Sync / data layer** (viewport-first loading, recovery export, IndexedDB warning + cell
-   cap, weekly purge, offline-created badge, batched server writer, shared codec, set-based
-   engine writes (patch OS-7), save progress and `#LOADING` for formulas over streaming rows are
-   done): *low priority — large-sheet performance is deferred:* a 1M-cell import still takes ~2 min locally (commits of random-UUID index pages:
-   bigger transactions or sequential cell ids would help); deleting rows/columns on the server
-   still runs the full FK projection (~8 s per 500 rows at 50k cells; skipping it when every
-   child is user-tombstoned needs a convergence proof); the OPFS/IndexedDB check is a
-   browser-feature heuristic (the SQLite worker doesn't report its choice); recovery export is
-   desktop only (web replicas are emptied, not moved aside).
+3. ☐ **Large-sheet performance (CQ-40 leftovers)** — sync itself is RevLog now (see *RevLog
+   sync — open items*): `SUM` over 1M rows takes 35–70 ms against a 10 ms budget (boxed
+   doubles in `SUM`); structural edits take 33/65 ms against 16 ms (the range index rebuild and
+   the formula scans on insert/delete).
 4. ☐ **Editor** (LocalViewState, editing preferences, column autocomplete, formula preview,
    a11y semantics + announcer, context menu position, drag-copy cursor, `RangeInput` picking
    (also in the filter views panel), dark-mode automatic text, sort undo selection, side panel
@@ -149,7 +236,7 @@ Everything below is deferred; the app works without it. Areas are in rough prior
 8. ☑ **Pivot tables** (phase 4): incremental (delta) refresh for decomposable aggregates and the
    big-source snapshot in slices — see STATUS.
 9. ☐ **Charts, images, objects** (phase 4 done, see STATUS): golden masters of
-   `wonky_sheets/test/goldens/charts` must be generated on CI Linux (no masters committed); the
+   `wonky_sheets/test/goldens/charts` must be generated on Linux (`tool/update_goldens.sh`, not committed yet); the
    GPU vs software comparison (`wonky_sheets/integration_test/chart3d_backends_test.dart`) needs
    a Flutter GPU device and was not run, and the GPU backend is still verified on the web only
    (live: GPU path active, orbit, Alt+Shift+arrows, hover, undo, all 3D types);
@@ -182,13 +269,17 @@ Everything below is deferred; the app works without it. Areas are in rough prior
     instance (Redis for several workers); `DriveApp`; `dart_eval` pins the workspace to
     `analyzer` 8.x (assessed: 93 errors in dart_eval + 15 in wonky_sheets_script against
     analyzer 13.3; needs a lockfile bump in a quiet window, 09 §23).
-14. ☑ **Core**: chunked planning (`IrToRowsPlanner.planChunked`), CF/DV ranges and formulas
+14. ◐ **Core**: chunked planning (`IrToRowsPlanner.planChunked`), CF/DV ranges and formulas
     on moves (06 §15.3) and charts without an Excel equivalent as XLSX pictures are done. Left:
     a cut with hidden rows (several blocks) moves a CF rule's formula with the first block's
     offset only.
 
 ## Wonky Drive — open items
 
+- **Upload follow-ups from the CQ-60 tests:**
+  - `UploadQueue` falls back to `DateTime.now` instead of `clock.now` (`wonky_drive` doesn't
+    depend on `clock` yet).
+  - The web XHR sender (`byte_sender_web.dart`) needs a browser test (`flutter test --platform chrome`).
 - **M8 integration (D-18 follow-ups):** the web E2E runner (chromedriver + `flutter drive`,
   steps in specs/15 §9) and the J-D1…J-D10 `integration_test` journeys
   (`wonky_drive/integration_test/`) — the journeys were checked by hand in the release builds.
@@ -274,7 +365,7 @@ Everything below is deferred; the app works without it. Areas are in rough prior
   `ChartStyleEditor` from `wonky_sheets` into `wonky_charts_flutter`. The workbook-based layout,
   3D and describer tests stay in `wonky_sheets_core`; port some to `ChartData` fixtures in
   `wonky_charts/test`. Sheets chart golden PNGs (`wonky_sheets/test/goldens/charts`) have no
-  committed masters, so those six golden tests fail locally until masters are generated.
+  committed masters yet (`tool/update_goldens.sh`; `goldens.yml` compares them once committed).
 - **Shared code packages (D-2 follow-ups, M10 with Slides code elements, Slides 07):**
   `CodeTokenizer.tokenizeLine` (incremental line state for type-in/editing), `CodeLayout` +
   `MonoFontMetrics`, the grid-exact `CodeView` mode driven by `CodeViewState` (title tab,
@@ -286,19 +377,10 @@ Everything below is deferred; the app works without it. Areas are in rough prior
   highlighted now, but can only be chosen by typing a fence).
 - **TextMate tokenizer speed:** see "Code core leftovers (SL-26)" below (≈ 17–19 ms for 1,000
   lines of Dart after SH-6; budget 15 ms desktop / 30 ms web).
-- **Shared sync kit (D-6 follow-ups, Slides 12 §5.1–5.2):** the server writers
-  (`ServerSheetsWriter`, `SheetsBulkWriter`; Slides' `ServerSlidesWriter`) don't implement
-  `SyncTxAdapter` yet (server code untouched by the extraction). The local bookkeeping tables
-  keep their Sheets names (`sheets_row_journal`, `sheets_journal_space`, `sheets_dirty_space`,
-  trigger prefix `sheets_journal`) and are shared by every app's replica file; rename them to
-  `sync_*` with a client migration when convenient (renaming the triggers needs dropping the old
-  ones). `ReplicaInstallation`/`ReplicaOfflineProvider` (shell glue) have no widget test of
-  their own (covered through Sheets' `open_workbook_session_test`); *Clear local data* on the
-  web now empties the tables in one transaction with deferred foreign keys.
-- **Shared rich text, fonts, spelling, emoji (D-7 follow-ups):** Sheets still bundles its own
-  copy of the 40 TTFs (`wonky_sheets/assets/fonts/`, `CellFonts`, `print_fonts.dart`) and the
-  server its mirror (`wonky_server/web/fonts/`, `FileSystemFontProvider`); switch both to the
-  `wonky_fonts` package (`BundledFonts`) and drop the copies (Sheets needs the dependency in
+- **Shared rich text, fonts, spelling, emoji (D-7 follow-ups):** Sheets loads the `wonky_fonts`
+  package assets since CQ-64g (its copy of the 40 TTFs is gone; `CellFonts`, `print_fonts.dart`); the
+  server keeps its mirror (`wonky_server/web/fonts/`, `FileSystemFontProvider`; Sheets' `bundled_fonts_test` checks it matches); switch it to the
+  `wonky_fonts` package (`BundledFonts`) and drop the copy (check that the Cloud upload includes it;
   suite 01 §2.1). The shared Flutter `AssetFontRegistry` + `BundledAssetFontProvider`
   (`package:wonky_app/fonts.dart`, SL-6) exist; Write (`WriteFonts`/`AssetFontProvider`) and
   Sheets still use their own loaders — switch them when convenient. (The shared spelling dialogs,
@@ -703,23 +785,9 @@ Status per work package: [specs/wonky_slides/STATUS.md](specs/wonky_slides/STATU
     images are web only (desktop disabled, suite 01 A13).
   - Table cell soft locks (two people typing in one cell) follow SL-21's text locks — cells
     are not claimed yet.
-- **Client sync leftovers (SL-9):** `SyncedDeckSession.images` stays the in-memory
-  `MemorySlideImageResolver` (SL-15's `SlidesImageService` resolves uploads, the queue and signed
-  URLs for every renderer and falls back to it); the recovery export
-  of a broken replica is desktop only (on the web the kit can't read the replica behind the
-  SQLite worker — as Sheets) and is one JSON file of rows; the property
-  and convergence runs use an in-process sync peer (no OS-8 filter, no change-log consumer) —
-  the full multi-client harness with `serverpod_test` and isolates (12 §7.3) remains for the
-  scripted scenarios of 09 §6.4.
-- **Server deck sync leftovers (SL-5):** (`DeckChangeLog` pruning after 30 days with the
-  receipts: done, SL-39's `DeckChangeLogPruning` in the daily job);
-  (SL-8 built `slides.revertChange`/`reapplyChange`, deck copies and templates from
-  presentation items, and the headless cache listening on `slides:merged:<space>`); consumer
-  plugins: (version snapshots index: done at capture by SL-39's `SlidesVersionProvider`, not
-  as a plugin) (agent presence: done in the MCP write path,
-  SL-40's `DeckAgentPresence`; comment
-  orphaning: done, SL-38's `comments` plugin); `slidesSync` merges reuse the `SheetsMergedSignal` model on the
-  `slides:merged:<space>` channel.
+- **Client sync leftovers:** the full multi-client harness with `serverpod_test` and isolates
+  (12 §7.3) remains for the scripted scenarios of 09 §6.4 (RevLog has in-process fakes:
+  `FakeRevServer`, `FakeRevTransport`).
 - **Scene and stage leftovers (SL-10):** the core `SlideTextLayout` defaults to
   `ApproxTextMeasurer`; SL-20 added `TtfTextMeasurer` (`package:wonky_slides_core/pdf.dart`,
   real TTF metrics, used by PDF exports) — the MCP overflow warnings (SL-40) still use the
@@ -768,7 +836,7 @@ Status per work package: [specs/wonky_slides/STATUS.md](specs/wonky_slides/STATU
   element anchors through the copier's id map: checked by SL-38's server test); (version copies on
   `DeckCopies.copy(sourceModel:)`: done, SL-39); a deck copy whose image copy fails (file gone or
   unreadable) keeps the new reference (missing image) and logs a warning; deck change records
-  reuse Sheets' `ServerChangeRecord` table (rename `spreadsheetUuid` → `spaceUuid` when a
+  reuse Sheets' `ServerChangeRecord` table (rename `spreadsheetUuid` → `fileUuid` when a
   migration touches it anyway); (`DeckChangeLog` pruning: done, SL-39).
 - **PDF export and print preview leftovers (SL-20, Slides 10 §11–§13):** (builds as pages,
   code callouts/caret and charts per build stage: done, SL-33); element shadows print as offset silhouettes (no rasterized soft shadow,
@@ -842,7 +910,7 @@ Status per work package: [specs/wonky_slides/STATUS.md](specs/wonky_slides/STATU
 - **Themes panel, layouts, page setup leftovers (SL-17, Slides 05 §4, §7, §9):** *Import
   theme from a presentation…* reads the source deck on the server (`slidesThemes.list`), so it
   needs a connection even when that deck is on the device (05 §9 allows on-device decks: read
-  the replica when `SlidesReplica.hasDeck`); the chooser for decks with several themes is a
+  the local RevLog cache when the deck is on the device); the chooser for decks with several themes is a
   select with names and usage, not previews. Inspector › Slide › Background edits solid colors
   only (gradient and image backgrounds render, editors not built — share them with SL-14's fill
   editors). The menubar's and context menus' *Apply layout ▸* list layout names (MCP-readable);
@@ -873,12 +941,6 @@ Status per work package: [specs/wonky_slides/STATUS.md](specs/wonky_slides/STATU
   - Presence shows "Editing layouts" (SL-21) but not *which* layout; remote selections and
     soft locks on layout elements show only for collaborators editing the same layout.
   - Find & replace doesn't search master/layout text (see the SL-18 leftovers).
-- **Synced additions after S-2:** S-2 (SL-24) shipped only `BuildTrigger.onElementClick`
-  (reserved; no table change); S-3 was not cut in SL-37 (nothing queued, 02 §14.1). Queue new
-  synced fields/tables in Slides 02 §14 and ship them as the next release (S-3); each bumps
-  `SyncSchemaRelease` (`wonky_sync_models`) and the record in 02 §14.1 — the server and Sheets
-  guard tests (tables) and `wonky_sync_models` `test/tables/sync_schema_release_test.dart` (enum
-  values) fail until both are updated.
 - **Timeline leftovers (SL-24, Slides 06 §9.8):** (present mode compiles with
   `SlideMotionInput.fromDeck(scene:, chartShapeOf:)` and the stage renders every frame field
   since SL-29.) Code durations are estimates until SL-26's `TypingScript`

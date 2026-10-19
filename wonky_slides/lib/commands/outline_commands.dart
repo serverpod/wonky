@@ -7,7 +7,7 @@ import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_slides_core/model.dart' hide SlidesText;
 import 'package:wonky_slides_core/ops.dart';
-import 'package:wonky_sync_kit/rows.dart' show RowChange;
+import 'package:wonky_revlog/rows.dart' show RowChange;
 
 import '../features/editor_screen/deck_editor_controller.dart';
 import '../features/outline_view/outline_body.dart';

@@ -7,25 +7,17 @@ import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart' show DriveHomeScreen, DriveLocation;
 import 'package:wonky_ui/testing.dart';
 import 'package:wonky_client/wonky_client.dart'
-    show
-        AccessRole,
-        Client,
-        DriveItemKind,
-        TemplateCategory,
-        TemplateView,
-        UuidValue;
+    show DriveItemKind, TemplateCategory, TemplateView, UuidValue;
 import 'package:wonky_slides/config/slides_app_config.dart';
 import 'package:wonky_slides/features/accessibility/accessibility_checker.dart';
-import 'package:wonky_slides/features/model/synced_deck_session.dart';
 import 'package:wonky_slides/features/stage/slide_renderer.dart';
-import 'package:wonky_slides/features/sync/slides_data.dart';
-import 'package:wonky_slides/features/sync/slides_replica.dart';
+import 'package:wonky_slides/features/revlog/slides_rev_log.dart';
 import 'package:wonky_slides/features/thumbnails/slide_thumbnail.dart';
 import 'package:wonky_slides_core/templates.dart';
 import 'package:wonky_slides_core/themes.dart' show SlideAppearance;
 import 'package:wonky_sync_models/ids.dart' show SequentialIdGenerator;
 
-import '../../sync/support/slides_sync_harness.dart';
+import '../../revlog/support/deck_harness.dart';
 import '../../support/slides_harness.dart';
 import '../text_editing/text_edit_fixture.dart' show realFonts;
 
@@ -45,35 +37,30 @@ void main() {
 
   group('Given a signed-in user with the Slides data layer', () {
     late CommandTestHarness h;
-    late FakeSlidesServer server;
 
     setUp(() async {
-      server = await FakeSlidesServer.open();
+      final hub = slidesHub();
       h = CommandTestHarness(config: config);
       addTearDown(h.dispose);
       final me = h.services.me!.uuid;
       final dir = await Directory.systemTemp.createTemp('wonky_slides_tpl_');
-      addTearDown(() => dir.delete(recursive: true));
-      var n = 0;
-      SlidesData.install(
-        h.services,
-        open: (user) => SlidesReplica.open(
-          client: Client('http://localhost:1/'),
-          path: '${dir.path}/slides_${n++}.db',
-          userUuid: user,
-        ),
-        remote: () => FakeRemote(server, me)..subscribeRole = AccessRole.owner,
-      );
-      addTearDown(() => SlidesData.uninstall(h.services));
+      addTearDown(() async {
+        try {
+          await dir.delete(recursive: true);
+        } catch (_) {}
+      });
+      SlidesRevLog.directoryOverride = dir.path;
+      addTearDown(() => SlidesRevLog.directoryOverride = null);
+      SlidesRevLog.install(h.services, transport: () => hub.transport(me.uuid));
+      addTearDown(() => SlidesRevLog.uninstall(h.services));
     });
 
     test('when a built-in template is chosen offline then its deck is '
         'created locally, registered with the space as item uuid and opens '
         'with every slide', () async {
-      final c = (await SlidesData.ready(h.services))!;
-      await prepareReservations(c);
+      final c = (await SlidesRevLog.ready(h.services))!;
       h.services.connectivity.forceOffline(true);
-      await eventually(() => !c.online.value);
+      await eventually(() => !c.keeper.online);
       final t = SlidesTemplates.byKey('slides.lesson')!;
 
       final uuid = await config.createItem(
@@ -86,10 +73,11 @@ void main() {
       expect(h.drive.calls, contains('registerPresentation'));
       expect(h.drive.calls, isNot(contains('createPresentation')));
       expect(h.drive.item(uuid!).name, 'Lesson');
-      expect(await c.replica.hasDeck(uuid), isTrue);
+      expect(await c.store.outbox(uuid.uuid), isNotEmpty);
       final s = await openDeckSession(h.services, uuid);
       addTearDown(s.dispose);
-      await (s as SyncedDeckSession).opened;
+      await (s as LoggedDeckSession).opened;
+      await whenReady(s);
       final expected = SlidesTemplateDecksForTest.of(t);
       expect(s.model.deck?.title, 'Lesson');
       expect(s.model.slides, hasLength(expected.model.slides.length));
@@ -98,8 +86,7 @@ void main() {
 
     test('when a template that is not built in is chosen then the server '
         'copies it', () async {
-      final c = (await SlidesData.ready(h.services))!;
-      await prepareReservations(c);
+      await SlidesRevLog.ready(h.services);
 
       await config.createItem(
         h.services,

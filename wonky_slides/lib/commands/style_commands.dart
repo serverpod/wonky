@@ -185,13 +185,13 @@ List<Command<CommandArgs>> styleCommands(ShellServices s) => [
                 'spread': 0,
               },
         false || null => null,
-        final Map m => m.cast<String, Object?>(),
+        final Map<Object?, Object?> m => m.cast<String, Object?>(),
         _ => throw const FormatException('shadow'),
       };
       Object? glow(Object? g) => switch (g) {
         true => const {'color': 'theme:accent1/alpha:0.6', 'radius': 16},
         false || null => null,
-        final Map m => m.cast<String, Object?>(),
+        final Map<Object?, Object?> m => m.cast<String, Object?>(),
         _ => throw const FormatException('glow'),
       };
       final Map<String, Object?> patch;
@@ -316,7 +316,11 @@ List<Command<CommandArgs>> styleCommands(ShellServices s) => [
         return ok({'armed': false});
       }
       final source = ElementStyle.targets(ed).firstOrNull;
-      if (source == null) return const CommandResult.failed('Select an object');
+      if (source == null) {
+        return CommandResult.failed(
+          slidesL10nOf(ed.services).reasonSelectObject,
+        );
+      }
       painter
         ..paint = ElementStylePayload.captureIn(ed, source)
         ..sticky = sticky ?? false
@@ -337,7 +341,11 @@ List<Command<CommandArgs>> styleCommands(ShellServices s) => [
     reason: (l, ed) => l.reasonSelectObject,
     run: (ctx, ed, a) {
       final source = ElementStyle.targets(ed).firstOrNull;
-      if (source == null) return const CommandResult.failed('Select an object');
+      if (source == null) {
+        return CommandResult.failed(
+          slidesL10nOf(ed.services).reasonSelectObject,
+        );
+      }
       final style = ElementStylePayload.captureIn(ed, source);
       FormatPainter.of(ed).clipboard = style;
       return ok({'style': style.toJson()});

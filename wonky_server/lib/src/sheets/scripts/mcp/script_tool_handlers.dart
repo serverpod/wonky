@@ -10,8 +10,8 @@ import '../../../platform/common/models.dart';
 import '../../../platform/mcp/tool_executor.dart';
 import '../../../platform/mcp/tool_support.dart';
 import '../../mcp/sheets_mcp_support.dart';
-import '../../sync/sync_db.dart';
 import '../script_service.dart';
+import '../script_executions.dart';
 
 /// Handlers of the script tools (`sheets.list_script_functions`,
 /// `sheets.run_function`, `sheets.get_script_files`,
@@ -59,7 +59,7 @@ abstract final class ScriptToolHandlers {
     final p = await ScriptService.project(ctx.session, space);
     if (p == null) {
       return const ToolResult(
-        {'build': null, 'functions': [], 'triggers': []},
+        {'build': null, 'functions': <Object?>[], 'triggers': <Object?>[]},
         text: 'This spreadsheet has no script.',
       );
     }
@@ -68,11 +68,11 @@ abstract final class ScriptToolHandlers {
         ? ScriptExports.empty
         : ScriptExports.decode(b!.lastGoodExportsJson!);
     final macros = await Macro.db.find(
-      syncSessionOf(ctx.session),
+      ctx.session,
       where: (t) => t.projectId.equals(p.id),
     );
     final triggers = await ScriptTrigger.db.find(
-      syncSessionOf(ctx.session),
+      ctx.session,
       where: (t) => t.projectId.equals(p.id),
     );
     final errors = b == null
@@ -181,7 +181,7 @@ abstract final class ScriptToolHandlers {
     final p = await ScriptService.project(ctx.session, item.contentRef!);
     final names = a.list('names')?.map((e) => '$e').toSet();
     final files = p == null
-        ? const []
+        ? const <ScriptFile>[]
         : await ScriptService.files(ctx.session, p.id);
     return ToolResult({
       'files': [
@@ -263,7 +263,7 @@ abstract final class ScriptToolHandlers {
     final cursor = a.string('cursor');
     final status = a.string('status');
     final limit = a.integer('limit') ?? 20;
-    final rows = await ScriptService.executions(
+    final rows = await ScriptExecutions.executions(
       ctx.session,
       ctx.actor,
       item.uuid,

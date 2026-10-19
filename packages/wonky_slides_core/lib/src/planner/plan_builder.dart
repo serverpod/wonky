@@ -1,4 +1,4 @@
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 import '../model/api/deck_model.dart';
 import '../model/api/records.dart';

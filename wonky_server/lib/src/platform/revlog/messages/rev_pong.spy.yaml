@@ -1,0 +1,5 @@
+class: RevPong
+extends: RevServerMessage
+fields:
+  t: int
+  headRevision: int

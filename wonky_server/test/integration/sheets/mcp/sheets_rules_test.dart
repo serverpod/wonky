@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:test/test.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
 

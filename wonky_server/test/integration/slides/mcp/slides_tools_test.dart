@@ -13,12 +13,13 @@ import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart
 import 'package:wonky_server/src/slides/charts/slides_chart_service.dart';
 import 'package:wonky_server/src/slides/exports/slides_export_service.dart';
 import 'package:wonky_server/src/slides/headless/deck_text_claims.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_server/src/slides/mcp/slides_writes.dart';
 
 import '../../../support/file_fixtures.dart';
 import '../../../support/mcp_harness.dart';
 import '../../../support/sheets_fixtures.dart';
+import '../../../support/test_presence.dart';
 import '../../../support/test_users.dart';
 import '../../../support/wonky_serverpod.dart';
 
@@ -61,7 +62,7 @@ void main() {
     tearDown(() {
       DeckAgentPresence.clear();
       DeckTextClaims.clear();
-      HeadlessDeckCache.clear();
+      HeadlessFileCache.clear();
       HeadlessWorkbookProvider.clear();
       SlidesChartService.reset();
       SlidesExportService.clearCache();
@@ -1007,20 +1008,15 @@ void main() {
         });
         final s = await slide(uuid, 2);
         final body = placeholder(s, 'body')['element_id'] as String;
-        final updates = StreamController<PresenceUpdate>();
-        final events = endpoints.presence
-            .join(
-              bo.endpointSession,
-              UuidValue.withValidation(uuid),
-              updates.stream,
-            )
-            .listen((_) {});
+        final item = UuidValue.withValidation(uuid);
+        final editor = await TestPresence.join(endpoints, bo, item);
+        final watcher = await TestPresence.join(endpoints, anna, item);
         addTearDown(() async {
-          await updates.close();
-          await events.cancel();
+          await editor.close();
+          await watcher.close();
         });
-        await Future<void>.delayed(const Duration(milliseconds: 200));
-        updates.add(
+        await editor.send(
+          watcher: watcher,
           PresenceUpdate(
             state: PresenceState.active,
             cursorJson: jsonEncode({
@@ -1036,7 +1032,6 @@ void main() {
             }),
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 200));
 
         final e = await mcp.error('slides.set_text', {
           'deck': uuid,

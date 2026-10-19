@@ -11,7 +11,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 abstract class WriteDiffAuthor
     implements _isc.SerializableModel, _isc.ProtocolSerialization {
@@ -29,7 +29,7 @@ abstract class WriteDiffAuthor
     _isc.UuidValue? userUuid,
     required String name,
     required int colorIndex,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required int inserted,
     required int deleted,
     required int formatted,
@@ -42,7 +42,7 @@ abstract class WriteDiffAuthor
           : _isc.UuidValueJsonExtension.fromJson(jsonSerialization['userUuid']),
       name: jsonSerialization['name'] as String,
       colorIndex: jsonSerialization['colorIndex'] as int,
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       inserted: jsonSerialization['inserted'] as int,
@@ -57,7 +57,7 @@ abstract class WriteDiffAuthor
 
   int colorIndex;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   int inserted;
 
@@ -72,7 +72,7 @@ abstract class WriteDiffAuthor
     _isc.UuidValue? userUuid = const _isc.$UndefinedUuidValue(),
     String? name,
     int? colorIndex,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     int? inserted,
     int? deleted,
     int? formatted,
@@ -116,7 +116,7 @@ class _WriteDiffAuthorImpl extends WriteDiffAuthor {
     _isc.UuidValue? userUuid,
     required String name,
     required int colorIndex,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required int inserted,
     required int deleted,
     required int formatted,
@@ -138,7 +138,7 @@ class _WriteDiffAuthorImpl extends WriteDiffAuthor {
     _isc.UuidValue? userUuid = const _isc.$UndefinedUuidValue(),
     String? name,
     int? colorIndex,
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     int? inserted,
     int? deleted,
     int? formatted,

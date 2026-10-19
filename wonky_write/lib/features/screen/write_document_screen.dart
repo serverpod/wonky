@@ -20,7 +20,7 @@ import '../../commands/extras_commands.dart';
 import '../../commands/screen_commands.dart';
 import '../comments/comment_margin.dart';
 import '../document/write_document_session.dart';
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart' show DeltaSelection;
 import '../editor/components/editor_services.dart';
 import '../editor/controller/editor_types.dart';
 import '../editor/keyboard/editor_keyboard.dart';
@@ -100,6 +100,7 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
     s.commentsHost = doc.viewPrefs;
     unawaited(session.open());
     session.phase.addListener(_onPhase);
+    _marginCardSources.addListener(_onMarginCards);
     s.panels.addListener(_onPanels);
     if (kIsWeb) unawaited(BrowserContextMenu.disableContextMenu());
   }
@@ -107,6 +108,8 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
   @override
   void dispose() {
     session.phase.removeListener(_onPhase);
+    _marginCardSources.removeListener(_onMarginCards);
+    _hasMarginCards.dispose();
     s.panels.removeListener(_onPanels);
     if (identical(s.commentsHost, doc.viewPrefs)) s.commentsHost = null;
     if (kIsWeb) unawaited(BrowserContextMenu.enableContextMenu());
@@ -275,9 +278,15 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
         doc.documentTheme,
         doc.viewPrefs,
         session,
-        // The page makes room for the comment margin when it shows.
-        session.comments,
-        session.suggestions,
+        // The page makes room for the comment margin when it shows. Not
+        // `session.comments` / `session.suggestions`: they notify on every
+        // keystroke, and a new `WonkyEditor` rebuilds the whole document
+        // layout (Write 04 §36).
+        _hasMarginCards,
+        // `ai.shown` (the slash menu's AI items): the shell scaffold no
+        // longer rebuilds the body on command-state signals (CQ-39).
+        s.prefs,
+        ?ai.assistant?.status,
       ]),
       builder: (context, _) {
         final theme = doc.documentTheme.editorTheme(brightness);
@@ -434,19 +443,35 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
   /// Width of the comment margin column including its padding.
   static const double _marginColumn = 300 + 8 + 16;
 
+  /// Whether the margin has cards (threads, suggestions or a draft) the
+  /// user may see; updated when comments or suggestions change.
+  late final ValueNotifier<bool> _hasMarginCards = ValueNotifier(
+    _computeHasMarginCards(),
+  );
+
+  late final Listenable _marginCardSources = Listenable.merge([
+    session,
+    session.comments,
+    session.suggestions,
+  ]);
+
+  void _onMarginCards() => _hasMarginCards.value = _computeHasMarginCards();
+
+  bool _computeHasMarginCards() {
+    final comments = session.comments;
+    return comments.controller != null &&
+        comments.visible &&
+        (comments.anchoredOpenThreads.isNotEmpty ||
+            comments.unanchoredThreads.isNotEmpty ||
+            session.suggestions.pending.isNotEmpty ||
+            comments.draftOffset != null);
+  }
+
   /// Whether the comment margin shows: there are cards (threads,
   /// suggestions or a draft), the user may see comments, the margin is
   /// turned on and the window is wide enough.
   bool _marginShown(BuildContext context) {
-    final comments = session.comments;
-    final hasCards =
-        comments.anchoredOpenThreads.isNotEmpty ||
-        comments.unanchoredThreads.isNotEmpty ||
-        session.suggestions.pending.isNotEmpty ||
-        comments.draftOffset != null;
-    return comments.controller != null &&
-        comments.visible &&
-        hasCards &&
+    return _hasMarginCards.value &&
         doc.viewPrefs.showCommentMargin &&
         // Not in the read-only mobile layout (suite 02 §6.1).
         !WonkyLayout.isMobile(context);

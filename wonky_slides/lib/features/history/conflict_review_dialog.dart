@@ -7,10 +7,6 @@ import '../editor_screen/deck_editor_controller.dart';
 import 'change_labels.dart';
 import 'local_conflicts.dart';
 
-/// What the user chose in the review dialog: `restore`, `copy` or
-/// `dismiss`, with the checked conflicts.
-typedef ConflictReviewChoice = ({String action, List<String> ids});
-
 /// "Slide 4, Title" of a conflict (the slide when detected if the body is
 /// gone).
 String conflictWhere(
@@ -49,69 +45,41 @@ Future<ConflictReviewChoice?> showConflictReviewDialog(
   BuildContext context, {
   required DeckEditorController editor,
   required List<SlidesLocalConflict> conflicts,
-}) async {
+}) {
   final l = slidesL10n(context);
   final la = WonkyAppLocalizations.of(context);
   final m = editor.model;
-  final restorable = [
-    for (final c in conflicts)
-      if (c.canRestore) c,
-  ];
-  final gone = [
-    for (final c in conflicts)
-      if (!c.canRestore) c,
-  ];
   String who(SlidesLocalConflict c) => c.theirName ?? la.someone;
-  final lines = [
-    l.conflictsDescription,
-    for (final c in gone)
-      l.conflictsDeletedBy(
-        conflictWhere(l, m, c),
-        who(c),
-        conflictText(l, c.myText),
-      ),
-  ];
-  final r = await showWonkyFormDialog(
+  return showConflictReview<SlidesLocalConflict>(
     context,
-    WonkyDialogSpec(
-      title: l.conflictsTitle,
-      dialogKey: 'dialog.textConflicts',
-      description: lines.join('\n'),
-      width: 480,
-      fields: [
-        for (final c in restorable)
-          CheckboxFieldSpec(
-            id: c.id,
-            label: l.conflictsRow(
-              conflictWhere(l, m, c),
-              conflictText(l, c.myText),
-              conflictText(l, c.theirText),
-              who(c),
-            ),
-            initial: true,
-          ),
-      ],
-      buttons: [
-        DialogButtonSpec(id: 'dismiss', label: l.conflictsDismissAll),
-        DialogButtonSpec(id: 'copy', label: l.conflictsCopyMine),
-        if (restorable.isNotEmpty)
-          DialogButtonSpec(
-            id: 'restore',
-            label: l.conflictsRestoreMine,
-            primary: true,
-          ),
-      ],
+    conflicts: conflicts,
+    id: (c) => c.id,
+    actionable: (c) => c.canRestore,
+    rowLabel: (c) => l.conflictsRow(
+      conflictWhere(l, m, c),
+      conflictText(l, c.myText),
+      conflictText(l, c.theirText),
+      who(c),
     ),
-  );
-  if (r == null || r.buttonId == 'cancel') return null;
-  return (
-    action: r.buttonId,
-    ids: [
-      for (final c in restorable)
-        if (r.values[c.id] == true) c.id,
-      // Deleted targets can be copied (not restored).
-      if (r.buttonId == 'copy')
-        for (final c in gone) c.id,
+    goneLine: (c) => l.conflictsDeletedBy(
+      conflictWhere(l, m, c),
+      who(c),
+      conflictText(l, c.myText),
+    ),
+    title: l.conflictsTitle,
+    description: l.conflictsDescription,
+    dialogKey: 'dialog.textConflicts',
+    buttons: (anyActionable) => [
+      DialogButtonSpec(id: 'dismiss', label: l.conflictsDismissAll),
+      DialogButtonSpec(id: 'copy', label: l.conflictsCopyMine),
+      if (anyActionable)
+        DialogButtonSpec(
+          id: 'restore',
+          label: l.conflictsRestoreMine,
+          primary: true,
+        ),
     ],
+    // Deleted targets can be copied (not restored).
+    includeGoneFor: const {'copy'},
   );
 }

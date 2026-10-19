@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:wonky_sheets_core/formula.dart';
+import 'package:wonky_sheets_core/formula_testing.dart';
 
 import 'function_vectors.dart';
 
@@ -63,4 +64,73 @@ void main() {
       ),
     ]);
   });
+
+  // Regression (sheets-core H2): the range index built on the second use of a range
+  // compared numbers exactly, so identical formulas disagreed with the first (scanning)
+  // one when a cell held 0.1+0.2.
+  group(
+    'Given 400 numbers with one =0.1+0.2 when the same criterion is evaluated '
+    'three times then every result matches the scan',
+    () {
+      for (final (criterion, expected) in const [
+        ('0.3', 1),
+        ('"=0.3"', 1),
+        ('"<=0.3"', 1),
+        ('"<0.3"', 0),
+        ('">=0.3"', 400),
+        ('">0.3"', 399),
+        ('"<>0.3"', 399),
+      ]) {
+        test('COUNTIF(A1:A400, $criterion) = $expected', () {
+          final b = FormulaTestBench();
+          b.setColumn('A1', [
+            for (var i = 1; i <= 400; i++) i == 6 ? '=0.1+0.2' : i * 10,
+          ]);
+          b.setAll({
+            for (var i = 1; i <= 3; i++) 'B$i': '=COUNTIF(A1:A400, $criterion)',
+          });
+
+          expect([
+            for (var i = 1; i <= 3; i++) b.value('B$i'),
+          ], List.filled(3, FNumber(expected.toDouble())));
+        });
+      }
+
+      test('SUMIF and COUNTIFS agree with the scan as well', () {
+        final b = FormulaTestBench();
+        b.setColumn('A1', [
+          for (var i = 1; i <= 400; i++) i == 6 ? '=0.1+0.2' : i * 10,
+        ]);
+        b.setAll({
+          for (var i = 1; i <= 3; i++) ...{
+            'B$i': '=SUMIF(A1:A400, 0.3)',
+            'C$i': '=COUNTIFS(A1:A400, 0.3, A1:A400, "<1")',
+          },
+        });
+
+        expect([
+          for (var i = 1; i <= 3; i++) (b.value('B$i'), b.value('C$i')),
+        ], List.filled(3, (FNumber(0.1 + 0.2), FNumber(1))));
+      });
+
+      test('a number criterion also counts text forms of the number', () {
+        final b = FormulaTestBench();
+        b.setColumn('A1', [
+          for (var i = 1; i <= 400; i++)
+            switch (i) {
+              7 => "'300",
+              8 => "' 300 ",
+              _ => i * 10,
+            },
+        ]);
+        b.setAll({
+          for (var i = 1; i <= 3; i++) 'B$i': '=COUNTIF(A1:A400, 300)',
+        });
+
+        expect([
+          for (var i = 1; i <= 3; i++) b.value('B$i'),
+        ], List.filled(3, FNumber(3)));
+      });
+    },
+  );
 }

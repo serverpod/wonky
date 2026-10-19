@@ -56,20 +56,18 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 import 'package:wonky_ui/wonky_ui.dart' show SyncState, SyncStatus;
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show DeltaUtils, MarkdownCodec, PageSetup, documentHash;
+    show DeltaSelection, DeltaUtils, MarkdownCodec, PageSetup, documentHash;
 
 import '../../l10n/write_l10n.dart';
 import '../ai/ai_undo_grouping.dart';
 import '../collab/remote_presence.dart';
 import '../comments/write_comments.dart';
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
 import '../editor/controller/editor_types.dart';
 import '../editor/controller/write_editor_controller.dart';
 import '../offline/sqlite_sync_persistence.dart';
 import '../offline/write_local_store.dart' show StoredDocument;
 import '../offline/write_offline.dart';
 import '../suggestions/suggestions_controller.dart';
-import '../sync/connection_keeper.dart';
 import '../sync/document_sync_controller.dart';
 import 'reveal.dart';
 import 'write_document_api.dart';
@@ -175,7 +173,7 @@ class WriteDocumentSession extends ChangeNotifier {
       documentUuid: itemUuid,
       userUuid: services.me?.uuid.uuid ?? '',
       mode: EditorMode.viewing,
-    );
+    )..strings = () => writeL10nOf(services);
     _host = _SessionHost(this);
     presence = RemotePresenceController(this);
     comments = WriteComments(this);
@@ -406,7 +404,6 @@ class WriteDocumentSession extends ChangeNotifier {
       }
       if (offline != null) {
         unawaited(offline.opened(doc, item));
-        services.undo.addListener(_onUndoChanged);
       }
       if (offline != null && offline.isPendingCreate(itemUuid)) {
         // Created offline: connect once the queued creation went through.
@@ -1087,21 +1084,18 @@ class WriteDocumentSession extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Undo persistence (best effort, suite 12 §1.1 `LocalUndoStack`).
 
-  Timer? _undoSave;
-
   final Completer<void> _closed = Completer<void>();
 
   /// Completes after [dispose] once the local copy is written (tests, the
   /// screen's teardown).
   Future<void> get whenClosed => _closed.future;
 
-  void _onUndoChanged() {
-    if (!isLoaded || _disposed) return;
-    _undoSave?.cancel();
-    _undoSave = Timer(const Duration(milliseconds: 800), () {
-      unawaited(_saveUndo());
-    });
-  }
+  /// Stores the undo and redo stacks with the offline copy now (the screen
+  /// calls it when the app is hidden; [dispose] does it on close). Not
+  /// after every change: hashing the whole document for the stored stacks
+  /// took tens of ms after each typing pause on long documents (W-10).
+  Future<void> saveUndoStacks() =>
+      isLoaded && !_disposed ? _saveUndo() : Future<void>.value();
 
   /// The newest steps that can be stored: everything after the last step
   /// that has an entry without JSON (older steps only make sense together
@@ -1168,9 +1162,7 @@ class WriteDocumentSession extends ChangeNotifier {
     if (_disposed) return;
     final undoSaved = isLoaded ? _saveUndo() : Future<void>.value();
     _disposed = true;
-    _undoSave?.cancel();
     _stopReopen();
-    services.undo.removeListener(_onUndoChanged);
     if (_open[itemUuid.uuid] == this) _open.remove(itemUuid.uuid);
     services.currentItem.removeListener(_onCurrentItem);
     editor.removeListener(_onEditorChanged);

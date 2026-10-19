@@ -187,158 +187,164 @@ abstract final class HeadlessDocumentEditor {
     }
 
     final state = await head(session, target.document);
-    final headDelta = state.content;
-    final baseRevision = baseRevisionOverride ?? state.revision;
-    if (baseRevision > state.revision) {
-      throw McpToolException(
-        McpErrorCode.revisionMismatch,
-        'Revision $baseRevision does not exist yet (head is '
-        '${state.revision}).',
-        details: {'current_revision': state.revision},
-      );
-    }
-    final expected = options.expectedRevision;
-    if (expected != null && expected != state.revision) {
-      throw McpToolException(
-        McpErrorCode.revisionMismatch,
-        'The document is at revision ${state.revision}, not $expected. '
-        'Re-read it or use quote addressing.',
-        details: {
-          'current_revision': state.revision,
-          'changes_since': await _changesSince(
-            session,
-            target.document,
-            expected,
-            state.revision,
-          ),
-        },
-      );
-    }
+    // Keeps this state cached until the change is committed and read back.
+    DocumentCache.retain(state);
+    try {
+      final headDelta = state.content;
+      final baseRevision = baseRevisionOverride ?? state.revision;
+      if (baseRevision > state.revision) {
+        throw McpToolException(
+          McpErrorCode.revisionMismatch,
+          'Revision $baseRevision does not exist yet (head is '
+          '${state.revision}).',
+          details: {'current_revision': state.revision},
+        );
+      }
+      final expected = options.expectedRevision;
+      if (expected != null && expected != state.revision) {
+        throw McpToolException(
+          McpErrorCode.revisionMismatch,
+          'The document is at revision ${state.revision}, not $expected. '
+          'Re-read it or use quote addressing.',
+          details: {
+            'current_revision': state.revision,
+            'changes_since': await _changesSince(
+              session,
+              target.document,
+              expected,
+              state.revision,
+            ),
+          },
+        );
+      }
 
-    final edits = DocumentEdits(
-      maxDocumentChars: WonkyConfig.current.maxDocumentChars,
-    );
-    final result = build(headDelta, edits);
-    final warnings = [
-      for (final w in result.warnings)
-        {'code': w.kind.name, 'message': w.message, 'line': ?w.line},
-    ];
-    if (result.isNoop) {
+      final edits = DocumentEdits(
+        maxDocumentChars: WonkyConfig.current.maxDocumentChars,
+      );
+      final result = build(headDelta, edits);
+      final warnings = [
+        for (final w in result.warnings)
+          {'code': w.kind.name, 'message': w.message, 'line': ?w.line},
+      ];
+      if (result.isNoop) {
+        return {
+          'change_id': null,
+          'revision': state.revision,
+          'applied_range': result.appliedRange?.toJson(),
+          'summary': result.summary.isEmpty
+              ? 'Nothing to change'
+              : '${result.summary} (no change)',
+          'warnings': warnings,
+          ...result.extra,
+        };
+      }
+
+      // AI destructive guard (Write 09 §5.8) and similar checks.
+      if (mode != HeadlessMode.overlay) {
+        ctx.changeGuard?.call(headDelta, result.change, toolName);
+      }
+
+      final ai = ctx.actor.kind == ActorKind.ai;
+      var change = result.change;
+      String? suggestionId;
+      if (mode == HeadlessMode.suggest) {
+        suggestionId = const Uuid().v7();
+        change = const SuggestionRewriter().rewrite(
+          headDelta,
+          change,
+          SuggestionContext(
+            userUuid: ctx.actor.authUserId.uuid,
+            nowMs: clock.now().millisecondsSinceEpoch,
+            suggestionId: suggestionId,
+            via: ai ? 'ai' : 'mcp',
+          ),
+        );
+      }
+
+      final changeId = const Uuid().v7obj();
+      final agentSession = await AgentPresence.sessionFor(ctx, target);
+      final actor = ctx.actor.copyWith(sessionId: agentSession);
+      final CommittedOp committed;
+      try {
+        committed = await OtService.submit(
+          session,
+          actor: actor,
+          document: target.document,
+          item: target.item,
+          role: role,
+          clientOpId: changeId,
+          baseRevision: baseRevision,
+          deltaJson: jsonEncode(change.toJson()),
+          kind: ai && kind == DocumentOpKind.content
+              ? DocumentOpKind.aiEdit
+              : kind,
+          sessionId: agentSession,
+          groupId: ctx.groupId ?? changeId.uuid,
+          onBehalfOfSessionId: ctx.onBehalfOfSessionId,
+        );
+      } on OpRejection catch (r) {
+        throw McpToolException(switch (r.code) {
+          DocRejectCode.forbiddenForRole => McpErrorCode.forbidden,
+          DocRejectCode.tooLarge => McpErrorCode.tooLarge,
+          _ => McpErrorCode.validationFailed,
+        }, r.message);
+      }
+      final revision = committed.revision;
+
+      // Offsets of the result in the committed revision: transform through
+      // ops that landed between our base and our op.
+      ResolvedRange? applied = result.appliedRange;
+      if (mode == HeadlessMode.suggest && suggestionId != null) {
+        applied = _suggestionRange(state.content, suggestionId) ?? applied;
+      } else if (applied != null && revision > baseRevision + 1) {
+        final between = [
+          for (final op in state.recent)
+            if (op.revision > baseRevision && op.revision < revision) op.delta,
+        ];
+        var (s, l) = (applied.start, applied.length);
+        for (final op in between) {
+          (s, l) = WonkyOt.transformRange(op, s, l);
+        }
+        applied = ResolvedRange(s, l);
+      }
+
+      final opRow = await DocumentOp.db.findFirstRow(
+        session,
+        where: (t) =>
+            t.documentId.equals(target.document.id!) &
+            t.clientOpId.equals(changeId),
+      );
+      await recordChange(
+        session,
+        HeadlessChange(
+          changeId: changeId,
+          kind: 'content',
+          itemId: target.item.id!,
+          documentId: target.document.id,
+          revision: revision,
+          inverseJson: opRow?.inverseJson,
+          userId: ctx.actor.userId,
+          actorKind: ctx.actor.kind,
+          label: options.label ?? defaultLabel,
+          toolName: toolName,
+          createdAt: nowUtc(),
+        ),
+      );
+      afterCommit?.call(changeId.uuid, revision, state.content);
+      await AgentPresence.flash(ctx, target, agentSession, revision, applied);
       return {
-        'change_id': null,
-        'revision': state.revision,
-        'applied_range': result.appliedRange?.toJson(),
-        'summary': result.summary.isEmpty
-            ? 'Nothing to change'
-            : '${result.summary} (no change)',
+        'change_id': changeId.uuid,
+        'revision': revision,
+        'applied_range': applied?.toJson(),
+        'suggestion_id': ?suggestionId,
+        'mode': mode.name,
+        'summary': result.summary,
         'warnings': warnings,
         ...result.extra,
       };
+    } finally {
+      DocumentCache.release(state);
     }
-
-    // AI destructive guard (Write 09 §5.8) and similar checks.
-    if (mode != HeadlessMode.overlay) {
-      ctx.changeGuard?.call(headDelta, result.change, toolName);
-    }
-
-    final ai = ctx.actor.kind == ActorKind.ai;
-    var change = result.change;
-    String? suggestionId;
-    if (mode == HeadlessMode.suggest) {
-      suggestionId = const Uuid().v7();
-      change = const SuggestionRewriter().rewrite(
-        headDelta,
-        change,
-        SuggestionContext(
-          userUuid: ctx.actor.authUserId.uuid,
-          nowMs: clock.now().millisecondsSinceEpoch,
-          suggestionId: suggestionId,
-          via: ai ? 'ai' : 'mcp',
-        ),
-      );
-    }
-
-    final changeId = const Uuid().v7obj();
-    final agentSession = await AgentPresence.sessionFor(ctx, target);
-    final actor = ctx.actor.copyWith(sessionId: agentSession);
-    final CommittedOp committed;
-    try {
-      committed = await OtService.submit(
-        session,
-        actor: actor,
-        document: target.document,
-        item: target.item,
-        role: role,
-        clientOpId: changeId,
-        baseRevision: baseRevision,
-        deltaJson: jsonEncode(change.toJson()),
-        kind: ai && kind == DocumentOpKind.content
-            ? DocumentOpKind.aiEdit
-            : kind,
-        sessionId: agentSession,
-        groupId: ctx.groupId ?? changeId.uuid,
-        onBehalfOfSessionId: ctx.onBehalfOfSessionId,
-      );
-    } on OpRejection catch (r) {
-      throw McpToolException(switch (r.code) {
-        DocRejectCode.forbiddenForRole => McpErrorCode.forbidden,
-        DocRejectCode.tooLarge => McpErrorCode.tooLarge,
-        _ => McpErrorCode.validationFailed,
-      }, r.message);
-    }
-    final revision = committed.revision;
-
-    // Offsets of the result in the committed revision: transform through
-    // ops that landed between our base and our op.
-    ResolvedRange? applied = result.appliedRange;
-    if (mode == HeadlessMode.suggest && suggestionId != null) {
-      applied = _suggestionRange(state.content, suggestionId) ?? applied;
-    } else if (applied != null && revision > baseRevision + 1) {
-      final between = [
-        for (final op in state.recent)
-          if (op.revision > baseRevision && op.revision < revision) op.delta,
-      ];
-      var (s, l) = (applied.start, applied.length);
-      for (final op in between) {
-        (s, l) = WonkyOt.transformRange(op, s, l);
-      }
-      applied = ResolvedRange(s, l);
-    }
-
-    final opRow = await DocumentOp.db.findFirstRow(
-      session,
-      where: (t) =>
-          t.documentId.equals(target.document.id!) &
-          t.clientOpId.equals(changeId),
-    );
-    await recordChange(
-      session,
-      HeadlessChange(
-        changeId: changeId,
-        kind: 'content',
-        itemId: target.item.id!,
-        documentId: target.document.id,
-        revision: revision,
-        inverseJson: opRow?.inverseJson,
-        userId: ctx.actor.userId,
-        actorKind: ctx.actor.kind,
-        label: options.label ?? defaultLabel,
-        toolName: toolName,
-        createdAt: nowUtc(),
-      ),
-    );
-    afterCommit?.call(changeId.uuid, revision, state.content);
-    await AgentPresence.flash(ctx, target, agentSession, revision, applied);
-    return {
-      'change_id': changeId.uuid,
-      'revision': revision,
-      'applied_range': applied?.toJson(),
-      'suggestion_id': ?suggestionId,
-      'mode': mode.name,
-      'summary': result.summary,
-      'warnings': warnings,
-      ...result.extra,
-    };
   }
 
   static ResolvedRange? _suggestionRange(Delta doc, String id) {
@@ -650,10 +656,12 @@ abstract final class AgentPresence {
     entry.touch(
       onExpire: () {
         _entries.remove(key);
-        ClusterBus.postOn(
-          Serverpod.instance,
-          DocumentBus.channel(target.document.uuid),
-          DocBusMessage(type: 'left', originSessionId: sessionId),
+        unawaited(
+          ClusterBus.postOn(
+            Serverpod.instance,
+            DocumentBus.channel(target.document.uuid),
+            DocBusMessage(type: 'left', originSessionId: sessionId),
+          ),
         );
       },
     );

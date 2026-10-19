@@ -20,7 +20,7 @@ import '../model/sheets_undo.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
 import '../formatting/sheets_user_defaults.dart';
 import '../protection/file_editors.dart';
-import '../sync/sheets_sessions.dart' show SheetsData;
+import '../revlog/logged_workbook_session.dart';
 import 'authorization_dialog.dart';
 import 'conflict_dialog.dart';
 import 'local/script_local_store.dart';
@@ -238,7 +238,10 @@ class ScriptService extends ChangeNotifier {
 
   Future<void> _init() async {
     try {
-      _userProps = await ReplicaUserProperties.forSession(editor.session);
+      _userProps = await RemoteUserProperties.forSession(
+        services,
+        editor.session,
+      );
     } on Object catch (e) {
       debugPrint('Loading script user properties failed: $e');
     }
@@ -1046,10 +1049,15 @@ class ScriptService extends ChangeNotifier {
     notifyListeners();
     try {
       await editor.session.flush();
-      try {
-        await SheetsData.current(services)?.syncNow();
-      } on Object {
-        // The server also builds after the sync (compile-after-sync).
+      final session = editor.session;
+      if (session is LoggedWorkbookSession) {
+        try {
+          // Compile what the server has: every change acknowledged (06
+          // §7.1).
+          await session.whenSynced(timeout: const Duration(seconds: 10));
+        } on Object {
+          // The server also builds after the change (scripts hook).
+        }
       }
       final r = await b.compile(itemUuid);
       if (_disposed) return r;

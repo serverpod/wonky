@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:wonky_app/wonky_app.dart' show FindBarModel;
 import 'package:wonky_sheets_core/formula.dart' show GridRect;
 import 'package:wonky_sheets_core/model.dart';
 
@@ -80,7 +81,7 @@ class FindOptions {
 /// State of find (07 §11): query, options, the match list in navigation
 /// order and the current match. The find bar, the dialog and the match
 /// highlight layer read it; commands change it.
-class FindController extends ChangeNotifier {
+class FindController extends ChangeNotifier implements FindBarModel {
   FindController(this.ed);
 
   final SheetEditorController ed;
@@ -104,11 +105,15 @@ class FindController extends ChangeNotifier {
   final ValueNotifier<bool> dialogOpen = ValueNotifier(false);
 
   /// Focus requests for the find bar input (bumped by `sheets.find.open`).
+  @override
   final ValueNotifier<int> focusRequest = ValueNotifier(0);
 
+  @override
   String get query => _query;
   FindOptions get options => _options;
   List<FindMatch> get matches => _matches;
+  @override
+  bool get hasResults => _matches.isNotEmpty;
   bool get capped => _capped;
   int get current => _current;
   String? get error => _error;
@@ -142,6 +147,7 @@ class FindController extends ChangeNotifier {
 
   /// Sets the query and searches; the first match from the active cell
   /// becomes current (and selected when [select]).
+  @override
   void setQuery(String query, {FindOptions? options, bool select = true}) {
     _query = query;
     if (options != null) _options = options;

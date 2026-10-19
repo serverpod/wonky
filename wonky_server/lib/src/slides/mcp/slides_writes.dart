@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/schema.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 import 'package:serverpod/serverpod.dart' show LogLevel;
 
@@ -59,7 +59,7 @@ class SlidesWriteOutcome {
   /// The common result fields of mutating tools (11 §2.2).
   Map<String, Object?> toJson(String summary) => {
     'change_id': write.changeId?.uuid,
-    'sync_version': write.syncVersion?.uuid,
+    'sync_version': write.syncVersion,
     'summary': summary,
     'created': created,
     'warnings': [for (final w in warnings) w.toJson()],
@@ -89,7 +89,7 @@ class SlidesWriteOutcome {
 /// The write pipeline of the `slides.*` tools (Slides 11 §2.1): every call
 /// plans its operations with the shared planner against the headless deck
 /// ([ServerHeadlessDeck.writeSteps]: serialized per deck, maintenance
-/// first, soft locks, one `DeckChangeLog` + `ServerChangeRecord` per call
+/// first, soft locks, one RevLog change + `ServerChangeRecord` per call
 /// labeled "MCP: tool"), maps planner refusals to tool errors and shows
 /// the agent to collaborators on the touched slide.
 abstract final class SlidesWrites {

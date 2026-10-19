@@ -1,6 +1,10 @@
+@Tags(['integration'])
+library;
+
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
-import 'package:wonky_server/src/platform/common/models.dart' show ChangeLog;
+import 'package:wonky_server/src/platform/common/models.dart'
+    show DriveItem, RevFile, RevOp;
 import 'package:wonky_server/src/platform/mcp/tool_executor.dart';
 import 'package:wonky_server/src/platform/mcp/wonky_mcp_server.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
@@ -94,7 +98,7 @@ void main() {
     });
 
     test('when a value is written then the result carries the sync version '
-        "(the id of the call's ChangeLog row)", () async {
+        "(the file revision of the call's last op)", () async {
       final r = await mcp.call('sheets.set_values', {
         'spreadsheet': ss,
         'range': 'Data!F1',
@@ -104,12 +108,22 @@ void main() {
       });
       final version = r['sync_version'];
       expect(version, isA<String>());
-      final row = await ChangeLog.db.findById(
+      final item = await DriveItem.db.findFirstRow(
         mcp.ctx.session,
-        UuidValue.withValidation(version as String),
+        where: (t) => t.uuid.equals(UuidValue.withValidation(ss)),
       );
-      expect(row, isNotNull);
-      expect(row!.spreadsheetId, UuidValue.withValidation(ss));
+      final file = await RevFile.db.findFirstRow(
+        mcp.ctx.session,
+        where: (t) => t.fileUuid.equals(item!.contentRef!),
+      );
+      final op = await RevOp.db.findFirstRow(
+        mcp.ctx.session,
+        where: (t) =>
+            t.fileId.equals(file!.id!) &
+            t.revision.equals(int.parse(version as String)),
+      );
+      expect(op, isNotNull);
+      expect(op!.label, contains('set_values'));
       final read = await mcp.call('sheets.get_values', {
         'spreadsheet': ss,
         'ranges': ['Data!A1'],

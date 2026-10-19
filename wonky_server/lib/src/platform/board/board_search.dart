@@ -1,16 +1,17 @@
 import 'package:serverpod/serverpod.dart';
 
 import '../common/models.dart';
+import '../common/search_indexes.dart';
 import '../common/time.dart';
 import 'board_access.dart';
 
 /// Full-text search and the board list query (specs/16 §4.4, §6.4). The
-/// search document is computed in the query; there is no stored tsvector
-/// column or index, so the schema stays identical to `definition.sql`.
+/// search document is an expression with a GIN index (and a trigram index
+/// on the title when `pg_trgm` exists) that [SearchIndexes] creates at
+/// start, outside the models (a documented exception, specs/13 §3).
 abstract final class BoardSearch {
-  static const document =
-      "(setweight(to_tsvector('english', p.title), 'A') || "
-      "setweight(to_tsvector('english', p.body), 'B'))";
+  /// The indexed search document (must stay identical to the index).
+  static const document = SearchIndexes.boardDocument;
 
   /// Votes of users who are not blocked right now (specs/16 §11).
   static const activeVoter =

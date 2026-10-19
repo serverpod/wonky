@@ -5,15 +5,18 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:wonky_core/wonky_core.dart' show UuidV7Generator;
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show SuggestionContext, SuggestionRewriter;
 
+import '../../../l10n/write_l10n.dart';
 import '../applier/delta_applier.dart';
 import '../extractor/change_delta_extractor.dart';
 import '../mapping/delta_document_mapper.dart';
 import '../mapping/delta_ops.dart';
 import '../mapping/document_mirror.dart';
+import '../mapping/mirror_overlays.dart';
 import '../requests/block_editing_handlers.dart';
 import '../setup/editor_factory.dart';
-import '../suggesting/suggestion_rewriter.dart';
 import '../view/editor_view_state.dart';
 import 'editor_pipeline.dart';
 import 'editor_types.dart';
@@ -99,6 +102,10 @@ class WriteEditorController extends ChangeNotifier {
 
   /// The Delta mirror of [document] (offset ⇄ position conversions).
   DocumentMirror get mirror => _pipeline.mirror;
+
+  /// Comment anchors and pending suggestions, kept per block (Write 04
+  /// §36): only changed blocks are scanned again.
+  late final MirrorOverlays overlays = MirrorOverlays(mirror);
 
   /// The change extractor (used by marked reactions).
   ChangeDeltaExtractor get extractor => _pipeline.extractor;
@@ -303,11 +310,19 @@ class WriteEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  static String _defaultLabel(LocalChangeKind kind) => switch (kind) {
-    LocalChangeKind.typing => 'Typing',
-    LocalChangeKind.deletion => 'Delete',
-    LocalChangeKind.other => 'Edit',
-  };
+  String _defaultLabel(LocalChangeKind kind) {
+    final l = strings();
+    return switch (kind) {
+      LocalChangeKind.typing => l.undoTyping,
+      LocalChangeKind.deletion => l.undoDelete,
+      LocalChangeKind.other => l.undoEdit,
+    };
+  }
+
+  /// The Write strings for what the editor labels itself (undo steps,
+  /// screen-reader announcements): English unless the host sets the
+  /// shell's locale (the document session does).
+  WriteLocalizations Function() strings = () => writeL10nEnglish;
 
   // ---------------------------------------------------------------------------
   // Remote and Delta-based changes.
@@ -404,8 +419,8 @@ class WriteEditorController extends ChangeNotifier {
   void select(DeltaSelection selection, {bool userInteraction = true}) {
     final max = mirror.length - 1;
     final documentSelection = mirror.selectionAt(
-      selection.base.clamp(0, max),
-      selection.extent.clamp(0, max),
+      selection.anchor.clamp(0, max),
+      selection.head.clamp(0, max),
     );
     editor.execute([
       ChangeSelectionRequest(
@@ -486,21 +501,15 @@ class WriteEditorController extends ChangeNotifier {
     LocalDeltaChange change, {
     bool alreadyApplied = true,
   }) {
-    // The document already contains `change`; compute the document before it.
-    final after = mirror.toDelta();
-    final before = after.compose(change.inverse);
     final now = _clock.now();
     final id = _suggestionSession.idFor(change, now, newEmbedId);
-    final rewritten = _rewriter.rewrite(
-      before,
-      change.delta,
-      SuggestionContext(
-        userUuid: userUuid,
-        nowMs: now.millisecondsSinceEpoch,
-        suggestionId: id,
-        via: suggestionVia,
-      ),
+    final context = SuggestionContext(
+      userUuid: userUuid,
+      nowMs: now.millisecondsSinceEpoch,
+      suggestionId: id,
+      via: suggestionVia,
     );
+    final (rewritten, rewrittenInverse) = _rewriteLocally(change, context);
     if (rewritten == change.delta) {
       _emit(change);
       return;
@@ -518,7 +527,7 @@ class WriteEditorController extends ChangeNotifier {
         selectionBefore.isCollapsed) {
       final (start, end) = _deletedRange(change.delta);
       selectionAfter = DeltaSelection.collapsed(
-        selectionBefore.base == end ? start : end,
+        selectionBefore.anchor == end ? start : end,
       );
     } else if (lastInsertEnd != null) {
       selectionAfter = DeltaSelection.collapsed(lastInsertEnd);
@@ -538,7 +547,7 @@ class WriteEditorController extends ChangeNotifier {
     _emit(
       LocalDeltaChange(
         delta: rewritten,
-        inverse: DeltaOps.invert(rewritten, before),
+        inverse: rewrittenInverse,
         label: change.label,
         kind: change.kind,
         source: change.source,
@@ -549,6 +558,93 @@ class WriteEditorController extends ChangeNotifier {
         isComposing: change.isComposing,
       ),
     );
+  }
+
+  /// [change] (already applied) rewritten into suggestion form, and the
+  /// inverse of the rewritten change against the document before [change].
+  ///
+  /// Works on a window of the document around the touched range (one
+  /// character either side: the rewriter looks at the neighbours to extend
+  /// your own suggested insertion), not on the whole document (W-04): the
+  /// window before the change is the mirror's slice after it composed with
+  /// the change's inverse.
+  (Delta, Delta) _rewriteLocally(
+    LocalDeltaChange change,
+    SuggestionContext context,
+  ) {
+    final touched = _touchedRange(change.delta);
+    if (touched == null) return (change.delta, change.inverse);
+    final (lo, hi) = touched;
+    final net = DeltaOps.lengthChange(change.delta);
+    final afterLength = mirror.length;
+    final from = lo > 0 ? lo - 1 : 0;
+    final to = (hi + 1).clamp(0, afterLength - net);
+    final after = mirror.slice(from, to + net);
+    final before = after.compose(_withoutPrefix(change.inverse, from));
+    final local = _rewriter.rewrite(
+      before,
+      _withoutPrefix(change.delta, from),
+      context,
+    );
+    Delta prefixed(Delta delta) {
+      final out = Delta()..retain(from);
+      for (final op in delta.operations) {
+        out.push(op);
+      }
+      out.trim();
+      return out;
+    }
+
+    final rewritten = prefixed(local);
+    final inverse = prefixed(DeltaOps.invert(local, before));
+    assert(() {
+      if (!_pipeline.extractor.verifyInvariants) return true;
+      // The window must give what the whole document gives.
+      final whole = mirror.toDelta().compose(change.inverse);
+      final full = _rewriter.rewrite(whole, change.delta, context);
+      return full == rewritten && DeltaOps.invert(full, whole) == inverse;
+    }(), 'windowed suggestion rewrite differs from the full rewrite');
+    return (rewritten, inverse);
+  }
+
+  /// The base range `[lo, hi]` a change touches: from its first insert,
+  /// delete or attributed retain to the end of its last one.
+  static (int, int)? _touchedRange(Delta change) {
+    var offset = 0;
+    int? lo;
+    var hi = 0;
+    for (final op in change.operations) {
+      final length = op.length!;
+      final attributes = op.attributes;
+      if (op.isRetain && (attributes == null || attributes.isEmpty)) {
+        offset += length;
+        continue;
+      }
+      lo ??= offset;
+      if (!op.isInsert) offset += length;
+      if (offset > hi) hi = offset;
+    }
+    return lo == null ? null : (lo, hi);
+  }
+
+  /// [change] without its first [count] base characters (plain retains).
+  static Delta _withoutPrefix(Delta change, int count) {
+    final out = Delta();
+    var skip = count;
+    for (final op in change.operations) {
+      if (skip > 0 && op.isRetain) {
+        final length = op.length!;
+        if (length <= skip) {
+          skip -= length;
+          continue;
+        }
+        out.retain(length - skip, op.attributes);
+        skip = 0;
+        continue;
+      }
+      out.push(op);
+    }
+    return out;
   }
 
   /// Offset (in the new document) right after the last insertion of [delta].

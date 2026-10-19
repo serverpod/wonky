@@ -1,0 +1,5 @@
+enum: RevFileKind
+serialized: byName
+values:
+  - spreadsheet
+  - deck

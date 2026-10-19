@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:test/test.dart';
 import 'package:wonky_sheets_core/formula.dart';
+import 'package:wonky_sheets_core/formula_testing.dart';
 
 Matcher isError(String literal) =>
     isA<FError>().having((e) => e.kind.literal, 'literal', literal);
@@ -65,19 +66,22 @@ void main() {
       t.set('A2', null);
       expect(t.value('A3'), const FNumber(2));
     });
-    test('when a value changes then the change stream reports the cells', () {
-      t.engine.settle();
-      final batches = <RecalcBatch>[];
-      final sub = t.engine.changes.listen(batches.add);
-      t.set('A1', 5);
-      t.engine.settle();
-      sub.cancel();
-      final cells = batches
-          .expand((b) => b.cells)
-          .map((c) => CellPos(c.row, c.col).a1)
-          .toSet();
-      expect(cells, containsAll(['A2', 'A3', 'B1']));
-    });
+    test(
+      'when a value changes then the change stream reports the cells',
+      () async {
+        t.engine.settle();
+        final batches = <RecalcBatch>[];
+        final sub = t.engine.changes.listen(batches.add);
+        t.set('A1', 5);
+        t.engine.settle();
+        await sub.cancel();
+        final cells = batches
+            .expand((b) => b.cells)
+            .map((c) => CellPos(c.row, c.col).a1)
+            .toSet();
+        expect(cells, containsAll(['A2', 'A3', 'B1']));
+      },
+    );
     test(
       'when asking for dependencies then precedents and dependents are reported',
       () {

@@ -4,7 +4,7 @@ import 'package:wonky_app/testing.dart';
 import 'package:wonky_slides/config/slides_app_config.dart';
 import 'package:wonky_slides/features/settings/slides_settings.dart';
 import 'package:wonky_slides/features/settings/slides_user_defaults.dart';
-import 'package:wonky_slides/features/sync/slides_data.dart'
+import 'package:wonky_slides/features/revlog/slides_rev_log.dart'
     show newPresentationDefaults;
 import 'package:wonky_slides_core/themes.dart'
     show SlideAppearance, SlideSizeKind;

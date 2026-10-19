@@ -9,6 +9,8 @@
       "options": {
         "cwd": "${workspaceFolder}/wonky_server",
         "env": {
+          // Not a secret: the local development database password of
+          // wonky_server/docker-compose.yaml and config/passwords.example.yaml.
           "SERVERPOD_PASSWORD_database": "prDe3lU8Wyd11pAWlsVGDvMXbi70jBHV",
           // Marks a `serverpod start` launched from the IDE, which is the
           // only kind that honors the Flutter device picked in VS Code. A run

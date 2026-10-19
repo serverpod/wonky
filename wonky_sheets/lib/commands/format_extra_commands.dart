@@ -4,6 +4,7 @@ import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_sheets_core/formula.dart' show CellPos, FormulaLanguage;
 import 'package:wonky_sheets_core/model.dart';
 
+import '../features/history/change_labels.dart';
 import '../features/formatting/spreadsheet_settings_dialog.dart';
 import '../features/number_format/custom_currency_dialog.dart';
 import '../features/number_format/custom_date_time_dialog.dart';
@@ -138,7 +139,7 @@ List<Command<CommandArgs>> formatExtraCommands(ShellServices s) => [
             ],
           ],
           parseLocale: ed.locale,
-          label: 'Typing',
+          label: SheetsChangeLabels.typing,
         ),
       );
       return ok({'cell': CellPos(r, c).a1});

@@ -22,18 +22,23 @@ class RichTextLayoutCache {
 
   /// The paragraph of [rich]. [pxPerPoint] converts run font sizes (pt) to
   /// px at the current zoom; [linkColor] colors link runs without a color.
+  /// [theme] is the theme [resolveColor] resolves `theme:*` run colors
+  /// with: part of the key, so a theme change or preview never reuses a
+  /// paragraph colored with another theme (S-09).
   ui.Paragraph layout(
     RichText rich,
     GridTextStyle base, {
     required double pxPerPoint,
     required Color linkColor,
     required String? Function(String? color) resolveColor,
+    SpreadsheetTheme? theme,
     CellFormat? conditional,
     double? wrapWidth,
     Color? chipText,
   }) {
     final key = (
       rich,
+      theme,
       base,
       pxPerPoint,
       linkColor,

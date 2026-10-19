@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shad/shad.dart' show LucideIcons;
 import 'package:wonky_app/testing.dart';
@@ -267,7 +268,7 @@ void main() {
       task
         ..status = BoardTaskStatus.claimed
         ..claimedById = 2
-        ..claimExpiresAt = DateTime.now().add(const Duration(hours: 40));
+        ..claimExpiresAt = clock.now().add(const Duration(hours: 40));
 
       final outcome = await h.undo();
 

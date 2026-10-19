@@ -9,6 +9,7 @@ import '../../platform/drive/drive_service.dart';
 import '../../platform/mcp/collab_tool_handlers.dart';
 import '../../platform/mcp/drive_tool_handlers.dart';
 import '../../platform/mcp/tool_support.dart';
+import '../../platform/mcp/mcp_errors.dart';
 import '../../platform/mcp/wonky_mcp_server.dart';
 import 'headless_editor.dart';
 import 'write_tool_handlers.dart';
@@ -32,7 +33,7 @@ abstract final class WriteMcpContent {
       (uri, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx, McpScope.driveRead);
-        final page = await _guard(
+        final page = await McpErrors.guardResource(
           () => DriveService.list(
             ctx.session,
             ctx.actor,
@@ -65,7 +66,7 @@ abstract final class WriteMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx, McpScope.writeRead);
-        final r = await _guard(
+        final r = await McpErrors.guardResource(
           () => WriteToolHandlers.getDocument(
             ctx,
             ToolArgs({'document_uuid': '${vars['uuid']}', 'max_chars': 200000}),
@@ -93,7 +94,7 @@ abstract final class WriteMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx, McpScope.writeRead);
-        final r = await _guard(
+        final r = await McpErrors.guardResource(
           () => WriteToolHandlers.getOutline(
             ctx,
             ToolArgs({'document_uuid': '${vars['uuid']}'}),
@@ -115,7 +116,7 @@ abstract final class WriteMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx, McpScope.writeRead);
-        final t = await _guard(
+        final t = await McpErrors.guardResource(
           () => HeadlessDocumentEditor.resolve(
             ctx.session,
             ctx.actor,
@@ -144,7 +145,7 @@ abstract final class WriteMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx, McpScope.writeRead);
-        final r = await _guard(
+        final r = await McpErrors.guardResource(
           () => CollabToolHandlers.listComments(
             ctx,
             ToolArgs({'uuid': '${vars['uuid']}', 'status': 'open'}),
@@ -205,28 +206,6 @@ abstract final class WriteMcpContent {
   }
 
   /// Maps tool errors to JSON-RPC errors for resource reads.
-  static Future<T> _guard<T>(Future<T> Function() body) async {
-    try {
-      return await body();
-    } on McpToolException catch (e) {
-      throw mcp.McpError(
-        e.code == McpErrorCode.notFound
-            ? mcp.ErrorCode.resourceNotFound.value
-            : mcp.ErrorCode.invalidParams.value,
-        e.message,
-        e.toJson(),
-      );
-    } on WonkyException catch (e) {
-      final m = McpToolException.fromWonky(e);
-      throw mcp.McpError(
-        m.code == McpErrorCode.notFound
-            ? mcp.ErrorCode.resourceNotFound.value
-            : mcp.ErrorCode.invalidParams.value,
-        m.message,
-        m.toJson(),
-      );
-    }
-  }
 
   static UuidValue mcpUuid(String s) {
     try {

@@ -1,14 +1,15 @@
 # Wonky Sheets — Specifications
 
-Collaborative, offline-first spreadsheet (Google Sheets–like) on Serverpod's offline-first sync
-(`serverpod_offline_sync`), with a pure-Dart formula engine and Dart scripting (`dart_eval`).
-Read the [suite specs](../README.md) first — especially
-[12 · Offline & sync](../12-offline-and-sync.md) for the engine's rules and limits.
+Collaborative, offline-first spreadsheet (Google Sheets–like) that syncs through RevLog, a
+server-sequenced op log with a local cache and outbox, with a pure-Dart formula engine and Dart
+scripting (`dart_eval`). Read the [suite specs](../README.md) first — especially
+[12 · Offline & sync](../12-offline-and-sync.md) and [17 · RevLog sync](../17-revlog-sync.md) for
+the sync rules and limits.
 
 | # | Spec | Summary |
 |---|------|---------|
 | 01 | [Overview](01-overview.md) | Purpose, prioritized features, limits, concurrency semantics, document map |
-| 02 | [Data model](02-data-model.md) | **Canonical** synced schema: spaces, stable row/column ids, deterministic cells, id-based formulas, rules, scripts, ChangeLog, in-memory model, writes & undo |
+| 02 | [Data model](02-data-model.md) | **Canonical** file schema: stable row/column ids, deterministic cells, id-based formulas, rules, scripts, op log, in-memory model, writes & undo |
 | 03 | [Grid & editing](03-grid-and-editing.md) | Custom grid renderer, selection, keyboard, cell/formula editing, fill, clipboard, structure ops |
 | 04 | [Screens, menus & toolbar](04-screens-menus-toolbar.md) | Complete menubar (canonical menu command registry), toolbar, tabs, context menus, panels, dialogs |
 | 05 | [Formula engine](05-formula-engine.md) | Grammar, codec, evaluation, arrays, dependency graph & recalculation, ~480-function catalog, QUERY |

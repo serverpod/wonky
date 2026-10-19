@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_client/wonky_client.dart'
     show ActorKind, PresenceHints, PresenceRoster;
@@ -52,7 +53,7 @@ void main() {
         '3 s window', () async {
       await roster(editing: false);
       final c = s.collab.presence.cursorOf('bo')!;
-      final later = DateTime.now().add(const Duration(seconds: 10));
+      final later = clock.now().add(const Duration(seconds: 10));
       expect(s.collab.presence.flagVisible(c, later), isFalse);
 
       s.collab.presence.setHover(s.sheetId, 3, 1);
@@ -82,11 +83,11 @@ void main() {
         ),
       );
       final cursor = s.collab.presence.cursorOf('bo')!;
-      expect(s.collab.presence.typingOf(cursor, DateTime.now())?.text, 'Hel');
+      expect(s.collab.presence.typingOf(cursor, clock.now())?.text, 'Hel');
 
       await roster(editing: false);
       final after = s.collab.presence.cursorOf('bo')!;
-      expect(s.collab.presence.typingOf(after, DateTime.now()), isNull);
+      expect(s.collab.presence.typingOf(after, clock.now()), isNull);
       expect(s.collab.presence.typing, isEmpty);
     });
 

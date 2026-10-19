@@ -3,3 +3,5 @@ tags:
   slow:
   e2e:
     skip: "Needs the server started with serverpod start (run with --run-skipped -t e2e)"
+  perf:
+    skip: "Write perf suite (CQ-38): run with flutter test -t perf --run-skipped test/perf"

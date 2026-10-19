@@ -54,7 +54,10 @@ abstract final class ImportFormatDetector {
           return const DetectedImport(ImportFormat.docx);
         }
         final mimetype = archive.findFile('mimetype');
+        // The `mimetype` entry is a short string: a large one is not read
+        // (zip bombs, W-06).
         if (mimetype != null &&
+            mimetype.size <= 1024 &&
             String.fromCharCodes(
               mimetype.content as List<int>,
             ).startsWith('application/vnd.oasis.opendocument.text')) {
@@ -143,6 +146,8 @@ final class WonkyImporters {
 
   ImportResult _markdownZip(Uint8List bytes, ImportOptions options) {
     final archive = ZipDecoder().decodeBytes(bytes);
+    // Before anything is inflated (zip bombs, W-06).
+    ArchiveLimits.standard.check(archive);
     final mdFiles =
         archive.files
             .where(
@@ -186,14 +191,14 @@ final class WonkyImporters {
       if (mime == null) return null;
       return ImportedImage(
         tempId: 'zip${counter++}',
-        bytes: Uint8List.fromList(file.content as List<int>),
+        // A view of the inflated part (cached by the archive): referencing
+        // an image many times does not copy it.
+        bytes: file.content,
         mime: mime,
       );
     }
 
-    final text = ImportTextDecoder.decode(
-      Uint8List.fromList(main.content as List<int>),
-    ).text;
+    final text = ImportTextDecoder.decode(main.content).text;
     return const MarkdownCodec().importMarkdown(
       text,
       options: options,

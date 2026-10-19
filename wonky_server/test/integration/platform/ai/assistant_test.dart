@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -469,6 +472,36 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('when a run uses its token limit then it stops before the next '
+        'model request', () async {
+      AiConfig.current = AiConfig(
+        serverKeys: {AiProvider.anthropic: 'test-key'},
+        dailyTokenBudget: 1000000,
+        maxRunTokens: 500,
+      );
+      fake
+        ..enqueue(
+          (AiScript()
+                ..usage(input: 400, output: 200)
+                ..toolUse('tu_1', 'write_get_document', {})
+                ..stop(AiStopReason.toolUse))
+              .response,
+        )
+        ..enqueue((AiScript()..text('never sent')).response);
+
+      final events = await chat('Read it all').toList();
+
+      expect(fake.requests, hasLength(1));
+      expect(
+        events
+            .where((e) => e.type == AssistantEventType.error)
+            .single
+            .errorCode,
+        'run_budget',
+      );
+      expect(events.last.type, AssistantEventType.done);
     });
 
     test('when stopped then the run ends with done(stopped)', () async {

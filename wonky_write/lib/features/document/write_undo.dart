@@ -3,9 +3,7 @@ import 'dart:convert';
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show DeltaUtils, WonkyOt, canonicalJsonEncode;
-
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
+    show DeltaSelection, DeltaUtils, WonkyOt, canonicalJsonEncode;
 
 /// One `write.content` undo entry (Write 03 §4, suite 08 §3.3): the delta
 /// that performs this entry (for an undo entry: the inverse of the local
@@ -57,15 +55,31 @@ class WriteContentUndoEntry extends UndoEntry {
   /// entry).
   (WriteContentUndoEntry?, Delta) rebaseOver(Delta remote) {
     final u = change;
-    final uPrime = WonkyOt.transform(remote, u, aWinsTies: true);
-    final rPrime = WonkyOt.transform(u, remote, aWinsTies: false);
-    if (DeltaUtils.isNoop(uPrime)) return (null, rPrime);
+    final Delta uPrime;
+    final Delta rPrime;
+    // Disjoint changes (the common case: a collaborator edits elsewhere)
+    // only move each other: no transforms, and an entry that doesn't move
+    // stays the same object, so the stack isn't rebuilt (CQ-49, W-11).
+    final ur = _Touched.of(u);
+    final rr = _Touched.of(remote);
+    if (ur != null && rr != null && rr.lo > ur.hi) {
+      uPrime = u;
+      rPrime = rr.shifted(remote, ur.net);
+    } else if (ur != null && rr != null && rr.hi < ur.lo) {
+      uPrime = ur.shifted(u, rr.net);
+      rPrime = remote;
+    } else {
+      uPrime = WonkyOt.transform(remote, u, aWinsTies: true);
+      rPrime = WonkyOt.transform(u, remote, aWinsTies: false);
+      if (DeltaUtils.isNoop(uPrime)) return (null, rPrime);
+    }
+    final s = select?.transform(rPrime);
+    final c = counterSelect?.transform(remote);
+    if (identical(uPrime, u) && s == select && c == counterSelect) {
+      return (this, rPrime);
+    }
     return (
-      WriteContentUndoEntry(
-        change: uPrime,
-        select: select?.transform(rPrime),
-        counterSelect: counterSelect?.transform(remote),
-      ),
+      WriteContentUndoEntry(change: uPrime, select: s, counterSelect: c),
       rPrime,
     );
   }
@@ -241,5 +255,54 @@ class WriteMetaUndoHandler extends UndoHandler<WriteMetaUndoEntry> {
   Future<WriteMetaUndoEntry> redo(WriteMetaUndoEntry entry) async {
     await write(entry.field, entry.beforeJson);
     return entry.swapped;
+  }
+}
+
+/// The base range `[lo, hi]` a change touches (from its first insert,
+/// delete or attributed retain to the end of its last one) and its length
+/// change, for rebasing disjoint changes without transforms.
+class _Touched {
+  const _Touched(this.lo, this.hi, this.net, this.lead);
+
+  final int lo;
+  final int hi;
+  final int net;
+
+  /// Number of (plain retain) ops before [lo].
+  final int lead;
+
+  static _Touched? of(Delta change) {
+    var offset = 0;
+    var net = 0;
+    var lead = 0;
+    int? lo;
+    var hi = 0;
+    for (final op in change.operations) {
+      final length = op.length!;
+      final attributes = op.attributes;
+      if (op.isRetain && (attributes == null || attributes.isEmpty)) {
+        if (lo == null) lead++;
+        offset += length;
+        continue;
+      }
+      lo ??= offset;
+      if (op.isInsert) {
+        net += length;
+      } else {
+        if (op.isDelete) net -= length;
+        offset += length;
+      }
+      if (offset > hi) hi = offset;
+    }
+    return lo == null ? null : _Touched(lo, hi, net, lead);
+  }
+
+  /// [change] (the change this was computed from) moved by [by] characters.
+  Delta shifted(Delta change, int by) {
+    final out = Delta()..retain(lo + by);
+    for (final op in change.operations.skip(lead)) {
+      out.push(op);
+    }
+    return out;
   }
 }

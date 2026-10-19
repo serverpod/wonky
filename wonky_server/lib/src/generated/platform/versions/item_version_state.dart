@@ -26,6 +26,7 @@ abstract class ItemVersionState
     this.lastVersionAt,
     required this.editorsSinceLastVersion,
     this.lastRevision,
+    this.capturingSince,
   });
 
   factory ItemVersionState({
@@ -36,6 +37,7 @@ abstract class ItemVersionState
     DateTime? lastVersionAt,
     required List<int> editorsSinceLastVersion,
     int? lastRevision,
+    DateTime? capturingSince,
   }) = _ItemVersionStateImpl;
 
   factory ItemVersionState.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -57,6 +59,11 @@ abstract class ItemVersionState
         jsonSerialization['editorsSinceLastVersion'],
       ),
       lastRevision: jsonSerialization['lastRevision'] as int?,
+      capturingSince: jsonSerialization['capturingSince'] == null
+          ? null
+          : _is.DateTimeJsonExtension.fromJson(
+              jsonSerialization['capturingSince'],
+            ),
     );
   }
 
@@ -82,6 +89,10 @@ abstract class ItemVersionState
   /// Write: head revision at the last edit.
   int? lastRevision;
 
+  /// When a capture run claimed the item (`VersionService.captureDue`):
+  /// overlapping runs skip it; a claim older than 10 minutes is taken over.
+  DateTime? capturingSince;
+
   @override
   _is.Table<int?> get table => t;
 
@@ -96,6 +107,7 @@ abstract class ItemVersionState
     DateTime? lastVersionAt = const _is.$UndefinedDateTime(),
     List<int>? editorsSinceLastVersion,
     int? lastRevision,
+    DateTime? capturingSince = const _is.$UndefinedDateTime(),
   });
   @override
   Map<String, dynamic> toJson() {
@@ -108,6 +120,7 @@ abstract class ItemVersionState
       if (lastVersionAt != null) 'lastVersionAt': lastVersionAt?.toJson(),
       'editorsSinceLastVersion': editorsSinceLastVersion.toJson(),
       if (lastRevision != null) 'lastRevision': lastRevision,
+      if (capturingSince != null) 'capturingSince': capturingSince?.toJson(),
     };
   }
 
@@ -155,6 +168,7 @@ class _ItemVersionStateImpl extends ItemVersionState {
     DateTime? lastVersionAt,
     required List<int> editorsSinceLastVersion,
     int? lastRevision,
+    DateTime? capturingSince,
   }) : super._(
          id: id,
          itemId: itemId,
@@ -163,6 +177,7 @@ class _ItemVersionStateImpl extends ItemVersionState {
          lastVersionAt: lastVersionAt,
          editorsSinceLastVersion: editorsSinceLastVersion,
          lastRevision: lastRevision,
+         capturingSince: capturingSince,
        );
 
   /// Returns a shallow copy of this [ItemVersionState]
@@ -177,6 +192,7 @@ class _ItemVersionStateImpl extends ItemVersionState {
     DateTime? lastVersionAt = const _is.$UndefinedDateTime(),
     List<int>? editorsSinceLastVersion,
     Object? lastRevision = _Undefined,
+    DateTime? capturingSince = const _is.$UndefinedDateTime(),
   }) {
     return ItemVersionState(
       id: id is int? ? id : this.id,
@@ -192,6 +208,9 @@ class _ItemVersionStateImpl extends ItemVersionState {
           editorsSinceLastVersion ??
           this.editorsSinceLastVersion.map((e0) => e0).toList(),
       lastRevision: lastRevision is int? ? lastRevision : this.lastRevision,
+      capturingSince: capturingSince is _is.UndefinedSentinel
+          ? this.capturingSince
+          : capturingSince,
     );
   }
 }
@@ -234,6 +253,12 @@ class ItemVersionStateUpdateTable
     table.lastRevision,
     value,
   );
+
+  _is.ColumnValue<DateTime, DateTime> capturingSince(DateTime? value) =>
+      _is.ColumnValue(
+        table.capturingSince,
+        value,
+      );
 }
 
 class ItemVersionStateTable extends _is.Table<int?> {
@@ -264,6 +289,10 @@ class ItemVersionStateTable extends _is.Table<int?> {
       'lastRevision',
       this,
     );
+    capturingSince = _is.ColumnDateTime(
+      'capturingSince',
+      this,
+    );
   }
 
   late final ItemVersionStateUpdateTable updateTable;
@@ -283,6 +312,10 @@ class ItemVersionStateTable extends _is.Table<int?> {
   /// Write: head revision at the last edit.
   late final _is.ColumnInt lastRevision;
 
+  /// When a capture run claimed the item (`VersionService.captureDue`):
+  /// overlapping runs skip it; a claim older than 10 minutes is taken over.
+  late final _is.ColumnDateTime capturingSince;
+
   @override
   List<_is.Column> get columns => [
     id,
@@ -292,6 +325,7 @@ class ItemVersionStateTable extends _is.Table<int?> {
     lastVersionAt,
     editorsSinceLastVersion,
     lastRevision,
+    capturingSince,
   ];
 }
 

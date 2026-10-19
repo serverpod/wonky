@@ -378,6 +378,11 @@ final class CellRecord extends SyncRecord {
   CellContent? _decoded;
   bool _decodedSet = false;
 
+  /// Cache slot of the formula-engine bridge (`cellInputOf`): the engine input built
+  /// from [content] (records are immutable, so it never goes stale). Not part of the
+  /// record's data.
+  Object? engineInput;
+
   /// Creation time.
   DateTime get createdAt => _createdAt ?? kEpochUtc;
 
@@ -408,9 +413,10 @@ final class CellRecord extends SyncRecord {
 
   /// From a column map.
   factory CellRecord.fromColumns(Map<String, Object?> m) {
-    final fm = <String, Object?>{};
+    // Most cells have no format columns: no map for them (a 1M-cell load).
+    Map<String, Object?>? fm;
     m.forEach((k, v) {
-      if (!_nonFormatColumns.contains(k)) fm[k] = v;
+      if (!_nonFormatColumns.contains(k)) (fm ??= {})[k] = v;
     });
     return CellRecord(
       id: ColumnReader.str(m, Cols.id)!,
@@ -419,7 +425,7 @@ final class CellRecord extends SyncRecord {
       columnId: ColumnReader.str(m, CellCols.columnId) ?? '',
       content: ColumnReader.str(m, CellCols.content),
       note: ColumnReader.str(m, CellCols.note),
-      format: CellFormat.fromMap(fm),
+      format: fm == null ? CellFormat.empty : CellFormat.fromMap(fm!),
       createdAt: ColumnReader.date(m, Cols.createdAt),
     );
   }

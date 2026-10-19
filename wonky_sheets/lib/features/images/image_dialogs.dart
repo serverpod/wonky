@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:wonky_app/wonky_app.dart';
 
 import '../../l10n/sheets_l10n.dart';
-import 'image_clipboard.dart';
+import 'package:wonky_app/platform.dart' show ImageClipboard;
 
 /// Where an inserted image comes from.
 sealed class ImageSourceChoice {

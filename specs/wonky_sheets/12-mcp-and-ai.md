@@ -8,7 +8,8 @@ Sheets **AI features**.
 
 Read first: suite 09 (transport, auth scopes, conventions), suite 10 (model usage rules),
 suite [08-commands-and-undo.md](../08-commands-and-undo.md) §3.4 (MCP/AI undo),
-[02-data-model.md](02-data-model.md) (ids, `ChangeLog`, `SheetsWriter`),
+[02-data-model.md](02-data-model.md) (ids, op log, writes),
+suite [17 · RevLog sync](../17-revlog-sync.md) part 5 §8–§9 (server changes, headless cache),
 [05-formula-engine.md](05-formula-engine.md), [07-data-tools.md](07-data-tools.md),
 [08-charts-and-objects.md](08-charts-and-objects.md), [09-scripting.md](09-scripting.md).
 
@@ -28,13 +29,13 @@ tools in §3 are **P0 for M6** (the MCP milestone, see [13-implementation-plan.m
    (`SheetsMutationPlanner`, §2.4). A tool and the equivalent command produce identical rows.
 3. **Same permissions.** Token scope + `AccessService` role + protected ranges. Viewers can
    use read tools only.
-4. **Attribution.** Writes create `ChangeLog` rows with `actorKind: mcp` (or `ai` when called by
-   the assistant) and a label like `"MCP: set_values Sheet1!A1:C3"`. Collaborators see an agent
+4. **Attribution.** Writes are RevLog ops with `actorKind: mcp` (or `ai` when called by the
+   assistant), session id `server:<actorKind>` and a label like `"MCP: set_values Sheet1!A1:C3"`. Collaborators see an agent
    participant in presence (suite 07 §1.1) with the written ranges highlighted for 5 s.
 5. **One call = one change.** Every mutating call returns a `change_id`; `changes.revert`
-   reverts it for 24 h (§2.5). A call either fully applies or fails without changes (all
-   chunks of a call are applied, or the already applied chunks are reverted before returning an
-   error).
+   reverts it for 24 h (§2.5). A call larger than one op is one op group; each op is atomic.
+   If a later chunk fails, the committed chunks stay and are covered by the call's record, so
+   `changes.revert` undoes them (suite 17 part 5 §8.1).
 6. **Bounded outputs.** Reads are paginated; large results are truncated with `truncated: true`
    and a `cursor`. Text summaries are short; data goes in `structuredContent`.
 7. **Formula syntax in tools is locale-independent**: function names in English, `,` as
@@ -47,12 +48,12 @@ tools in §3 are **P0 for M6** (the MCP milestone, see [13-implementation-plan.m
 ## 2. Headless execution model (server)
 
 ### 2.1 `HeadlessWorkbook`
-A server-side, in-memory workbook built from the spreadsheet's space:
-- **Load**: admin read (bypasses membership) of all synced tables of the space, streamed into
-  the same core model used by the client: `AxisIndex`, `CellStore`, `RuleIndex` and the
-  formula engine (`wonky_sheets_core`). This requires these model classes to live in
-  `wonky_sheets_core/lib/model/` (pure Dart). The Flutter app wraps them with SQLite ingestion
-  (see Additions A-12-1).
+A server-side, in-memory workbook built from the spreadsheet's file:
+- **Load**: one `REPEATABLE READ` read of the file's tables at its head revision (by `fileId`,
+  cells sheet by sheet), streamed into the same core model used by the client: `AxisIndex`,
+  `CellStore`, `RuleIndex` and the formula engine (`wonky_sheets_core`). This requires these
+  model classes to live in `wonky_sheets_core/lib/model/` (pure Dart). The Flutter app feeds
+  the same model from its RevLog cache (see Additions A-12-1).
 - **Evaluation**: lazy. On load the dependency graph is built, but values are computed on
   demand for requested ranges (plus their precedents) and memoized. Volatile functions are
   evaluated at request time. Custom script functions use the server pure guest
@@ -60,50 +61,45 @@ A server-side, in-memory workbook built from the spreadsheet's space:
 - **Memory**: ~120 bytes/non-empty cell + formula ASTs. A 1M-cell workbook ≈ 150–250 MB.
 
 ### 2.2 Cache and invalidation
-- `HeadlessWorkbookCache` per server instance: LRU keyed by spreadsheet (space) UUID, bounded by
-  an estimated memory budget (`sheets.headlessCacheMb`, default 2,048) and count (50). Entries
-  idle > 15 min are evicted.
-- **Invalidation**: the custom sync endpoint's `onMergeSuccess(spaceUuid, hlc)` publishes on
-  the cluster bus channel `sheets:merged:<spaceUuid>` (relayed to every instance). Each instance
-  holding that workbook marks it stale and **patches** it on its next use: it re-reads the rows
-  of the space whose CRDT tuples (row, fields or tombstone) were written since the workbook's
-  **transaction watermark** (`txid_snapshot_xmin` at load/patch, compared with the tuples'
-  `xmin`) and applies them like the client's `RemoteChangeTracker`. HLCs are not used as the
-  watermark because offline clients sync edits with old HLCs. If that fails or exceeds 50k rows,
-  it drops the entry (reload on next use). Entries not checked for 60 s are patched too (server
-  writes that do not signal, e.g. restores). Tool writes post the signal with
-  `hlc: "server:<instanceId>"`, which the writing instance ignores (already written through).
-- **Consistency**: a read reflects all merges processed by that instance's patching
-  (typically < 1 s behind the database). Writes made through tools are applied to the cached
-  model synchronously (write-through) before the call returns, so read-after-write in the same
-  or later calls is consistent.
+- `HeadlessFileCache` per server instance (suite 17 part 5 §9), shared with Slides: keyed by
+  file UUID, bounded by one memory budget (`revlog.headlessBudgetMb`, default 2,048) and count
+  (`revlog.headlessMaxEntries`, 100). Callers take a **lease** (`HeadlessFileCache.open` →
+  `HeadlessLease`) and release it; a model is evicted only when no lease holds it.
+  `HeadlessWorkbookProvider.open(session, fileUuid)` is the Sheets wrapper the tools use: it
+  leases the model until the request's session closes.
+- **Freshness**: a cached model follows the file's ops. Every committed op (from the bus, or
+  from `rev_op` to fill gaps) is applied to it in revision order, and
+  `ensureAtLeast(revision)` waits until a given revision is applied. There is no staleness
+  check, patching or write-through.
+- **Consistency**: `HeadlessWorkbookProvider.open` waits for the file's head revision, so a read
+  reflects every committed op, including the tool's own earlier writes.
 
 ### 2.3 Concurrency
 - Mutating calls to the same spreadsheet are serialized per instance with an async mutex
-  (`SpreadsheetWriteLock`, wait ≤ 30 s → `busy`). Across instances, the sync engine merges at
-  field level (LWW), as with human clients.
-- Live clients receive tool writes through normal sync (0.2–2.5 s). There are no commit hints
-  for headless writes. The agent presence highlight shows where writing happens.
+  (`HeadlessWorkbookProvider.withWriteLock` on the shared `KeyedLock`, wait ≤ 30 s → `busy`; a waiter that gives up never lets the next one in early) around planning and
+  committing. Across instances and against clients, the sequencer orders the ops; later arrivals
+  win per column, as with human clients.
+- Live clients receive tool writes as remote ops (about one round trip). There are no commit
+  hints for headless writes. The agent presence highlight shows where writing happens.
 
-### 2.4 Writes (`ServerSheetsWriter` + `SheetsMutationPlanner`)
+### 2.4 Writes (`SheetsMutationPlanner` + server changes)
 - `SheetsMutationPlanner` (`wonky_sheets_core/lib/mutations/`, pure Dart) turns high-level
   operations (`SetValues`, `Format`, `InsertRows`, `Sort`, `AddChart`, …) plus a read model
   into `RowChange` lists (`{table, rowId, op, columnsBefore, columnsAfter}`), exactly as
-  [02-data-model.md](02-data-model.md) §7 describes for `SheetsWriter`. The Flutter
-  `SheetsWriter` and the server `ServerSheetsWriter` are thin adapters that apply plans to their
-  sync DB.
-- `ServerSheetsWriter` ensures membership: if the token user isn't a member of the space,
-  `SpaceSubscriptionService` grants membership with reason **`mcp`** (role mirrored from
-  the ACL; `readWrite` for Editors+), removed after 1 h without MCP activity unless another
-  reason exists.
-- Then `transactionForUser(userUuid, spaceId)` per chunk (≤ 5,000 row changes), each with a
-  `ChangeLog` row (`actorKind: mcp|ai`, the plans' change summary), and finally a
-  `ServerChangeRecord` (§2.5). Tool writes use the batched `SheetsBulkWriter`
-  (`wonky_server/lib/src/sheets/mcp/`): current rows are read once per table, deletes and
-  inserts run as one CRDT-tracked statement per table; same semantics and record format as
-  `ServerSheetsWriter` (50,000 cells ≈ 40 s on the embedded test database).
+  [02-data-model.md](02-data-model.md) §7 describes for the client session.
+- The server commits them as a **server change**: `SheetsServerWrites`
+  (`wonky_server/lib/src/sheets/revlog/`) calls `RevLogService.submitServerChange` (suite 17
+  part 5 §8.1), which checks the actor's Editor role on the drive ACL, splits the changes into
+  ops of ≤ 5,000 changes (one group), submits each through the sequencer with the plans'
+  summary and detail, and joins them in a record (`recordId`, `ServerChangeRecord`, §2.5).
+  `SheetsBulkWriter.applyRecorded` (tools) is a thin facade over it; scripts, imports and
+  versions call `SheetsServerWrites.apply` directly (the `ServerSheetsWriter` facade was removed, CQ-56). Every server change reaches clients and the post-commit
+  hooks like any other op.
 - **Protected ranges** are enforced: writes touching a protected range the user may not edit
-  fail with `protected_range` (warning-only protections succeed and return a warning).
+  fail with `protected_range` (warning-only protections succeed and return a warning). The
+  tool's guard (`SheetsWrites.run`, `ProtectionGuard` on the headless model) runs before
+  planning for friendly errors; the sequencer checks every op again and is authoritative
+  ([07 §10.3](07-data-tools.md); a `protectedRange` rejection maps to `protected_range`).
 - **Data validation**: tool writes are **not rejected** by strict DV rules (Google Sheets API
   parity); the result lists `validation_warnings` (A1 cells violating rules, max 100).
 - **Cell limit**: writes that grow the grid beyond `maxCellsPerSpreadsheet` fail with
@@ -120,9 +116,10 @@ fields:
   userId: int
   actorKind: ActorKind               # mcp, ai, script, user (restore/import)
   label: String
-  inverseJson: String?               # gzip+base64 when ≤ 256 KB
-  inverseFileId: UuidValue?          # StoredFile for larger inverses
-  forwardFileId: UuidValue?          # for reapply (redo)
+  recordId: UuidValue?               # = rev_op.recordId of the change's ops
+  inverseJson: String?               # records written before RevLog only (composite assistant changes)
+  inverseFileId: UuidValue?          # same
+  forwardFileId: UuidValue?          # same
   cellsAffected: int
   createdAt: DateTime
   expiresAt: DateTime                # createdAt + 24 h (restore/import: 7 days)
@@ -132,8 +129,12 @@ indexes:
   server_change_sheet_idx: { fields: spreadsheetUuid, createdAt }
 ```
 
-`changes.revert(change_id)` (suite) applies the inverse with the per-column skip rule (columns
-whose current value ≠ the change's `after` are skipped). Result: `{change_id (of the revert),
+`changes.revert(change_id)` (suite) reads the applied changes (with their `before` values) of
+the record's ops from `rev_op`, inverts them in reverse revision order against the current
+headless model with the per-column skip rule (columns whose current value ≠ the change's
+`after` are skipped), and submits the result as a new recorded server change (suite 17 part 5
+§8.2); reapply uses the forward changes. Records expire within the op log's 30-day payload
+retention. Result: `{change_id (of the revert),
 reverted_cells, skipped: [{a1, reason: "changed_by_other", by}]}`. The same mechanism backs
 the UI undo of server-side operations (`sheets.serverChange` undo domain,
 [10-collaboration-history.md](10-collaboration-history.md) A-10-5). An expired job purges the
@@ -144,10 +145,11 @@ records daily.
 ## 3. Headless tools
 
 Common input fields: `spreadsheet` (required): Drive item uuid (as in `/s/<uuid>` URLs); a full
-app URL or the space uuid are also accepted. Common output fields for mutating tools:
+app URL or the file uuid (`DriveItem.contentRef`) are also accepted. Common output fields for mutating tools:
 `change_id`, `cells_affected`, `warnings: []`, `summary` (one line, used by assistant chips),
-`sync_version` (committed calls only: the id of the call's `ChangeLog` row, a UUID v7; a client
-replica that holds this row has the change — it syncs like every other row).
+`sync_version` (committed calls only: the file revision of the call's last RevLog op, as a
+string; a client cache at that revision or later has the change). An agent's write also
+shows its agent cursor (5 s presence, Sheets 10 §1.1), inline after the commit.
 
 Schemas: defined once in `wonky_core/lib/mcp/sheets_tools.dart` (JSON Schema, closed objects
 with `additionalProperties: false`; optional properties are omitted when not used, as for the
@@ -351,8 +353,8 @@ updated.
 | `wonky://sheet/<uuid>/<sheetName>/<A1range>` (P1, template) | `text/csv` | A specific range. |
 
 Resource templates are registered for all three. Subscriptions emit
-`notifications/resources/updated` debounced 2 s after a merge touching that sheet (from the
-change-log consumer's `summaryJson.sheets`).
+`notifications/resources/updated` debounced 2 s after an op touching that sheet (from the
+op's `summaryJson.sheets`, seen by the post-commit hooks, suite 17 part 5 §6).
 
 ### 4.2 Prompts
 - `analyze_sheet(spreadsheet, sheet?)`: instructs the client model to call `describe_data`,
@@ -381,7 +383,7 @@ aren't commands.
 | `ui.sheets.open_panel` | `panel: chartEditor\|conditionalFormatting\|dataValidation\|pivotEditor\|namedRanges\|protectedRanges\|comments\|history\|assistant\|executions\|scriptSidebar\|slicer, target?: {chart_id\|pivot_id\|rule_id}` | Opens the side panel (or dialog for find/replace). Panels are `McpDescribablePanel`s, so `ui.get_dialog`-style `ui.sheets.describe_panel` / `ui.sheets.set_panel_field` (P1) can operate them. |
 | `ui.sheets.close_panel` | `panel?` | |
 | `ui.sheets.start_cell_edit` | `cell?: A1, initial_text?` | Opens the cell editor (for demos/tests). Prefer the command `sheets.cell.setInput {a1, input}` for writing. |
-| `ui.sheets.type_in_cell` | `cell: A1, text, commit: enter\|tab\|none` | Types into the cell editor through the same path as the keyboard (autocomplete, DV dropdowns). Last resort. |
+| `ui.sheets.type_in_cell` | `cell: A1, text, commit: enter\|tab\|none` | Types into the cell editor through the same path as the keyboard (autocomplete, DV dropdowns). Last resort. The commit is the agent's write (source `mcp`: the undo step is labelled as an agent's). When the user is editing a cell, their text is committed first (their own step), never dropped; if it is rejected (data validation) the tool fails with `busy`. |
 | `ui.sheets.screenshot_range` | `range: A1, scale?: 1\|2, include_headers?: bool` | PNG of the range as rendered (formats, CF, objects intersecting), produced offscreen (independent of scroll position), max 4,000 × 4,000 px. |
 | `ui.sheets.highlight_range` (P1) | `range, duration_ms?, color?` | Flashes an outline to draw the user's attention (used by AI "Show"). |
 | `ui.sheets.wait_for_recalc` | `timeout_ms?` | Resolves when the formula engine and pending custom functions are idle. |
@@ -403,12 +405,12 @@ while loading) of the sheet over it. **Agent presence highlight**: every `ui.she
 call that targets a range flashes it (violet outline + a tag with the agent's name, 2–5 s;
 `AgentHighlightLayer`), and the ranges written by the user's own assistant run flash with "AI".
 `ui.get_state` includes the document controller's `describeState()` as `document.details`.
-Headless writes are highlighted too (`ExternalAgentWrites`, `features/ai/`): the `ChangeLog`
-table is synced, so after remote batches the client reads the new rows of the spreadsheet with
-`sessionId` `server:*` and flashes the ranges of `actorKind: mcp` rows (any user) and `ai` rows of
+Headless writes are highlighted too (`ExternalAgentWrites`, `features/ai/`): the client follows
+the session's op metadata (`LoggedWorkbookSession.history`, `RevOpMeta`) and, for ops with
+`sessionId` `server:*`, flashes the summary ranges of `actorKind: mcp` ops (any user) and `ai` ops of
 other users, tagged with the agent participant's name from presence ("Claude Code (MCP)"), else
-"Bo's agent" / "MCP agent" / "AI · Bo"; rows older than 2 minutes (offline writes synced late) are
-not flashed.
+"Bo's agent" / "MCP agent" / "AI · Bo"; ops committed more than 2 minutes ago (seen late, after
+reconnecting) are not flashed.
 
 ---
 
@@ -476,8 +478,8 @@ through the chat stream itself (no MCP bridge or developer setting needed): the 
   and highlights the range / selects the chart) and *Undo* (reverts that tool call's
   `change_id`).
 - **Suggest**: mutating tool calls are executed against a **shadow workbook**: a
-  copy-on-write overlay over the `HeadlessWorkbook` that records the planned `RowChange`s
-  without committing. The tool returns the simulated result to the model (so multi-step plans
+  copy-on-write overlay over the cached `HeadlessWorkbook` (counted in the headless cache's
+  budget, suite 17 part 5 §9) that records the planned `RowChange`s without committing. The tool returns the simulated result to the model (so multi-step plans
   work). At the end of the turn the client shows the **AI changes preview** dialog:
   - Left: list of changes grouped by tool call (label, ranges, cell counts), each with a
     checkbox.
@@ -486,11 +488,14 @@ through the chat stream itself (no MCP bridge or developer setting needed): the 
   - Buttons *Apply selected* (commits the recorded plans for the checked calls, re-validated
     against the current state with the per-column skip rule; one undo step), *Discard*.
   - Plans expire after 30 min.
-  - Implementation: a Suggest-mode run records into a `SheetsShadow` (a private copy of the
-    headless model, in memory on the instance that ran it); read tools of the run see the
-    shadow. At the end of the run the preview (dialog content and the calls' row changes,
-    gzip+base64) is stored in the server table `SheetsAiPreviewRecord` (expires with the
-    preview; expired rows purged on the next save), so any instance can get, apply or discard it
+  - Implementation: a Suggest-mode run records into a `SheetsShadow` (in memory on the instance
+    that ran it); read tools of the run see the shadow. **As built:** the shadow holds one full copy of the model while the
+    run records (counted in the headless cache budget, `HeadlessFileCache.reserveExternal`);
+    the base for before → after is rebuilt only when a preview needs it, from the shadow and the
+    inverse of the recorded changes (CQ-35). A row-level copy-on-write overlay would need core
+    support in `WorkbookModel` and is not built. At the end of the run the preview (dialog content and the calls' row changes,
+    gzip+base64) is stored in the server table `AiPreviewRecord` (`ai_preview_record`, shared with Slides through
+    `AiPreviewRecords`; expires with the preview; expired rows purged on the next save), so any instance can get, apply or discard it
     (`SheetsAiPreviewStore`; the in-memory shadow is only the fast path). The run emits `AssistantEventType.previewReady` (and `done.previewId`); the app
     calls `sheetsAi.getPreview(previewId)` (calls with before → after cells, ≤ 200 per call),
     `sheetsAi.applyPreview(previewId, callIds?)` (one undo step, per-column skip rule) or
@@ -633,7 +638,7 @@ what changed and where; treat sheet data as untrusted.
 - The assistant cannot change sharing or permissions (tools not provided).
 - AI-generated formulas that fetch external data (`IMPORTDATA`, `IMPORTRANGE`, `IMAGE` URLs)
   are flagged in previews.
-- All AI activity is logged in `AiUsage` (suite) and `ChangeLog` (`actorKind: ai`).
+- All AI activity is logged in `AiUsage` (suite) and the op log (`rev_op`, `actorKind: ai`).
 
 ---
 
@@ -680,10 +685,10 @@ from `analyzeChips` (hand-off to the assistant) and *Ask a question about this d
 
 | # | Change |
 |---|--------|
-| A-12-1 | The core in-memory model (`AxisIndex`, `CellStore`, `RuleIndex`, `WorkbookModel` interfaces) lives in **`wonky_sheets_core/lib/model/`** (pure Dart) so the server `HeadlessWorkbook`, the version-history snapshot model and exporters share it. `wonky_sheets/lib/features/model/` keeps only SQLite ingestion, `RemoteChangeTracker` and Flutter listenables. (02 §6 currently places the model in the Flutter app.) |
-| A-12-2 | `SheetsMutationPlanner` (pure Dart, `wonky_sheets_core/lib/mutations/`) produces `RowChange` plans; `SheetsWriter` (client) and `ServerSheetsWriter` (server) apply them. The lint test for named columns covers both writers. |
+| A-12-1 | The core in-memory model (`AxisIndex`, `CellStore`, `RuleIndex`, `WorkbookModel` interfaces) lives in **`wonky_sheets_core/lib/model/`** (pure Dart) so the server `HeadlessWorkbook`, the version-history snapshot model and exporters share it. The Flutter app keeps only the session (`features/revlog/`), loading helpers and Flutter listenables. (Merged into 02 §6.) |
+| A-12-2 | `SheetsMutationPlanner` (pure Dart, `wonky_sheets_core/lib/mutations/`) produces `RowChange` plans; the client session and the server's `SheetsServerWrites` (`submitServerChange`) commit them. |
 | A-12-3 | Server tables `ServerChangeRecord` (§2.5) and `AiFunctionCache` (§6.8, P2). |
-| A-12-4 | `SpaceSubscription.reason` value `mcp` (suite 12 already lists it) is used for temporary membership of MCP/AI writers. |
+| A-12-4 | ~~Temporary space membership for MCP/AI writers~~: access is the drive ACL, checked on every server change (suite 17 part 5 §8.1, §11). |
 
 ---
 

@@ -1,0 +1,23 @@
+### A committed op as clients see it (RevLog spec 04 §2.3).
+class: RevOpView
+fields:
+  revision: int
+  clientOpId: UuidValue
+  ### Codec JSON of the applied form without before.
+  payload: String?
+  payloadGz: ByteData?
+  authorUuid: UuidValue?
+  authorSessionId: String?
+  actorKind: ActorKind
+  label: String
+  summaryJson: String?
+  detailJson: String?
+  offline: bool
+  groupId: String?
+  groupIndex: int
+  groupLast: bool
+  recordId: UuidValue?
+  onBehalfOfSessionId: String?
+  ### Lets the author recover a lost ack's outcome.
+  outcomeJson: String?
+  committedAt: DateTime

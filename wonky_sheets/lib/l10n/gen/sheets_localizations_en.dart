@@ -702,6 +702,66 @@ class SheetsLocalizationsEn extends SheetsLocalizations {
   }
 
   @override
+  String get changeLabelTyping => 'Typing';
+
+  @override
+  String get changeLabelInsertAiResult => 'Insert AI result';
+
+  @override
+  String get changeLabelInsertImage => 'Insert image';
+
+  @override
+  String get changeLabelRestoreVersion => 'Restore version';
+
+  @override
+  String get changeLabelMakeCopy => 'Make a copy';
+
+  @override
+  String get changeLabelMaintenance => 'Maintenance';
+
+  @override
+  String get changeLabelCreateScriptProject => 'Create script project';
+
+  @override
+  String get changeLabelDeleteScriptProject => 'Delete script project';
+
+  @override
+  String get changeLabelCreateScriptFile => 'Create script file';
+
+  @override
+  String get changeLabelRenameScriptFile => 'Rename script file';
+
+  @override
+  String get changeLabelDeleteScriptFile => 'Delete script file';
+
+  @override
+  String get changeLabelMoveScriptFile => 'Move script file';
+
+  @override
+  String get changeLabelSaveScriptFile => 'Save script file';
+
+  @override
+  String get changeLabelScriptSettings => 'Script settings';
+
+  @override
+  String get changeLabelCreateMacro => 'Create macro';
+
+  @override
+  String get changeLabelEditMacro => 'Edit macro';
+
+  @override
+  String get changeLabelDeleteMacro => 'Delete macro';
+
+  @override
+  String get changeLabelRecordMacro => 'Record macro';
+
+  @override
+  String get changeLabelAddTrigger => 'Add trigger';
+
+  @override
+  String get changeLabelEditTrigger => 'Edit trigger';
+
+  @override
   String get cellHistoryRestore => 'Restore this value';
 
   @override
@@ -2962,15 +3022,6 @@ class SheetsLocalizationsEn extends SheetsLocalizations {
   String get downloadXlsx => 'Microsoft Excel (.xlsx)';
 
   @override
-  String downloadingSpreadsheet(int percent) {
-    final intl.NumberFormat percentNumberFormat =
-        intl.NumberFormat.decimalPattern(localeName);
-    final String percentString = percentNumberFormat.format(percent);
-
-    return 'Downloading spreadsheet… $percentString%';
-  }
-
-  @override
   String get errorSheetNameEmpty => 'A sheet name can’t be empty';
 
   @override
@@ -3285,6 +3336,10 @@ class SheetsLocalizationsEn extends SheetsLocalizations {
       'This spreadsheet isn’t available offline';
 
   @override
+  String get screenOfflineHint =>
+      'It isn’t on this device yet. Open it once while online to keep it available offline.';
+
+  @override
   String get screenOpenFailed => 'The spreadsheet couldn’t be opened';
 
   @override
@@ -3463,6 +3518,19 @@ class SheetsLocalizationsEn extends SheetsLocalizations {
       'Some changes couldn’t be undone because they were edited by someone else.';
 
   @override
+  String toastChangeNotSaved(String label, String reason) {
+    return '“$label” couldn’t be saved: $reason';
+  }
+
+  @override
+  String toastChangeProtected(String label) {
+    return '“$label” wasn’t saved because it edits a protected cell or object.';
+  }
+
+  @override
+  String get toastChangeNoAccess => 'You can no longer edit this spreadsheet';
+
+  @override
   String get toolbarBorders => 'Borders';
 
   @override
@@ -3636,7 +3704,7 @@ class SheetsLocalizationsEn extends SheetsLocalizations {
 
   @override
   String get protectAdvisory =>
-      'Protection prevents accidental edits by collaborators.';
+      'Only the people you choose can edit protected ranges, also from other devices, scripts and agents. Warning-only ranges ask for a confirmation instead.';
 
   @override
   String get protectEdit => 'Edit protection';

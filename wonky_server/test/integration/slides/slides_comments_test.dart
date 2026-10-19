@@ -1,23 +1,27 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
-import 'package:wonky_server/src/sheets/sync/sync_db.dart';
-import 'package:wonky_server/src/slides/changelog/deck_change_log_processor.dart';
-import 'package:wonky_server/src/slides/changelog/deck_comment_orphans.dart';
+import 'package:wonky_revlog/rows.dart' show RowChange;
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
+import 'package:wonky_server/src/platform/revlog/rev_file_state.dart';
+import 'package:wonky_server/src/platform/revlog/rev_log_service.dart';
 import 'package:wonky_server/src/slides/headless/headless_deck.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
-import 'package:wonky_slides_core/interfaces.dart' show DeckChangeLogEntry;
+import 'package:wonky_server/src/slides/revlog/slides_rev_binding.dart';
 import 'package:wonky_slides_core/ops.dart' show DeleteElements;
 
 import '../../support/role_matrix.dart';
+import '../../support/slides_rev_hooks.dart';
 import '../../support/test_drive.dart';
 import '../../support/test_users.dart';
 import '../../support/wonky_serverpod.dart';
 
 /// Comments on slides and elements (Slides 09 §3, SL-38): `slide` and
-/// `element` anchors, orphaning from the deck change log and revival,
+/// `element` anchors, orphaning by the `comments` hook and revival,
 /// notification extras, the role matrix.
 void main() {
   withWonkyServerpod('Given a presentation with a commenter', (
@@ -30,7 +34,9 @@ void main() {
     late DriveItemView deck;
     late String slideId;
     late String elementId;
+    var edits = 0;
 
+    SlidesRevHooks.install();
     setUp(() async {
       server = sessionBuilder.build();
       anna = await TestUsers.create(sessionBuilder, name: 'Anna');
@@ -42,7 +48,7 @@ void main() {
         null,
       );
       await TestDrive.share(endpoints, deck, anna, bo, AccessRole.commenter);
-      final db = syncSessionOf(server);
+      final db = server;
       final slide = (await Slide.db.find(
         db,
         where: (t) => t.deckId.equals(deck.uuid),
@@ -72,28 +78,29 @@ void main() {
       null,
     );
 
+    /// Commits an op with [summary] (a trivial deck change) and runs the
+    /// hooks.
     Future<void> consume(Map<String, Object?> summary) async {
-      final item = (await DriveItem.db.findFirstRow(
+      final binding = SlidesRevBinding.instance;
+      final state = (await RevFileStates.of(server, binding, deck.uuid))!;
+      await RevLogService.submitServerChange(
         server,
-        where: (t) => t.uuid.equals(deck.uuid),
-      ))!;
-      await DeckCommentOrphans().consume(
-        DeckConsumerContext(server, item),
-        deck.uuid.uuid,
-        [
-          DeckChangeLogEntry(
-            id: const Uuid().v7(),
-            deckId: deck.uuid.uuid,
-            userId: anna.authUserId.uuid,
-            actorKind: 'user',
-            sessionId: 's',
-            label: 'Delete',
-            summaryJson: jsonEncode(summary),
-            detailJson: '{}',
-            at: DateTime.utc(2026, 10, 15),
+        binding: binding,
+        state: state,
+        submitter: RevSubmitter.of(anna.actor),
+        actorKind: 'user',
+        label: 'Delete',
+        changes: [
+          RowChange.update(
+            'deck',
+            deck.uuid.uuid,
+            {'footerText': null},
+            {'footerText': 'Edit ${edits++}'},
           ),
         ],
+        summary: summary,
       );
+      await SlidesRevHooks.drain(server, deck.uuid);
     }
 
     Future<CommentThreadView> reread(CommentThreadView t) =>
@@ -145,7 +152,7 @@ void main() {
         expect(jsonDecode(orphaned.orphanReasonJson!), {
           'kind': 'element',
           'id': elementId,
-          'changeLogId': isA<String>(),
+          'revision': isA<int>(),
         });
         expect(revived.status, CommentStatus.open);
       },
@@ -250,7 +257,7 @@ void main() {
       );
 
       final a = jsonDecode(threads.single.anchorJson) as Map;
-      final db = syncSessionOf(server);
+      final db = server;
       final slide = (await Slide.db.find(
         db,
         where: (t) => t.deckId.equals(copy.uuid),
@@ -277,14 +284,16 @@ void main() {
           deck.uuid.uuid,
         );
         final w = await headless.write(DeleteElements([elementId]));
+        await SlidesRevHooks.drain(server, deck.uuid);
         final orphaned = await reread(t);
 
         await endpoints.slides.revertChange(anna.endpointSession, w.changeId!);
+        await SlidesRevHooks.drain(server, deck.uuid);
         final revived = await reread(t);
 
         expect(orphaned.status, CommentStatus.orphaned);
         expect(revived.status, CommentStatus.open);
-        HeadlessDeckCache.clear();
+        HeadlessFileCache.clear();
       },
     );
 

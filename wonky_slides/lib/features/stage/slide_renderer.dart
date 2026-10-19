@@ -36,7 +36,7 @@ class SlideRenderer extends ChangeNotifier {
     this.code,
     SlideThumbnailCache? thumbnails,
   }) : fonts = fonts ?? AssetFontRegistry.instance,
-       images = SlideImageCache(images ?? MemorySlideImageResolver()),
+       images = SlideImageCache.shared(images ?? MemorySlideImageResolver()),
        thumbnails = thumbnails ?? SlideThumbnailCache(),
        icons = icons ?? LucideIconSource.instance,
        charts = charts ?? SlidesChartText.layout() {
@@ -56,7 +56,7 @@ class SlideRenderer extends ChangeNotifier {
   /// Font registry (bundled families load on demand).
   final AssetFontRegistry fonts;
 
-  /// Decoded images.
+  /// Decoded images (shared by every renderer over the same resolver).
   final SlideImageCache images;
 
   /// Recorded thumbnails.
@@ -103,8 +103,9 @@ class SlideRenderer extends ChangeNotifier {
         '${codeStates.entries.map((e) => '${e.key}=${e.value}').join(',')}|'
         '${codeSteps.entries.map((e) => '${e.key}=${e.value}').join(',')}';
     final rev = revision(slideId);
-    final hit = _memo[key];
-    if (hit != null && hit.$1 == rev) return hit.$2;
+    // LRU: a hit moves to the end.
+    final hit = _memo.remove(key);
+    if (hit != null && hit.$1 == rev) return (_memo[key] = hit).$2;
     final slide = resolver.resolve(slideId, appearance: appearance);
     if (slide == null) return null;
     final scene = builder.build(
@@ -138,13 +139,14 @@ class SlideRenderer extends ChangeNotifier {
 
   /// The thumbnail picture of [slideId] at [width] logical px (edit frame
   /// with the last code state, no prompts; 06 §9.6), or null when the
-  /// slide doesn't exist. Cached by render revision.
+  /// slide doesn't exist. One cache entry per slide, width and appearance,
+  /// re-recorded when the render revision changes.
   SlideThumbnailPicture? thumbnail(
     String slideId, {
     required double width,
     SlideAppearance? appearance,
   }) {
-    final key = '$slideId|${revision(slideId)}|${appearance?.name}|$width';
+    final key = '$slideId|${appearance?.name}|$width';
     return thumbnails.picture(
       key,
       () => scene(
@@ -153,6 +155,7 @@ class SlideRenderer extends ChangeNotifier {
         appearance: appearance,
       ),
       width: width,
+      revision: revision(slideId),
       images: images,
     );
   }
@@ -182,7 +185,7 @@ class SlideRenderer extends ChangeNotifier {
     _disposed = true;
     model.removeListener(_onBatch);
     fonts.generation.removeListener(_onFonts);
-    images.dispose();
+    images.release();
     thumbnails.clear();
     super.dispose();
   }

@@ -169,7 +169,11 @@ New pure-Dart dependencies for `wonky_write_core` (add to the dependency rules i
 
 Limits: client imports ≤ 5 MB input and ≤ 200k resulting characters (else server); server ≤ 50
 MB input, result ≤ `write.maxDocumentChars` (2M) — else `ImportTooLarge` error with a message
-suggesting splitting. Server imports run in `Isolate.run` with a 60 s timeout.
+suggesting splitting. ZIP-based inputs (DOCX, ODT, Markdown zip) are also limited before any
+part is inflated (zip bombs, `ArchiveLimits`): ≤ 10,000 entries and ≤ 200 MB declared
+uncompressed size in total, else `ImportTooLarge` ("The file is too large to import…"); a part
+never inflates past the size its directory declares. Server imports run in their own isolate
+(`WriteImportService.runKillable`) that is killed after 60 s.
 
 ### 3.2 Server pipeline
 
@@ -356,7 +360,13 @@ Last-used options per format are stored in `UserPreferences.writeDefaults.export
 
 Client: desktop runs exporters in `Isolate.run` (fonts/images pre-resolved and passed as bytes);
 web runs on the main isolate in cooperative chunks (`await` a zero-delay future between blocks
-and pages) behind a progress dialog with *Cancel*. Threshold is configurable
+and pages) behind a progress dialog with *Cancel*. As built (W-07, CQ-44): every client export
+runs on the main isolate (no `Isolate.run` yet) with an `ExportYielder` in its `ExportInput`;
+the PDF exporter gives the event loop a turn at most every 12 ms between blocks (line
+breaking) and pages, then checks the `CancellationToken`. *File › Download* shows a progress
+toast (layout progress) with *Cancel*; a cancelled export closes it without an error. Server
+exports pass no yielder and stay synchronous; the bytes are the same with or without one. The
+other exporters still report progress only between phases. Threshold is configurable
 (`write.export.clientMaxPages`). Same code + same fonts ⇒ identical bytes on both sides
 (verified by a test that hashes client vs. server output for the corpus).
 
@@ -856,16 +866,18 @@ options), *Cancel*, *Export*. Built with `WonkyDialogSpec`.
   (assigned theme → the caller's default theme → *Wonky Default*), page setup and metadata;
   fonts come from `web/fonts/` (`FileSystemFontProvider`, same TTFs and family substitution as
   the app's `AssetFontProvider`), images from storage / the SSRF-safe fetcher
-  (`ServerImageResolver`). Option keys are accepted in camelCase or snake_case. The result
-  cache and the isolate pool are not implemented yet (exports run on the server isolate with a
-  120 s timeout). Server imports (`drive.import`, `convertForInsert`) run the core importers in
-  `Isolate.run` (60 s) via `WriteImportService` (`write/export/write_import_service.dart`); the
+  (`ServerImageResolver`). Option keys are accepted in camelCase or snake_case. Exports run in a
+  worker isolate of the shared `IsolateRunner` (spec 13 §3: killed after 120 s or when the
+  progress stream is cancelled; images are resolved on the request isolate through its channel);
+  the result cache is not implemented yet. Server imports (`drive.import`, `convertForInsert`) run
+  the core importers in an `IsolateRunner` isolate that is killed after 60 s;
+  version diffs (08 §4.3) run there too (60 s); the
   source page geometry becomes the new document's page setup (`ImportedPageSetups`).
 - Output stored as `StoredFile(kind: exportResult, private, expiresAt: +24 h)`; `downloadUrl` is a
   signed URL valid 15 min; cleanup FutureCall hourly. `inlineText` set for `markdown`/`txt` ≤ 1 MB.
 - **Cache**: key `sha256(documentUuid, revision, format, optionsJson, theme contentHash +
   variant, pageSetupJson, fontsVersion)` → reuse an unexpired StoredFile.
-- Limits: 2 concurrent exports per user, server pool `min(4, cores)` isolates, 120 s timeout, max
+- Limits: 2 concurrent exports per user, the runner's global slots (half the cores, 2–8), 120 s timeout, max
   2,000 pages, max 500 images.
 - Logs `ActivityEvent(exported, {format})`.
 

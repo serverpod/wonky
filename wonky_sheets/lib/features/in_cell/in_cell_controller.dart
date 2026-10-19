@@ -357,7 +357,7 @@ class InCellController extends ChangeNotifier {
 
   /// The on-screen rect (grid coordinates) of a cell or its merge.
   Rect? cellRect(String sheetId, int row, int col) {
-    final g = editor.lastGeometry;
+    final g = editor.geometry;
     if (g == null || g.sheet.id != sheetId) return null;
     final m = g.sheet.mergeAt(row, col);
     return m == null ? g.cellRect(row, col) : g.rangeRect(m);

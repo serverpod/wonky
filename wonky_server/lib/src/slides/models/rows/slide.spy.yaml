@@ -1,0 +1,37 @@
+### A slide (Slides 02 §3.3). Its position is (groupId, sortKey), always
+### written together (P4, 02 §3.4).
+class: Slide
+table: slide
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  deck: Deck?, relation(onDelete=Cascade, deferred)
+  ### Fractional index in the top-level key space (groupId null) or the
+  ### group's key space. Always written together with groupId (P4).
+  sortKey: String
+  ### SlideGroup id (plain UUID, no FK, 02 §3.4); null = top level.
+  groupId: UuidValue?
+  ### SlideLayout id (plain UUID); null/missing = fallback (02 §10).
+  layoutId: UuidValue?
+  ### null = layout > master > theme.
+  backgroundJson: String?
+  ### Not shown when presenting / exported unless included (10 §2.2).
+  skipped: bool, default=false
+  ### Speaker notes, Delta (02 §4.3); null = empty.
+  notes: String?
+  ### Transition into this slide (06 §7.1); null = deck default.
+  transitionJson: String?
+  ### null = the layout's setting.
+  hideMasterElements: bool?
+  ### Rehearsed timings (10 A-10-2): {v, stepsMs, totalMs, rehearsedAt, by}.
+  timingsJson: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  slide_file_idx:
+    fields: fileId, id
+  slide_order_idx:
+    fields: deckId, sortKey

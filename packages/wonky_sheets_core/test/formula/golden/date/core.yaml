@@ -1,0 +1,84 @@
+- id: date-leap-day
+  formula: =DATE(2024,2,29)
+  expect: {value: 45351}
+  source: manual
+  note: serials count days from 1899-12-30
+- id: date-month-overflow
+  formula: =DATE(2023,13,1)
+  expect: {value: 45292}
+  source: manual
+- id: date-day-zero
+  formula: =DATE(2024,3,0)
+  expect: {value: 45351}
+  source: manual
+  note: day 0 is the last day of the previous month
+- id: eomonth-leap
+  formula: =EOMONTH(DATE(2024,1,31),1)
+  expect: {value: 45351}
+  source: manual
+- id: edate-clamps-day
+  formula: =EDATE(DATE(2024,1,31),1)
+  expect: {value: 45351}
+  source: manual
+- id: year-of-serial
+  formula: =YEAR(45351)
+  expect: {value: 2024}
+  source: manual
+- id: month-of-serial
+  formula: =MONTH(45351)
+  expect: {value: 2}
+  source: manual
+- id: day-of-serial
+  formula: =DAY(45351)
+  expect: {value: 29}
+  source: manual
+- id: weekday-default-sunday-one
+  formula: =WEEKDAY(DATE(2024,2,29))
+  expect: {value: 5}
+  source: manual
+  note: 2024-02-29 is a Thursday
+- id: weekday-monday-one
+  formula: =WEEKDAY(DATE(2024,2,29),2)
+  expect: {value: 4}
+  source: manual
+- id: datedif-whole-years
+  formula: =DATEDIF(DATE(2020,1,15),DATE(2024,1,14),"Y")
+  expect: {value: 3}
+  source: manual
+- id: datedif-months
+  formula: =DATEDIF(DATE(2024,1,31),DATE(2024,3,1),"M")
+  expect: {value: 1}
+  source: manual
+- id: days-between
+  formula: =DAYS(DATE(2024,3,1),DATE(2024,2,1))
+  expect: {value: 29}
+  source: manual
+- id: networkdays-january-2024
+  formula: =NETWORKDAYS(DATE(2024,1,1),DATE(2024,1,31))
+  expect: {value: 23}
+  source: manual
+- id: workday-over-weekend
+  formula: =WORKDAY(DATE(2024,1,5),1)
+  expect: {value: 45299}
+  source: manual
+  note: Friday 2024-01-05 + 1 working day = Monday 2024-01-08
+- id: datevalue-iso
+  formula: =DATEVALUE("2024-02-29")
+  expect: {value: 45351}
+  source: manual
+- id: time-noon
+  formula: =TIME(12,0,0)
+  expect: {value: 0.5}
+  source: manual
+- id: hour-of-fraction
+  formula: =HOUR(0.75)
+  expect: {value: 18}
+  source: manual
+- id: yearfrac-30-360
+  formula: =YEARFRAC(DATE(2024,1,1),DATE(2024,7,1))
+  expect: {value: 0.5}
+  source: manual
+- id: date-arithmetic
+  formula: =DATE(2024,3,1)-DATE(2024,2,1)
+  expect: {value: 29}
+  source: manual

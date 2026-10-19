@@ -44,6 +44,7 @@ abstract final class FileImageProxy {
       return ByteData.sublistView(hit.$2);
     }
     if (hit != null) _bytes -= hit.$2.length;
+    await SafeImageFetcher.checkLimit(actor.userId);
     final bytes = await fetcher(url);
     _cache[url] = (now, bytes);
     _bytes += bytes.length;

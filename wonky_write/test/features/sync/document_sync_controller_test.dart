@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_ui/wonky_ui.dart' show SyncState;
-import 'package:wonky_write/features/sync/connection_keeper.dart';
+import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_write/features/sync/document_sync_controller.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
@@ -365,6 +365,26 @@ void main() {
         expect(update.anchor, 5);
       },
     );
+
+    test('when sending the cursor with a pending replacement then it is '
+        'expressed at the server revision', () async {
+      server.autoDeliver = false;
+      // "Hello" → "Hxyo": "ell" deleted, "xy" inserted.
+      a.host.edit(
+        a.sync,
+        Delta()
+          ..retain(1)
+          ..insert('xy')
+          ..delete(3),
+      );
+      a.sync.sendCursor(4, 3);
+      await pumpEventQueue();
+
+      final update = _sent<DocCursorUpdate>(server).single;
+      // Mapped through the inverse ("xy" goes, the deleted "ell" comes back):
+      // the caret before "o" stays before it (4), the one after it after it.
+      expect((update.anchor, update.head), (5, 4));
+    });
   });
 
   group('Given two clients editing the same document', () {

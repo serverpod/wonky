@@ -498,7 +498,7 @@ void renameNameInFormulas(PlanBuilder b, String oldName, String newName) {
   }
 
   for (final s in b.model.sheets) {
-    for (final cell in s.cells.all) {
+    for (final cell in s.cells.formulaCells) {
       final content = cell.content;
       if (content == null || !content.startsWith('=')) continue;
       final r = rewrite(content);

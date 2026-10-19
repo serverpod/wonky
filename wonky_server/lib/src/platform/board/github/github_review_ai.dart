@@ -10,6 +10,7 @@ import '../ai/board_ai_ledger.dart';
 import '../ai/board_gemini.dart';
 import '../ai/board_gemini_prompts.dart';
 import '../ai/jev_gemini_board_ai.dart';
+import '../../ai/untrusted_text.dart';
 import '../board_config.dart';
 import 'github_review_facts.dart';
 
@@ -92,7 +93,7 @@ class PrReviewResult {
     }
 
     PrVerdictNote verdict(Object? v, Set<String> allowed, String fallback) {
-      final m = v is Map ? v : const {};
+      final m = v is Map ? v : const <Object?, Object?>{};
       return PrVerdictNote(
         verdict: pick(m['verdict'], allowed, fallback),
         note: text(m['note'], 500),
@@ -358,13 +359,7 @@ class GeminiPrReviewer implements PrReviewer {
   static const prTag = 'pr_data';
 
   /// [s] inside `<pr_data>` with closing tags in it defused.
-  static String wrapPr(String s) {
-    final escaped = s.replaceAllMapped(
-      RegExp('<\\s*/?\\s*$prTag\\s*>', caseSensitive: false),
-      (_) => '<\\/$prTag>',
-    );
-    return '<$prTag>\n$escaped\n</$prTag>';
-  }
+  static String wrapPr(String s) => UntrustedText.wrap(prTag, s);
 
   static String _clip(String s, int max) =>
       s.length <= max ? s : '${s.substring(0, max - 1)}…';

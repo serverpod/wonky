@@ -39,9 +39,9 @@ void main() {
     final report = await check();
 
     expect(rulesOf(report), containsAll(['missingTitle', 'missingAltText']));
-    final alt = (report['issues']! as List).cast<Map>().firstWhere(
-      (i) => i['rule'] == 'missingAltText',
-    );
+    final alt = (report['issues']! as List)
+        .cast<Map<Object?, Object?>>()
+        .firstWhere((i) => i['rule'] == 'missingAltText');
     expect(alt['elementId'], image);
     expect(alt['slideId'], s2);
     expect(alt['message'], 'Missing alt text');

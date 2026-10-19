@@ -63,6 +63,18 @@ abstract final class LoadingGate {
           if (!loading.isSheetLoaded(s)) _refuse();
         }
     }
+    // Deleted rows must be loaded: the planner lists their cells from the
+    // model, so unloaded cells would be cascaded instead of listed and undo
+    // couldn't restore them (RevLog spec 06 §5.5).
+    if (op case DeleteDimension(
+      :final sheetId,
+      dimension: Dimension.rows,
+      :final ids,
+    ) when !loading.isSheetLoaded(sheetId)) {
+      for (final id in ids) {
+        if (!loading.isRowLoaded(sheetId, id)) _refuse();
+      }
+    }
     for (final (sheetId, rect) in _rects(op)) {
       final sheet = model.sheet(sheetId);
       if (sheet == null || loading.isSheetLoaded(sheetId)) continue;
@@ -85,6 +97,9 @@ abstract final class LoadingGate {
       {...?sheetIds},
     ShiftCells(:final range) => {range.sheetId},
     DuplicateSheet(:final sheetId) => {sheetId},
+    // Deleting a sheet or columns lists every cell of the sheet (06 §5.5).
+    DeleteSheet(:final sheetId) => {sheetId},
+    DeleteDimension(:final sheetId, dimension: Dimension.columns) => {sheetId},
     _ => null,
   };
 

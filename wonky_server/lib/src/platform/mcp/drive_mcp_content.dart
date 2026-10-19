@@ -10,6 +10,7 @@ import '../drive/drive_service.dart';
 import '../storage/storage_service.dart';
 import 'drive_file_tool_handlers.dart';
 import 'tool_support.dart';
+import 'mcp_errors.dart';
 import 'wonky_mcp_server.dart';
 
 /// (v2) Drive MCP resources (suite 09 §5): `wonky://drive/storage` (usage
@@ -92,7 +93,7 @@ abstract final class DriveMcpContent {
         'Unknown file.',
       );
     }
-    return _guard(() async {
+    return McpErrors.guardResource(() async {
       final c = await DriveFileToolHandlers.readable(ctx, id);
       final asText =
           c.isText && c.sizeBytes <= DriveFileToolHandlers.textMaxBytes;
@@ -165,21 +166,4 @@ abstract final class DriveMcpContent {
   }
 
   /// Maps tool errors to JSON-RPC errors for resource reads.
-  static Future<T> _guard<T>(Future<T> Function() body) async {
-    McpToolException error;
-    try {
-      return await body();
-    } on McpToolException catch (e) {
-      error = e;
-    } on WonkyException catch (e) {
-      error = McpToolException.fromWonky(e);
-    }
-    throw mcp.McpError(
-      error.code == McpErrorCode.notFound
-          ? mcp.ErrorCode.resourceNotFound.value
-          : mcp.ErrorCode.invalidParams.value,
-      error.message,
-      error.toJson(),
-    );
-  }
 }

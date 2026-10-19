@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
@@ -75,14 +76,14 @@ final class CompileCoalescer {
       final f = compile();
       _running[key] = f;
       f.whenComplete(() {
-        if (identical(_running[key], f)) _running.remove(key);
+        if (identical(_running[key], f)) unawaited(_running.remove(key));
       }).ignore();
       return f;
     }
     final next = _next[key];
     if (next != null) return next as Future<T>;
     final follow = running.catchError((Object _) => null).then((_) {
-      _next.remove(key);
+      unawaited(_next.remove(key));
       return run<T>(key, compile);
     });
     _next[key] = follow;

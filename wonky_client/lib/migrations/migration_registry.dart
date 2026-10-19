@@ -7,6 +7,8 @@ import 'package:serverpod_database/serverpod_database.dart';
 part '20261013221944618-sheets-client-db/migration.dart';
 part '20261013222201599-sheets-dirty-spaces/migration.dart';
 part '20261014234831373-slides-s1/migration.dart';
+part '20261018092420485-sheets-revlog/migration.dart';
+part '20261018102850457-slides-revlog/migration.dart';
 
 /// Migration registry for the client-side database.
 class MigrationRegistry {
@@ -16,6 +18,8 @@ class MigrationRegistry {
     _Migration20261013221944618_sheets_client_db(),
     _Migration20261013222201599_sheets_dirty_spaces(),
     _Migration20261014234831373_slides_s1(),
+    _Migration20261018092420485_sheets_revlog(),
+    _Migration20261018102850457_slides_revlog(),
   ];
 
   /// List of all client-side database migration versions.

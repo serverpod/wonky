@@ -5,6 +5,7 @@ import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_slides_core/scene.dart' show ShapeCategory, ShapeLibrary;
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../../l10n/slides_l10n.dart';
 
@@ -322,6 +323,7 @@ class _DriveImagePickerState extends State<DriveImagePickerDialog>
     }
     return ShadDialog(
       key: const ValueKey<String>('dialog.slides.imageDrive'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.imageDriveDialogTitle),
       constraints: BoxConstraints(maxWidth: width < 520 ? width - 32 : 480),
       actions: [

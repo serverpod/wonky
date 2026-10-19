@@ -22,6 +22,8 @@ abstract final class DocumentBus {
       'cursor' || 'beat' => '${message.type}:${message.originSessionId}',
       _ => null,
     },
+    // Ops reach the other instances' editors without the batching delay.
+    immediate: message.type == 'op',
   );
 
   /// Asks every connected session of the document to re-check its role.

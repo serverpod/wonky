@@ -87,10 +87,13 @@ class UserEndpoint extends Endpoint {
     limit,
   );
 
-  /// Summaries of users by id (authors, participants).
+  /// Summaries of users by id (authors, participants): only the caller and
+  /// users related to them (who share an item with them, as in
+  /// [searchUsers]); other ids are left out.
   Future<List<UserSummary>> getUsers(Session session, List<int> ids) async {
-    await UserService.actorOf(session);
-    final map = await UserService.summaries(session, ids.take(200));
+    final actor = await UserService.actorOf(session);
+    final allowed = await UserService.relatedIds(session, actor, ids.take(200));
+    final map = await UserService.summaries(session, allowed);
     return map.values.toList();
   }
 

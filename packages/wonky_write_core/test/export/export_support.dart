@@ -26,6 +26,8 @@ ExportInput input(
   PageSetup pageSetup = const PageSetup(),
   ThemeVariant variant = ThemeVariant.light,
   String theme = 'wonky-default',
+  CancellationToken? cancel,
+  ExportYielder? yielder,
 }) => ExportInput(
   document: document,
   revision: 3,
@@ -43,6 +45,8 @@ ExportInput input(
   images: MapImageResolver(images),
   fonts: InMemoryFontProvider(const []),
   now: DateTime.utc(2026, 10, 12, 9),
+  cancel: cancel,
+  yielder: yielder,
 );
 
 const sample = '''# Q3 planning

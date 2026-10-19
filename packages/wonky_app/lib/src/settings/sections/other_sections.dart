@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
-import 'package:wonky_ui/wonky_ui.dart' show WonkyColors;
+import 'package:wonky_ui/wonky_ui.dart'
+    show WonkyColors, WonkyDialogCloseButton;
 
 import '../../data/api.dart';
 import '../../l10n/wonky_app_localizations.dart';
@@ -306,7 +307,7 @@ class AboutSection extends StatelessWidget {
             control: Text(
               info == null
                   ? '—'
-                  : '${info.minClientVersion} · ${info.syncTablesHash.substring(0, info.syncTablesHash.length.clamp(0, 8))}',
+                  : '${info.minClientVersion} · ${_shortHashes(info.revSchemaHash)}',
             ),
           ),
           SettingsRow(
@@ -321,6 +322,7 @@ class AboutSection extends StatelessWidget {
                 onPressed: () => showShadDialog<void>(
                   context: context,
                   builder: (context) => ShadDialog(
+                    closeIcon: const WonkyDialogCloseButton(),
                     title: Text(l.aboutLicenses),
                     child: SizedBox(
                       width: 520,
@@ -362,3 +364,14 @@ class AboutSection extends StatelessWidget {
     );
   }
 }
+
+/// `sheets:<hash>,slides:<hash>` (`ProtocolInfo.revSchemaHash`) shortened to
+/// the first 8 characters of each hash.
+String _shortHashes(String hashes) => hashes
+    .split(',')
+    .map((h) {
+      final i = h.indexOf(':');
+      final hash = h.substring(i + 1);
+      return '${h.substring(0, i + 1)}${hash.substring(0, hash.length.clamp(0, 8))}';
+    })
+    .join(' ');

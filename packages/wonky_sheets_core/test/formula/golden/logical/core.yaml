@@ -1,0 +1,72 @@
+- id: if-without-else-is-false
+  formula: =IF(FALSE,1)
+  expect: {value: false}
+  source: manual
+- id: if-number-condition
+  formula: =IF(2,"yes","no")
+  expect: {value: "yes"}
+  source: manual
+- id: iferror-catches-division
+  formula: =IFERROR(1/0,"x")
+  expect: {value: "x"}
+  source: manual
+- id: iferror-passes-value
+  formula: =IFERROR(5,"x")
+  expect: {value: 5}
+  source: manual
+- id: ifna-catches-na-only
+  formula: =IFNA(NA(),0)
+  expect: {value: 0}
+  source: manual
+- id: ifna-keeps-other-errors
+  formula: =IFNA(1/0,0)
+  expect: {value: "#DIV/0!"}
+  source: manual
+- id: and-number-and-boolean
+  formula: =AND(TRUE,1)
+  expect: {value: true}
+  source: manual
+- id: or-false-and-zero
+  formula: =OR(FALSE,0)
+  expect: {value: false}
+  source: manual
+- id: xor-two-true
+  formula: =XOR(TRUE,TRUE)
+  expect: {value: false}
+  source: manual
+- id: not-zero
+  formula: =NOT(0)
+  expect: {value: true}
+  source: manual
+- id: ifs-second-branch
+  formula: =IFS(1>2,"a",2>1,"b")
+  expect: {value: "b"}
+  source: manual
+- id: ifs-no-match
+  formula: =IFS(1>2,"a")
+  expect: {value: "#N/A"}
+  source: manual
+- id: switch-match
+  formula: =SWITCH(2,1,"a",2,"b","c")
+  expect: {value: "b"}
+  source: manual
+- id: switch-default
+  formula: =SWITCH(9,1,"a",2,"b","c")
+  expect: {value: "c"}
+  source: manual
+- id: text-comparison-case-insensitive
+  formula: ="a"="A"
+  expect: {value: true}
+  source: manual
+- id: number-sorts-before-text
+  formula: =1<"a"
+  expect: {value: true}
+  source: manual
+- id: empty-cell-equals-zero
+  formula: =A1=0
+  expect: {value: true}
+  source: manual
+- id: empty-cell-equals-empty-text
+  formula: =A1=""
+  expect: {value: true}
+  source: manual

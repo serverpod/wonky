@@ -42,9 +42,9 @@ Future<T> nextWhere<T>(
   bool Function(T event) test, {
   Duration timeout = const Duration(seconds: 10),
 }) async {
-  final deadline = DateTime.now().add(timeout);
+  final watch = Stopwatch()..start();
   while (true) {
-    final remaining = deadline.difference(DateTime.now());
+    final remaining = timeout - watch.elapsed;
     if (remaining.isNegative) throw TimeoutException('No matching event');
     final event = await queue.next.timeout(remaining);
     if (test(event)) return event;

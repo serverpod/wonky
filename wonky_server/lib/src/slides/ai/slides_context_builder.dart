@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/themes.dart' show SlidePlaceholderType;
 
-import '../mcp/slides_input.dart';
+import '../../platform/ai/untrusted_text.dart';
 import '../mcp/slides_read_handlers.dart';
 
 /// The deck context of an AI request (Slides 11 §6.2).
@@ -62,14 +62,11 @@ abstract final class SlidesContextBuilder {
 
   /// [content] in `<deck_content>` tags (closing tags inside escaped).
   static String wrap(String content, {String tag = 'deck_content'}) =>
-      '<$tag>\n${escape(content, tag: tag)}\n</$tag>';
+      UntrustedText.wrap(tag, content);
 
-  /// [content] with `</tag>` (any case and spacing) defused.
+  /// [content] with its own `<tag>`s (any case and spacing) defused.
   static String escape(String content, {String tag = 'deck_content'}) =>
-      content.replaceAllMapped(
-        RegExp('<\\s*/\\s*$tag\\s*>', caseSensitive: false),
-        (_) => '<\\/$tag>',
-      );
+      UntrustedText.escape(content, tag);
 
   /// The plain text of every element of [slideId] except its title, on
   /// one line.
@@ -208,11 +205,4 @@ abstract final class SlidesContextBuilder {
     List() => [for (final x in v) ?_compact(x)],
     _ => v,
   };
-
-  /// The Markdown text of an element (null without text).
-  static String? elementMarkdown(DeckModel m, String elementId) {
-    final e = m.element(elementId);
-    if (e == null || e.text == null) return null;
-    return SlidesInput.markdown(m, e.text);
-  }
 }

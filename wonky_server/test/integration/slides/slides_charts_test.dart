@@ -1,10 +1,13 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart'
     hide EmbeddedObjectKind;
-import 'package:wonky_server/src/platform/drive/drive_service.dart';
+import 'package:wonky_server/src/platform/drive/drive_trash.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
 import 'package:wonky_server/src/slides/charts/slides_chart_service.dart';
 import 'package:wonky_sheets_core/wonky_sheets_core.dart'
@@ -234,7 +237,7 @@ void main() {
 
     test('when the spreadsheet is trashed then updates are refused', () async {
       final v = await resolve();
-      await DriveService.trash(anna.session, anna.actor, [ssUuid]);
+      await DriveTrash.trash(anna.session, anna.actor, [ssUuid]);
       expect(
         (await check(v.sourceVersion)).status,
         ChartLinkState.spreadsheetTrashed,

@@ -27,14 +27,11 @@ abstract final class SheetsValueHandlers {
   /// Checks the per-call write limit (Sheets 12 §3.14).
   static void checkWriteLimit(int cells) {
     if (cells > SheetsLimits.cellsWrittenPerCall) {
-      throw McpToolException(
-        SheetsErrorCode.limitExceeded,
+      throw McpToolException.limit(
         'At most ${SheetsLimits.cellsWrittenPerCall} cells can be written per '
         'call ($cells given). Split the data into several calls.',
-        details: {
-          'limit': 'cells_written_per_call',
-          'max': SheetsLimits.cellsWrittenPerCall,
-        },
+        limit: 'cells_written_per_call',
+        max: SheetsLimits.cellsWrittenPerCall,
       );
     }
   }
@@ -428,14 +425,11 @@ abstract final class SheetsValueHandlers {
       existing += s.cellsIn(r.rect).length;
     }
     if (existing > SheetsLimits.cellsClearedPerCall) {
-      throw McpToolException(
-        SheetsErrorCode.limitExceeded,
+      throw McpToolException.limit(
         'At most ${SheetsLimits.cellsClearedPerCall} cells can be cleared per '
         'call.',
-        details: {
-          'limit': 'cells_cleared_per_call',
-          'max': SheetsLimits.cellsClearedPerCall,
-        },
+        limit: 'cells_cleared_per_call',
+        max: SheetsLimits.cellsClearedPerCall,
       );
     }
     final a1s = [for (final r in ranges) t.model.a1Of(r)];

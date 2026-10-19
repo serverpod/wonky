@@ -80,28 +80,104 @@ abstract final class BoardComments {
     if (comment.taskId != null) await BoardLive.task(session, comment.taskId!);
   }
 
+  /// The `moderationReason` of a visible comment that was published without
+  /// the AI check although Jev has a key (budget spent, error or timeout).
+  /// With
+  /// `needsCheck` it lists the comment under *Check* for admins, and the
+  /// sweep checks it once Jev is available again ([recheckUnchecked]).
+  static const uncheckedReason = 'Not checked yet.';
+
+  /// Up to this many unchecked comments are checked per sweep.
+  static const recheckBatch = 50;
+
   /// The comment check (specs/16 §6.3 step 6): inline, 3 s, the same
-  /// bands as posts. Without Jev or on errors the comment is visible.
+  /// bands as posts. Without a Jev key the comment is just visible (the
+  /// board runs unchecked, §6.3); with a key but today's budget spent, or
+  /// on errors, it is visible but unchecked ([uncheckedReason]).
   static Future<({BoardModeration moderation, bool needsCheck, String? reason})>
-  check(Session session, String body) async {
-    const visible = (
+  check(
+    Session session,
+    String body, {
+    Duration timeout = BoardPipeline.inlineTimeout,
+  }) async {
+    const unchecked = (
       moderation: BoardModeration.visible,
-      needsCheck: false,
-      reason: null,
+      needsCheck: true,
+      reason: uncheckedReason,
     );
     final ai = BoardAi.instance;
-    if (!await ai.jevAvailable(session)) return visible;
+    if (!ai.jevConfigured) {
+      return (
+        moderation: BoardModeration.visible,
+        needsCheck: false,
+        reason: null,
+      );
+    }
+    if (!await ai.jevAvailable(session)) return unchecked;
     try {
       final scores = await ai
-          .checkComment(session, body, timeout: BoardPipeline.inlineTimeout)
-          .timeout(
-            BoardPipeline.inlineTimeout + const Duration(milliseconds: 500),
-          );
+          .checkComment(session, body, timeout: timeout)
+          .timeout(timeout + const Duration(milliseconds: 500));
       return applyCommentCheck(scores, BoardConfig.current.ai.thresholds);
     } on Object catch (e) {
       session.log('board: comment check failed: $e', level: LogLevel.info);
-      return visible;
+      return unchecked;
     }
+  }
+
+  /// Whether [c] was published without the AI check.
+  static bool isUnchecked(BoardComment c) =>
+      c.needsCheck &&
+      c.moderation == BoardModeration.visible &&
+      c.moderationReason == uncheckedReason;
+
+  /// Sweep: checks comments published unchecked once Jev is available
+  /// again. A comment that is still unchanged gets the verdict (held ones
+  /// are hidden); stops at the first failure. Returns the number checked.
+  static Future<int> recheckUnchecked(Session session) async {
+    if (!await BoardAi.instance.jevAvailable(session)) return 0;
+    final rows = await BoardComment.db.find(
+      session,
+      where: (t) =>
+          t.moderation.equals(BoardModeration.visible) &
+          t.needsCheck.equals(true) &
+          t.moderationReason.equals(uncheckedReason) &
+          t.deletedAt.equals(null) &
+          t.systemEvent.equals(null),
+      orderBy: (t) => t.id,
+      limit: recheckBatch,
+    );
+    var count = 0;
+    for (final c in rows) {
+      final verdict = await check(
+        session,
+        c.body,
+        timeout: BoardPipeline.backgroundTimeout,
+      );
+      if (verdict.reason == uncheckedReason) break;
+      final updated = await BoardComment.db.updateWhere(
+        session,
+        columnValues: (t) => [
+          t.moderation(verdict.moderation),
+          t.moderationReason(verdict.reason),
+          t.needsCheck(verdict.needsCheck),
+        ],
+        // Not edited, moderated or deleted meanwhile.
+        where: (t) =>
+            t.id.equals(c.id!) &
+            t.body.equals(c.body) &
+            t.moderation.equals(BoardModeration.visible) &
+            t.moderationReason.equals(uncheckedReason) &
+            t.deletedAt.equals(null),
+      );
+      count++;
+      if (updated.isEmpty) continue;
+      if (verdict.moderation != BoardModeration.visible) {
+        await recount(session, c.postId);
+        await signal(session, updated.single);
+      }
+    }
+    return count;
   }
 
   static Future<BoardComment> _byUuid(
@@ -221,22 +297,43 @@ abstract final class BoardComments {
     }
     final clean = BoardText.body(body, what: 'comment');
     if (clean == comment.body) return _view(session, c, comment);
+    // Every edit is checked by Jev (shared daily budget).
+    await BoardRateLimits.check(BoardLimit.editsPerHour, c);
     final verdict = await check(session, clean);
-    final held =
-        verdict.moderation == BoardModeration.held ||
-        comment.moderation == BoardModeration.held;
-    final updated = await BoardComment.db.updateRow(
+    final heldNow = verdict.moderation == BoardModeration.held;
+    final held = heldNow || comment.moderation == BoardModeration.held;
+    final String? reason;
+    if (heldNow) {
+      reason = verdict.reason;
+    } else if (held) {
+      reason = comment.moderationReason;
+    } else if (verdict.reason == uncheckedReason) {
+      reason = uncheckedReason;
+    } else {
+      reason = null;
+    }
+    final rows = await BoardComment.db.updateWhere(
       session,
-      comment.copyWith(
-        body: clean,
-        editedAt: nowUtc(),
-        moderation: held ? BoardModeration.held : BoardModeration.visible,
-        moderationReason: held
-            ? verdict.reason ?? comment.moderationReason
-            : null,
-        needsCheck: verdict.needsCheck || comment.needsCheck,
-      ),
+      columnValues: (t) => [
+        t.body(clean),
+        t.editedAt(nowUtc()),
+        t.moderation(held ? BoardModeration.held : BoardModeration.visible),
+        t.moderationReason(reason),
+        // An earlier "unchecked" mark is replaced by this check's verdict.
+        t.needsCheck(
+          verdict.needsCheck || (comment.needsCheck && !isUnchecked(comment)),
+        ),
+      ],
+      // Not moderated or deleted while the check ran.
+      where: (t) =>
+          t.id.equals(comment.id!) &
+          t.moderation.equals(comment.moderation) &
+          t.deletedAt.equals(null),
     );
+    if (rows.isEmpty) {
+      throw Errors.conflict('This comment can no longer be edited.');
+    }
+    final updated = rows.single;
     await recount(session, comment.postId);
     await signal(session, updated);
     return _view(session, c, updated);
@@ -347,6 +444,7 @@ abstract final class BoardComments {
           reason: reason,
           note: cleanNote?.isEmpty ?? true ? null : cleanNote,
         ),
+        columns: (t) => [t.reason, t.note],
       );
       return;
     }
@@ -418,6 +516,7 @@ abstract final class BoardComments {
             moderationReason: reason,
             needsCheck: true,
           ),
+          columns: (t) => [t.moderation, t.moderationReason, t.needsCheck],
         );
         await BoardLive.post(session, post.id!);
         await BoardNotify.postStatus(
@@ -446,6 +545,7 @@ abstract final class BoardComments {
           moderationReason: reason,
           needsCheck: true,
         ),
+        columns: (t) => [t.moderation, t.moderationReason, t.needsCheck],
       );
       await recount(session, held.postId);
       await signal(session, held);

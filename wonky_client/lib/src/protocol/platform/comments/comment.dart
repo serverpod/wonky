@@ -12,8 +12,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'package:wonky_client/src/protocol/protocol.dart' as _i8pkqg1o;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
 import '../../platform/comments/comment_system_event.dart' as _ikzs0dm0;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 
 abstract class Comment
     implements _isc.SerializableModel, _isc.ProtocolSerialization {
@@ -37,7 +37,7 @@ abstract class Comment
     required int threadId,
     _isc.UuidValue? uuid,
     int? authorId,
-    required _i810rwvy.ActorKind authorKind,
+    required _ipbpecg8.ActorKind authorKind,
     required String body,
     required List<int> mentions,
     String? reactions,
@@ -55,7 +55,7 @@ abstract class Comment
           ? null
           : _isc.UuidValueJsonExtension.fromJson(jsonSerialization['uuid']),
       authorId: jsonSerialization['authorId'] as int?,
-      authorKind: _i810rwvy.ActorKind.fromJson(
+      authorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['authorKind'] as String),
       ),
       body: jsonSerialization['body'] as String,
@@ -93,7 +93,7 @@ abstract class Comment
   /// Null for system comments.
   int? authorId;
 
-  _i810rwvy.ActorKind authorKind;
+  _ipbpecg8.ActorKind authorKind;
 
   /// Markdown (inline subset).
   String body;
@@ -121,7 +121,7 @@ abstract class Comment
     int? threadId,
     _isc.UuidValue? uuid = const _isc.$UndefinedUuidValue(),
     int? authorId,
-    _i810rwvy.ActorKind? authorKind,
+    _ipbpecg8.ActorKind? authorKind,
     String? body,
     List<int>? mentions,
     String? reactions,
@@ -182,7 +182,7 @@ class _CommentImpl extends Comment {
     required int threadId,
     _isc.UuidValue? uuid,
     int? authorId,
-    required _i810rwvy.ActorKind authorKind,
+    required _ipbpecg8.ActorKind authorKind,
     required String body,
     required List<int> mentions,
     String? reactions,
@@ -214,7 +214,7 @@ class _CommentImpl extends Comment {
     int? threadId,
     _isc.UuidValue? uuid = const _isc.$UndefinedUuidValue(),
     Object? authorId = _Undefined,
-    _i810rwvy.ActorKind? authorKind,
+    _ipbpecg8.ActorKind? authorKind,
     String? body,
     List<int>? mentions,
     String? reactions,

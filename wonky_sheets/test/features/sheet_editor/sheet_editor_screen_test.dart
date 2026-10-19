@@ -1,7 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_sheets/features/sheet_editor/sheet_editor_screen.dart';
 import 'package:wonky_sheets/features/sheet_editor/sheets_document_controller.dart';
 import 'package:shad/shad.dart' show ShadTheme;
@@ -27,13 +26,10 @@ void main() {
       s,
       dark: dark,
       size: size,
-      child: ActiveDocumentHostScope(
-        host: s.services,
-        child: SheetEditorScreen(
-          services: s.services,
-          itemUuid: testItemUuid,
-          sessionFactory: (services, item) async => s.session,
-        ),
+      child: SheetEditorScreen(
+        services: s.services,
+        itemUuid: testItemUuid,
+        sessionFactory: (services, item) async => s.session,
       ),
     );
     for (var i = 0; i < 10; i++) {

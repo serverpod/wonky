@@ -3,15 +3,15 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
-    hide Protocol;
-
-import '../../generated/protocol.dart' as gen;
+import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_sheets_core/model.dart'
     show
         ChangeKinds,
         ChangeSummary,
+        GuardResult,
+        GuardStatus,
         MutationPlan,
+        ProtectionCheck,
         RowChange,
         RowOp,
         SheetsTables;
@@ -22,16 +22,19 @@ import '../../platform/common/models.dart';
 import '../../platform/common/time.dart';
 import '../../platform/files/file_service.dart';
 import '../../platform/presence/presence_service.dart';
+import '../../platform/revlog/rev_sql.dart';
+import '../../platform/sharing/access_service.dart';
 import '../../platform/users/user_service.dart';
 import '../../platform/versions/version_service.dart';
-import '../mcp/sheets_bulk_writer.dart';
-import '../sync/sync_db.dart';
-import '../sync/synced_tables.dart';
+import '../headless/headless_workbook_provider.dart';
+import '../revlog/sheets_rev_binding.dart';
+import '../revlog/sheets_server_writes.dart';
 import 'sheets_version_changes.dart';
 
-/// Sheets versions (Sheets 10 §5.1): a gzip NDJSON snapshot of all synced
-/// rows of the space in cloud storage; restore applies the row diff as
-/// normal forward writes recorded as a [ServerChangeRecord].
+/// Sheets versions (Sheets 10 §5.1): a gzip NDJSON snapshot of all rows of
+/// the spreadsheet in cloud storage, taken at a file revision (recorded in
+/// `ItemVersion.revision`); restore applies the row diff as RevLog server
+/// changes recorded as a [ServerChangeRecord] (RevLog spec 05 §8).
 class SheetsVersionProvider implements VersionProvider {
   const SheetsVersionProvider();
 
@@ -41,83 +44,141 @@ class SheetsVersionProvider implements VersionProvider {
     SheetsTables.scriptBuild,
     SheetsTables.scriptTrigger,
   };
-  static const _chunk = 5000;
+
+  /// The refusal of a restore that would write protected ranges.
+  static const protectedMessage =
+      "This version changes protected ranges you can't edit";
 
   @override
   DriveItemKind get kind => DriveItemKind.spreadsheet;
 
-  /// All visible rows of [space] by table name (admin read), in dependency
-  /// order, as JSON maps without `spaceId`.
+  /// All rows of [space] by table name (admin read), in dependency order,
+  /// as JSON maps (date-times as ISO strings).
   static Future<Map<String, Map<String, Map<String, dynamic>>>> readSpace(
     Session session,
     UuidValue space,
+  ) async => (await readAt(session, space)).$2;
+
+  /// The rows of [space] as [readSpace] with the file revision they show:
+  /// one repeatable-read transaction, so rows and revision agree while ops
+  /// commit. Revision 0 when the file is missing.
+  static Future<(int, Map<String, Map<String, Map<String, dynamic>>>)> readAt(
+    Session session,
+    UuidValue space,
   ) async {
-    final spaceRow = await OfflineSyncSpace.db.findFirstRow(
+    final file = await RevFile.db.findFirstRow(
       session,
-      where: (t) => t.uuidSpaceId.equals(space),
+      where: (t) => t.fileUuid.equals(space),
+    );
+    if (file == null) return (0, <String, Map<String, Map<String, dynamic>>>{});
+    final binding = SheetsRevBinding.instance;
+    final sql = RevSql(binding.schema, perSheetTables: binding.perSheetTables);
+    final (revision, rows) = await session.db.transaction(
+      (tx) async {
+        final head = await session.db.unsafeQuery(
+          'SELECT "headRevision" FROM rev_file WHERE id = @f',
+          parameters: QueryParameters.named({'f': file.id}),
+          transaction: tx,
+        );
+        final list = await sql
+            .allRows(
+              session,
+              file.id!,
+              scopes: () => binding.perSheetScopes(
+                session,
+                file.id!,
+                transaction: tx,
+              ),
+              transaction: tx,
+            )
+            .toList();
+        return (head.first[0]! as int, list);
+      },
+      settings: TransactionSettings(
+        isolationLevel: IsolationLevel.repeatableRead,
+      ),
     );
     final result = <String, Map<String, Map<String, dynamic>>>{};
-    if (spaceRow == null) return result;
-    final ids = await session.db.unsafeQuery(
-      r'''
-      SELECT t.name, r."uuidRowId" FROM crdt_data_rows r
-      JOIN crdt_schema_tables t ON t.id = r."tblId"
-      WHERE r."spaceId" = @space AND r.visibility <= 2
-      ''',
-      parameters: QueryParameters.named({'space': spaceRow.id}),
+    for (final (table, row) in rows) {
+      if (excluded.contains(table)) continue;
+      (result[table] ??= {})[row['id']! as String] = {
+        for (final e in row.entries)
+          e.key: switch (e.value) {
+            DateTime() => (e.value! as DateTime).toUtc().toIso8601String(),
+            _ => e.value,
+          },
+      };
+    }
+    return (
+      revision,
+      {
+        for (final name in SheetsTables.dependencyOrder)
+          if (result.containsKey(name)) name: result[name]!,
+      },
     );
-    final byTable = <String, Set<UuidValue>>{};
-    for (final row in ids) {
-      final id = row[1];
-      byTable
-          .putIfAbsent(row[0] as String, () => {})
-          .add(id is UuidValue ? id : UuidValue.fromString('$id'));
-    }
-    final db = syncSessionOf(session);
-    for (final name in SheetsTables.dependencyOrder) {
-      if (excluded.contains(name)) continue;
-      final table = syncedTablesByName[name];
-      final tableIds = byTable[name];
-      if (table == null || tableIds == null) continue;
-      final list = tableIds.toList();
-      final rows = <String, Map<String, dynamic>>{};
-      for (var i = 0; i < list.length; i += _chunk) {
-        final chunk = list.sublist(
-          i,
-          i + _chunk > list.length ? list.length : i + _chunk,
-        );
-        for (final r in await table.findByIds(db, chunk.toSet())) {
-          final json = (r.toJson() as Map).cast<String, dynamic>()
-            ..remove('spaceId');
-          rows[json['id'] as String] = json;
-        }
-      }
-      result[name] = rows;
-    }
-    return result;
   }
 
+  /// The gzip NDJSON snapshot of [rows]. Streamed: each line goes through
+  /// the UTF-8 and gzip encoders as it is produced, so only the compressed
+  /// output is held besides the rows.
   static Uint8List encode(
     UuidValue space,
-    Map<String, Map<String, Map<String, dynamic>>> rows,
-  ) {
-    final out = StringBuffer();
-    out.writeln(
-      jsonEncode({
-        'format': format,
-        'v': 1,
-        'spreadsheetId': space.uuid,
-        'capturedAt': nowUtc().toIso8601String(),
-        'syncTablesHash': syncTablesHashOf(),
-        'counts': {for (final e in rows.entries) e.key: e.value.length},
-      }),
+    Map<String, Map<String, Map<String, dynamic>>> rows, {
+    int? revision,
+  }) {
+    final out = BytesBuilder(copy: false);
+    final zipped = gzip.encoder.startChunkedConversion(
+      ByteConversionSink.withCallback((bytes) => out.add(bytes)),
     );
+    final lines = utf8.encoder.startChunkedConversion(zipped);
+    void line(Object? json) => lines.add('${jsonEncode(json)}\n');
+    line({
+      'format': format,
+      'v': 1,
+      'spreadsheetId': space.uuid,
+      'capturedAt': nowUtc().toIso8601String(),
+      'revision': ?revision,
+      'schemaHash': SheetsRevBinding.instance.schema.hash,
+      'counts': {for (final e in rows.entries) e.key: e.value.length},
+    });
     for (final table in rows.entries) {
       for (final row in table.value.values) {
-        out.writeln(jsonEncode({'tb': table.key, 'row': row}));
+        line({'tb': table.key, 'row': row});
       }
     }
-    return Uint8List.fromList(gzip.encode(utf8.encode(out.toString())));
+    lines.close();
+    return out.takeBytes();
+  }
+
+  /// The `sheetsJson` of a snapshot index (Sheets 10 §5.1.2): each sheet
+  /// with its row, column and cell counts, in one pass over [rows].
+  static String sheetIndex(
+    Map<String, Map<String, Map<String, dynamic>>> rows,
+  ) {
+    Map<String, int> countBySheet(String table) {
+      final counts = <String, int>{};
+      for (final r in rows[table]?.values ?? const <Map<String, dynamic>>[]) {
+        final id = r['sheetId'];
+        if (id is String) counts[id] = (counts[id] ?? 0) + 1;
+      }
+      return counts;
+    }
+
+    final rowCounts = countBySheet(SheetsTables.sheetRow);
+    final colCounts = countBySheet(SheetsTables.sheetColumn);
+    final cellCounts = countBySheet(SheetsTables.cell);
+    return jsonEncode([
+      for (final s
+          in rows[SheetsTables.sheet]?.values ?? const <Map<String, dynamic>>[])
+        {
+          'id': s['id'],
+          'name': s['name'],
+          'kind': s['kind'],
+          'rows': rowCounts[s['id']] ?? 0,
+          'cols': colCounts[s['id']] ?? 0,
+          'cells': cellCounts[s['id']] ?? 0,
+        },
+    ]);
   }
 
   static Map<String, Map<String, Map<String, dynamic>>> decode(Uint8List data) {
@@ -138,16 +199,11 @@ class SheetsVersionProvider implements VersionProvider {
     return result;
   }
 
-  static String syncTablesHashOf() => OfflineSyncEngine.computeSyncTablesHash(
-    syncTables,
-    tableDefinitions: gen.Protocol().getTargetTableDefinitions(),
-  );
-
   @override
   Future<CapturedVersion> capture(Session session, DriveItem item) async {
     final space = item.contentRef!;
-    final rows = await readSpace(session, space);
-    final bytes = encode(space, rows);
+    final (revision, rows) = await readAt(session, space);
+    final bytes = encode(space, rows, revision: revision);
     final file = await FileService.storeServerFile(
       session,
       ownerId: item.ownerId,
@@ -159,61 +215,49 @@ class SheetsVersionProvider implements VersionProvider {
     );
     return CapturedVersion(
       storageKind: VersionStorage.snapshotFile,
+      revision: revision,
       snapshotFileId: file.fileUuid,
       sizeBytes: bytes.length,
+      // Counted now, from the rows in memory: afterCapture never downloads
+      // and decodes the snapshot it just stored.
+      index: sheetIndex(rows),
     );
   }
+
+  @override
+  Future<void> beforeCapture(Session session, DriveItem item) async {}
 
   @override
   Future<void> afterCapture(
     Session session,
     DriveItem item,
     ItemVersion version,
+    CapturedVersion captured,
   ) async {
-    final file = await FileService.byUuid(session, version.snapshotFileId!);
-    if (file == null) return;
-    final bytes = await FileService.readBytes(session, file);
-    final rows = decode(
-      bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-    );
-    final sheets = rows[SheetsTables.sheet]?.values ?? const [];
-    int countFor(String table, String sheetId) =>
-        rows[table]?.values.where((r) => r['sheetId'] == sheetId).length ?? 0;
     await SheetsSnapshotIndex.db.insertRow(
       session,
       SheetsSnapshotIndex(
         itemVersionId: version.id!,
-        sheetsJson: jsonEncode([
-          for (final s in sheets)
-            {
-              'id': s['id'],
-              'name': s['name'],
-              'kind': s['kind'],
-              'rows': countFor(SheetsTables.sheetRow, s['id'] as String),
-              'cols': countFor(SheetsTables.sheetColumn, s['id'] as String),
-              'cells': countFor(SheetsTables.cell, s['id'] as String),
-            },
-        ]),
+        sheetsJson: captured.index as String? ?? '[]',
         changedRangesJson: await _changedRanges(session, item, version),
         authorIds: version.authors,
       ),
     );
   }
 
-  /// `changedRangesJson` of [version]: the ranges of the change log rows
-  /// consumed since the previous capture, with authors (Sheets 10 §5.1.2).
+  /// `changedRangesJson` of [version]: the ranges of the ops committed
+  /// since the previous capture, with authors (Sheets 10 §5.1.2).
   static Future<String> _changedRanges(
     Session session,
     DriveItem item,
     ItemVersion version,
   ) async {
     try {
-      final (from, to) = await SheetsVersionChanges.windowOf(session, version);
+      final window = await SheetsVersionChanges.windowOf(session, version);
       final (ranges, approx) = await SheetsVersionChanges.rangesBetween(
         session,
         item.contentRef!,
-        from: from,
-        to: to,
+        window,
       );
       return SheetsVersionChanges.encode(ranges, approx: approx);
     } on Exception catch (e) {
@@ -238,24 +282,19 @@ class SheetsVersionProvider implements VersionProvider {
       bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
     );
     final current = await readSpace(session, item.contentRef!);
-    final changes = diff(current, target);
+    final changes = diff(current, toSchema(target));
+    await _checkProtections(session, actor, item, changes);
     final label =
         'Restore version "${version.name ?? version.createdAt.toIso8601String()}"';
-    final (changeId, _) = await SheetsBulkWriter.applyRecorded(
+    final detail = detailOf(changes);
+    final (changeId, _) = await SheetsServerWrites.applyRecorded(
       session,
       actor: actor,
       item: item,
       changes: changes,
       label: label,
-      plans: [
-        MutationPlan(
-          label: label,
-          summary: summarize(changes),
-          changes: const [],
-          detail: detailOf(changes),
-        ),
-      ],
-      kinds: {ChangeKinds.restore},
+      summary: summarize(changes),
+      detailJson: detail == null ? null : jsonEncode(detail),
       lifetime: const Duration(days: 7),
     );
     try {
@@ -272,7 +311,65 @@ class SheetsVersionProvider implements VersionProvider {
     return RestoredVersion(changeId: changeId);
   }
 
-  /// `ChangeLog.summaryJson` of a restore: touched sheets, deleted and
+  /// Checks the whole restore diff against the protected ranges before the
+  /// first chunk is written (RevLog spec 05 §3.5), so a restore never
+  /// commits partially because of protection.
+  static Future<void> _checkProtections(
+    Session session,
+    Actor actor,
+    DriveItem item,
+    List<RowChange> changes,
+  ) async {
+    if (changes.isEmpty) return;
+    final wb = await HeadlessWorkbookProvider.open(session, item.contentRef!);
+    final model = wb.model;
+    final touches = changes.any((c) => c.table == SheetsTables.protectedRange);
+    if (!touches && !model.sheets.any((s) => s.protections.isNotEmpty)) {
+      return;
+    }
+    final role = await AccessService.effectiveRole(session, actor.userId, item);
+    final result = ProtectionCheck.ofApplied(
+      model,
+      changes,
+      actor.authUserId.uuid.toLowerCase(),
+      isOwner: role == Role.owner,
+    );
+    if (result.status != GuardStatus.blocked) return;
+    throw Errors.protectedRange(
+      protectedMessage,
+      detailsJson: jsonEncode({
+        'message': GuardResult.blockedMessage,
+        'protections': [
+          for (final id in {for (final h in result.hits) h.protectionId})
+            {'id': id},
+        ],
+      }),
+    );
+  }
+
+  /// [snapshot] limited to the tables and columns of the RevLog schema
+  /// (snapshots of older schemas may carry columns that no longer exist).
+  static Map<String, Map<String, Map<String, dynamic>>> toSchema(
+    Map<String, Map<String, Map<String, dynamic>>> snapshot,
+  ) {
+    final schema = SheetsRevBinding.instance.schema;
+    final out = <String, Map<String, Map<String, dynamic>>>{};
+    for (final t in snapshot.entries) {
+      final table = schema.tryTable(t.key);
+      if (table == null) continue;
+      final names = {'id', for (final c in table.columns) c.name};
+      out[t.key] = {
+        for (final r in t.value.entries)
+          r.key: {
+            for (final e in r.value.entries)
+              if (names.contains(e.key)) e.key: e.value,
+          },
+      };
+    }
+    return out;
+  }
+
+  /// `rev_op.summaryJson` of a restore: touched sheets, deleted and
   /// revived rows/columns/sheets (comment orphaning, Sheets 10 §3.2) and
   /// the restore kind.
   static ChangeSummary summarize(List<RowChange> changes) {
@@ -294,7 +391,7 @@ class SheetsVersionProvider implements VersionProvider {
     return s;
   }
 
-  /// `ChangeLog.detailJson` map of a restore's cell content changes (≤ 200
+  /// `rev_op.detailJson` map of a restore's cell content changes (≤ 200
   /// cells, else null), so cell edit history lists restored values.
   static Map<String, Object?>? detailOf(List<RowChange> changes) {
     final cells = <Map<String, Object?>>[];

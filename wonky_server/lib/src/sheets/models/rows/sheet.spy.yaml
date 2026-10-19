@@ -1,0 +1,35 @@
+### A sheet (tab) of a spreadsheet.
+class: Sheet
+table: sheet
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  spreadsheet: Spreadsheet?, relation(onDelete=Cascade, deferred)
+  name: String
+  ### Fractional index; ties sort by id.
+  sortKey: String
+  kind: SheetKind, default=grid
+  hidden: bool, default=false
+  tabColor: String?
+  rightToLeft: bool, default=false
+  showGridlines: bool, default=true
+  ### Count from the top in the current order.
+  frozenRows: int, default=0
+  frozenColumns: int, default=0
+  ### Pixels at 100% zoom.
+  defaultRowHeight: double, default=21.0
+  defaultColumnWidth: double, default=100.0
+  ### Sheet-level default format.
+  formatJson: String?
+  ### Print settings (Sheets 11 §7.2); null = defaults.
+  printSettingsJson: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  sheet_file_idx:
+    fields: fileId, id
+  sheet_order_idx:
+    fields: spreadsheetId, sortKey

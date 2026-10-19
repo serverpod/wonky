@@ -26,7 +26,14 @@ final class AxisIndex {
   final Map<String, _Entry> _pendingUpserts = {};
   final Set<String> _pendingRemoves = {};
 
-  Map<String, int>? _index;
+  // Index: every id has a stable handle; [_positions] maps handles to indexes.
+  // A small insert or remove only rewrites the positions after it (typed
+  // array writes, no hashing). Null until first needed after a rebuild.
+  Map<String, int>? _handleOf;
+  final List<int> _handles = [];
+  Int32List _positions = Int32List(0);
+  final List<int> _freeHandles = [];
+  int _nextHandle = 0;
   Float64List? _fenwick;
   Float64List? _effective;
 
@@ -92,8 +99,35 @@ final class AxisIndex {
   /// Index of [id], or -1.
   int indexOf(String id) {
     _flush();
-    final map = _index ??= {for (var i = 0; i < _ids.length; i++) _ids[i]: i};
-    return map[id] ?? -1;
+    return _positionOf(id);
+  }
+
+  int _positionOf(String id) {
+    final h = (_handleOf ?? _buildIndex())[id];
+    return h == null ? -1 : _positions[h];
+  }
+
+  Map<String, int> _buildIndex() {
+    final n = _ids.length;
+    _handles
+      ..clear()
+      ..addAll(List<int>.generate(n, (i) => i));
+    _positions = Int32List(n < 16 ? 16 : n);
+    for (var i = 0; i < n; i++) {
+      _positions[i] = i;
+    }
+    _freeHandles.clear();
+    _nextHandle = n;
+    return _handleOf = {for (var i = 0; i < n; i++) _ids[i]: i};
+  }
+
+  int _newHandle() {
+    if (_freeHandles.isNotEmpty) return _freeHandles.removeLast();
+    final h = _nextHandle++;
+    if (h >= _positions.length) {
+      _positions = Int32List(_positions.length * 2)..setAll(0, _positions);
+    }
+    return h;
   }
 
   /// Whether [id] exists.
@@ -330,25 +364,29 @@ final class AxisIndex {
     _pendingRemoves.clear();
 
     // Fast path: only attribute updates of existing entries with unchanged keys.
-    final map = _index ??= {for (var i = 0; i < _ids.length; i++) _ids[i]: i};
     if (removes.isEmpty) {
       var allInPlace = true;
       for (final e in upserts.values) {
-        final i = map[e.id];
-        if (i == null || _keys[i] != e.key) {
+        final i = _positionOf(e.id);
+        if (i < 0 || _keys[i] != e.key) {
           allInPlace = false;
           break;
         }
       }
       if (allInPlace) {
         for (final e in upserts.values) {
-          final i = map[e.id]!;
+          final i = _positionOf(e.id);
           _sizes[i] = e.size;
           _userHidden[i] = e.hidden;
           _pointUpdate(i);
         }
         return;
       }
+    }
+
+    if (upserts.length + removes.length <= _incrementalLimit) {
+      _flushInPlace(upserts, removes);
+      return;
     }
 
     // General path: rebuild by merging.
@@ -396,8 +434,56 @@ final class AxisIndex {
     _structuralChange();
   }
 
+  /// Batches up to this many entries are applied in place.
+  static const int _incrementalLimit = 64;
+
+  /// Applies a small batch in place: removes and inserts at their sorted
+  /// positions (same order as the merge); only the positions after the first
+  /// change are rewritten.
+  void _flushInPlace(Map<String, _Entry> upserts, Set<String> removes) {
+    final handleOf = _handleOf ?? _buildIndex();
+    var low = _ids.length;
+    final drop = <int>[
+      for (final id in [...removes, ...upserts.keys])
+        if (_positionOf(id) case final i when i >= 0) i,
+    ]..sort();
+    for (var k = drop.length - 1; k >= 0; k--) {
+      final i = drop[k];
+      _freeHandles.add(handleOf.remove(_ids[i])!);
+      _handles.removeAt(i);
+      _ids.removeAt(i);
+      _keys.removeAt(i);
+      _sizes.removeAt(i);
+      _userHidden.removeAt(i);
+      if (i < low) low = i;
+    }
+    final added = upserts.values.toList()
+      ..sort((a, b) => FractionalIndex.compare(a.key, a.id, b.key, b.id));
+    for (final e in added) {
+      final i = insertionIndex(e.key, e.id);
+      final h = _newHandle();
+      handleOf[e.id] = h;
+      _handles.insert(i, h);
+      _ids.insert(i, e.id);
+      _keys.insert(i, e.key);
+      _sizes.insert(i, e.size);
+      _userHidden.insert(i, e.hidden);
+      if (i < low) low = i;
+    }
+    for (final id in removes) {
+      _autoSizes.remove(id);
+    }
+    _fenwick = null;
+    _effective = null;
+    _visiblePrefix = null;
+    _generation++;
+    for (var i = low; i < _ids.length; i++) {
+      _positions[_handles[i]] = i;
+    }
+  }
+
   void _structuralChange() {
-    _index = null;
+    _handleOf = null;
     _fenwick = null;
     _effective = null;
     _visiblePrefix = null;

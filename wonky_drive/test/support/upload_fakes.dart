@@ -27,6 +27,14 @@ class FakeUploadApi implements UploadApi {
   /// Holds `send` of a file name until completed.
   final Map<String, Completer<void>> sendGates = {};
 
+  /// Holds `create` of a file name (after the server made the reservation)
+  /// until completed.
+  final Map<String, Completer<void>> createGates = {};
+
+  /// Holds `complete` of a file name (before it succeeds or fails) until
+  /// completed.
+  final Map<String, Completer<void>> completeGates = {};
+
   /// Every `send` waits for this when set (parallelism tests).
   Completer<void>? allSendsGate;
 
@@ -73,6 +81,7 @@ class FakeUploadApi implements UploadApi {
       owner: owner,
     );
     items[request.itemUuid] = item;
+    await createGates[request.name]?.future;
     return FileUploadStart(
       item: item,
       ticket: FileUploadTicket(
@@ -127,6 +136,7 @@ class FakeUploadApi implements UploadApi {
   @override
   Future<DriveItemView> complete(UuidValue itemUuid) async {
     final name = _names[itemUuid] ?? '?';
+    await completeGates[name]?.future;
     _maybeThrow('complete', name);
     final v = items[itemUuid]!.copyWith(uploadState: FileUploadState.ready);
     items[itemUuid] = v;

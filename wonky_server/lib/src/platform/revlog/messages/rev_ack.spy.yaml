@@ -1,0 +1,13 @@
+### The op was committed as [revision] (RevLog spec 04 §2.2).
+class: RevAck
+extends: RevServerMessage
+fields:
+  clientOpId: UuidValue
+  revision: int
+  duplicate: bool
+  ### The applied form (no before) when it differs from the submitted
+  ### changes (exactly one of applied/appliedGz, or neither).
+  applied: String?
+  appliedGz: ByteData?
+  ### Outcome JSON for the UI; absent when empty.
+  outcome: String?

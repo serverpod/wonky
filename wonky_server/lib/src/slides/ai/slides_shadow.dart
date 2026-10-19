@@ -1,15 +1,17 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_slides_core/model.dart' show DeckModel;
 import 'package:wonky_slides_core/ops.dart' show SlidesPlan;
 import 'package:wonky_slides_core/schema.dart' show SlidesTables;
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
+import '../../platform/ai/ai_preview_records.dart';
 import '../../platform/common/models.dart';
+import '../../platform/revlog/headless_file_cache.dart';
 import '../headless/headless_deck.dart';
+import '../revlog/slides_rev_binding.dart';
 
 /// One mutating tool call recorded by a [SlidesShadow].
 class SlidesShadowCall {
@@ -102,13 +104,22 @@ abstract final class SlidesShadows {
     );
     _byRun[runId] = s;
     DeckOverlays.put(runId, s.space, s);
+    // The copy counts in the headless cache budget while the run records
+    // (CQ-35).
+    HeadlessFileCache.reserveExternal(
+      s,
+      SlidesRevBinding.instance.estimateBytes(s.model),
+    );
     return s;
   }
 
   /// Ends run [runId]: its shadow (null when none).
   static SlidesShadow? end(String runId) {
     final s = _byRun.remove(runId);
-    if (s != null) DeckOverlays.remove(runId, s.space);
+    if (s != null) {
+      DeckOverlays.remove(runId, s.space);
+      HeadlessFileCache.releaseExternal(s);
+    }
     return s;
   }
 
@@ -116,6 +127,7 @@ abstract final class SlidesShadows {
   static void clear() {
     for (final s in _byRun.values) {
       DeckOverlays.remove(s.runId, s.space);
+      HeadlessFileCache.releaseExternal(s);
     }
     _byRun.clear();
   }
@@ -138,26 +150,13 @@ class StoredSlidesPreview {
 }
 
 /// Persists Suggest-mode previews (Slides 11 §6.3, A-11-1) so any server
-/// instance can show, apply or discard them for 30 minutes. As built, the
-/// rows go into Sheets' `sheets_ai_preview_record` table (its
-/// `spreadsheetUuid` holds the deck space, like the shared
-/// `ServerChangeRecord`), so no new table is needed.
+/// instance can show, apply or discard them for 30 minutes, in the
+/// [AiPreviewRecord] table shared with Sheets.
 abstract final class SlidesAiPreviewStore {
   static const lifetime = Duration(minutes: 30);
 
   /// Previews whose encoded changes are larger are not stored.
-  static const maxBytes = 8 * 1024 * 1024;
-
-  static String _encode(Map<String, List<RowChange>> changes) => base64Encode(
-    gzip.encode(
-      utf8.encode(
-        jsonEncode({
-          for (final e in changes.entries)
-            e.key: [for (final c in e.value) c.toJson()],
-        }),
-      ),
-    ),
-  );
+  static const maxBytes = AiPreviewRecords.maxBytes;
 
   /// The preview of [shadow] (calls without their changes).
   static SlidesAiPreview previewOf(SlidesShadow shadow) => SlidesAiPreview(
@@ -177,28 +176,21 @@ abstract final class SlidesAiPreviewStore {
   );
 
   /// Stores [shadow]'s preview (false when it is too large).
-  static Future<bool> save(Session session, SlidesShadow shadow) async {
-    final now = clock.now().toUtc();
-    await SheetsAiPreviewRecord.db.deleteWhere(
-      session,
-      where: (t) => t.expiresAt < now,
-    );
-    final data = _encode({for (final c in shadow.calls) c.callId: c.changes});
-    if (data.length > maxBytes) return false;
+  static Future<bool> save(Session session, SlidesShadow shadow) {
     final preview = previewOf(shadow);
-    await SheetsAiPreviewRecord.db.insertRow(
+    return AiPreviewRecords.save(
       session,
-      SheetsAiPreviewRecord(
-        previewId: shadow.previewId,
-        userId: shadow.userId,
-        spreadsheetUuid: shadow.space,
-        previewJson: jsonEncode(preview.toJson()),
-        changesJson: data,
-        createdAt: shadow.createdAt,
-        expiresAt: preview.expiresAt,
-      ),
+      previewId: shadow.previewId,
+      userId: shadow.userId,
+      fileUuid: shadow.space,
+      previewJson: jsonEncode(preview.toJson()),
+      changesJson: AiPreviewRecords.encode({
+        for (final c in shadow.calls)
+          c.callId: [for (final r in c.changes) r.toJson()],
+      }),
+      createdAt: shadow.createdAt,
+      expiresAt: preview.expiresAt,
     );
-    return true;
   }
 
   /// The stored preview [previewId] (null when unknown, expired or not a
@@ -207,15 +199,8 @@ abstract final class SlidesAiPreviewStore {
     Session session,
     String previewId,
   ) async {
-    final row = await SheetsAiPreviewRecord.db.findFirstRow(
-      session,
-      where: (t) => t.previewId.equals(previewId),
-    );
+    final row = await AiPreviewRecords.load(session, previewId);
     if (row == null) return null;
-    if (row.expiresAt.isBefore(clock.now().toUtc())) {
-      await SheetsAiPreviewRecord.db.deleteRow(session, row);
-      return null;
-    }
     final SlidesAiPreview preview;
     try {
       preview = SlidesAiPreview.fromJson(
@@ -224,12 +209,10 @@ abstract final class SlidesAiPreviewStore {
     } on Object {
       return null; // A spreadsheet preview.
     }
-    final decoded =
-        jsonDecode(utf8.decode(gzip.decode(base64Decode(row.changesJson))))
-            as Map;
+    final decoded = AiPreviewRecords.decode(row.changesJson)! as Map;
     return StoredSlidesPreview(
       userId: row.userId,
-      space: row.spreadsheetUuid,
+      space: row.fileUuid,
       preview: preview,
       changes: {
         for (final e in decoded.entries)
@@ -242,8 +225,5 @@ abstract final class SlidesAiPreviewStore {
   }
 
   static Future<void> delete(Session session, String previewId) =>
-      SheetsAiPreviewRecord.db.deleteWhere(
-        session,
-        where: (t) => t.previewId.equals(previewId),
-      );
+      AiPreviewRecords.delete(session, previewId);
 }

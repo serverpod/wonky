@@ -4,10 +4,9 @@ import 'package:shad/shad.dart';
 import '../../l10n/slides_l10n.dart';
 import '../../theme/slides_tokens.dart';
 
-/// "Downloading presentation… 42 %" over a skeleton navigator and slide
-/// (Slides 04 §1, 02 §9.1, suite 12 §2.3). [progress] is 0..1 when known;
-/// [message] is the session's own text ("Opening presentation… (1,204
-/// rows)").
+/// "Downloading presentation…" over a skeleton navigator and slide
+/// (Slides 04 §1, 02 §9.1). [progress] is 0..1 when known; [message] is
+/// the session's own text.
 class DeckLoadingView extends StatelessWidget {
   const DeckLoadingView({super.key, this.progress, this.message});
 

@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/sheets_l10n.dart';
 import 'sheets_ai_controller.dart';
@@ -209,6 +210,7 @@ class _AiPreviewDialogState extends State<AiPreviewDialog>
     final p = _preview;
     return ShadDialog(
       key: const ValueKey<String>('dialog.aiPreview'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.aiPreviewTitle),
       description: Text(l.aiPreviewDescription),
       actions: [

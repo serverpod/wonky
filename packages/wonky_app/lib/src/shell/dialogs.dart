@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../data/api.dart';
 import '../l10n/wonky_app_localizations.dart';
@@ -156,6 +157,7 @@ Future<void> showWhatsNewDialog(BuildContext context, ShellServices s) {
   return showShadDialog<void>(
     context: context,
     builder: (context) => ShadDialog(
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.whatsNewTitle),
       actions: [
         ShadButton(

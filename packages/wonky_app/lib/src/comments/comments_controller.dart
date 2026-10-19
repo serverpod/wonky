@@ -40,6 +40,7 @@ class CommentsController extends ChangeNotifier {
   NewCommentAnchor? _draft;
   String? _active;
   bool _disposed = false;
+  bool _started = false;
   String? _scope;
 
   /// Whether creating, replying, resolving/reopening and anchor moves are
@@ -102,10 +103,17 @@ class CommentsController extends ChangeNotifier {
 
   String get _streamKey => 'comments:${itemUuid.uuid}';
 
-  /// Loads threads and starts the live stream.
+  /// Loads threads and starts the live stream. A no-op once disposed (also
+  /// when the disposal happens while loading): a late start must not leave
+  /// a zombie stream behind or replace a reopened editor's stream, which is
+  /// supervised under the same key.
   Future<void> start() async {
+    if (_disposed) return;
     await _loadOps();
+    if (_disposed) return;
     await reload();
+    if (_disposed) return;
+    _started = true;
     services.supervisor.supervise<CommentEvent>(
       _streamKey,
       () => services.repositories.comments.watch(itemUuid),
@@ -359,7 +367,9 @@ class CommentsController extends ChangeNotifier {
       out.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } else {
       if (a != null) {
-        out.sort((x, y) => a.positionOf(x).compareTo(a.positionOf(y)));
+        // Positions are anchor lookups (O(document) in Write): once each.
+        final pos = {for (final t in out) t: a.positionOf(t)};
+        out.sort((x, y) => pos[x]!.compareTo(pos[y]!));
       } else {
         out.sort((x, y) => x.createdAt.compareTo(y.createdAt));
       }
@@ -546,7 +556,9 @@ class CommentsController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     if (_listening) services.connectivity.removeListener(_onConnectivity);
-    unawaited(services.supervisor.cancel(_streamKey));
+    // A controller that never started leaves the key alone: it may belong
+    // to a reopened editor's controller.
+    if (_started) unawaited(services.supervisor.cancel(_streamKey));
     super.dispose();
   }
 }

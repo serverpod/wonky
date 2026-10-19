@@ -1,0 +1,5 @@
+### The client must re-bootstrap (RevLog spec 04 §2.2).
+class: RevResync
+extends: RevServerMessage
+fields:
+  reason: String

@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:serverpod/serverpod.dart' show UuidValue;
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/ai/ai_config.dart';

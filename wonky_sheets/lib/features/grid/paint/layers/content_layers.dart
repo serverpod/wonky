@@ -328,13 +328,15 @@ class CellContentLayer extends GridLayer {
     final inner = cellRect.width - 2 * padH - iconW;
     final wrap = f.wrap == WrapStrategy.wrap;
     final rich = d.rich;
+    final theme = rich == null ? null : ctx.model.theme;
     var p = rich != null && !showFormulas && f.rotation != 255
         ? richTextLayouts.layout(
             rich,
             style,
             pxPerPoint: kPointToPx * z,
             linkColor: tokens.linkText,
-            resolveColor: ctx.model.theme.resolveColor,
+            resolveColor: theme!.resolveColor,
+            theme: theme,
             conditional: cfo?.format,
             wrapWidth: wrap ? math.max(1, inner) : null,
             chipText: neutralChipColors(tokens).fg,

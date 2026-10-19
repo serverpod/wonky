@@ -1,10 +1,12 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/drive/templates/builtin_templates.dart';
 import 'package:wonky_server/src/sheets/spaces/sheets_create_defaults.dart';
-import 'package:wonky_server/src/sheets/sync/sync_db.dart';
 
 import '../../../support/test_users.dart';
 import '../../../support/wonky_serverpod.dart';
@@ -63,7 +65,7 @@ void main() {
 
     Future<Spreadsheet> spreadsheetOf(DriveItemView view) async =>
         (await Spreadsheet.db.findById(
-          syncSessionOf(anna.session),
+          anna.session,
           view.contentRef!,
         ))!;
 

@@ -27,6 +27,12 @@ abstract final class McpErrorCode {
   static const busy = 'busy';
   static const internal = 'internal_error';
 
+  /// A per-call limit (details: `{limit, max}`); shared by the app tools.
+  static const limitExceeded = 'limit_exceeded';
+
+  /// Someone else is editing the target (Slides soft locks).
+  static const beingEdited = 'being_edited';
+
   /// (v2) Not enough storage (Drive 03 §6.6); details are
   /// `QuotaExceededDetails`.
   static const quotaExceeded = 'quota_exceeded';
@@ -64,6 +70,18 @@ class McpToolException implements Exception {
             for (final v in violations)
               {'pointer': _pointer(v.path), 'message': v.message},
           ],
+  );
+
+  /// A per-call limit was exceeded: [message] plus `{limit, max}`
+  /// details (Sheets 12 §3.14, Slides 11 §2.3).
+  static McpToolException limit(
+    String message, {
+    required String limit,
+    required int max,
+  }) => McpToolException(
+    McpErrorCode.limitExceeded,
+    message,
+    details: {'limit': limit, 'max': max},
   );
 
   /// `$.range.quote` → `/range/quote`.

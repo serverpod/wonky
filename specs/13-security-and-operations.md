@@ -6,13 +6,15 @@
 |--------|------------|
 | Unauthorized document access | All reads/writes through `AccessService`; ids are unguessable UUIDs but never treated as secrets; per-endpoint role tests |
 | Privilege escalation via crafted ops (Write) | Server validates every op against schema + role-specific op shapes (Write 03 §5) |
-| Tampered sync client (Sheets) | Space role enforced by the sync engine (readOnly can't write). Protected ranges are advisory (documented). Server-side jobs (versions, triggers) treat synced data as untrusted input |
+| Tampered sync client (Sheets, Slides) | The RevLog sequencer checks the ACL role on every op and validates every change against the schema and limits (types, foreign ids, immutable columns, sizes; [17](17-revlog-sync.md) part 3 §5) before applying it. Protected ranges are enforced server-side by the same guard as the client (17 part 5 §3.5). Server-side jobs (versions, triggers) treat file content as untrusted input |
 | XSS via document content (HTML export, link hrefs) | Markdown/HTML exporters escape; links restricted to `http(s)`, `mailto`, `wonky://`; `javascript:` and `data:` rejected at schema validation |
 | SSRF (IMPORTDATA/IMAGE/UrlFetch/image-from-URL) | Server-side fetch proxy: DNS resolution then block private/link-local/metadata ranges, allowlisted ports 80/443, 10 s timeout, 10 MB cap, content-type checks, per-user quotas |
 | Script sandbox escape | `dart_eval` default-deny permissions; no FS/process; network only via bridged proxy; isolate/worker kill on timeout; memory caps via value-count limits |
 | MCP token theft | Tokens hashed (SHA-256), shown once, scoped, expirable, revocable, `lastUsedAt` displayed; rate limits |
 | Prompt injection via document content into AI/MCP | AI tool layer enforces the user's permissions; AI cannot call sharing/permission tools; destructive bulk operations require confirmation; content from documents is placed in user-turn context, never system prompt |
 | CSRF / DNS rebinding on `/mcp` | Bearer auth only (the web apps' auth cookie is ignored on `/mcp`), `allowedHosts`/`allowedOrigins` checks |
+| Memory/CPU exhaustion through unauthenticated or oversized requests | Header-only checks before any body is read: `/mcp` (enabled, host, origin, bearer format, declared size; 16 MB cap, 09 §2) and the GitHub webhook (enabled, `X-Hub-Signature-256`, GitHub headers, declared size; 5 MB cap, 16 §13.3); per-token MCP limit also for `resources/*` and `prompts/get`; signed-out board searches limited per address and in total, search text capped at 200 chars (16 §11); images for Slides AI refused above 40 MP from the header, decoded off the request isolate; presence cursors ≤ 8 KB and ≤ 20 updates/s per session (07 §1); Sheets `script.notifyOpen` ≤ 10/min per user and spreadsheet and 120/min per spreadsheet |
+| Access kept by open streams after it was revoked | Presence streams re-check access on the user's drive signal for the item (ACL changes) and every 5 min (expiring grants) and close with `notFound`; presentation members re-check at most every 5 s while the presenter's state arrives and end with `noAccess` (Slides 10 §6.5) |
 | File upload abuse | Type sniffing, size limits (images 20 MB, imports 100 MB, (v2) drive files 50 MB and the per-user quota), image re-encoding for thumbnails, private storage with signed URLs (15 min); (v2) arbitrary uploads: §6 |
 | (v2) Uploaded active content (HTML/SVG/JS) executing in the app origin | Never rendered; downloads forced to `attachment` with `nosniff` and `CSP: sandbox` (§6) |
 | (v2) Storage/bandwidth abuse through uploads | 50 MB quota per user, reservations, pending-upload cap, upload rate limits (§6) |
@@ -39,8 +41,12 @@
   provider and the last four characters); the model is `serverOnly`. It is stored **unencrypted**
   in Postgres (there is no encryption helper): database access or a backup exposes it, so
   deployments that must avoid that set `ai.allowUserKeys: false` and configure a server key.
-- Account deletion deletes owned items (or transfers on request), personal spaces, tokens,
+- Account deletion deletes owned items (or transfers on request), script user properties, tokens,
   notifications; anonymizes authorship in shared items ("Deleted user").
+- RevLog op log ([17](17-revlog-sync.md)): the payload, summary and cell detail of a spreadsheet's or
+  deck's ops (cell values before and after, authors) are kept 30 days, then pruned by
+  `revlog.pruneOps`; a slim row (revision, client op id, author, time) stays 365 days for
+  idempotent resends. Purging a file deletes its ops.
 - Export of all user data (*Settings › Account › Download your data*: zip of documents as
   Markdown, spreadsheets as XLSX, comments as JSON) — P1.
 
@@ -64,13 +70,19 @@
   on server instances started with the `sheets.scripts.worker: true` role, consuming a job queue
   with an isolate pool (Sheets 09); API instances don't execute scripts. One combined role is
   fine for small deployments.
-- **Migrations**: Serverpod migrations; synced-schema changes batched into "sync schema
-  releases" (lock-step, see 01 §7).
+- **Migrations**: Serverpod migrations. A change to the Sheets or Slides tables changes the
+  RevLog schema hash: additive changes stay compatible for `schemaWindowDays`, breaking ones
+  bump `minClientVersion`; clients reset their cache after an update (no lock-step releases;
+  01 §7, [17](17-revlog-sync.md) part 2 §4.3).
 - **Backups**: Postgres PITR; cloud storage versioning for snapshots.
 - **Scheduled jobs** (Serverpod FutureCalls): trash purge (daily), version capture & thinning
-  (every 5 min scan / nightly thinning), op-log pruning (daily), ChangeLog pruning (daily),
-  space active-set eviction (daily), email digests (15 min), script time-driven triggers
-  (minute resolution), AI usage rollups (hourly), orphan file cleanup (weekly); (v2) storage
+  (every 5 min scan / nightly thinning), op-log pruning (daily; Write `write.pruneOps`, RevLog
+  `revlog.pruneOps`), RevLog hook sweep (`wonky.revlogSweep`, every 5 min) and stats repair
+  (`revlog.repairStats`, weekly), email digests (15 min), script time-driven triggers
+  (minute resolution), AI usage rollups (hourly), expired grants (`wonky.expireGrants`, hourly at :27,
+  in batches until none are left), AI usage purge (`ai.purgeUsage`, in the daily chain; every job
+  of a chain catches `Object` and logs its name and duration, so one failure never skips the
+  rest), orphan file cleanup (weekly); (v2) storage
   reconcile (nightly), storage backfill (once, at the M8 deploy), upload expiry
   (`drive.expireUploads`, daily: uploads not completed in 24 h, reservations, chunk parts),
   file preview/thumbnail generation (on upload completion), folder `kindMask` recompute
@@ -78,6 +90,49 @@
   and expiring task claims, unchecked-post re-triage, retention of removed board content, and
   the GitHub part: delivery purge, auto-close of PRs without a valid task, postponed reviews;
   16 §8.2, §11, §13.4).
+  Batched jobs work in rounds under a time budget instead of one fixed `LIMIT` per run:
+  `files.cleanup` (expired files and day-old pending uploads as two indexed queries, never one
+  `OR`), `versions.thin`, `write.pruneOps`, `notifications.purgeOld`. The scans they and the
+  hourly jobs filter on are indexed: `stored_file (ownerId, kind, createdAt)` (upload rate limits,
+  usage), `stored_file (status, createdAt)`, `stored_file.expiresAt`, `drive_item.trashedAt`,
+  `drive_item_permission.expiresAt`, `notification (emailPending, createdAt)` (the digest's
+  pending rows; Serverpod models have no partial indexes) and BRIN indexes on
+  `document_op.createdAt`, `write_diff_cache.createdAt` and `notification.createdAt`.
+- **Server write and job rules** (checked by `wonky_server/test/unit/source_rules_test.dart`):
+  - *T1, no stale full-row writes*: `X.db.updateRow(row)` names the changed `columns:` (or the
+    code uses `updateWhere` / atomic SQL), because a row read earlier would revert what another
+    request changed meanwhile. Tables with one writer at a time (per-user settings, caches,
+    lease-owned job rows) are listed in the test with the reason.
+  - *T2, failures never escape long-lived work*: jobs, sweeps, queues and connections catch
+    `Object`, not only `Exception`, through `runGuarded(session, name, body)`
+    (`platform/common/guarded.dart`: logs at error level with the name and duration); empty
+    `catch (_) {}` blocks are not allowed anywhere.
+  - *T3, decide inside the write*: check-then-act decisions (answering an access request or an
+    ownership transfer, orphaning or reviving a comment thread, claiming a notification email
+    or a version capture) are conditional updates (`WHERE … handledAt IS NULL`, `status = …`)
+    whose result says who won; read-modify-write of JSON (comment reactions, activity
+    counters) happens under the row lock.
+- **Search indexes** (documented exception to "the schema is `definition.sql`"): Serverpod models
+  cannot declare `gin_trgm_ops` indexes, and a migration's SQL never runs on databases created
+  from `definition.sql`, so `SearchIndexes` (`platform/common/search_indexes.dart`) creates the
+  `pg_trgm` indexes on `drive_item.name` and `board_post.title` at every server start, in the
+  background, `CONCURRENTLY` and `IF NOT EXISTS`, when the extension is available (the embedded
+  test Postgres has no `pg_trgm`; the substring match then scans). The full-text search documents
+  (drive item, board post) have **no index for now**: Serverpod's integrity check reports
+  expression indexes as a mismatch at every start, and a clean check (an early signal of real
+  schema drift) is worth more than the speed while the tables are small; full-text search scans
+  (TODO.md). The expression indexes of an earlier build are dropped at start.
+- **Heavy work** (T4) runs in worker isolates through the shared `IsolateRunner`
+  (`platform/common/isolate_runner.dart`): Write/Slides exports, Write and Sheets imports
+  (parse), image previews, script compiles and analyses, Write and Sheets version diffs and the
+  Slides AI image re-encode. The isolate is **killed** at its time limit or when the caller
+  cancels (an export's progress stream closed), never only abandoned; at most
+  `IsolateRunner.maxConcurrent` (half the cores, 2–8) run per instance and later work waits up
+  to 30 s in FIFO order, then fails with `busy`. Work that needs the database (export images)
+  asks the request isolate through the runner's channel. Spreadsheet exports stay on the request
+  isolate (they read the headless workbook's live formula engine; a worker would recalculate the
+  workbook) and are capped at 2 per user. Process-local maps keyed by users, files or results are
+  bounded (`LruMap`, T5); Slides export results are keyed on the deck's RevLog revision.
 - (M12) **Board secrets and settings**: the passwords `internalJevApiKey`, `internalGeminiApiKey`
   (board AI, separate from the in-app keys), `githubAppPrivateKey` and `githubWebhookSecret` (the
   GitHub App; the webhook route is `POST https://wonky.work/api/github/webhook`, setup in
@@ -109,7 +164,7 @@ without Redis.
 
 | Area | Mechanism |
 |------|-----------|
-| Bus channels (`doc:`, `presence:`, `theme:`, drive, comments, notifications, `sheets:merged:`) | `ClusterBus.post` (`cluster/cluster_bus.dart`): delivered to this instance's listeners at once (`MessageScope.local`), and queued for the other instances, which get everything an instance queued in **one Redis publish** on `wonky:bus` (`ClusterBusBatch`, in order) every `cluster.busFlushMs` (default 1000 ms; sooner past 256 KB). Messages with a coalesce key — a session's Write cursor and `beat`, presence `update` and `beat` — replace their queued predecessor and move to the end, so a batch carries only the latest. Receivers drop their own batches and re-post the rest locally. Collaborators on another instance see changes up to a second later; the OT catch-up below makes that safe. Delivery is best effort |
+| Bus channels (`doc:`, `rev:`, `presence:`, `theme:`, drive, comments, notifications) | `ClusterBus.post` (`cluster/cluster_bus.dart`): delivered to this instance's listeners at once (`MessageScope.local`), and queued for the other instances, which get everything an instance queued in **one Redis publish** on `wonky:bus` (`ClusterBusBatch`, in order) every `cluster.busFlushMs` (default 1000 ms; sooner past 256 KB). Messages with a coalesce key — a session's Write cursor and `beat`, presence `update` and `beat` — replace their queued predecessor and move to the end, so a batch carries only the latest. A post with `immediate: true` publishes the queue at once (that message and everything queued before it, in order): Write ops and the RevLog messages of `rev:<fileUuid>` (ops, role changes) use it, so collaborators on another instance see edits without the batching delay; cursors, presence and other messages still wait up to a second. Receivers drop their own batches and re-post the rest locally. The OT catch-up below and RevLog's gap fill (a client that sees a revision gap requests the missing ops, 17 part 6 §4.3) make a lost or late batch safe. Delivery is best effort |
 | Write OT commits | Postgres row lock + catch-up from the op log (Write 03 §2) — correct on any instance |
 | Write in-memory `DocumentState` | Each instance keeps its own. Remote `op` messages make it catch up from the op log (coalesced), and `CursorUpdate`, `RequestOps` and `HashCheck` first catch up to the revision the client names, so gap fills and cursor transforms never use a stale head |
 | Document and presence rosters | `hello`/`here`/`left` plus, with Redis, a `beat` every 30 s; participants not heard of for 90 s are dropped (crashed instance, lost `left`); a `beat` of an unknown participant adds it. MCP/AI agents get a session id derived from user + document + agent, so all instances show one participant, and re-announce while active |
@@ -121,7 +176,9 @@ without Redis.
 | AI assistant `stop` / `confirm` | Unary calls handled locally when the run is here, else relayed as `ClusterSignal`s to the instance running the chat stream |
 | Profile-id cache (`UserService`) | Account deletion invalidates it on all instances (`user.forget` signal) |
 | Recurring jobs (FutureCalls) | Every instance reconciles the schedule at start under an advisory lock: existing jobs with the same cron are kept, missing ones added, changed or duplicated ones replaced. Serverpod claims each run, so it executes on one instance |
-| Sheets change-log consumer | Exactly once per row via `sheets_change_log_receipt` (insert-or-skip) |
+| RevLog commits | One sequencer per file: an in-memory lock per instance plus a Postgres row lock on `rev_file` (`FOR UPDATE`) across instances; revisions are dense per file (17 part 5 §2–§3) |
+| RevLog post-commit hooks | Per file one `rev_hook_state` row with each hook's cursor and a lease (`leaseOwner`, `leaseUntil`, 60 s), so one instance drains a file; at-least-once, resumed by `revlog.hookSweep` (17 part 5 §6) |
+| RevLog headless models (`HeadlessFileCache`) | Per instance, kept current from `rev:` bus messages with gaps filled from `rev_op` (17 part 5 §9) |
 
 **Accepted per-instance limits** (soft limits; documented, not enforced globally):
 AI concurrency per user (`ai.maxConcurrentRequests`, Suite 10) and export concurrency per user
@@ -151,7 +208,7 @@ dark, the Wonky Work icon). They name Serverpod AB (Sjöbjörnsvägen 46, 117 67
 as the provider and data controller, and are linked from the sign-up screen (suite 04 §1.1).
 Google sign-in requires both: the consent screen links `https://wonky.work/privacy` and
 `https://wonky.work/terms` (04 §1.6). Keep them in step with the product (data collected, AI providers,
-retention — trash is purged after 30 days, `DriveService.trashRetention`) and have changes
+retention — trash is purged after 30 days, `DriveTrash.trashRetention`) and have changes
 reviewed before publishing; material changes update the effective date and are announced.
 (v2) The M8 release updates both: uploaded files of any type, the 50 MB storage limit and what
 happens over it (Drive 03), acceptable use of uploads (no illegal content, no malware), and the
@@ -166,10 +223,10 @@ Rules:
 | Area | Rule |
 |------|------|
 | Limits | One file ≤ min(available quota, `files.maxFileUploadBytes` = 50 MB); 50 MB storage per user ([Drive 03](wonky_drive/03-storage-quota.md)); ≤ 100 open reservations per user; ≤ 500 files per batch (client) |
-| Rate limits | Per user: 200 upload starts per hour and 500 MB of upload traffic per day (`files.uploadsPerHour`, `files.uploadBytesPerDay`; `limitExceeded` "You've uploaded a lot recently. Try again later."); downloads: 2 GB per user per day, counted per instance (soft, §4) |
-| Type detection | Server-side sniffing of the stored bytes (magic numbers, then a UTF-8 text check); the client-declared type and the extension never override a binary signature (Drive 02 §5) |
+| Rate limits | Per user: 200 upload starts per hour and 500 MB of upload traffic per day (`files.uploadsPerHour`, `files.uploadBytesPerDay`; `limitExceeded` "You've uploaded a lot recently. Try again later."); downloads: 2 GB per user per day (`files.downloadBytesPerDay`; `429` "You've downloaded a lot today. Try again tomorrow."), counted per instance and UTC day (soft, §4; `DownloadBudget`) |
+| Type detection | Server-side sniffing of the stored bytes (magic numbers, then a UTF-8 text check) on the first 4 KB and, for ZIP containers, the last 64 KB, read with ranged reads (`StorageReads`; text line counts stream), never the whole object; the client-declared type and the extension never override a binary signature (Drive 02 §5) |
 | No active content | HTML, SVG, XML, JavaScript and unknown types are never rendered — text types are shown as escaped source in Flutter, others not at all. Images are decoded by Flutter/`package:image` (bounded: ≤ 50 MP, 10 s), PDFs rasterized (no PDF JavaScript, forms or link actions) |
-| Downloads | Served by `GET /files/d/:fileUuid/:name?t=…` (HMAC token: file + user + expiry, 15 min), streamed from private storage with `Content-Disposition: attachment; filename="<ascii>"; filename*=UTF-8''<encoded>`, `Content-Type` = the sniffed type (or `application/octet-stream`), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox; default-src 'none'`, `Cross-Origin-Resource-Policy: same-origin`, `Cache-Control: private, no-store`. Never inline |
+| Downloads | Served by `GET /files/d/:fileUuid/:name?t=…` (HMAC token: file + user + expiry, 15 min), streamed from private storage in 1 MB pieces (`StorageReads`: database storage by `substring`, cloud storage over its temporary URL; never buffered whole) with `Content-Disposition: attachment; filename="<ascii>"; filename*=UTF-8''<encoded>`, `Content-Type` = the sniffed type (or `application/octet-stream`), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox; default-src 'none'`, `Cross-Origin-Resource-Policy: same-origin`, `Cache-Control: private, no-store`. Never inline |
 | Uploads | `PUT /files/upload/:fileUuid` accepts only the declared size (`413` beyond), requires the token or the session; objects go to private storage under `drive/<ownerUuid>/<fileUuid>/` (ASCII-safe names) |
 | Names | Display names keep Unicode but lose control characters and bidi overrides (U+202A–U+202E, U+2066–U+2069), so extensions can't be spoofed (Drive 02 §5.1) |
 | Archives | Never extracted or listed on the server (no zip bombs); XLSX/DOCX/ODS imports keep their existing decompressed-size limits |

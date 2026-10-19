@@ -664,7 +664,11 @@ class DeckEditorController extends ChangeNotifier {
     final plan = session.execute(op);
     if (!plan.isEmpty) {
       ctx.transaction?.record(
-        SlidesRowsUndoEntry(plan.changes, label: plan.label),
+        SlidesRowsUndoEntry(
+          plan.changes,
+          label: plan.label,
+          groupId: session.groupOf(plan),
+        ),
       );
       for (final l in List.of(applyListeners)) {
         l(ctx, op, plan);

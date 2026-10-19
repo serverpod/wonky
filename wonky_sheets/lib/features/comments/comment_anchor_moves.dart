@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart' show CommentThreadView;
@@ -51,26 +49,15 @@ class CommentAnchorMoves {
       model: editor.model,
       threads: c.threads,
     );
-    for (final m in moves) {
-      final json = m.after.encode();
-      if (ctx?.transaction != null) {
-        ctx!.record(
-          CommentUndoEntry(
-            op: CommentUndoOp.updateAnchor,
-            threadUuid: m.threadUuid,
-            anchorKind: m.after.kind,
-            anchorJson: json,
-            previousAnchorJson: m.before.encode(),
-          ),
-        );
-      }
-      unawaited(
-        c.updateAnchor(m.threadUuid, json).catchError((Object e) {
-          debugPrint('Moving comment ${m.threadUuid} failed: $e');
-          return c.thread(m.threadUuid)!;
-        }),
-      );
-    }
+    applyCommentAnchorChanges(ctx, c, [
+      for (final m in moves)
+        CommentAnchorChange(
+          threadUuid: m.threadUuid,
+          anchorKind: m.after.kind,
+          beforeJson: m.before.encode(),
+          afterJson: m.after.encode(),
+        ),
+    ]);
   }
 
   /// The threads anchored inside the cut [source] and their anchors at the

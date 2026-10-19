@@ -1,15 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wonky_client/wonky_client.dart' show UuidValue;
-import 'package:wonky_core/wonky_core.dart' show Role;
+import 'package:wonky_client/wonky_client.dart'
+    show RevPageKind, RevPageRequest, UuidValue;
 import 'package:wonky_sheets/features/model/loading_formula_source.dart';
-import 'package:wonky_sheets/features/sync/sheets_writer.dart';
-import 'package:wonky_sheets/features/sync/synced_workbook_session.dart';
+import 'package:wonky_sheets/features/revlog/logged_workbook_session.dart';
 import 'package:wonky_sheets_core/formula.dart' show FError, FNumber;
 import 'package:wonky_sheets_core/model.dart';
 
-import '../sync/support/sync_harness.dart';
+import '../revlog/support/rev_harness.dart';
 
 final space = UuidValue.fromString('0190a000-0000-7000-8000-0000000000c7');
+final testUser = UuidValue.fromString('0190a000-0000-7000-8000-0000000000a1');
 
 /// Formulas reading rows that are still streaming in show `#LOADING`
 /// (02 §6, 05 §13.6) instead of partial values.
@@ -18,13 +20,9 @@ void main() {
       'are not loaded yet, then it is loading until they arrive, while '
       'formulas over loaded rows show their value at once', () async {
     const rows = 3000;
-    final replica = await openTestReplica();
-    final create = await createSpreadsheet(
-      replica,
-      space,
-      rows: rows,
-      columns: 4,
-    );
+    final hub = sheetsHub();
+    final create = creationPlan(space, testUser, rows: rows, columns: 4);
+    commitPlan(hub, space, testUser, create);
     final model = WorkbookModel(spreadsheetId: space.uuid)..applyPlan(create);
     final sheet = model.sheets.single;
     final binding = ModelEngineBinding.create(model);
@@ -56,23 +54,24 @@ void main() {
       ),
     );
     binding.dispose();
-    await SheetsWriter(replica).write(
-      spaceId: space,
-      changes: plan.changes,
-      plan: plan,
-      label: plan.label,
-      actorKind: 'user',
-      sessionId: 'fixture',
-    );
+    commitPlan(hub, space, testUser, plan);
 
-    final s = SyncedWorkbookSession.open(
-      FakeSessionHost(replica),
-      itemUuid: space,
-      spaceUuid: space,
-      role: Role.editor,
-    );
-    addTearDown(s.dispose);
-    await s.opened;
+    // Cell pages after the viewport's rows (the first block, possibly split
+    // over several pages in flight) wait until the checks are done.
+    final device = await SheetsDevice.start(hub, testUser);
+    final release = Completer<void>();
+    final viewport = {
+      for (var r = 0; r < LoggedWorkbookSession.viewportRows; r++)
+        sheet.rows.idAt(r),
+    };
+    device.transport.beforePage = (RevPageRequest r) async {
+      if (r.kind == RevPageKind.cells &&
+          !r.rowIds!.any((id) => viewport.contains(id.uuid))) {
+        await release.future;
+      }
+    };
+
+    final s = await device.openFile(space);
     expect(s.rowLoading.complete, isFalse);
     final id = s.model.sheets.single.id;
     final source = LoadingFormulaSource(
@@ -93,6 +92,7 @@ void main() {
     expect(source.valueAt(id, 0, 1), const FNumber(2));
     expect(loading(2), isTrue, reason: 'reads the loading formula');
 
+    release.complete();
     await s.rowLoading.whenComplete;
     expect(loading(0), isFalse);
     expect(loading(2), isFalse);

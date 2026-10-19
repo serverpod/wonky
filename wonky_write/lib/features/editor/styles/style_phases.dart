@@ -53,14 +53,37 @@ class CodeHighlightStylePhase extends SingleColumnLayoutStylePhase {
     Document document,
     SingleColumnLayoutViewModel viewModel,
   ) {
-    return SingleColumnLayoutViewModel(
+    final result = SingleColumnLayoutViewModel(
       padding: viewModel.padding,
       componentViewModels: [
         for (final model in viewModel.componentViewModels)
           _highlight(document, model),
       ],
     );
+    // Forget deleted blocks (W-21).
+    if (_cache.length > _seen.length || _outputs.length > _seen.length) {
+      _cache.removeWhere((id, _) => !_seen.contains(id));
+      _outputs.removeWhere((id, _) => !_seen.contains(id));
+    }
+    _seen.clear();
+    return result;
   }
+
+  /// Code block ids met in the current [style] pass.
+  final _seen = <String>{};
+
+  /// The last highlighted view model per code block and the input it was
+  /// made from: an equal input (a keystroke elsewhere) gets the same output
+  /// instead of a new copy with every token re-attributed (Write 04 §36).
+  final _outputs =
+      <
+        String,
+        ({
+          SingleColumnLayoutComponentViewModel input,
+          List<(int, int, String)> spans,
+          SingleColumnLayoutComponentViewModel output,
+        })
+      >{};
 
   SingleColumnLayoutComponentViewModel _highlight(
     Document document,
@@ -69,6 +92,7 @@ class CodeHighlightStylePhase extends SingleColumnLayoutStylePhase {
     if (model is! TextComponentViewModel) return model;
     final node = document.getNodeById(model.nodeId);
     if (node == null || !isCodeBlockNode(node)) return model;
+    _seen.add(node.id);
     final language = CodeLanguages.normalize(codeLanguageOf(node));
     if (!_tokenizer.supports(language)) return model;
     final text = model.text;
@@ -90,6 +114,10 @@ class CodeHighlightStylePhase extends SingleColumnLayoutStylePhase {
     final spans = _cache[node.id]!.spans;
     if (spans.isEmpty) return model;
 
+    final memo = _outputs[node.id];
+    if (memo != null && identical(memo.spans, spans) && memo.input == model) {
+      return memo.output;
+    }
     final copy = model.copy();
     final highlighted = text.copy();
     for (final (start, end, token) in spans) {
@@ -102,6 +130,7 @@ class CodeHighlightStylePhase extends SingleColumnLayoutStylePhase {
       }
     }
     (copy as TextComponentViewModel).text = highlighted;
+    _outputs[node.id] = (input: model, spans: spans, output: copy);
     return copy;
   }
 

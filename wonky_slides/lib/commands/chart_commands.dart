@@ -16,7 +16,7 @@ import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/schema.dart' show ElementCols, SlidesCols;
 import 'package:wonky_slides_core/session.dart' show SlidesRowsUndoEntry;
 import 'package:wonky_slides_core/themes.dart' show SuRect;
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 import '../config/panels/slides_panels.dart';
 import '../config/slides_features.dart';
@@ -30,7 +30,7 @@ import '../features/elements/chart/chart_insert_dialog.dart';
 import '../features/elements/chart/chart_links.dart';
 import '../features/elements/chart/chart_text.dart';
 import '../features/elements/element_activation.dart';
-import '../features/elements/image/image_clipboard.dart';
+import 'package:wonky_app/platform.dart' show ImageClipboard;
 import '../features/settings/slides_user_defaults.dart';
 import '../l10n/slides_l10n.dart';
 import '../mcp/dialog_adapters.dart' show showDescribableChartDataDialog;

@@ -16,8 +16,7 @@ import 'package:wonky_slides_core/templates.dart' show SlidesTemplates;
 import '../features/settings/slides_settings.dart';
 import '../features/templates/template_preview.dart';
 import '../features/undo/server_change_undo.dart';
-import '../features/sync/slides_data.dart'
-    show NoReservedSpaceException, SlidesData;
+import '../features/revlog/slides_rev_log.dart' show SlidesRevLog;
 import '../l10n/slides_l10n.dart';
 import '../mcp/ui_slides_tools.dart';
 import 'menus/slides_menu_spec.dart';
@@ -174,12 +173,12 @@ class SlidesAppConfig extends WonkyAppConfig {
   Map<String, UiToolHandler> mcpUiTools(ShellServices services) =>
       UiSlidesToolHandlers.all(services);
 
-  /// The Slides data layer follows the signed-in user (Slides 02 §9): the
-  /// replica `slides_<userId>.db` and its sync controller (SL-9).
+  /// The Slides data layer follows the signed-in user (RevLog spec 08 §2):
+  /// the cache `slides_cache_<userId>.db` and its RevLog client.
   @override
   Future<void> onSignedIn(ShellServices services) async {
     await super.onSignedIn(services);
-    SlidesData.install(services);
+    SlidesRevLog.install(services);
     // Server-side changes (AI runs, restores from the history route on
     // the shell stack) undo through the server (02 §12.2).
     services.undo.registerHandler(SlidesServerChangeHandler(services));
@@ -192,39 +191,26 @@ class SlidesAppConfig extends WonkyAppConfig {
   @override
   Future<void> onSigningOut(ShellServices services) async {
     ShellAssistant.uninstall(services);
-    await SlidesData.uninstall(services);
+    await SlidesRevLog.uninstall(services);
     await super.onSigningOut(services);
   }
 
   /// *New presentation*, the home's *+ New* and `/new` (Drive's *New*
-  /// menu): offline-first creation in a reserved deck space plus the queued
-  /// `drive.registerPresentation` (Slides 02 §9.3; templates and devices
-  /// without a reservation create on the server). Offline before this
-  /// device reserved its first spaces, a toast says so and nothing is
-  /// created (null makes `/new` go back).
+  /// menu): offline-first creation as the deck's first op plus the queued
+  /// `drive.registerPresentation` (Slides 02 §9.3, RevLog spec 08 §2;
+  /// published templates create on the server).
   @override
   Future<UuidValue?> createItem(
     ShellServices services, {
     UuidValue? parentUuid,
     UuidValue? templateUuid,
     String? name,
-  }) async {
-    try {
-      return await SlidesData.createPresentation(
-        services,
-        parentUuid: parentUuid,
-        templateUuid: templateUuid,
-        name: name,
-      );
-    } on NoReservedSpaceException {
-      final l = slidesL10nOf(services);
-      services.toasts.show(
-        l.createNeedsConnectionTitle,
-        description: l.createNeedsConnectionBody,
-      );
-      return null;
-    }
-  }
+  }) => SlidesRevLog.createPresentation(
+    services,
+    parentUuid: parentUuid,
+    templateUuid: templateUuid,
+    name: name,
+  );
 
   /// Built-in templates show their first slide (Slides 04 §15, SL-22);
   /// other templates keep the shell's miniature.

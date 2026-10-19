@@ -1,5 +1,7 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wonky_app/wonky_app.dart' show ConflictReviewChoice;
 import 'package:wonky_sheets/features/history/conflict_review_dialog.dart';
 import 'package:wonky_sheets/features/history/local_conflicts.dart';
 
@@ -28,7 +30,7 @@ void main() {
             myValue: 's:Done',
             theirValue: 's:Pending',
             theirName: 'Bo Stone',
-            detectedAt: DateTime.now(),
+            detectedAt: clock.now(),
           ),
           LocalConflict(
             id: 'c2',
@@ -40,7 +42,7 @@ void main() {
             theirValue: null,
             theirName: 'Bo Stone',
             label: 'Sheet1!A9',
-            detectedAt: DateTime.now(),
+            detectedAt: clock.now(),
           ),
         ];
         ConflictReviewChoice? choice;

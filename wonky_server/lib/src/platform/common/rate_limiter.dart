@@ -101,17 +101,48 @@ class RateLimiter {
   Duration? hit(Object key, {int? limit}) {
     final max = limit ?? this.limit;
     final now = clock.now();
+    _sweepIfDue(now);
     final list = _calls.putIfAbsent(key, () => []);
     list.removeWhere((t) => now.difference(t) >= window);
     if (list.length >= max) {
       return window - now.difference(list.first);
     }
     list.add(now);
-    if (_calls.length > 10000) {
-      _calls.removeWhere((_, v) => v.isEmpty);
-    }
     return null;
   }
 
-  void reset() => _calls.clear();
+  /// Most keys kept in memory; beyond it the least recently used go
+  /// (their windows restart, which errs on the side of letting calls in).
+  static const maxKeys = 10000;
+
+  DateTime? _lastSweep;
+
+  /// Drops the keys whose newest call is outside the window, at most once
+  /// per window (or when over [maxKeys]), so the map holds only keys
+  /// active within the last window.
+  void _sweepIfDue(DateTime now) {
+    final last = _lastSweep;
+    if (last != null &&
+        now.difference(last) < window &&
+        _calls.length < maxKeys) {
+      return;
+    }
+    _lastSweep = now;
+    _calls.removeWhere((_, v) => v.isEmpty || now.difference(v.last) >= window);
+    if (_calls.length < maxKeys) return;
+    // Still full: keep the most recently used three quarters.
+    final keys = _calls.keys.toList()
+      ..sort((a, b) => _calls[a]!.last.compareTo(_calls[b]!.last));
+    for (final k in keys.take(_calls.length - maxKeys * 3 ~/ 4)) {
+      _calls.remove(k);
+    }
+  }
+
+  /// The number of keys held in memory (tests).
+  int get trackedKeys => _calls.length;
+
+  void reset() {
+    _calls.clear();
+    _lastSweep = null;
+  }
 }

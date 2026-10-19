@@ -105,7 +105,9 @@ void main() {
   }) async {
     final paths = [
       for (final n in names)
-        (File('${dir.path}/$n')..writeAsStringSync('content of $n')).path,
+        (File(
+          '${dir.path}${Platform.pathSeparator}$n',
+        )..writeAsStringSync('content of $n')).path,
     ];
     await tester.runAsync(() async {
       await channel('performOperation', paths);

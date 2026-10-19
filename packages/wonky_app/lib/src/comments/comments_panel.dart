@@ -84,11 +84,11 @@ class CommentsPanel extends StatelessWidget {
             Expanded(
               child: c.loading
                   ? const Center(child: ShadSpinner())
-                  : ListView(
+                  : _LazyList(
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                       children: [
                         if (c.draftAnchor != null && canComment)
-                          Padding(
+                          (context) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: NewCommentCard(
                               services: services,
@@ -96,7 +96,7 @@ class CommentsPanel extends StatelessWidget {
                             ),
                           ),
                         if (threads.isEmpty && c.draftAnchor == null)
-                          WonkyEmptyState(
+                          (context) => WonkyEmptyState(
                             illustration: EmptyIllustration.comments,
                             title: l.commentsEmptyTitle,
                             description: canComment
@@ -111,7 +111,7 @@ class CommentsPanel extends StatelessWidget {
                           ),
                         for (final (i, t) in threads.indexed) ...[
                           if (_section(c, threads, i) case final sec?)
-                            Padding(
+                            (context) => Padding(
                               key: ValueKey<String>(
                                 'comments.section.${sec.id}',
                               ),
@@ -138,7 +138,7 @@ class CommentsPanel extends StatelessWidget {
                               ),
                             ),
                           if (_header(c, threads, i) case final h?)
-                            Padding(
+                            (context) => Padding(
                               key: ValueKey<String>('comments.group.$h'),
                               padding: EdgeInsets.only(
                                 top: i == 0 ? 0 : 6,
@@ -153,7 +153,10 @@ class CommentsPanel extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          Padding(
+                          (context) => Padding(
+                            key: ValueKey<String>(
+                              'comments.card.${t.uuid.uuid}',
+                            ),
                             padding: const EdgeInsets.only(bottom: 10),
                             child: CommentThreadCard(
                               key: ValueKey<String>(
@@ -166,7 +169,7 @@ class CommentsPanel extends StatelessWidget {
                           ),
                         ],
                         if (c.error != null)
-                          Text(
+                          (context) => Text(
                             errorMessage(c.error!),
                             style: theme.textTheme.muted,
                           ),
@@ -178,6 +181,22 @@ class CommentsPanel extends StatelessWidget {
       },
     );
   }
+}
+
+/// A list whose children are built lazily (long comment lists cost only
+/// their visible cards per notification, review M-2).
+class _LazyList extends StatelessWidget {
+  const _LazyList({required this.padding, required this.children});
+
+  final EdgeInsetsGeometry padding;
+  final List<WidgetBuilder> children;
+
+  @override
+  Widget build(BuildContext context) => ListView.builder(
+    padding: padding,
+    itemCount: children.length,
+    itemBuilder: (context, i) => children[i](context),
+  );
 }
 
 /// The group header before `threads[i]` in the position sort (the app's

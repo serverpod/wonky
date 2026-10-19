@@ -4,10 +4,10 @@ import 'package:wonky_core/wonky_core.dart' show Role;
 import '../../platform/comments/comment_copier.dart';
 import '../../platform/common/models.dart';
 import '../../platform/common/names.dart';
-import '../../platform/drive/drive_service.dart';
+import '../../platform/drive/drive_copies.dart';
 import '../../platform/users/user_service.dart';
 import '../../platform/versions/version_service.dart';
-import '../spaces/deck_copies.dart';
+import '../decks/deck_copies.dart';
 import 'slides_version_provider.dart';
 
 /// Slides extensions of version history (Slides 09 §4.2, §4.5): who changed
@@ -80,7 +80,7 @@ class SlidesVersionEndpoint extends Endpoint {
       name: normalizeItemName(name),
       parentUuid:
           folderUuid ??
-          await DriveService.defaultCopyParent(session, actor, item),
+          await DriveCopies.defaultCopyParent(session, actor, item),
       description: item.description,
       sourceModel: model,
     );
@@ -92,7 +92,7 @@ class SlidesVersionEndpoint extends Endpoint {
         anchorIdMap: copied.ids,
       );
     }
-    return DriveService.finishCopy(
+    return DriveCopies.finishCopy(
       session,
       actor,
       item,

@@ -1,0 +1,37 @@
+### The link of a chart element to a chart in a Wonky Sheets spreadsheet
+### (Slides 02 §3.9, 08). Its id is always SlidesIds.chartLinkId(elementId).
+class: ChartLink
+table: chart_link
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  ### The chart element (kind chart).
+  element: SlideElement?, relation(onDelete=Cascade, deferred)
+  ### Drive item of the spreadsheet (cross-space: plain UUID).
+  spreadsheetItemUuid: UuidValue
+  ### Sheets EmbeddedObject id.
+  chartObjectId: UuidValue
+  ### Sheet of the chart at the last update (08 A-08-2).
+  sheetId: String?
+  ### The Sheets ChartSpec at the last update ("gz:" prefix when > 32 KB).
+  ### Always written together with dataSnapshotJson (P4).
+  sourceSpecJson: String
+  ### Resolved series/categories at the last update (08 §3.4).
+  dataSnapshotJson: String
+  ### Opaque version of the source at the last update (08 §5.1).
+  sourceVersion: String
+  ### When the snapshot was taken.
+  updatedAt: DateTime
+  updatedBy: UuidValue
+  ### "Update automatically" (08).
+  autoUpdate: bool, default=false
+  createdAt: DateTime, defaultModel=now
+indexes:
+  chart_link_file_idx:
+    fields: fileId, id
+  chart_link_element_idx:
+    fields: elementId

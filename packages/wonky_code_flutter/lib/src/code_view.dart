@@ -102,6 +102,19 @@ class _CodeViewState extends State<CodeView> {
   Timer? _pending;
 
   late List<String> _lines;
+
+  // Memoized per input (CD-1): rebuilds (a parent notifying, a resize)
+  // reuse the line spans, the widest line and the font metrics.
+  CodeTextStyler? _styler;
+  List<TextSpan> _spans = const [];
+  List<CodeToken>? _spansTokens;
+  String? _spansCode;
+  CodeTextStyler? _spansStyler;
+  int _columns = 0;
+  String? _columnsOf;
+  int? _columnsTab;
+  _Metrics? _metrics;
+  (TextStyle, TextScaler)? _metricsKey;
   String? _linesOf;
 
   final ScrollController _ownVertical = ScrollController();
@@ -192,6 +205,55 @@ class _CodeViewState extends State<CodeView> {
     return _tokens;
   }
 
+  CodeTextStyler _stylerFor(SyntaxPalette palette) {
+    final s = _styler;
+    if (s != null &&
+        s.palette == palette &&
+        s.tabSize == widget.tabSize &&
+        s.baseStyle ==
+            CodeTextStyler.defaultBaseStyle.merge(widget.textStyle)) {
+      return s;
+    }
+    return _styler = CodeTextStyler(
+      palette,
+      baseStyle: widget.textStyle,
+      tabSize: widget.tabSize,
+    );
+  }
+
+  List<TextSpan> _spansFor(CodeTextStyler styler, List<CodeToken> tokens) {
+    if (!identical(_spansCode, widget.code) ||
+        !identical(_spansTokens, tokens) ||
+        !identical(_spansStyler, styler)) {
+      _spansCode = widget.code;
+      _spansTokens = tokens;
+      _spansStyler = styler;
+      _spans = styler.lineSpans(widget.code, tokens);
+    }
+    return _spans;
+  }
+
+  int _columnsFor(CodeTextStyler styler, List<String> lines) {
+    if (!identical(_columnsOf, widget.code) || _columnsTab != styler.tabSize) {
+      _columnsOf = widget.code;
+      _columnsTab = styler.tabSize;
+      var columns = 0;
+      for (final line in lines) {
+        columns = math.max(columns, styler.columnsOf(line));
+      }
+      _columns = columns;
+    }
+    return _columns;
+  }
+
+  _Metrics _metricsFor(CodeTextStyler styler, TextScaler scaler) {
+    final key = (styler.baseStyle, scaler);
+    final hit = _metrics;
+    if (hit != null && _metricsKey == key) return hit;
+    _metricsKey = key;
+    return _metrics = _Metrics.of(styler, scaler);
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette =
@@ -201,14 +263,10 @@ class _CodeViewState extends State<CodeView> {
               ? PaletteBrightness.dark
               : PaletteBrightness.light,
         );
-    final styler = CodeTextStyler(
-      palette,
-      baseStyle: widget.textStyle,
-      tabSize: widget.tabSize,
-    );
+    final styler = _stylerFor(palette);
     final lines = _linesFor(widget.code);
-    final spans = styler.lineSpans(widget.code, _tokensFor());
-    final metrics = _Metrics.of(styler, MediaQuery.textScalerOf(context));
+    final spans = _spansFor(styler, _tokensFor());
+    final metrics = _metricsFor(styler, MediaQuery.textScalerOf(context));
     final lastNumber = widget.startLine + lines.length - 1;
     final gutterWidth = widget.lineNumbers
         ? (lastNumber.abs().toString().length + 2) * metrics.charWidth
@@ -325,10 +383,7 @@ class _CodeViewState extends State<CodeView> {
 
         // No wrap, bounded height: a fixed gutter beside a horizontally
         // scrolling code list with fixed line extents (fast for big files).
-        var columns = 0;
-        for (final line in lines) {
-          columns = math.max(columns, styler.columnsOf(line));
-        }
+        final columns = _columnsFor(styler, lines);
         final contentWidth =
             columns * metrics.charWidth + widget.padding.right + 1;
         final codeList = ListView.builder(

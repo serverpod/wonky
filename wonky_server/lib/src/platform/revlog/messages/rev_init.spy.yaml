@@ -1,0 +1,17 @@
+### First message of a connection (RevLog spec 04 §2.2).
+class: RevInit
+extends: RevServerMessage
+fields:
+  revision: int
+  role: AccessRole
+  sessionId: String
+  schemaHash: String
+  acceptedHashes: List<String>
+  stats: String
+  prunedBelow: int
+  ### Ops in (knownRevision, revision], or null with [bootstrap].
+  ops: List<RevOpView>?
+  ### More ops follow by gap fill (ops() / RevRequestOps).
+  more: bool
+  ### The client must (re)load pages.
+  bootstrap: bool

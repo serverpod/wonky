@@ -83,7 +83,7 @@ class AssetFontRegistry {
         return true;
       } catch (e) {
         debugPrint('Loading font $family failed: $e');
-        _loading.remove(family);
+        unawaited(_loading.remove(family));
         return false;
       }
     });

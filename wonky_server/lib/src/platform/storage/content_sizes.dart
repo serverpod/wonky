@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
-import 'package:wonky_sync_models/tables.dart' show SyncedTables;
+import 'package:wonky_revlog/schema.dart' show RevColumnType;
+import 'package:wonky_sheets_core/revlog.dart' show sheetsSchema;
 import 'package:wonky_write_core/wonky_write_core.dart' show Delta;
 
 import '../../generated/future_calls.dart';
 import '../../write/ot/document_store.dart';
+import '../common/lru_map.dart';
 import '../common/models.dart';
 import 'storage_service.dart';
 
@@ -21,7 +23,7 @@ abstract final class DocumentSize {
 /// Estimates the counted content size of an item of one kind (Drive 03
 /// §2). Estimates are deterministic: the same content gives the same
 /// number. Slides registers its deck estimator with
-/// [ContentSizes.register] (a [SpaceSizeEstimator] over its synced tables).
+/// [ContentSizes.register] (a [RevFileSizeEstimator] over its tables).
 abstract interface class ContentSizeEstimator {
   /// The content size of [item] in bytes, or null when it can't be
   /// measured (missing content).
@@ -40,66 +42,43 @@ class DocumentSizeEstimator implements ContentSizeEstimator {
   }
 }
 
-/// Offline-first spaces (spreadsheets, decks): the sum of [rowBytes] over
-/// the live rows of the space in each of [tables], plus [baseBytes]
-/// (Drive 03 §2). By default a row counts `pg_column_size(row)` (Slides);
-/// [SheetsSizeEstimator] counts content instead. Rows hidden by the sync
-/// engine (deleted, cascaded) don't count. Every synced row has its
-/// `crdt_data_rows` entry (written by the sync engine), which gives the
-/// visibility and an index by space.
-class SpaceSizeEstimator implements ContentSizeEstimator {
-  const SpaceSizeEstimator(this.tables);
+/// RevLog files whose rows count as stored (decks; Drive 03 §2): the sum of
+/// `pg_column_size(row)` over the file's rows of each of [tables] (by the
+/// `fileId` index), plus [baseBytes]. Null when the file is missing.
+class RevFileSizeEstimator implements ContentSizeEstimator {
+  const RevFileSizeEstimator(this.tables);
 
-  /// The synced table names that hold the content.
+  /// The domain table names that hold the content.
   final List<String> tables;
-
-  /// The sync engine's last visible `crdt_data_rows.visibility` index
-  /// (`CrdtDataRowVisibility.foreignKeyRestrictRestore`); larger = hidden.
-  static const _lastVisible = 2;
 
   static final _identifier = RegExp(r'^[a-z_][a-z0-9_]*$');
 
-  /// Bytes every space counts on top of its rows.
+  /// Bytes every file counts on top of its rows.
   int get baseBytes => 0;
-
-  /// The SQL expression (over the row alias `t`) of the bytes one live row
-  /// of [table] counts.
-  String rowBytes(String table) => 'pg_column_size(t.*)';
 
   @override
   Future<int?> estimate(Session session, DriveItem item) async {
-    final space = item.contentRef;
-    if (space == null) return null;
-    return estimateSpace(session, space);
-  }
-
-  /// The size of [spaceUuid]'s content; null when the space is missing.
-  Future<int?> estimateSpace(Session session, UuidValue spaceUuid) async {
-    final ids = await session.db.unsafeQuery(
-      'SELECT id FROM offline_sync_spaces WHERE "uuidSpaceId" = @u::uuid',
-      parameters: QueryParameters.named({'u': spaceUuid.uuid}),
+    final fileUuid = item.contentRef;
+    if (fileUuid == null) return null;
+    final files = await session.db.unsafeQuery(
+      'SELECT id FROM rev_file WHERE "fileUuid" = @u::uuid',
+      parameters: QueryParameters.named({'u': fileUuid.uuid}),
     );
-    if (ids.isEmpty) return null;
-    final spaceId = ids.first[0] as int;
+    if (files.isEmpty) return null;
     final parts = <String>[];
     for (final t in tables) {
       if (!_identifier.hasMatch(t)) throw ArgumentError.value(t, 'table');
-      // Driven by the engine's (spaceId, tblId, uuidRowId) index, so the
-      // cost follows the space's size, not the table's (S-D3).
-      parts.add('''
-        SELECT coalesce(sum(${rowBytes(t)}), 0)::bigint AS n
-        FROM crdt_data_rows r
-        JOIN "$t" t ON t.id = r."uuidRowId" AND t."spaceId" = r."spaceId"
-        WHERE r."spaceId" = @space
-          AND r."tblId" = (SELECT id FROM crdt_schema_tables WHERE name = '$t')
-          AND r.visibility <= $_lastVisible''');
+      parts.add(
+        'SELECT coalesce(sum(pg_column_size(t.*)), 0)::bigint AS n '
+        'FROM "$t" t WHERE t."fileId" = @f',
+      );
     }
     if (parts.isEmpty) return baseBytes;
     final rows = await session.db.unsafeQuery(
       'SELECT coalesce(sum(n), 0)::bigint FROM (${parts.join(' UNION ALL ')}) x',
-      parameters: QueryParameters.named({'space': spaceId}),
+      parameters: QueryParameters.named({'f': files.first[0]}),
     );
-    return baseBytes + (rows.first[0] as int);
+    return baseBytes + (rows.first[0]! as int);
   }
 }
 
@@ -125,14 +104,11 @@ class SpaceSizeEstimator implements ContentSizeEstimator {
 /// The change log (history, like Write's op log) and script builds
 /// (bytecode) don't count. `StorageHooks.sheetsEstimate` pre-estimates
 /// templates with the same constants.
-class SheetsSizeEstimator extends SpaceSizeEstimator {
-  SheetsSizeEstimator()
-    : super([
-        for (final s in SyncedTables.all)
-          if (!excluded.contains(s.name)) s.name,
-      ]);
+class SheetsSizeEstimator implements ContentSizeEstimator {
+  SheetsSizeEstimator();
 
-  static const excluded = {'change_log', 'script_build'};
+  /// Tables that don't count.
+  static const excluded = {'script_build'};
 
   /// Per spreadsheet (the `spreadsheet` row: settings, theme).
   static const base = 2048;
@@ -150,14 +126,10 @@ class SheetsSizeEstimator extends SpaceSizeEstimator {
   /// Tables whose rows count by their non-null values.
   static const propertyTables = {'cell', 'sheet_row', 'sheet_column'};
 
-  /// Columns every row has (ids, order, timestamps): never content.
-  static const _structural = {'id', 'spaceId', 'sortKey', 'createdAt'};
+  /// Columns every row has (order, timestamps): never content.
+  static const _structural = {'sortKey', 'createdAt'};
 
-  @override
-  int get baseBytes => base;
-
-  @override
-  String rowBytes(String table) {
+  static String rowBytes(String table) {
     if (table == 'spreadsheet') return '0';
     if (table == 'sheet') return '$sheetBytes';
     if (table == 'script_file') {
@@ -170,26 +142,57 @@ class SheetsSizeEstimator extends SpaceSizeEstimator {
 
   /// The SQL expression of the bytes of [table]'s non-null value and
   /// format columns of row `t` (structural columns and references
-  /// excluded). Derived from the generated table, so new columns count.
+  /// excluded). Derived from the RevLog schema, so new columns count.
   static String valueBytes(String table) {
     final parts = <String>[];
-    for (final c in SyncedTables.of(table).table.columns) {
-      final name = c.columnName;
-      if (_structural.contains(name)) continue;
-      final q = 't."$name"';
-      final part = switch (c) {
+    for (final c in sheetsSchema.table(table).columns) {
+      if (_structural.contains(c.name)) continue;
+      final q = 't."${c.name}"';
+      final part = switch (c.type) {
         // References (`sheetId`, `rowId`, …) are position, not content.
-        ColumnUuid() => null,
-        ColumnString() => 'coalesce(octet_length($q), 0)',
-        ColumnBool() => 'CASE WHEN $q THEN 1 ELSE 0 END',
-        ColumnDouble() ||
-        ColumnDateTime() => 'CASE WHEN $q IS NULL THEN 0 ELSE 8 END',
-        ColumnInt() => 'CASE WHEN $q IS NULL THEN 0 ELSE 4 END',
-        _ => 'CASE WHEN $q IS NULL THEN 0 ELSE 1 END',
+        RevColumnType.uuid => null,
+        RevColumnType.string ||
+        RevColumnType.json ||
+        RevColumnType.enumName => 'coalesce(octet_length($q), 0)',
+        RevColumnType.bool => 'CASE WHEN $q THEN 1 ELSE 0 END',
+        RevColumnType.double ||
+        RevColumnType.dateTime => 'CASE WHEN $q IS NULL THEN 0 ELSE 8 END',
+        RevColumnType.int => 'CASE WHEN $q IS NULL THEN 0 ELSE 4 END',
       };
       if (part != null) parts.add(part);
     }
     return parts.isEmpty ? '0' : '(${parts.join(' + ')})';
+  }
+
+  @override
+  Future<int?> estimate(Session session, DriveItem item) async {
+    final fileUuid = item.contentRef;
+    if (fileUuid == null) return null;
+    final files = await session.db.unsafeQuery(
+      'SELECT id FROM rev_file WHERE "fileUuid" = @u::uuid',
+      parameters: QueryParameters.named({'u': fileUuid.uuid}),
+    );
+    if (files.isEmpty) return null;
+    final fileId = files.first[0]! as int;
+    final parts = <String>[];
+    for (final t in sheetsSchema.tables) {
+      if (excluded.contains(t.name) || t.name == 'cell') continue;
+      parts.add(
+        'SELECT coalesce(sum(${rowBytes(t.name)}), 0)::bigint AS n '
+        'FROM "${t.name}" t WHERE t."fileId" = @f',
+      );
+    }
+    // Cells are counted sheet by sheet (no fileId index, RevLog spec 02 §2.2).
+    parts.add(
+      'SELECT coalesce(sum(${rowBytes('cell')}), 0)::bigint AS n '
+      'FROM "cell" t WHERE t."sheetId" IN '
+      '(SELECT id FROM sheet WHERE "fileId" = @f)',
+    );
+    final rows = await session.db.unsafeQuery(
+      'SELECT coalesce(sum(n), 0)::bigint FROM (${parts.join(' UNION ALL ')}) x',
+      parameters: QueryParameters.named({'f': fileId}),
+    );
+    return base + (rows.first[0]! as int);
   }
 }
 
@@ -207,14 +210,11 @@ abstract final class ContentSizes {
   static void register(DriveItemKind kind, ContentSizeEstimator estimator) =>
       _estimators[kind] = estimator;
 
-  static ContentSizeEstimator? estimatorOf(DriveItemKind kind) =>
-      _estimators[kind];
-
   /// The minimum time between two estimates of one space from the
   /// change-log consumer (S-D3, Drive 03 §2).
   static Duration spaceInterval = const Duration(minutes: 5);
 
-  static final Map<int, DateTime> _lastRun = {};
+  static final LruMap<int, DateTime> _lastRun = LruMap(50000);
   static final Set<int> _pending = {};
 
   /// Schedules a trailing refresh of item [itemId] after [delay]
@@ -244,7 +244,7 @@ abstract final class ContentSizes {
   /// logged, not thrown: sizes are bookkeeping.
   static Future<void> refresh(Session session, DriveItem item) async {
     if (item.id == null) return;
-    _lastRun[item.id!] = clock.now();
+    _lastRun.put(item.id!, clock.now());
     try {
       final size = await estimate(session, item);
       if (size == null) return;
@@ -271,7 +271,7 @@ abstract final class ContentSizes {
   static Future<void> onSpaceChanged(Session session, DriveItem item) async {
     final id = item.id;
     if (id == null) return;
-    final last = _lastRun[id];
+    final last = _lastRun.get(id);
     final now = clock.now();
     if (last == null || now.difference(last) >= spaceInterval) {
       await refresh(session, item);

@@ -8,8 +8,8 @@ naming, helpers, determinism, running them) is in [15 · Writing tests](15-writi
 | Level | Tooling | Scope | Where |
 |-------|---------|-------|-------|
 | Unit | `test` / `flutter_test` | Pure logic: Delta schema, Markdown codec, OT helpers, formula parser/evaluator/functions, number formats, fractional index, ids, undo handlers, command arg parsing | `*_core/test`, app `test/` |
-| Property / fuzz | `test` + seeded random generators (`glados`-style custom generators) | OT convergence (Write), Markdown round-trip, offline merge convergence (Sheets, multiple simulated clients in **separate isolates** — `serverpod_database` has a process-wide encoder), undo invariants, formula codec A1⇄stored | `*_core/test/property`, server `test/property` |
-| Server | `serverpod_test` (`withServerpod`, embedded Postgres via `config/test.yaml` `database.dataPath`; no Docker) | Endpoints, services, stream endpoints, MCP route, permissions, sync endpoint wrapper, version providers, scripting compile service | `wonky_server/test/{unit,integration}` |
+| Property / fuzz | `test` + seeded random generators (`glados`-style custom generators) | OT convergence (Write), Markdown round-trip, RevLog convergence (apply rules, overlay, bootstrap coverage and client-gate ⇒ server-guard parity; several simulated clients against `FakeRevServer`, [15](15-writing-tests.md)), undo invariants, formula codec A1⇄stored | `*_core/test/property`, server `test/property` |
+| Server | `serverpod_test` (`withServerpod`, embedded Postgres via `config/test.yaml` `database.dataPath`; no Docker) | Endpoints, services, stream endpoints, MCP route, permissions, RevLog sequencer, connection, pages and hooks, version providers, scripting compile service | `wonky_server/test/{unit,integration}` |
 | Widget | `flutter_test` | Every `wonky_ui` widget (light + dark), dialogs, panels, menus generated from `MenuSpec` | package `test/` |
 | Golden | `flutter_test` goldens (+ `alchemist`-style multi-theme matrix) | Editor rendering per Write theme (light/dark), grid rendering (formats, borders, merges, CF), charts, PDF page renders | app `test/goldens` |
 | Integration / E2E | `flutter_driver` via the `dart` MCP + `serverpod` MCP (`spawn_flutter_app`, `get_flutter_app_dtd`), `integration_test` | Critical user journeys (below), multi-client collaboration (two app instances), offline/online transitions | app `integration_test/` |
@@ -57,10 +57,10 @@ has an integration test through `/mcp`. Every endpoint has permission tests for 
 | Open document (cached) | < 300 ms first paint |
 | Write keystroke latency | < 16 ms p95 (100-page doc) |
 | Write remote op visible | < 250 ms p95 same region |
-| Sheets open 1M cells | < 3 s to first viewport paint (background load continues) |
+| Sheets open 1M cells | Not on the device: < 1.5 s desktop, < 3 s web to `WorkbookReady`, whole file < 15 s / < 30 s; from the cache: ≤ 0.55 s per 200k cells (RevLog gates P6–P8, [17](17-revlog-sync.md) part 7) |
 | Grid scroll | 60 fps at 1M cells (desktop), ≥ 45 fps web |
 | Cell commit (local) | < 16 ms; recalculation of 100k dependents < 1 s native, < 2 s web |
-| Sheets remote change visible | < 300 ms via commit hint; < 3 s via sync |
+| Sheets and Slides remote change visible | p95 < 250 ms on one instance, < 400 ms across two (RevLog gates P1–P2); server commit p95 < 15 ms for ≤ 100 changes, < 300 ms for 5,000 (P3–P4); the full gate list (P1–P12) is in [17](17-revlog-sync.md) part 7 |
 | Memory | Web tab < 1.5 GB at 1M cells; desktop < 2 GB |
 | Bundle size (web, per app, compressed) | < 6 MB initial (deferred loading for exporters, charts, script runtime, theme editor); (v2) Drive < 4 MB initial (code viewer deferred) |
 | (v2) Drive home | First list paint < 1 s with 1,000 items in the folder (cached: < 300 ms); upload throughput limited only by the network (no client re-encoding) |
@@ -106,8 +106,9 @@ Drive's text/audio viewers, Slides' presenting, PDF export, 3D charts and code t
 
 ## 5. Observability
 - Server: Serverpod session logs (structured), slow-query logging, per-endpoint metrics, OT
-  metrics (ops/s, transform time, rejections), sync metrics (cycle time, batch sizes,
-  violations from `offline_sync_integrity_violations`), MCP/AI usage and errors.
+  metrics (ops/s, transform time, rejections), RevLog metrics (per op: commit duration,
+  changes, bytes, lock wait, protection-check duration; per connection: ops, gaps filled; hook
+  lag; [17](17-revlog-sync.md) part 5 §12), MCP/AI usage and errors.
 - Client: error reporting endpoint (`feedback.reportError` with stack, app/build version,
   route, anonymized state), performance marks (open time, frame drops) sampled. (M12) Error
   reports stay **private telemetry**: they are never shown on the public board. They feed the
@@ -118,12 +119,19 @@ Drive's text/audio viewers, Slides' presenting, PDF export, 3D charts and code t
   AI provider reachability (non-critical), storage).
 
 ## 6. Code quality rules
-- `dart analyze` clean (strict-casts, strict-inference, strict-raw-types), `dart format`.
+- `dart analyze --fatal-infos` clean (strict-casts, strict-inference, strict-raw-types,
+  `unawaited_futures`, `discarded_futures`), `dart format`. The options live in one package,
+  `packages/wonky_lints` (`dart.yaml` for pure Dart and the server, `flutter.yaml` for Flutter
+  packages and apps), which every package's `analysis_options.yaml` includes (CQ-64e); a package
+  may turn a mode or rule off only with a `TODO(CQ-64e)` naming the number of issues (today:
+  `discarded_futures` in `wonky_app`, Write, Sheets and Slides). The generated client and the
+  vendored packages keep their own options.
 - No business logic in widgets; no direct client calls from widgets.
 - Generated code never edited (see AGENTS.md).
 - Vendored packages in `third_party/` are changed only with a `PATCHES.md` entry and tests
   (01 §2.3); their own test suites run in CI.
-- Synced-table update lint test (columns named) — fails CI.
+- `RevSchema` tests (each core's schema is consistent, and planner output validates against it, so
+  every write names its columns; [17](17-revlog-sync.md) part 2 §4) — fail CI.
 - Package dependency rule check script (01-architecture §2.1) — fails CI. (v2) Covers the four
   app families and the shared leaf packages.
 - (v2) Every byte-adding endpoint has a quota test (Drive 03 §7.2); every file viewer is tested

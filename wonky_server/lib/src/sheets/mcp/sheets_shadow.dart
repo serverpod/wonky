@@ -3,6 +3,7 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_sheets_core/wonky_sheets_core.dart'
     hide ActorKind, CellInput;
 
+import '../../platform/revlog/headless_file_cache.dart';
 import '../headless/headless_workbook.dart';
 
 /// One mutating tool call recorded in a [SheetsShadow] (AI Suggest mode,
@@ -35,14 +36,20 @@ class ShadowCall {
   final String? structural;
 }
 
-/// A copy-on-write overlay of a spreadsheet for the assistant's Suggest
-/// mode (Sheets 12 §6.3): mutating tool calls are planned against [model]
-/// (a private copy of the headless workbook) and recorded instead of
-/// committed, so multi-step plans see their own results. The client shows
-/// the recorded calls in the AI changes preview and applies the selected
-/// ones.
+/// A private overlay of a spreadsheet for the assistant's Suggest mode
+/// (Sheets 12 §6.3): mutating tool calls are planned against [wb] (a copy
+/// of the headless workbook) and recorded instead of committed, so
+/// multi-step plans see their own results. The client shows the recorded
+/// calls in the AI changes preview and applies the selected ones.
+///
+/// Memory (CQ-35): one copy while the run records; the "before" state
+/// ([base]) is rebuilt only when a preview needs it, from [wb] and the
+/// inverse of the recorded changes, and both copies are counted in the
+/// headless cache budget (`HeadlessFileCache.reserveExternal`).
 class SheetsShadow {
-  SheetsShadow._(this.previewId, this.space, this.userId, this.wb, this.base);
+  SheetsShadow._(this.previewId, this.space, this.userId, this.wb) {
+    HeadlessFileCache.reserveExternal(this, wb.estimatedBytes);
+  }
 
   /// Creates a shadow of [source] for [userId].
   factory SheetsShadow.of(
@@ -60,16 +67,7 @@ class SheetsShadow {
       watermark: source.watermark,
       estimatedBytes: source.estimatedBytes,
     );
-    final base = HeadlessWorkbook(
-      space: source.space,
-      model: WorkbookModel.fromRows(
-        source.model.spreadsheetId,
-        source.model.allRows().toList(),
-      ),
-      watermark: source.watermark,
-      estimatedBytes: source.estimatedBytes,
-    );
-    return SheetsShadow._(previewId, source.space, userId, wb, base);
+    return SheetsShadow._(previewId, source.space, userId, wb);
   }
 
   final String previewId;
@@ -79,8 +77,30 @@ class SheetsShadow {
   /// The shadow state (all recorded calls applied).
   final HeadlessWorkbook wb;
 
-  /// The state when the shadow was created (before → after previews).
-  final HeadlessWorkbook base;
+  HeadlessWorkbook? _base;
+
+  /// The state when the shadow was created (before → after previews):
+  /// built on first use from [wb] with the recorded calls undone.
+  HeadlessWorkbook get base => _base ??= _buildBase();
+
+  HeadlessWorkbook _buildBase() {
+    final model = WorkbookModel.fromRows(
+      wb.model.spreadsheetId,
+      wb.model.allRows().toList(),
+    );
+    model.applyChanges([
+      for (final call in calls.reversed)
+        for (final c in call.changes.reversed) c.inverse(),
+    ]);
+    final base = HeadlessWorkbook(
+      space: space,
+      model: model,
+      watermark: wb.watermark,
+      estimatedBytes: wb.estimatedBytes,
+    );
+    HeadlessFileCache.reserveExternal(this, wb.estimatedBytes * 2);
+    return base;
+  }
 
   final DateTime createdAt = clock.now();
   final List<ShadowCall> calls = [];
@@ -90,7 +110,8 @@ class SheetsShadow {
 
   void dispose() {
     wb.dispose();
-    base.dispose();
+    _base?.dispose();
+    HeadlessFileCache.releaseExternal(this);
   }
 }
 

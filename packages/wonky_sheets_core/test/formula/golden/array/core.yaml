@@ -1,0 +1,31 @@
+- id: sequence-two-by-two
+  formula: =SEQUENCE(2,2)
+  expect: {value: [[1, 2], [3, 4]]}
+  source: manual
+- id: transpose-row-to-column
+  formula: =TRANSPOSE({1,2})
+  expect: {value: [[1], [2]]}
+  source: manual
+- id: sort-column
+  formula: =SORT({3;1;2})
+  expect: {value: [[1], [2], [3]]}
+  source: manual
+- id: unique-column
+  formula: =UNIQUE({1;1;2})
+  expect: {value: [[1], [2]]}
+  source: manual
+- id: filter-greater-than
+  setup: {A1: 1, A2: 2, A3: 3, A4: 4}
+  formula: =FILTER(A1:A4,A1:A4>2)
+  expect: {value: [[3], [4]]}
+  source: manual
+- id: filter-no-match
+  setup: {A1: 1, A2: 2}
+  formula: =FILTER(A1:A2,A1:A2>5)
+  expect: {value: "#N/A"}
+  source: manual
+  note: Google Sheets behavior (the reference, 05 §22.5); Excel returns #CALC!
+- id: array-arithmetic
+  formula: ={1,2,3}*2
+  expect: {value: [[2, 4, 6]]}
+  source: manual

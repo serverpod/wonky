@@ -12,7 +12,6 @@ import 'package:wonky_write/features/document/write_document_api.dart';
 import 'package:wonky_write/features/document/write_document_session.dart';
 import 'package:wonky_write/features/offline/write_local_store.dart';
 import 'package:wonky_write/features/offline/write_offline.dart';
-import 'package:wonky_write/features/sync/connection_keeper.dart';
 import 'package:wonky_write/features/sync/sync_transport.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
@@ -25,9 +24,9 @@ Future<void> eventually(
   Duration timeout = const Duration(seconds: 10),
   String? reason,
 }) async {
-  final deadline = DateTime.now().add(timeout);
+  final watch = Stopwatch()..start();
   while (!condition()) {
-    if (DateTime.now().isAfter(deadline)) {
+    if (watch.elapsed > timeout) {
       throw StateError('Timed out waiting${reason == null ? '' : ': $reason'}');
     }
     await Future<void>.delayed(const Duration(milliseconds: 10));

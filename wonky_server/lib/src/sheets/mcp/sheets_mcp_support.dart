@@ -21,7 +21,7 @@ abstract final class SheetsErrorCode {
   static const invalidRange = 'invalid_range';
   static const duplicateName = 'duplicate_name';
   static const protectedRange = 'protected_range';
-  static const limitExceeded = 'limit_exceeded';
+  static const limitExceeded = McpErrorCode.limitExceeded;
   static const cellLimitExceeded = 'cell_limit_exceeded';
   static const formulaParseError = 'formula_parse_error';
   static const mergeConflict = 'merge_conflict';

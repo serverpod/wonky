@@ -1,0 +1,14 @@
+name: wonky_lints
+description: "Wonky Work shared analysis options (specs/11-quality-testing-accessibility.md §6): the lint sets and strict analyzer modes every workspace package includes."
+publish_to: none
+
+environment:
+  sdk: '^3.12.2'
+
+resolution: workspace
+
+# Regular dependencies: the packages that include these options list
+# wonky_lints under dev_dependencies and get lints/flutter_lints through it.
+dependencies:
+  flutter_lints: ^6.0.0
+  lints: ^6.1.0

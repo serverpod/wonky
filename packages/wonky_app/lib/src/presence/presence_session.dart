@@ -29,6 +29,10 @@ class PresenceSession extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _throttle;
   String? _pendingCursor;
   bool _disposed = false;
+  bool _started = false;
+
+  /// Whether [start] joined the roster (and [dispose] did not yet run).
+  bool get isStarted => _started && !_disposed;
 
   /// Everyone in the file (including this window).
   List<Participant> get participants => _participants;
@@ -53,7 +57,12 @@ class PresenceSession extends ChangeNotifier with WidgetsBindingObserver {
 
   String get _key => 'presence:${itemUuid.uuid}';
 
+  /// Joins the roster. A no-op once started or disposed: a late start must
+  /// not leave a zombie stream behind (or replace a reopened editor's
+  /// stream, which is supervised under the same key).
   void start() {
+    if (_disposed || _started) return;
+    _started = true;
     WidgetsBinding.instance.addObserver(this);
     services.supervisor.supervise<PresenceEvent>(
       _key,
@@ -236,10 +245,14 @@ class PresenceSession extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     _disposed = true;
-    WidgetsBinding.instance.removeObserver(this);
     _idle?.cancel();
     _throttle?.cancel();
-    unawaited(services.supervisor.cancel(_key));
+    // A session that never started leaves the key alone: it may belong to
+    // a reopened editor's session.
+    if (_started) {
+      WidgetsBinding.instance.removeObserver(this);
+      unawaited(services.supervisor.cancel(_key));
+    }
     _updates.close();
     _hints.close();
     _notices.close();

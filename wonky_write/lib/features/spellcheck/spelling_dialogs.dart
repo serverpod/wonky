@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:wonky_app/spellcheck.dart' as shell;
 
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart' show DeltaSelection;
 import '../editor/commands/write_editor_commands.dart';
 import '../editor/controller/write_editor_controller.dart';
 import 'write_spellcheck.dart';
@@ -25,14 +25,14 @@ int changeAllSpelling(
       if (e.word == word) e,
   ];
   if (matches.isEmpty) return 0;
-  controller.group('Correct spelling', () {
+  controller.group(controller.strings().undoCorrectSpelling, () {
     // Back to front so earlier offsets stay valid.
     for (final e in matches.reversed) {
       commands.replaceRangeWithTextLabelled(
         e.start,
         e.length,
         replacement,
-        label: 'Correct spelling',
+        label: controller.strings().undoCorrectSpelling,
       );
     }
   });
@@ -80,7 +80,7 @@ class WriteSpellingSession implements shell.SpellingSession {
         issue.start,
         issue.length,
         replacement,
-        label: 'Correct spelling',
+        label: controller.strings().undoCorrectSpelling,
       );
 
   @override

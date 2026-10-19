@@ -7,12 +7,14 @@ import 'package:wonky_core/wonky_core.dart' show Role;
 
 import '../cluster/cluster.dart';
 import '../common/actor.dart';
+import '../common/errors.dart';
 import '../common/models.dart';
 import '../common/roles.dart';
 import '../common/time.dart';
 import '../sharing/access_service.dart';
 import '../users/user_service.dart';
 import '../cluster/cluster_bus.dart';
+import '../drive/drive_events.dart';
 
 /// Ephemeral presence (specs/07 §1). Nothing is stored: every joined session
 /// keeps its own view of the roster from the `presence:<itemUuid>` channel
@@ -29,6 +31,20 @@ abstract final class PresenceService {
   static const maxHintsPerSecond = 20;
   static const maxHintCells = 500;
   static const maxHintBytes = 64 * 1024;
+
+  /// Largest cursor (`cursorJson`) relayed; larger updates are dropped.
+  static const maxCursorBytes = 8 * 1024;
+
+  /// Longest `mode` and followed session id accepted.
+  static const maxShortField = 64;
+
+  /// State/cursor/follow updates relayed per second and session; more are
+  /// coalesced (the latest one is sent when the window ends).
+  static const maxUpdatesPerSecond = 20;
+
+  /// How often a joined session re-checks its access without an ACL
+  /// change signal (expired grants have none). Variable for tests.
+  static Duration accessRecheckInterval = const Duration(minutes: 5);
 
   static String channel(UuidValue itemUuid) => 'presence:${itemUuid.uuid}';
 
@@ -50,11 +66,31 @@ abstract final class PresenceService {
     var closed = false;
     var hintWindowStart = DateTime.fromMillisecondsSinceEpoch(0);
     var hintsInWindow = 0;
+    var updateWindowStart = DateTime.fromMillisecondsSinceEpoch(0);
+    var updatesInWindow = 0;
+    PresenceUpdate? pendingUpdate;
+    Timer? flushTimer;
+    Timer? recheckTimer;
+    var rechecking = false;
+    var recheckAgain = false;
     String? following;
     final ch = channel(itemUuid);
+    final driveCh = DriveEvents.channel(actor.userId);
 
     void emit(PresenceEvent e) {
       if (!out.isClosed) out.add(e);
+    }
+
+    void logFailure(String what, Object e, [StackTrace? st]) {
+      try {
+        session.log(
+          'presence: $what failed: $e',
+          level: LogLevel.warning,
+          stackTrace: st,
+        );
+      } on Object {
+        // The session is closing.
+      }
     }
 
     void emitFollowerCount() {
@@ -89,7 +125,9 @@ abstract final class PresenceService {
                   participant: me,
                   replyTo: m.sessionId,
                 ),
-              ),
+              ).catchError((Object e, StackTrace st) {
+                logFailure('here', e, st);
+              }),
             );
           }
         case 'probe':
@@ -106,7 +144,9 @@ abstract final class PresenceService {
                   participant: me,
                   replyTo: m.sessionId,
                 ),
-              ).catchError((Object _) {}),
+              ).catchError((Object e, StackTrace st) {
+                logFailure('here', e, st);
+              }),
             );
           }
         case 'here':
@@ -191,11 +231,16 @@ abstract final class PresenceService {
       }
     }
 
+    late final void Function(SerializableModel) onDrive;
+
     Future<void> leave() async {
       if (closed) return;
       closed = true;
       heartbeat?.cancel();
+      flushTimer?.cancel();
+      recheckTimer?.cancel();
       session.messages.removeListener(ch, onBus);
+      session.messages.removeListener(driveCh, onDrive);
       await input?.cancel();
       await ClusterBus.post(
         session,
@@ -204,7 +249,64 @@ abstract final class PresenceService {
       );
     }
 
-    Future<void> handle(PresenceUpdate u) async {
+    /// Ends the stream of a user who lost access (`notFound`, like a join
+    /// without access).
+    Future<void> revoke() async {
+      if (!out.isClosed) out.addError(Errors.notFound());
+      await leave();
+      if (!out.isClosed) await out.close();
+    }
+
+    /// Re-resolves the role; closes the stream without viewer access.
+    /// Concurrent requests run once more after the current one.
+    Future<void> recheck() async {
+      if (closed || me == null) return;
+      if (rechecking) {
+        recheckAgain = true;
+        return;
+      }
+      rechecking = true;
+      try {
+        do {
+          recheckAgain = false;
+          Role? now;
+          try {
+            (_, now) = await AccessService.require(
+              session,
+              actor,
+              itemUuid,
+              Role.viewer,
+            );
+          } on WonkyException catch (e) {
+            if (e.code != WonkyErrorCode.notFound &&
+                e.code != WonkyErrorCode.forbidden) {
+              rethrow;
+            }
+          }
+          if (closed) return;
+          if (now == null) {
+            await revoke();
+            return;
+          }
+          role = now;
+          me = me!.copyWith(role: now.access);
+        } while (recheckAgain && !closed);
+      } on Object catch (e, st) {
+        // Database trouble: keep the stream; the next check decides.
+        logFailure('access re-check', e, st);
+      } finally {
+        rechecking = false;
+      }
+    }
+
+    onDrive = (SerializableModel model) {
+      if (closed || model is! DriveChangeSignal) return;
+      if (model.itemUuid != itemUuid) return;
+      unawaited(recheck());
+    };
+
+    /// Relays the state, cursor and followed session of [u].
+    Future<void> relay(PresenceUpdate u) async {
       if (closed || me == null) return;
       me = me!.copyWith(state: u.state, cursorJson: u.cursorJson, mode: u.mode);
       await ClusterBus.post(
@@ -220,6 +322,70 @@ abstract final class PresenceService {
         // Other instances only need the latest state and cursor.
         coalesceKey: 'update:$sessionId',
       );
+      if (u.followingSessionId != following) {
+        following = u.followingSessionId;
+        await ClusterBus.post(
+          session,
+          ch,
+          PresenceBusMessage(
+            type: 'follow',
+            sessionId: sessionId,
+            target: following,
+          ),
+        );
+      }
+    }
+
+    /// Takes one of this second's [maxUpdatesPerSecond] relays; else
+    /// returns the time left in the window.
+    Duration? takeUpdateSlot() {
+      final now = clock.now();
+      final elapsed = now.difference(updateWindowStart);
+      if (elapsed >= const Duration(seconds: 1)) {
+        updateWindowStart = now;
+        updatesInWindow = 0;
+      }
+      if (updatesInWindow >= maxUpdatesPerSecond) {
+        return const Duration(seconds: 1) - now.difference(updateWindowStart);
+      }
+      updatesInWindow++;
+      return null;
+    }
+
+    void flush() {
+      flushTimer = null;
+      final u = pendingUpdate;
+      if (u == null || closed) return;
+      final wait = takeUpdateSlot();
+      if (wait != null) {
+        flushTimer = Timer(wait, flush);
+        return;
+      }
+      pendingUpdate = null;
+      unawaited(
+        relay(u).catchError((Object e, StackTrace st) {
+          logFailure('update', e, st);
+        }),
+      );
+    }
+
+    Future<void> handle(PresenceUpdate u) async {
+      if (closed || me == null) return;
+      if ((u.cursorJson?.length ?? 0) > maxCursorBytes ||
+          (u.mode?.length ?? 0) > maxShortField ||
+          (u.followingSessionId?.length ?? 0) > maxShortField) {
+        return;
+      }
+      final wait = takeUpdateSlot();
+      if (wait == null) {
+        pendingUpdate = null;
+        await relay(u);
+      } else {
+        // Over the rate: only the latest update is sent, when the window
+        // ends.
+        pendingUpdate = u;
+        flushTimer ??= Timer(wait, flush);
+      }
       final hints = u.hints;
       if (hints != null && hints.isNotEmpty && role >= Role.editor) {
         final now = nowUtc();
@@ -246,18 +412,6 @@ abstract final class PresenceService {
           );
         }
       }
-      if (u.followingSessionId != following) {
-        following = u.followingSessionId;
-        await ClusterBus.post(
-          session,
-          ch,
-          PresenceBusMessage(
-            type: 'follow',
-            sessionId: sessionId,
-            target: following,
-          ),
-        );
-      }
     }
 
     Future<void> start() async {
@@ -283,6 +437,13 @@ abstract final class PresenceService {
         joinedAt: nowUtc(),
       );
       session.messages.addListener(ch, onBus);
+      // Access is re-checked when the item's ACL changes (the user's drive
+      // channel) and periodically (grants that expire send no signal).
+      session.messages.addListener(driveCh, onDrive);
+      recheckTimer = Timer.periodic(
+        accessRecheckInterval,
+        (_) => unawaited(recheck()),
+      );
       await ClusterBus.post(
         session,
         ch,
@@ -299,7 +460,11 @@ abstract final class PresenceService {
         ),
       );
       input = updates.listen(
-        (u) => unawaited(handle(u)),
+        (u) => unawaited(
+          handle(u).catchError((Object e, StackTrace st) {
+            logFailure('update', e, st);
+          }),
+        ),
         onDone: () async {
           await leave();
           if (!out.isClosed) await out.close();
@@ -320,12 +485,14 @@ abstract final class PresenceService {
 
     out = StreamController<PresenceEvent>(
       onListen: () {
-        start().catchError((Object e, StackTrace st) {
-          if (!out.isClosed) {
-            out.addError(e, st);
-            unawaited(out.close());
-          }
-        });
+        unawaited(
+          start().catchError((Object e, StackTrace st) {
+            if (!out.isClosed) {
+              out.addError(e, st);
+              unawaited(out.close());
+            }
+          }),
+        );
       },
       onCancel: leave,
     );
@@ -385,10 +552,12 @@ abstract final class PresenceService {
     if (ttl != null) {
       final pod = session.serverpod;
       Timer(ttl, () {
-        ClusterBus.postOn(
-          pod,
-          ch,
-          PresenceBusMessage(type: 'bye', sessionId: id),
+        unawaited(
+          ClusterBus.postOn(
+            pod,
+            ch,
+            PresenceBusMessage(type: 'bye', sessionId: id),
+          ),
         );
       });
     }

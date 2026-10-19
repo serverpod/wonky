@@ -1,0 +1,24 @@
+### Advisory protection of a range or a whole sheet.
+class: ProtectedRange
+table: protected_range
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  sheet: Sheet?, relation(onDelete=Cascade, deferred)
+  ### Null = whole sheet.
+  rangeJson: String?
+  ### Unprotected ranges for sheet protection.
+  exceptRangesJson: String?
+  description: String?
+  warningOnly: bool, default=false
+  ### List of user UUIDs allowed to edit (owner always).
+  editorsJson: String
+  createdBy: UuidValue
+  createdAt: DateTime, defaultModel=now
+indexes:
+  protected_range_file_idx:
+    fields: fileId, id

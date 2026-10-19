@@ -2,11 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dart_eval/dart_eval_bridge.dart';
-// ignore: implementation_imports
-import 'package:dart_eval/src/eval/runtime/class.dart' show $InstanceImpl;
-// ignore: implementation_imports
-import 'package:dart_eval/src/eval/runtime/runtime.dart'
-    show RuntimeException, WrappedException;
+import 'package:dart_eval/dart_eval_internals.dart'
+    show $InstanceImpl, RuntimeException, WrappedException;
 import 'package:dart_eval/stdlib/core.dart';
 
 import '../protocol/messages.dart';

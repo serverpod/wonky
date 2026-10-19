@@ -25,6 +25,14 @@ abstract final class SheetsExportService {
   /// Text results up to this size are also returned inline.
   static const inlineLimit = 1024 * 1024;
 
+  /// Exports of one user running at once (per instance). Spreadsheet
+  /// exports read the headless workbook's live formula engine, so they run
+  /// on the request isolate (a worker would have to recalculate the whole
+  /// workbook); this cap keeps one user from queueing many.
+  static const maxConcurrentPerUser = 2;
+
+  static final Map<int, int> _running = {};
+
   /// Exports the spreadsheet [itemUuid] as [format] (`xlsx`, `ods`, `pdf`,
   /// `html`, `csv`, `tsv`, `json`). [sheetName]/[range] select the sheet
   /// (and A1 range) of CSV/TSV/PDF; [darkTheme] renders dark PDF pages.
@@ -55,15 +63,30 @@ abstract final class SheetsExportService {
         'Spreadsheets export as xlsx, ods, pdf, html, csv, tsv or json.',
       );
     }
-    final artifact = await exportBytes(
-      session,
-      item,
-      fmt,
-      sheetName: sheetName,
-      range: range,
-      author: null,
-      darkTheme: darkTheme,
-    );
+    final running = _running[actor.userId] ?? 0;
+    if (running >= maxConcurrentPerUser) {
+      throw Errors.busy('Wait for your other exports to finish.');
+    }
+    _running[actor.userId] = running + 1;
+    final core.SheetsExportArtifact artifact;
+    try {
+      artifact = await exportBytes(
+        session,
+        item,
+        fmt,
+        sheetName: sheetName,
+        range: range,
+        author: null,
+        darkTheme: darkTheme,
+      );
+    } finally {
+      final left = (_running[actor.userId] ?? 1) - 1;
+      if (left <= 0) {
+        _running.remove(actor.userId);
+      } else {
+        _running[actor.userId] = left;
+      }
+    }
     final expires = nowUtc().add(resultLifetime);
     final file = await FileService.storeServerFile(
       session,

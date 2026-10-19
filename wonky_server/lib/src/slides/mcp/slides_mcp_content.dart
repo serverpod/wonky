@@ -9,6 +9,7 @@ import 'package:wonky_slides_core/motion.dart'
 import '../../platform/common/models.dart';
 import '../../platform/drive/drive_service.dart';
 import '../../platform/mcp/tool_support.dart';
+import '../../platform/mcp/mcp_errors.dart';
 import '../../platform/mcp/wonky_mcp_server.dart';
 import 'slides_mcp_support.dart';
 import 'slides_read_handlers.dart';
@@ -79,7 +80,7 @@ abstract final class SlidesMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx);
-        final json = await _guard(() async {
+        final json = await McpErrors.guardResource(() async {
           final t = await SlidesMcp.openRef(ctx, '${vars['uuid']}');
           return SlidesReadHandlers.deckJson(ctx, t);
         });
@@ -102,7 +103,7 @@ abstract final class SlidesMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx);
-        final json = await _guard(() async {
+        final json = await McpErrors.guardResource(() async {
           final t = await SlidesMcp.openRef(ctx, '${vars['uuid']}');
           final position = int.tryParse('${vars['position']}');
           final id = SlidesMcp.slideId(t.model, position ?? vars['position']);
@@ -127,7 +128,7 @@ abstract final class SlidesMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx);
-        final json = await _guard(() async {
+        final json = await McpErrors.guardResource(() async {
           final t = await SlidesMcp.openRef(ctx, '${vars['uuid']}');
           final m = t.model;
           return {
@@ -161,7 +162,7 @@ abstract final class SlidesMcpContent {
       (uri, vars, extra) async {
         final ctx = ctxOf(extra);
         _scope(ctx);
-        final md = await _guard(() async {
+        final md = await McpErrors.guardResource(() async {
           final t = await SlidesMcp.openRef(ctx, '${vars['uuid']}');
           return DeckOutlineCodec.write(t.model);
         });
@@ -211,29 +212,6 @@ abstract final class SlidesMcpContent {
       throw mcp.McpError(
         mcp.ErrorCode.invalidRequest.value,
         'The access token lacks the ${McpScope.slidesRead} scope.',
-      );
-    }
-  }
-
-  static Future<T> _guard<T>(Future<T> Function() body) async {
-    try {
-      return await body();
-    } on McpToolException catch (e) {
-      throw mcp.McpError(
-        e.code == McpErrorCode.notFound
-            ? mcp.ErrorCode.resourceNotFound.value
-            : mcp.ErrorCode.invalidParams.value,
-        e.message,
-        e.toJson(),
-      );
-    } on WonkyException catch (e) {
-      final m = McpToolException.fromWonky(e);
-      throw mcp.McpError(
-        m.code == McpErrorCode.notFound
-            ? mcp.ErrorCode.resourceNotFound.value
-            : mcp.ErrorCode.invalidParams.value,
-        m.message,
-        m.toJson(),
       );
     }
   }

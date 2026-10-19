@@ -10,6 +10,10 @@ import 'drive_events.dart';
 import 'drive_file_service.dart';
 import 'drive_presentations.dart';
 import 'drive_service.dart';
+import 'drive_templates.dart';
+import 'drive_trash.dart';
+import 'drive_user_state.dart';
+import 'drive_copies.dart';
 import 'import_service.dart';
 
 /// Wonky Drive (specs/05 §2).
@@ -163,7 +167,7 @@ class DriveEndpoint extends Endpoint {
     UuidValue? parentUuid,
     bool copyComments,
     bool copySharing,
-  ) async => DriveService.copy(
+  ) async => DriveCopies.copy(
     session,
     await UserService.actorOf(session),
     uuid,
@@ -177,7 +181,7 @@ class DriveEndpoint extends Endpoint {
     Session session,
     UuidValue uuid,
     bool starred,
-  ) async => DriveService.setStarred(
+  ) async => DriveUserStates.setStarred(
     session,
     await UserService.actorOf(session),
     uuid,
@@ -188,7 +192,7 @@ class DriveEndpoint extends Endpoint {
     Session session,
     UuidValue uuid,
     bool pinned,
-  ) async => DriveService.setPinnedOffline(
+  ) async => DriveUserStates.setPinnedOffline(
     session,
     await UserService.actorOf(session),
     uuid,
@@ -198,7 +202,7 @@ class DriveEndpoint extends Endpoint {
   /// Records that the caller opened the item (Recent; link visits appear in
   /// Shared with me).
   Future<DriveItemView> markOpened(Session session, UuidValue uuid) async =>
-      DriveService.markOpened(
+      DriveUserStates.markOpened(
         session,
         await UserService.actorOf(session),
         uuid,
@@ -209,7 +213,7 @@ class DriveEndpoint extends Endpoint {
     Session session,
     UuidValue uuid,
     UuidValue? parentUuid,
-  ) async => DriveService.addShortcut(
+  ) async => DriveUserStates.addShortcut(
     session,
     await UserService.actorOf(session),
     uuid,
@@ -217,22 +221,22 @@ class DriveEndpoint extends Endpoint {
   );
 
   Future<void> removeShortcut(Session session, UuidValue uuid) async =>
-      DriveService.removeShortcut(
+      DriveUserStates.removeShortcut(
         session,
         await UserService.actorOf(session),
         uuid,
       );
 
   Future<void> trash(Session session, List<UuidValue> uuids) async =>
-      DriveService.trash(session, await UserService.actorOf(session), uuids);
+      DriveTrash.trash(session, await UserService.actorOf(session), uuids);
 
   Future<void> restore(Session session, List<UuidValue> uuids) async =>
-      DriveService.restore(session, await UserService.actorOf(session), uuids);
+      DriveTrash.restore(session, await UserService.actorOf(session), uuids);
 
   Future<void> deletePermanently(
     Session session,
     List<UuidValue> uuids,
-  ) async => DriveService.deletePermanently(
+  ) async => DriveTrash.deletePermanently(
     session,
     await UserService.actorOf(session),
     uuids,
@@ -240,7 +244,7 @@ class DriveEndpoint extends Endpoint {
 
   /// Deletes all owned items in the trash; returns how many.
   Future<int> emptyTrash(Session session) async =>
-      DriveService.emptyTrash(session, await UserService.actorOf(session));
+      DriveTrash.emptyTrash(session, await UserService.actorOf(session));
 
   /// Live changes of items visible to the caller.
   Stream<DriveChange> watch(Session session) async* {
@@ -252,7 +256,7 @@ class DriveEndpoint extends Endpoint {
   Future<List<TemplateView>> listTemplates(
     Session session,
     DriveItemKind? kind,
-  ) async => DriveService.listTemplates(
+  ) async => DriveTemplates.listTemplates(
     session,
     await UserService.actorOf(session),
     kind,
@@ -263,7 +267,7 @@ class DriveEndpoint extends Endpoint {
     Session session,
     UuidValue uuid,
     TemplateCategory? category,
-  ) async => DriveService.setTemplate(
+  ) async => DriveTemplates.setTemplate(
     session,
     await UserService.actorOf(session),
     uuid,
@@ -289,9 +293,10 @@ class DriveEndpoint extends Endpoint {
   // Drive 02 §3.3 (files, D-8), Slides 02 §9.3 (presentations, D-8) and
   // 03 §7.2 (quota, D-9).
 
-  /// Registers a deck created locally in a reserved `deck` space
-  /// (idempotent; Slides 02 §9.3). The item uuid is the space uuid. Never
-  /// refused for quota (content arrives through sync).
+  /// Registers a deck created on a device (idempotent; Slides 02 §9.3):
+  /// `createPresentation(fileUuid: spaceUuid, initialize: false)`; the
+  /// client's first op creates the rows (RevLog spec 04 §5). The item uuid
+  /// is the file uuid. Never refused for quota.
   Future<DriveItemView> registerPresentation(
     Session session,
     UuidValue spaceUuid,
@@ -308,18 +313,24 @@ class DriveEndpoint extends Endpoint {
   /// Creates a presentation server-side (online; Slides 02 §9.3): a blank
   /// deck with the default theme and a title slide, or with [templateUuid]
   /// a copy of that presentation (SL-8; built-in presentation templates:
-  /// SL-22).
+  /// SL-22). With [fileUuid] the call is idempotent; [initialize] false
+  /// (default true) leaves the file at revision 0 for the client's creation op (RevLog
+  /// spec 04 §5).
   Future<DriveItemView> createPresentation(
     Session session,
     UuidValue? parentUuid,
     String name,
-    UuidValue? templateUuid,
-  ) async => DrivePresentations.create(
+    UuidValue? templateUuid, {
+    UuidValue? fileUuid,
+    bool? initialize,
+  }) async => DrivePresentations.create(
     session,
     await UserService.actorOf(session),
     parentUuid: parentUuid,
     name: name,
     templateUuid: templateUuid,
+    fileUuid: fileUuid,
+    initialize: initialize ?? true,
   );
 
   /// Starts the upload of a `file` item (Drive 02 §3.3): checks the role on

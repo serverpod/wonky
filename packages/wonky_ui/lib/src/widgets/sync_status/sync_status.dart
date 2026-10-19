@@ -6,6 +6,7 @@ import 'package:shad/shad.dart';
 
 import '../../l10n/wonky_ui_localizations.dart';
 import '../../theme/wonky_colors.dart';
+import '../dialog/dialog_close_button.dart';
 
 /// The sync states shown by [SyncStatusIndicator] (suite 02 §4.14).
 enum SyncState { saved, saving, offline, error, connecting, reconnecting }
@@ -175,6 +176,7 @@ class _SyncStatusIndicatorState extends State<SyncStatusIndicator> {
         final (icon, label, color) = _visual(l10n, theme.colorScheme);
         final time = intl.DateFormat.Hms();
         return ShadDialog(
+          closeIcon: const WonkyDialogCloseButton(),
           title: Text(l10n.syncDetailsTitle),
           actions: [
             if (widget.onRetry != null)

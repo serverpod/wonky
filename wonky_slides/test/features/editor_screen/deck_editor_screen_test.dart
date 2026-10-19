@@ -8,7 +8,7 @@ import 'package:wonky_slides_core/testing.dart' show DeckBuilder;
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_slides/features/editor_screen/deck_editor_controller.dart';
 import 'package:wonky_slides/features/model/deck_session.dart';
-import 'package:wonky_slides/features/sync/slides_data.dart'
+import 'package:wonky_slides/features/revlog/slides_rev_log.dart'
     show SlidesDataUnavailableException;
 import 'package:wonky_slides/l10n/slides_l10n.dart';
 import 'package:wonky_ui/testing.dart';

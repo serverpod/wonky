@@ -39,7 +39,10 @@ final class DeckIndexes {
   final Map<String, TableIndex> _tables = {};
   Map<String, List<SlideBuildRec>>? _buildsByElement;
   final Map<String, int> _slideRev = {};
+  final Map<String, int> _ownerRev = {};
+  final Map<String, int> _elementRev = {};
   int _globalRev = 0;
+  int _epoch = 0;
 
   void _invalidateAll() {
     _order = null;
@@ -49,6 +52,9 @@ final class DeckIndexes {
     _tables.clear();
     _buildsByElement = null;
     _slideRev.clear();
+    _ownerRev.clear();
+    _elementRev.clear();
+    _epoch++;
     _globalRev++;
   }
 
@@ -59,6 +65,29 @@ final class DeckIndexes {
     }
   }
 
+  /// Slide columns the presentation order depends on (with added and
+  /// removed slides).
+  static const _orderColumns = {
+    SlidesCols.sortKey,
+    SlideCols.groupId,
+    SlidesCols.skipped,
+  };
+
+  /// Slide columns nothing on the slide is drawn from.
+  static const _unrenderedSlideColumns = {
+    SlideCols.notes,
+    SlideCols.timingsJson,
+  };
+
+  /// Deck columns no slide is drawn from.
+  static const _unrenderedDeckColumns = {
+    DeckCols.title,
+    DeckCols.guidesJson,
+    DeckCols.presentJson,
+    DeckCols.defaultsJson,
+    DeckCols.createdBy,
+  };
+
   void _onBatch(DeckChangeBatch batch) {
     if (model.version != _seen + 1) {
       _invalidateAll();
@@ -68,22 +97,47 @@ final class DeckIndexes {
     _seen = model.version;
     for (final e in batch.events) {
       switch (e) {
-        case DeckChanged():
-          _order = null;
-          _themes = null;
-          _placeholders = null;
-          _globalRev++;
+        case DeckChanged(:final columns):
+          if (columns.contains(DeckCols.firstSlideNumber)) _order = null;
+          if (columns.contains(DeckCols.themeId)) {
+            _themes = null;
+            _placeholders = null;
+          }
+          if (columns.any((c) => !_unrenderedDeckColumns.contains(c))) {
+            _globalRev++;
+          }
         case SlidesChanged():
-          _order = null;
-          // layoutId/skip changes affect layout usage and numbering.
-          _themes = null;
-          _placeholders = null;
+          var reorder = false, relayout = false;
+          final replaced = <SlideRec>[];
           for (final s in e.slideIds) {
-            _bump(s);
+            final whole = e.added.contains(s) || e.removed.contains(s);
+            final columns = whole ? null : e.columns[s];
+            if (columns == null || columns.any(_orderColumns.contains)) {
+              reorder = true;
+            } else if (model.slide(s) case final rec?) {
+              replaced.add(rec);
+            }
+            // layoutId changes affect layout usage.
+            if (columns == null || columns.contains(SlideCols.layoutId)) {
+              relayout = true;
+            }
+            if (columns == null ||
+                columns.any((c) => !_unrenderedSlideColumns.contains(c))) {
+              _bump(s);
+            }
+          }
+          if (reorder) {
+            _order = null;
+          } else if (replaced.isNotEmpty) {
+            _order = _order?.withSlides(replaced);
+          }
+          if (relayout) {
+            _themes = null;
+            _placeholders = null;
           }
         case OrderChanged():
+          // Numbers and effective skips are part of [revision].
           _order = null;
-          _globalRev++;
         case ElementsChanged():
           for (final o in e.ownerIds) {
             _trees.remove(o);
@@ -91,6 +145,7 @@ final class DeckIndexes {
           }
           for (final id in e.elementIds) {
             _tables.remove(id);
+            _elementRev[id] = (_elementRev[id] ?? 0) + 1;
           }
         case ThemeChanged():
           _themes = null;
@@ -98,7 +153,10 @@ final class DeckIndexes {
           for (final id in [...e.layoutIds, ...e.masterIds]) {
             _trees.remove(id);
           }
-          _globalRev++;
+          // Only the slides drawn with them re-render ([revision]).
+          for (final id in [...e.themeIds, ...e.masterIds, ...e.layoutIds]) {
+            _ownerRev[id] = (_ownerRev[id] ?? 0) + 1;
+          }
         case BuildsChanged():
           _buildsByElement = null;
           for (final s in e.slideIds) {
@@ -158,15 +216,43 @@ final class DeckIndexes {
     return map[elementId] ?? const [];
   }
 
-  /// A revision of what [slideId] renders from: changes of the slide, its
-  /// elements and builds bump it; theme, deck and order changes bump every
-  /// slide; the slide's number and effective skip are part of it (another
-  /// slide's skip renumbers this one). Equal revisions mean an equal
-  /// resolution.
+  /// A revision of what [slideId] renders from (or of a layout or master
+  /// drawn as its editing surface): changes of the slide's render-relevant
+  /// columns, its elements and builds bump it, and so do changes of its
+  /// effective layout, master and theme (rows or elements) and of
+  /// render-relevant deck columns. Notes, timings, the deck title, guides
+  /// and present settings don't (CQ-43). The slide's number and effective
+  /// skip are part of it (another slide's skip renumbers this one). Equal
+  /// revisions mean an equal resolution.
   String revision(String slideId) {
     _sync();
-    final e = order.entry(slideId);
-    return '$_globalRev.${_slideRev[slideId] ?? 0}.${e?.number}.${e?.skipped}';
+    final ix = themes;
+    final slide = model.slide(slideId);
+    final layout = slide != null
+        ? ix.effectiveLayout(slide)
+        : model.layout(slideId);
+    final master = layout != null
+        ? ix.masterOf(layout)
+        : slide == null
+        ? model.master(slideId)
+        : null;
+    final theme =
+        (master == null ? null : ix.themeOf(master)) ?? model.defaultTheme;
+    final e = slide == null ? null : order.entry(slideId);
+    return '$_globalRev.${_slideRev[slideId] ?? 0}.'
+        '${layout?.id}:${_ownerRev[layout?.id] ?? 0}.'
+        '${master?.id}:${_ownerRev[master?.id] ?? 0}.'
+        '${theme?.id}:${_ownerRev[theme?.id] ?? 0}.'
+        '${e?.number}.${e?.skipped}';
+  }
+
+  /// A revision of element [elementId]'s row and its dependent rows (table
+  /// axes and cells, code states, chart links): the scene builder keys its
+  /// node cache with it, since resolved elements keep their identity while
+  /// only dependent rows change.
+  String elementRevision(String elementId) {
+    _sync();
+    return '$_epoch.${_elementRev[elementId] ?? 0}';
   }
 }
 

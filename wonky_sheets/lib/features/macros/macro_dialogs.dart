@@ -282,6 +282,7 @@ class _ManageMacrosDialogState extends State<ManageMacrosDialog>
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.manageMacros'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.cmdMacroManage),
         actions: [
           ShadButton.outline(

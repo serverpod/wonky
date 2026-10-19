@@ -123,8 +123,39 @@ abstract final class GithubWebhook {
   }
 
   /// The largest payload accepted (GitHub caps deliveries at 25 MB; the
-  /// events used here are far smaller).
-  static const maxBodyBytes = 10 * 1024 * 1024;
+  /// events used here are far smaller: tens of KB).
+  static const maxBodyBytes = 5 * 1024 * 1024;
+
+  /// The checks that need only the headers (before the body is read, so a
+  /// refused request never buffers one): the status when the delivery is
+  /// answered without reading it, else null. `202` when the integration
+  /// is disabled, `401` without a secret or a `sha256=` signature header,
+  /// `400` without the GitHub headers, `413` when the declared size is
+  /// over [maxBodyBytes].
+  static int? precheck(Session session, Map<String, String> headers) {
+    if (!BoardConfig.current.github.enabled) return 202;
+    final h = {for (final e in headers.entries) e.key.toLowerCase(): e.value};
+    final signature = h['x-hub-signature-256']?.trim().toLowerCase();
+    if (signature == null || !signature.startsWith('sha256=')) return 401;
+    if (secretSource() == null) {
+      session.log(
+        'board.github: webhook refused: the password '
+        '${BoardGithubConfig.webhookSecretPassword} is not set',
+        level: LogLevel.warning,
+      );
+      return 401;
+    }
+    final deliveryId = h['x-github-delivery']?.trim();
+    if (h['x-github-event'] == null ||
+        deliveryId == null ||
+        deliveryId.isEmpty ||
+        deliveryId.length > 100) {
+      return 400;
+    }
+    final declared = int.tryParse(h['content-length'] ?? '');
+    if (declared != null && declared > maxBodyBytes) return 413;
+    return null;
+  }
 
   /// The webhook secret (tests replace it).
   static String? Function() secretSource = secret;

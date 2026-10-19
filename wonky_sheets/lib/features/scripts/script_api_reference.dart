@@ -150,6 +150,7 @@ class _ApiReferenceDialogState extends State<_ApiReferenceDialog>
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.scriptApiReference'),
+        closeIcon: const WonkyDialogCloseButton(),
         constraints: BoxConstraints(maxWidth: width + 48),
         title: Text(l.scriptApiReferenceTitle),
         actions: [

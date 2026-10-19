@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:super_editor/super_editor.dart';
 
+import '../../../l10n/write_l10n.dart';
 import '../applier/delta_applier.dart';
 import '../attributions/wonky_attributions.dart';
 import '../controller/editor_types.dart';
@@ -58,6 +59,22 @@ enum BlockKind {
     numbered => 'Numbered list',
     checklist => 'Checklist',
   };
+
+  /// [label] in [l]'s language (undo labels, announcements).
+  String labelOf(WriteLocalizations l) => switch (this) {
+    paragraph => l.cmdFormatBlockTypeParagraph,
+    heading1 => l.cmdFormatBlockTypeHeading1,
+    heading2 => l.cmdFormatBlockTypeHeading2,
+    heading3 => l.cmdFormatBlockTypeHeading3,
+    heading4 => l.cmdFormatBlockTypeHeading4,
+    heading5 => l.cmdFormatBlockTypeHeading5,
+    heading6 => l.cmdFormatBlockTypeHeading6,
+    quote => l.cmdFormatBlockTypeQuote,
+    codeBlock => l.cmdFormatBlockTypeCodeBlock,
+    bulleted => l.cmdListToggleBulleted,
+    numbered => l.cmdListToggleNumbered,
+    checklist => l.cmdListToggleChecklist,
+  };
 }
 
 /// Inline formats of the toggle commands.
@@ -72,6 +89,14 @@ enum InlineFormat {
   /// Delta attribute key.
   final String key;
   final String label;
+
+  /// [label] in [l]'s language (undo labels, announcements).
+  String labelOf(WriteLocalizations l) => switch (this) {
+    bold => l.cmdFormatBold,
+    italic => l.cmdFormatItalic,
+    strikethrough => l.cmdFormatStrikethrough,
+    code => l.cmdFormatInlineCode,
+  };
 
   Attribution get attribution => switch (this) {
     bold => boldAttribution,
@@ -127,6 +152,9 @@ class WriteEditorCommands {
 
   DeltaSelection? get selection => controller.selection;
 
+  /// The Write strings for undo labels and announcements (CQ-57).
+  WriteLocalizations get _l => controller.strings();
+
   LocalDeltaChange? _apply(
     Delta change,
     String label, {
@@ -179,40 +207,45 @@ class WriteEditorCommands {
         format.attribution,
       );
     }
+    // Walks the attribute runs of the selection without copying text and
+    // stops at the first eligible run without the format (W-14: the toolbar
+    // asks on every rebuild, also after select-all on a long document).
+    // Eligible: inline text (not line ends, not embeds) outside code
+    // blocks, and not inline code unless [format] is code.
     var any = false;
-    for (final (piece, block) in _pieces(s.start, s.end)) {
-      if (!_eligibleFor(format, piece, block)) continue;
-      any = true;
-      if (piece.attributes?[format.key] != true) return false;
+    final mirror = controller.mirror;
+    for (final block in mirror.blocksIn(s.start, s.end)) {
+      if (block.isCode) continue;
+      var offset = block.start;
+      for (final op in mirror.entryAt(block.index).delta.operations) {
+        final opStart = offset;
+        offset += op.length!;
+        final from = opStart > s.start ? opStart : s.start;
+        final to = offset < s.end ? offset : s.end;
+        if (to <= from) continue;
+        final data = op.data;
+        if (data is! String ||
+            !_hasTextBetween(data, from - opStart, to - opStart)) {
+          continue;
+        }
+        final attributes = op.attributes;
+        if (format != InlineFormat.code &&
+            attributes?[DeltaKeys.code] == true) {
+          continue;
+        }
+        any = true;
+        if (attributes?[format.key] != true) return false;
+      }
     }
     return any;
   }
 
-  Iterable<(Operation, BlockRef)> _pieces(int start, int end) sync* {
-    for (final block in controller.mirror.blocksIn(start, end)) {
-      var offset = block.start;
-      for (final op
-          in controller.mirror.entryAt(block.index).delta.operations) {
-        final opStart = offset;
-        final opEnd = offset + op.length!;
-        offset = opEnd;
-        final s = opStart > start ? opStart : start;
-        final e = opEnd < end ? opEnd : end;
-        if (e <= s) continue;
-        final data = op.data;
-        if (data is! String) {
-          yield (op, block);
-          continue;
-        }
-        final text = data.substring(s - opStart, e - opStart);
-        for (final part in text.split('\n').indexed) {
-          if (part.$1 > 0) yield (Operation.insert('\n', op.attributes), block);
-          if (part.$2.isNotEmpty) {
-            yield (Operation.insert(part.$2, op.attributes), block);
-          }
-        }
-      }
+  /// Whether `text[start, end)` has a character other than a line end.
+  static bool _hasTextBetween(String text, int start, int end) {
+    for (var i = start; i < end; i++) {
+      if (text.codeUnitAt(i) != 0x0A) return true;
     }
+    return false;
   }
 
   /// `write.format.bold` / `italic` / `strikethrough` / `inlineCode`.
@@ -233,7 +266,9 @@ class WriteEditorCommands {
       controller.notify(
         EditorNotice(
           EditorNoticeKind.announcement,
-          '${format.label} ${preferences.currentAttributions.contains(format.attribution) ? 'on' : 'off'}',
+          preferences.currentAttributions.contains(format.attribution)
+              ? _l.announceFormatOn(format.labelOf(_l))
+              : _l.announceFormatOff(format.labelOf(_l)),
         ),
       );
       return true;
@@ -255,11 +290,13 @@ class WriteEditorCommands {
       eligible: (piece, block) => _eligibleFor(format, piece, block),
     );
     if (change.isEmpty) return false;
-    _apply(change, format.label, selectionAfter: s);
+    _apply(change, format.labelOf(_l), selectionAfter: s);
     controller.notify(
       EditorNotice(
         EditorNoticeKind.announcement,
-        '${format.label} ${active ? 'off' : 'on'}',
+        active
+            ? _l.announceFormatOff(format.labelOf(_l))
+            : _l.announceFormatOn(format.labelOf(_l)),
       ),
     );
     return true;
@@ -293,7 +330,7 @@ class WriteEditorCommands {
           !block.isCode && FormatChanges.isInlineText(piece),
     );
     if (change.isEmpty) return false;
-    _apply(change, 'Clear formatting', selectionAfter: s);
+    _apply(change, _l.undoClearFormatting, selectionAfter: s);
     return true;
   }
 
@@ -427,9 +464,13 @@ class WriteEditorCommands {
     change.trim();
     if (change.isEmpty) return false;
     final s = selection;
-    _apply(change, label ?? target.label, selectionAfter: s?.transform(change));
+    _apply(
+      change,
+      label ?? target.labelOf(_l),
+      selectionAfter: s?.transform(change),
+    );
     controller.notify(
-      EditorNotice(EditorNoticeKind.announcement, target.label),
+      EditorNotice(EditorNoticeKind.announcement, target.labelOf(_l)),
     );
     return true;
   }
@@ -542,11 +583,11 @@ class WriteEditorCommands {
         ..retain(1, {DeltaKeys.indent: level});
       offset = block.lineEnd + 1;
     }
-    _apply(change, 'Indent', selectionAfter: selection);
+    _apply(change, _l.undoIndent, selectionAfter: selection);
     controller.notify(
       EditorNotice(
         EditorNoticeKind.announcement,
-        'Level ${plan.values.last + 1}',
+        _l.announceListLevel(plan.values.last + 1),
       ),
     );
     return true;
@@ -573,7 +614,7 @@ class WriteEditorCommands {
         );
       offset = block.lineEnd + 1;
     }
-    _apply(change, 'Outdent', selectionAfter: selection);
+    _apply(change, _l.undoOutdent, selectionAfter: selection);
     return true;
   }
 
@@ -603,7 +644,7 @@ class WriteEditorCommands {
     }
     _apply(
       change,
-      check ? 'Check item' : 'Uncheck item',
+      check ? _l.undoCheckItem : _l.undoUncheckItem,
       selectionAfter: selection,
     );
     return true;
@@ -678,7 +719,7 @@ class WriteEditorCommands {
       if (change.isEmpty) return false;
       _apply(
         change,
-        'Insert link',
+        _l.undoInsertLink,
         selectionAfter: DeltaSelection(rangeStart, rangeEnd),
       );
       return true;
@@ -692,7 +733,7 @@ class WriteEditorCommands {
         existing.end - existing.start,
         {DeltaKeys.link: link},
       );
-      _apply(change, 'Edit link');
+      _apply(change, _l.undoEditLink);
       return true;
     }
     final insertText = (text == null || text.isEmpty) ? link : text;
@@ -706,7 +747,7 @@ class WriteEditorCommands {
       ..insert(insertText.replaceAll('\n', ' '), attributes);
     _apply(
       change,
-      'Insert link',
+      _l.undoInsertLink,
       selectionAfter: DeltaSelection.collapsed(rangeStart + insertText.length),
     );
     return true;
@@ -714,7 +755,7 @@ class WriteEditorCommands {
 
   Map<String, dynamic>? _inlineFormattingAt(int offset) {
     final s = DeltaSelection.collapsed(offset);
-    final documentSelection = controller.mirror.selectionAt(s.base, s.extent);
+    final documentSelection = controller.mirror.selectionAt(s.anchor, s.head);
     if (documentSelection == null) return null;
     final attributions = WonkyTypingAttributesReaction.typingAttributesAt(
       controller.document,
@@ -756,7 +797,7 @@ class WriteEditorCommands {
       eligible: (piece, block) => piece.attributes?[DeltaKeys.mention] == null,
     );
     if (change.isEmpty) return false;
-    _apply(change, 'Remove link');
+    _apply(change, _l.undoRemoveLink);
     return true;
   }
 
@@ -828,7 +869,7 @@ class WriteEditorCommands {
         {
           DeltaKeys.dividerEmbed: {'id': controller.newEmbedId()},
         },
-      ], 'Insert divider') !=
+      ], _l.undoInsertDivider) !=
       null;
 
   /// `write.insert.imageFromUrl {url, alt?}` and the upload flow
@@ -836,8 +877,9 @@ class WriteEditorCommands {
   /// embed ids.
   List<String> insertImages(
     List<({String src, String alt, String? title})> images, {
-    String label = 'Insert image',
+    String? label,
   }) {
+    label ??= _l.undoInsertImage;
     final ids = <String>[];
     final values = <Map<String, dynamic>>[];
     for (final image in images) {
@@ -889,7 +931,7 @@ class WriteEditorCommands {
       rowCount: rows.clamp(1, 2000),
       columnCount: columns.clamp(1, 64),
     );
-    return _insertEmbeds([table.toInsert()], 'Insert table') == null
+    return _insertEmbeds([table.toInsert()], _l.undoInsertTable) == null
         ? null
         : table.id;
   }
@@ -918,14 +960,15 @@ class WriteEditorCommands {
       ..insert(' ');
     _apply(
       change,
-      'Mention',
+      _l.undoMention,
       selectionAfter: DeltaSelection.collapsed(start + text.length + 1),
     );
     return true;
   }
 
   /// `write.edit.insertText {text}` (emoji, special characters, MCP).
-  bool insertText(String text, {int? position, String label = 'Insert text'}) {
+  bool insertText(String text, {int? position, String? label}) {
+    label ??= _l.undoInsertText;
     final s = selection;
     final start = position ?? s?.start;
     final end = position ?? s?.end;
@@ -984,7 +1027,7 @@ class WriteEditorCommands {
       if (runStart < data.length) change.retain(data.length - runStart);
     }
     change.trim();
-    _apply(change, 'Set code language', selectionAfter: selection);
+    _apply(change, _l.undoSetCodeLanguage, selectionAfter: selection);
     return true;
   }
 
@@ -1010,7 +1053,7 @@ class WriteEditorCommands {
     }
     _apply(
       change,
-      'Exit code block',
+      _l.undoExitCodeBlock,
       selectionAfter: DeltaSelection.collapsed(end),
     );
     return true;
@@ -1043,7 +1086,7 @@ class WriteEditorCommands {
         ..insert(' ' * spaces);
       _apply(
         change,
-        'Indent',
+        _l.undoIndent,
         selectionAfter: DeltaSelection.collapsed(s.start + spaces),
       );
       return true;
@@ -1088,7 +1131,7 @@ class WriteEditorCommands {
     if (change.isEmpty) return true;
     _apply(
       change,
-      indent ? 'Indent' : 'Outdent',
+      indent ? _l.undoIndent : _l.undoOutdent,
       selectionAfter: s.transform(change),
     );
     return true;
@@ -1184,17 +1227,14 @@ class WriteEditorCommands {
     return moveBlocks(
       [for (final b in blocks) b.id],
       target,
-      label: 'Move block',
+      label: _l.undoMoveBlock,
     );
   }
 
   /// `write.block.move {nodeIds, toIndex}`: moves the blocks (contiguous run)
   /// so that they end up before the node currently at [toIndex].
-  bool moveBlocks(
-    List<String> nodeIds,
-    int toIndex, {
-    String label = 'Move block',
-  }) {
+  bool moveBlocks(List<String> nodeIds, int toIndex, {String? label}) {
+    label ??= _l.undoMoveBlock;
     if (!canEdit || isSuggesting || nodeIds.isEmpty) return false;
     final blocks = [for (final id in nodeIds) ?controller.mirror.blockOf(id)]
       ..sort((a, b) => a.index.compareTo(b.index));
@@ -1230,8 +1270,8 @@ class WriteEditorCommands {
     DeltaSelection? after;
     if (s != null && s.start >= start && s.end <= end) {
       after = DeltaSelection(
-        s.base - start + movedStart,
-        s.extent - start + movedStart,
+        s.anchor - start + movedStart,
+        s.head - start + movedStart,
       );
     }
     _apply(change..trim(), label, selectionAfter: after);
@@ -1259,14 +1299,14 @@ class WriteEditorCommands {
     }
     _apply(
       change,
-      'Duplicate',
+      _l.undoDuplicate,
       selectionAfter: DeltaSelection.collapsed(block.start + block.length),
     );
     return true;
   }
 
-  Map<String, dynamic> _withNewId(Map value) {
-    final type = value.keys.first;
+  Map<String, dynamic> _withNewId(Map<Object?, Object?> value) {
+    final type = value.keys.first as String;
     final inner = (value[type] as Map).cast<String, dynamic>();
     return {
       type: {...inner, 'id': controller.newEmbedId()},
@@ -1288,7 +1328,11 @@ class WriteEditorCommands {
     if (start == 0 && end == controller.mirror.length) {
       change.insert('\n');
     }
-    _apply(change, 'Delete', selectionAfter: DeltaSelection.collapsed(start));
+    _apply(
+      change,
+      _l.undoDelete,
+      selectionAfter: DeltaSelection.collapsed(start),
+    );
     return true;
   }
 
@@ -1345,7 +1389,7 @@ class WriteEditorCommands {
             (key, v) => key == 'title' && (title != null && title.isEmpty),
           ),
     };
-    return _replaceEmbed(block, value, 'Alt text') != null;
+    return _replaceEmbed(block, value, _l.undoAltText) != null;
   }
 
   /// `write.image.replace` / `replaceFromUrl {nodeId?, url}`: keeps the id.
@@ -1355,7 +1399,7 @@ class WriteEditorCommands {
     final data = EmbedNodes.embedDataOf(block.node)!;
     return _replaceEmbed(block, {
           DeltaKeys.imageEmbed: {...data, 'src': src},
-        }, 'Replace image') !=
+        }, _l.undoReplaceImage) !=
         null;
   }
 
@@ -1374,11 +1418,8 @@ class WriteEditorCommands {
       canEdit && !isSuggesting && tableOf(nodeId: nodeId) != null;
 
   /// `write.table.replace {nodeId, table}`: one undo step "Edit table".
-  bool replaceTable(
-    TableModel table, {
-    String? nodeId,
-    String label = 'Edit table',
-  }) {
+  bool replaceTable(TableModel table, {String? nodeId, String? label}) {
+    label ??= _l.undoEditTable;
     final block =
         _embedBlock(nodeId ?? table.id, DeltaKeys.tableEmbed) ??
         _embedBlock(nodeId, DeltaKeys.tableEmbed);
@@ -1436,7 +1477,7 @@ class WriteEditorCommands {
   bool deleteSelection() {
     final s = selection;
     if (!canEdit || s == null || s.isCollapsed) return false;
-    return controller.runLabelled('Delete', () {
+    return controller.runLabelled(_l.undoDelete, () {
       controller.editor.execute([
         DeleteContentRequest(
           documentRange: controller.composer.selection!.normalize(
@@ -1460,10 +1501,11 @@ class WriteEditorCommands {
   /// In code blocks only plain text is inserted.
   LocalDeltaChange? insertFragment(
     Delta fragment, {
-    String label = 'Paste',
+    String? label,
     int? start,
     int? end,
   }) {
+    label ??= _l.undoPaste;
     final s = selection;
     final from = start ?? s?.start;
     final to = end ?? s?.end ?? from;
@@ -1603,8 +1645,9 @@ class WriteEditorCommands {
     int start,
     int length,
     String text, {
-    String label = 'Replace',
+    String? label,
   }) {
+    label ??= _l.undoReplace;
     if (!canEdit) return false;
     final block = controller.mirror.blockAtOffset(start);
     final clean = block.isCode

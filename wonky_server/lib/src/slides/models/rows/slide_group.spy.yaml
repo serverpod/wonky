@@ -1,0 +1,28 @@
+### A slide group (section) of the navigator (Slides 02 §3.4, decision D11).
+### Groups share the top-level key space with ungrouped slides.
+class: SlideGroup
+table: slide_group
+serverOnly: true
+fields:
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  deck: Deck?, relation(onDelete=Cascade, deferred)
+  ### "Intro"; 1-100 characters.
+  title: String
+  ### Top-level key space (shared with ungrouped slides).
+  sortKey: String
+  ### Reserved for nested groups (P2, 04 §5.12); always null in v1.
+  parentId: UuidValue?
+  ### Palette token: gray, red, orange, amber, green, teal, blue, violet, pink.
+  color: String?
+  ### Skips all its slides when presenting/exporting.
+  skipped: bool, default=false
+  createdAt: DateTime, defaultModel=now
+indexes:
+  slide_group_file_idx:
+    fields: fileId, id
+  slide_group_order_idx:
+    fields: deckId, sortKey

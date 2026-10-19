@@ -1,0 +1,4 @@
+class: RevPing
+extends: RevClientMessage
+fields:
+  t: int

@@ -755,7 +755,8 @@ class _OutlineSlideBlockState extends State<_OutlineSlideBlock>
     final c = line.controller;
     SpellRange? hit;
     // Every misspelled word counts here, also the one at the caret.
-    for (final r in c.misspellings?.call(c.text, null) ?? const []) {
+    for (final r
+        in c.misspellings?.call(c.text, null) ?? const <SpellRange>[]) {
       if (r.covers(pos.offset)) hit = r;
     }
     final r = hit;

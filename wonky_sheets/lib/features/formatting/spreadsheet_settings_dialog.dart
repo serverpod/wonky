@@ -537,6 +537,7 @@ class _SettingsDialogState extends McpDialogState<SpreadsheetSettingsDialog> {
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.settings'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.settingsDialogTitle),
         actions: [
           ShadButton.outline(

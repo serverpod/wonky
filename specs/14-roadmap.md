@@ -11,7 +11,8 @@ Sheets (complete for its first iteration, `wonky_sheets/STATUS.md`; deferred wor
 `TODO.md`). The second iteration adds Wonky Drive, Wonky Slides and suite changes in
 milestones **M8–M11** (§2.1), decided in the [v2 review](v2-review.md) and planned as **work
 packages** for parallel agents (§2.2). **v2 is web only**: desktop builds keep compiling, desktop
-features are deferred ([01 A13](01-architecture.md)).
+features are deferred ([01 A13](01-architecture.md)). M12 (Bugs & improvements, §2.1a) and M13
+(RevLog sync for Sheets and Slides, §2.1b) are built.
 
 ## 1. Principles
 - **Contract first**: each workstream starts by committing its public Dart interfaces (and
@@ -39,6 +40,11 @@ features are deferred ([01 A13](01-architecture.md)).
 | **M6 · Agents & Automation** | Complete MCP tool catalogs (headless + UI bridge) for both apps; AI assistant panels & inline AI; Sheets scripting (compile service, runtimes, bridge, editor, triggers, macros). | Journeys 8, 10; MCP integration suite green. |
 | **M7 · Polish & Scale** | Accessibility audit, i18n readiness (pseudo-locales), performance tuning, bundle splitting, error reporting, security review, raise Sheets cell limits as upstream U1–U5 land, desktop packaging (macOS/Windows/Linux; not done — deferred with all desktop features, 01 A13). | All budgets in 11 §2 met; a11y checklist complete. |
 
+> **History.** M0, M3 and M7 describe the original Sheets sync on the vendored
+> `serverpod_offline_sync` engine (module setup, reserved spaces, active-set subscriptions, the
+> sync-update lint, raising cell limits as upstream requirements U1–U5 land). M13 (§2.1b)
+> replaced that stack with RevLog ([17](17-revlog-sync.md)); the rows are kept as history.
+
 ### 2.1 Second iteration (v2)
 
 Scope rules for all four milestones: **web only** (01 A13 — the desktop targets must still
@@ -52,6 +58,10 @@ presenting (03 §1); the site root `/` lands on **Wonky Write's home** (01 §2.4
 | **M9 · Slides MVP** ([Slides 12](wonky_slides/12-implementation-plan.md), SL-2…SL-23) | Slides data model + sync (one deck = one space, schema S-1, shared sync kit), editor canvas and core objects (text, shapes, lines, images, tables, groups), themes/layouts/masters, slide navigator with **slide groups**, grid view, speaker notes, presenting (full screen; presenter view in this window; audience on another device or browser via the presentation session), PDF export, app home + settings, offline creation, presence + soft locks, 5 templates | Journey 14 (without builds/code/charts) and J-S1…J-S4; offline merge fuzzer for decks green; multi-client scenarios of Slides 12 §1; PDF fidelity suite; web perf budgets of Slides 03 §18 |
 | **M10 · Slides motion & content** (SL-24…SL-36) | Builds and the animation pane, transitions incl. Magic Move, laser/pen, loop/kiosk; code blocks with line highlighting and type-in/morph (`wonky_code`); Write exports on the shared tokenizer; linked Sheets charts incl. 3D and camera animation with client-side auto-update (`wonky_charts`), native charts (P1); PDF builds as pages; outline view, Layers, accessibility checker; masters and theme editor; 10 templates | Journey 14 complete and J-S5…J-S7; timeline determinism (client ≡ server); 60 fps budgets of Slides 01 met in Chrome on the reference machine |
 | **M11 · Slides collaboration, MCP & AI** (SL-37…SL-45) | Live pointers and follow modes, comments on slides/elements, version history, activity; phone remote, rehearse, same-browser fast path (P1); `slides.*` headless and `ui.slides.*` tools; assistant in Slides (generate decks, notes, alt text, code walkthroughs) and in Drive (P1) | Journey 15 and J-S8…J-S10; MCP integration suite for `slides.*` green; a11y checklist; no open P0/P1 bugs |
+
+> **History.** M8 and M9 built Slides on the shared sync kit (`wonky_sync_kit*`), space kinds
+> and the OS-8 space filter. M13 (§2.1b) replaced that stack with RevLog; the M8/M9 text here,
+> in §2.2, in §3 (WS-6, WS-19) and in §4 is kept as history.
 
 **M8 exit checklist** (checked by D-18 on 2026-10-15; evidence in
 [Drive STATUS](wonky_drive/STATUS.md)):
@@ -184,7 +194,7 @@ the first Slides package that needs it (SL-2 needs D-6; SL-5 needs D-4; SL-26/SL
 **M12 exit checklist** (checked 2026-10-15: suites, then a browser walkthrough of the Drive release
 build against the live server with the real Jev and Gemini APIs):
 
-- ☑ Server board suites (`wonky_server/test/platform/board/`): access matrix (signed out, signed
+- ☑ Server board suites (`wonky_server/test/integration/platform/board/`, `test/unit/board/`): access matrix (signed out, signed
   in, author, admin, blocked), posts, votes, comments, claims and sweep, triage bands and
   pipeline, Jev/Gemini isolation, MCP tools, GitHub gate, lifecycle, review and webhook.
 - ☑ Client suites (`packages/wonky_app/test/board/`: commands with undo, report dialog, board
@@ -209,6 +219,37 @@ build against the live server with the real Jev and Gemini APIs):
   live keys, results not recorded in the spec.
 - ◐ Step 2: gate and review proven with recorded payloads and a fake GitHub API; a real PR from
   a non-member fork against the installed App is pending.
+
+### 2.1b RevLog sync (M13, built)
+
+| Milestone | Goal | Exit criteria |
+|-----------|------|---------------|
+| **M13 · RevLog** ([17](17-revlog-sync.md); PRs R0–R8, gates G1–G3) | Sheets and Slides sync through RevLog instead of the vendored CRDT engine: one server-sequenced op log per file over one Serverpod stream per open file; the domain tables as plain server tables; a client cache with a durable outbox (`wonky_revlog`, `wonky_revlog_flutter`); viewport-first opening; protected ranges enforced by the server; post-commit hooks instead of the change-log consumers; server writes through `submitServerChange`; one headless model cache for both apps. PRs: R0 baseline and prototype (G1: go), R1 core package, R2 shared infrastructure (`ConnectionKeeper` in `wonky_app`, `immediate` bus posts), R3 server platform + Sheets binding, R4 Sheets server writers and readers, R5 client package + Sheets app, R6 Sheets gates and merge (G2), R7 Slides (G3), R8 removal of the engine, spaces and sync kit | G2: Sheets suites green on RevLog, gates P1–P12; G3: Slides suites green, P1, P6, P8 for a 500-slide deck; R8: no engine code left; specs adopted (17, 12 §2, app specs) |
+
+**M13 exit checklist** (status 2026-10-18):
+
+- ☑ Core and client packages: `wonky_revlog` (codec, apply rules, overlay, chunker,
+  `RevSyncCore`, `FakeRevServer`; property tests for codec, chunker, overlay and convergence) and
+  `wonky_revlog_flutter` (cache, transport, connection, bootstrap, `RevLogClient`, `FakeRevHub`).
+- ☑ Server: `platform/revlog/` (sequencer, connection, pages, hooks, `HeadlessFileCache`, jobs
+  `revlog.pruneOps`, `revlog.hookSweep`, `revlog.repairStats`) with the Sheets and Slides
+  bindings; suites in `wonky_server/test/integration/{platform,sheets,slides}/revlog/`.
+- ☑ Protected ranges enforced by the sequencer (`protectedRange`) and handled by the Sheets
+  client (rejection toast, rollback, undo step dropped).
+- ☑ Sheets and Slides apps on `LoggedWorkbookSession` / `LoggedDeckSession`: creation online and
+  offline, imports, version copies, scripts, MCP, AI, versions and restore through RevLog;
+  Sheets offline scenarios of [Sheets 10 §10](wonky_sheets/10-collaboration-history.md).
+- ☐ Performance gates P1–P12 (17 part 7): no RevLog perf suite and no recorded results yet.
+- ◐ R8 removal: `wonky_sync_kit` only re-exports `wonky_revlog`; still in the tree:
+  `third_party/serverpod_offline_sync` with its module, `databaseSync` and `shared_packages` in
+  `wonky_server/config/generator.yaml`, `platform/spaces/` (still called by
+  `drive.setPinnedOffline`) and `wonky_sync_kit_flutter`.
+
+Open follow-ups (not exit criteria; 17 As built): *Save my changes as a copy* after a rejection
+(As built 10), a conflict review fed directly by outcomes (11), the download of unsynced changes
+when the cache can't be opened and before *Clear local data* (15), the `cascaded` info toast
+(P2, 17 part 6 §6), and character-level merge of concurrent text edits in Slides
+([Slides 02 §4.5](wonky_slides/02-data-model.md)).
 
 ### 2.2 Executing the plan with parallel agents (v2)
 
@@ -278,14 +319,15 @@ WS-0 ─┬─ WS-1 ─┬─ WS-3 ─┬─ WS-4 ─ WS-5 ─┬─ WS-6 ─ WS
 
 | Risk | Impact | Mitigation |
 |------|--------|-----------|
-| `serverpod_offline_sync` maturity (0.0.x, experimental) and scale limits | Sheets data loss/perf | Vendored patch, extensive fuzzing, staged cell limits, upstream requirements U1–U11 (12 §4) — the team can contribute upstream |
+| `serverpod_offline_sync` maturity (0.0.x, experimental) and scale limits | Sheets data loss/perf | Vendored patch, extensive fuzzing, staged cell limits, upstream requirements U1–U11 — the team can contribute upstream. **Retired by M13**: Sheets and Slides sync through RevLog ([17](17-revlog-sync.md)) |
+| RevLog sequencer load (one sequencer per file, protection checks on large protected files, hook lag) | Slow commits or late side effects on busy files | Gates P3, P4 and P12 (17 part 7), per-op metrics and hook lag in Settings › Developer (17 part 5 §12), warm headless models for protected files |
 | super_editor pre-1.0 API churn; gaps (tables read-only, no incremental Quill apply) | Write delays | Vendored copy (01 §2.3) with focused patches SE-1…SE-5; our mapper/applier/extractor layer isolates the rest of the app; upgrade only deliberately |
 | Web SQLite (OPFS availability, IndexedDB memory) | Large offline sheets on some browsers | Detect storage mode, limit offline size, warn |
 | `dart_eval` performance and language coverage; web worker complexity | Scripting UX | Server-side compile; documented language subset; generous timeouts; P1 features gated |
 | Formula compatibility | User trust | Differential tests vs LibreOffice; golden vectors |
 | MCP spec evolution | Integration breakage | `mcp_dart` protocol profiles; integration tests per profile |
 | Scope (Google Docs + Sheets parity) | Schedule | P0/P1/P2 priorities in app overviews; milestones deliver usable slices |
-| (v2) Sync engine syncs every member space (decks + spreadsheets in both replicas) | Slides/Sheets download each other's data | OS-8 space filter patch and space kinds in M8 wave 1 (12 §2.6, Drive 05 D-4) |
+| (v2) Sync engine syncs every member space (decks + spreadsheets in both replicas) | Slides/Sheets download each other's data | OS-8 space filter patch and space kinds in M8 wave 1 (Drive 05 D-4). **Retired by M13**: each client loads only the files it opens or keeps offline |
 | (v2) Existing users above the new 50 MB quota | Frustration, support | Non-destructive over-quota state, clear Storage page, one-time notice (Drive 03 §9) |
 | (v2) Shell refactor for four apps collides with app work | Merge conflicts | D-10 lands in M8 wave 2 behind a compatibility default (Drive 05 §4) |
 | (v2) Parallel agents on a 16 GB laptop | Swapping, flaky tests, merge conflicts | ≤ 5 agents, ≤ 2 server test runs, one web-build token, folder ownership (§2.2) |

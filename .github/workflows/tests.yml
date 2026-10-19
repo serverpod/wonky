@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERSION: '4.1.0-beta.3'
+      # Non-secret: the test database is an embedded PostgreSQL that exists
+      # only for the run (the test passwords of wonky_server/docker-compose.yaml).
       SERVERPOD_PASSWORD_database: '8hI_nurnnhk2QTfnxCOHS_hqtFwFEvsG'
       SERVERPOD_PASSWORD_redis: 'FQOvu3laYz0fOw_TmBW7VVIYlrUlEiLU'
 
@@ -59,9 +61,10 @@ jobs:
         working-directory: wonky_server
         run: serverpod generate
 
+      # `slow` (perf suites) is left to nightly runs (specs/15 §3).
       - name: Run tests
         working-directory: wonky_server
-        run: dart test
+        run: dart test -x slow
 
   # Lists the other workspace members that have tests (test/**_test.dart), with the test
   # runner each needs (Flutter when the pubspec depends on the Flutter SDK).
@@ -126,7 +129,6 @@ jobs:
   # Own test suites of the vendored packages (specs/01-architecture.md §2.3
   # rule 4), including the tests of our patches. They are not workspace
   # members and resolve their own (committed) lock files.
-  # third_party/serverpod_offline_sync ships no tests.
   third-party:
     name: test (${{matrix.package.path}})
     runs-on: ubuntu-latest

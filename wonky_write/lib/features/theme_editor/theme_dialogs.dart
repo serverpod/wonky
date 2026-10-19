@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 import 'package:wonky_write_core/wonky_write_core.dart' show ThemeIssue;
 
 import '../../l10n/write_l10n.dart';
@@ -154,6 +155,7 @@ Future<ThemeRevision?> showThemeRevisionsDialog(
 
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.themeRevisions'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.themeDialogRevisionsTitle),
       description: Text(l.themeDialogRevisionsDescription),
       constraints: const BoxConstraints(maxWidth: 480),

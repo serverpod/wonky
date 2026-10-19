@@ -7,7 +7,7 @@ import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 
 import '../../commands/write_command.dart';
 import '../../l10n/write_l10n.dart';
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart' show DeltaSelection;
 import 'proofread_results.dart';
 import 'write_ai_controller.dart';
 

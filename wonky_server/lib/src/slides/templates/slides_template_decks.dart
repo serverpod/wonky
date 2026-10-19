@@ -3,16 +3,14 @@ import 'dart:convert';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_slides_core/model.dart' show SlidesText;
 import 'package:wonky_slides_core/templates.dart';
+import 'package:wonky_revlog/rows.dart' show RowChange;
 import 'package:wonky_sync_models/ids.dart' show SequentialIdGenerator;
 
-import '../../platform/common/actor.dart';
 import '../../platform/common/time.dart';
-import '../spaces/deck_factory.dart';
-import '../sync/server_slides_writer.dart';
 
 /// The built-in presentation templates on the server (Slides 04 §15,
 /// SL-22): the decks are the core's `SlidesTemplates` (planner operations
-/// on built-in themes), written into a new deck space by
+/// on built-in themes), created by
 /// `drive.createPresentation(templateUuid)`; the gallery's preview text and
 /// size estimate come from a preview build.
 abstract final class SlidesTemplateDecks {
@@ -62,30 +60,19 @@ abstract final class SlidesTemplateDecks {
     return lines.join('\n');
   }
 
-  /// Writes the deck of [template] titled [title] into the new deck space
-  /// [deckSpace] as [actor] (the creation's change-log row says "Create
-  /// presentation", like a blank deck).
-  static Future<void> write(
-    Session session, {
-    required Actor actor,
-    required UuidValue deckSpace,
-    required SlidesTemplate template,
+  /// The rows of the deck of [template] titled [title] for the new deck
+  /// [deckId] (the creation op of `drive.createPresentation(templateUuid)`).
+  static List<RowChange> changes(
+    SlidesTemplate template, {
+    required UuidValue deckId,
+    required UuidValue authorUuid,
     required String title,
-  }) {
-    final deck = template.build(
-      deckId: deckSpace.uuid,
-      userId: actor.authUserId.uuid,
-      now: nowUtc(),
-      title: title,
-    );
-    return ServerSlidesWriter.write(
-      session,
-      actor: actor,
-      deckSpace: deckSpace,
-      changes: deck.inserts,
-      label: DeckFactory.createLabel,
-      // The drive item doesn't exist yet; its registration runs it.
-      consume: false,
-    );
-  }
+  }) => template
+      .build(
+        deckId: deckId.uuid,
+        userId: authorUuid.uuid,
+        now: nowUtc(),
+        title: title,
+      )
+      .inserts;
 }

@@ -17,8 +17,6 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
-import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
-    as _izehhkf5;
 import 'package:wonky_server/src/generated/platform/activity/activity_event_view.dart'
     as _iiw0494r;
 import 'package:wonky_server/src/generated/platform/ai/models/assistant_thread_view.dart'
@@ -41,6 +39,8 @@ import 'package:wonky_server/src/generated/platform/drive/template_view.dart'
     as _ibinmr4r;
 import 'package:wonky_server/src/generated/platform/files/file_url_view.dart'
     as _i28n3m1r;
+import 'package:wonky_server/src/generated/platform/revlog/models/rev_op_view.dart'
+    as _iu7aww0d;
 import 'package:wonky_server/src/generated/platform/users/access_token_view.dart'
     as _ioyb7a1p;
 import 'package:wonky_server/src/generated/platform/users/user_summary.dart'
@@ -71,7 +71,8 @@ import 'package:wonky_server/src/generated/write/models/write_theme_revision_vie
     as _iu3gmhy1;
 import 'package:wonky_server/src/generated/write/models/write_theme_view.dart'
     as _ipbzt39t;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
+import 'future_calls_generated_models/acl_future_call_fan_out_model.dart'
+    as _ihl3axv2;
 import 'future_calls_generated_models/board_future_call_summarize_model.dart'
     as _icgheary;
 import 'future_calls_generated_models/board_future_call_triage_model.dart'
@@ -97,6 +98,7 @@ import 'platform/activity/activity_viewer.dart' as _ikcwdr17;
 import 'platform/activity/item_view_day.dart' as _ixdmbuaj;
 import 'platform/activity/user_activity_settings.dart' as _ifmsnq1y;
 import 'platform/ai/models/ai_apply_mode.dart' as _iyja8k5e;
+import 'platform/ai/models/ai_preview_record.dart' as _iuq1eobh;
 import 'platform/ai/models/ai_provider.dart' as _ir7z75mb;
 import 'platform/ai/models/ai_provider_key_view.dart' as _ic2q2fwi;
 import 'platform/ai/models/ai_quality.dart' as _iviyoyk9;
@@ -175,6 +177,7 @@ import 'platform/comments/comment_thread.dart' as _ijog60vm;
 import 'platform/comments/comment_thread_view.dart' as _i818olql;
 import 'platform/comments/comment_view.dart' as _i4xrxro7;
 import 'platform/common/access_role.dart' as _ii98prcs;
+import 'platform/common/actor_kind.dart' as _i2wc4tyi;
 import 'platform/common/wonky_error_code.dart' as _inb0isem;
 import 'platform/common/wonky_exception.dart' as _igdswlrw;
 import 'platform/drive/drive_change.dart' as _iktwt5zz;
@@ -228,6 +231,20 @@ import 'platform/presence/presence_bus_message.dart' as _i7dp90q0;
 import 'platform/presence/presence_event.dart' as _i8r9afjv;
 import 'platform/presence/presence_state.dart' as _ik055xb9;
 import 'platform/presence/presence_update.dart' as _isz2sju0;
+import 'platform/revlog/messages/rev_client_message.dart' as _i6ck957q;
+import 'platform/revlog/messages/rev_server_message.dart' as _ie6clghy;
+import 'platform/revlog/models/rev_bus_message.dart' as _iyewfisw;
+import 'platform/revlog/models/rev_file.dart' as _ip7h3lg0;
+import 'platform/revlog/models/rev_file_info.dart' as _ihwy023l;
+import 'platform/revlog/models/rev_file_kind.dart' as _iwkehf4e;
+import 'platform/revlog/models/rev_hook_state.dart' as _ivfqwl6l;
+import 'platform/revlog/models/rev_op.dart' as _iax01zbg;
+import 'platform/revlog/models/rev_op_view.dart' as _it4o2pk5;
+import 'platform/revlog/models/rev_page.dart' as _ium7xjeg;
+import 'platform/revlog/models/rev_page_kind.dart' as _i3q3ua5p;
+import 'platform/revlog/models/rev_page_request.dart' as _if03ikx4;
+import 'platform/revlog/models/rev_reject_code.dart' as _iilsyt4b;
+import 'platform/revlog/models/server_change_record.dart' as _ibw3povl;
 import 'platform/sharing/access_request.dart' as _i8scn8dm;
 import 'platform/sharing/access_request_outcome.dart' as _i7trut12;
 import 'platform/sharing/access_request_view.dart' as _iimp60a4;
@@ -267,7 +284,6 @@ import 'sheets/ai/models/sheets_ai_cell_result.dart' as _im85lt6z;
 import 'sheets/ai/models/sheets_ai_preview.dart' as _i4t3jyqe;
 import 'sheets/ai/models/sheets_ai_preview_call.dart' as _idzstekp;
 import 'sheets/ai/models/sheets_ai_preview_cell.dart' as _i49726iv;
-import 'sheets/ai/models/sheets_ai_preview_record.dart' as _isjcf5k8;
 import 'sheets/ai/models/sheets_fill_proposal.dart' as _izbpavhd;
 import 'sheets/ai/models/sheets_fill_row.dart' as _i1gi0ui2;
 import 'sheets/ai/models/sheets_formula_suggestion.dart' as _i2bhah0l;
@@ -277,24 +293,43 @@ import 'sheets/imports/models/sheets_import_status.dart' as _i8d83qca;
 import 'sheets/models/cell_history.dart' as _ik5lpvx4;
 import 'sheets/models/cell_history_entry.dart' as _ij1xvs09;
 import 'sheets/models/cell_history_page.dart' as _i09xo3k8;
-import 'sheets/models/reserved_space.dart' as _i4tr28q5;
 import 'sheets/models/revert_result.dart' as _ilv3hlxr;
 import 'sheets/models/revert_skip.dart' as _ipqum05l;
-import 'sheets/models/server_change_record.dart' as _it4o4dd3;
+import 'sheets/models/rows/banding.dart' as _i3p6on16;
+import 'sheets/models/rows/basic_filter.dart' as _iofnuqg9;
+import 'sheets/models/rows/cell.dart' as _ifc5vn9h;
+import 'sheets/models/rows/conditional_format_rule.dart' as _iy4zsn6m;
+import 'sheets/models/rows/data_validation_rule.dart' as _i5c2bsv2;
+import 'sheets/models/rows/dimension_group.dart' as _i145vl5m;
+import 'sheets/models/rows/embedded_object.dart' as _iye9c0co;
+import 'sheets/models/rows/enums/dimension.dart' as _ilnsyzhq;
+import 'sheets/models/rows/enums/embedded_object_kind.dart' as _ihfpm0ve;
+import 'sheets/models/rows/enums/horizontal_align.dart' as _iofwzekn;
+import 'sheets/models/rows/enums/recalc_mode.dart' as _i0z9m4nl;
+import 'sheets/models/rows/enums/script_build_status.dart' as _io4oc09s;
+import 'sheets/models/rows/enums/sheet_kind.dart' as _i8ne06ql;
+import 'sheets/models/rows/enums/trigger_kind.dart' as _irmtoho8;
+import 'sheets/models/rows/enums/vertical_align.dart' as _ivf2txqv;
+import 'sheets/models/rows/enums/wrap_strategy.dart' as _iz9rjt8b;
+import 'sheets/models/rows/filter_view.dart' as _igzd7u0m;
+import 'sheets/models/rows/macro.dart' as _iiq43rv8;
+import 'sheets/models/rows/merged_range.dart' as _i57rr32y;
+import 'sheets/models/rows/named_range.dart' as _irrybuvb;
+import 'sheets/models/rows/pivot_table.dart' as _iz580og3;
+import 'sheets/models/rows/protected_range.dart' as _iz1b7y52;
+import 'sheets/models/rows/script_build.dart' as _ibdybin0;
+import 'sheets/models/rows/script_file.dart' as _iplsajic;
+import 'sheets/models/rows/script_project.dart' as _iy6gs0qh;
+import 'sheets/models/rows/script_property.dart' as _ig9hff0r;
+import 'sheets/models/rows/script_trigger.dart' as _irlm292d;
+import 'sheets/models/rows/sheet.dart' as _i8c5x9aj;
+import 'sheets/models/rows/sheet_column.dart' as _i6chd4x2;
+import 'sheets/models/rows/sheet_row.dart' as _i4k3x536;
+import 'sheets/models/rows/spreadsheet.dart' as _ib6gxu4b;
+import 'sheets/models/script_user_property.dart' as _ijtj1mph;
 import 'sheets/models/sheets_activity_summary.dart' as _iaehez21;
-import 'sheets/models/sheets_change_log_receipt.dart' as _i5z6gq3n;
 import 'sheets/models/sheets_contributor_stat.dart' as _i9yjzgjk;
-import 'sheets/models/sheets_dirty_space.dart' as _ign37bwd;
-import 'sheets/models/sheets_journal_space.dart' as _i6vovdef;
-import 'sheets/models/sheets_merged_signal.dart' as _izigafhu;
-import 'sheets/models/sheets_row_journal.dart' as _i09o85d1;
 import 'sheets/models/sheets_snapshot_index.dart' as _iwl8v9t3;
-import 'sheets/models/space_kind.dart' as _i19n72yw;
-import 'sheets/models/space_reservation.dart' as _i9g7m0kd;
-import 'sheets/models/space_stats.dart' as _izbczo40;
-import 'sheets/models/space_subscription.dart' as _i1qxq8ae;
-import 'sheets/models/subscribe_result.dart' as _i6dq35xo;
-import 'sheets/models/subscription_reason.dart' as _ic8hyldr;
 import 'sheets/scripts/models/script_authorization.dart' as _ibv2hdjr;
 import 'sheets/scripts/models/script_authorization_view.dart' as _icjzxy6x;
 import 'sheets/scripts/models/script_compile_response.dart' as _iq0xpzf7;
@@ -322,7 +357,25 @@ import 'slides/charts/models/chart_link_status.dart' as _is6z3tpy;
 import 'slides/charts/models/chart_snapshot_view.dart' as _iua8dx49;
 import 'slides/charts/models/chart_source_list.dart' as _iq1h9id2;
 import 'slides/charts/models/chart_source_summary.dart' as _inygrvyi;
-import 'slides/models/deck_change_log_receipt.dart' as _ircoml6y;
+import 'slides/models/rows/chart_link.dart' as _ihkglt8b;
+import 'slides/models/rows/code_state.dart' as _i6svv371;
+import 'slides/models/rows/deck.dart' as _ioalf2ve;
+import 'slides/models/rows/deck_theme.dart' as _i5vaufan;
+import 'slides/models/rows/enums/build_kind.dart' as _ipok3hcm;
+import 'slides/models/rows/enums/build_trigger.dart' as _isb6wks2;
+import 'slides/models/rows/enums/deck_appearance.dart' as _isf9v7y6;
+import 'slides/models/rows/enums/placeholder_type.dart' as _i4oq3vgh;
+import 'slides/models/rows/enums/slide_element_kind.dart' as _isah8148;
+import 'slides/models/rows/enums/slide_size_preset.dart' as _isghg0k1;
+import 'slides/models/rows/enums/table_dimension.dart' as _i5m4q7yg;
+import 'slides/models/rows/slide.dart' as _ipsr29xb;
+import 'slides/models/rows/slide_build.dart' as _izfj14nk;
+import 'slides/models/rows/slide_element.dart' as _ih1q77t5;
+import 'slides/models/rows/slide_group.dart' as _ic2hhlok;
+import 'slides/models/rows/slide_layout.dart' as _i3k3vjpp;
+import 'slides/models/rows/slide_master.dart' as _igjrafa0;
+import 'slides/models/rows/slide_table_axis.dart' as _iewd9d8j;
+import 'slides/models/rows/slide_table_cell.dart' as _ibnoy0fr;
 import 'slides/present/models/presentation_bus_message.dart' as _ildgqgkz;
 import 'slides/present/models/presentation_event.dart' as _iz9vxb2f;
 import 'slides/present/models/presentation_join.dart' as _ih25cwup;
@@ -371,6 +424,7 @@ export 'platform/activity/activity_viewer.dart';
 export 'platform/activity/item_view_day.dart';
 export 'platform/activity/user_activity_settings.dart';
 export 'platform/ai/models/ai_apply_mode.dart';
+export 'platform/ai/models/ai_preview_record.dart';
 export 'platform/ai/models/ai_provider.dart';
 export 'platform/ai/models/ai_provider_key_view.dart';
 export 'platform/ai/models/ai_quality.dart';
@@ -449,6 +503,7 @@ export 'platform/comments/comment_thread.dart';
 export 'platform/comments/comment_thread_view.dart';
 export 'platform/comments/comment_view.dart';
 export 'platform/common/access_role.dart';
+export 'platform/common/actor_kind.dart';
 export 'platform/common/wonky_error_code.dart';
 export 'platform/common/wonky_exception.dart';
 export 'platform/drive/drive_change.dart';
@@ -502,6 +557,20 @@ export 'platform/presence/presence_bus_message.dart';
 export 'platform/presence/presence_event.dart';
 export 'platform/presence/presence_state.dart';
 export 'platform/presence/presence_update.dart';
+export 'platform/revlog/messages/rev_client_message.dart';
+export 'platform/revlog/messages/rev_server_message.dart';
+export 'platform/revlog/models/rev_bus_message.dart';
+export 'platform/revlog/models/rev_file.dart';
+export 'platform/revlog/models/rev_file_info.dart';
+export 'platform/revlog/models/rev_file_kind.dart';
+export 'platform/revlog/models/rev_hook_state.dart';
+export 'platform/revlog/models/rev_op.dart';
+export 'platform/revlog/models/rev_op_view.dart';
+export 'platform/revlog/models/rev_page.dart';
+export 'platform/revlog/models/rev_page_kind.dart';
+export 'platform/revlog/models/rev_page_request.dart';
+export 'platform/revlog/models/rev_reject_code.dart';
+export 'platform/revlog/models/server_change_record.dart';
 export 'platform/sharing/access_request.dart';
 export 'platform/sharing/access_request_outcome.dart';
 export 'platform/sharing/access_request_view.dart';
@@ -541,7 +610,6 @@ export 'sheets/ai/models/sheets_ai_cell_result.dart';
 export 'sheets/ai/models/sheets_ai_preview.dart';
 export 'sheets/ai/models/sheets_ai_preview_call.dart';
 export 'sheets/ai/models/sheets_ai_preview_cell.dart';
-export 'sheets/ai/models/sheets_ai_preview_record.dart';
 export 'sheets/ai/models/sheets_fill_proposal.dart';
 export 'sheets/ai/models/sheets_fill_row.dart';
 export 'sheets/ai/models/sheets_formula_suggestion.dart';
@@ -551,24 +619,43 @@ export 'sheets/imports/models/sheets_import_status.dart';
 export 'sheets/models/cell_history.dart';
 export 'sheets/models/cell_history_entry.dart';
 export 'sheets/models/cell_history_page.dart';
-export 'sheets/models/reserved_space.dart';
 export 'sheets/models/revert_result.dart';
 export 'sheets/models/revert_skip.dart';
-export 'sheets/models/server_change_record.dart';
+export 'sheets/models/rows/banding.dart';
+export 'sheets/models/rows/basic_filter.dart';
+export 'sheets/models/rows/cell.dart';
+export 'sheets/models/rows/conditional_format_rule.dart';
+export 'sheets/models/rows/data_validation_rule.dart';
+export 'sheets/models/rows/dimension_group.dart';
+export 'sheets/models/rows/embedded_object.dart';
+export 'sheets/models/rows/enums/dimension.dart';
+export 'sheets/models/rows/enums/embedded_object_kind.dart';
+export 'sheets/models/rows/enums/horizontal_align.dart';
+export 'sheets/models/rows/enums/recalc_mode.dart';
+export 'sheets/models/rows/enums/script_build_status.dart';
+export 'sheets/models/rows/enums/sheet_kind.dart';
+export 'sheets/models/rows/enums/trigger_kind.dart';
+export 'sheets/models/rows/enums/vertical_align.dart';
+export 'sheets/models/rows/enums/wrap_strategy.dart';
+export 'sheets/models/rows/filter_view.dart';
+export 'sheets/models/rows/macro.dart';
+export 'sheets/models/rows/merged_range.dart';
+export 'sheets/models/rows/named_range.dart';
+export 'sheets/models/rows/pivot_table.dart';
+export 'sheets/models/rows/protected_range.dart';
+export 'sheets/models/rows/script_build.dart';
+export 'sheets/models/rows/script_file.dart';
+export 'sheets/models/rows/script_project.dart';
+export 'sheets/models/rows/script_property.dart';
+export 'sheets/models/rows/script_trigger.dart';
+export 'sheets/models/rows/sheet.dart';
+export 'sheets/models/rows/sheet_column.dart';
+export 'sheets/models/rows/sheet_row.dart';
+export 'sheets/models/rows/spreadsheet.dart';
+export 'sheets/models/script_user_property.dart';
 export 'sheets/models/sheets_activity_summary.dart';
-export 'sheets/models/sheets_change_log_receipt.dart';
 export 'sheets/models/sheets_contributor_stat.dart';
-export 'sheets/models/sheets_dirty_space.dart';
-export 'sheets/models/sheets_journal_space.dart';
-export 'sheets/models/sheets_merged_signal.dart';
-export 'sheets/models/sheets_row_journal.dart';
 export 'sheets/models/sheets_snapshot_index.dart';
-export 'sheets/models/space_kind.dart';
-export 'sheets/models/space_reservation.dart';
-export 'sheets/models/space_stats.dart';
-export 'sheets/models/space_subscription.dart';
-export 'sheets/models/subscribe_result.dart';
-export 'sheets/models/subscription_reason.dart';
 export 'sheets/scripts/models/script_authorization.dart';
 export 'sheets/scripts/models/script_authorization_view.dart';
 export 'sheets/scripts/models/script_compile_response.dart';
@@ -596,7 +683,25 @@ export 'slides/charts/models/chart_link_status.dart';
 export 'slides/charts/models/chart_snapshot_view.dart';
 export 'slides/charts/models/chart_source_list.dart';
 export 'slides/charts/models/chart_source_summary.dart';
-export 'slides/models/deck_change_log_receipt.dart';
+export 'slides/models/rows/chart_link.dart';
+export 'slides/models/rows/code_state.dart';
+export 'slides/models/rows/deck.dart';
+export 'slides/models/rows/deck_theme.dart';
+export 'slides/models/rows/enums/build_kind.dart';
+export 'slides/models/rows/enums/build_trigger.dart';
+export 'slides/models/rows/enums/deck_appearance.dart';
+export 'slides/models/rows/enums/placeholder_type.dart';
+export 'slides/models/rows/enums/slide_element_kind.dart';
+export 'slides/models/rows/enums/slide_size_preset.dart';
+export 'slides/models/rows/enums/table_dimension.dart';
+export 'slides/models/rows/slide.dart';
+export 'slides/models/rows/slide_build.dart';
+export 'slides/models/rows/slide_element.dart';
+export 'slides/models/rows/slide_group.dart';
+export 'slides/models/rows/slide_layout.dart';
+export 'slides/models/rows/slide_master.dart';
+export 'slides/models/rows/slide_table_axis.dart';
+export 'slides/models/rows/slide_table_cell.dart';
 export 'slides/present/models/presentation_bus_message.dart';
 export 'slides/present/models/presentation_event.dart';
 export 'slides/present/models/presentation_join.dart';
@@ -636,7 +741,6 @@ export 'write/models/write_theme_revision.dart';
 export 'write/models/write_theme_revision_view.dart';
 export 'write/models/write_theme_view.dart';
 export 'write/models/write_version_document.dart';
-export 'sync_tables.dart';
 
 class Protocol extends _is.DatabaseSerializationManager
     implements _is.DatabaseProtocolDeserializationProvider {
@@ -651,6 +755,7 @@ class Protocol extends _is.DatabaseSerializationManager
       _is.ProtocolDeserialization.cached(
         this,
         types: const [
+          _is.getType<_ihl3axv2.AclFutureCallFanOutModel>,
           _is.getType<_icgheary.BoardFutureCallSummarizeModel>,
           _is.getType<_if8h900w.BoardFutureCallTriageModel>,
           _is.getType<_ixkvo7h1.BoardFutureCallWritePromptModel>,
@@ -668,6 +773,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ixdmbuaj.ItemViewDay>,
           _is.getType<_ifmsnq1y.UserActivitySettings>,
           _is.getType<_iyja8k5e.AiApplyMode>,
+          _is.getType<_iuq1eobh.AiPreviewRecord>,
           _is.getType<_ir7z75mb.AiProvider>,
           _is.getType<_ic2q2fwi.AiProviderKeyView>,
           _is.getType<_iviyoyk9.AiQuality>,
@@ -746,6 +852,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i818olql.CommentThreadView>,
           _is.getType<_i4xrxro7.CommentView>,
           _is.getType<_ii98prcs.AccessRole>,
+          _is.getType<_i2wc4tyi.ActorKind>,
           _is.getType<_inb0isem.WonkyErrorCode>,
           _is.getType<_igdswlrw.WonkyException>,
           _is.getType<_iktwt5zz.DriveChange>,
@@ -811,6 +918,28 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i8r9afjv.PresenceUpdated>,
           _is.getType<_ik055xb9.PresenceState>,
           _is.getType<_isz2sju0.PresenceUpdate>,
+          _is.getType<_ie6clghy.RevAck>,
+          _is.getType<_i6ck957q.RevPing>,
+          _is.getType<_i6ck957q.RevRequestOps>,
+          _is.getType<_i6ck957q.RevSubmit>,
+          _is.getType<_ie6clghy.RevInit>,
+          _is.getType<_ie6clghy.RevPong>,
+          _is.getType<_ie6clghy.RevRejected>,
+          _is.getType<_ie6clghy.RevRemoteOp>,
+          _is.getType<_ie6clghy.RevResync>,
+          _is.getType<_ie6clghy.RevRoleChanged>,
+          _is.getType<_iyewfisw.RevBusMessage>,
+          _is.getType<_ip7h3lg0.RevFile>,
+          _is.getType<_ihwy023l.RevFileInfo>,
+          _is.getType<_iwkehf4e.RevFileKind>,
+          _is.getType<_ivfqwl6l.RevHookState>,
+          _is.getType<_iax01zbg.RevOp>,
+          _is.getType<_it4o2pk5.RevOpView>,
+          _is.getType<_ium7xjeg.RevPage>,
+          _is.getType<_i3q3ua5p.RevPageKind>,
+          _is.getType<_if03ikx4.RevPageRequest>,
+          _is.getType<_iilsyt4b.RevRejectCode>,
+          _is.getType<_ibw3povl.ServerChangeRecord>,
           _is.getType<_i8scn8dm.AccessRequest>,
           _is.getType<_i7trut12.AccessRequestOutcome>,
           _is.getType<_iimp60a4.AccessRequestView>,
@@ -850,7 +979,6 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i4t3jyqe.SheetsAiPreview>,
           _is.getType<_idzstekp.SheetsAiPreviewCall>,
           _is.getType<_i49726iv.SheetsAiPreviewCell>,
-          _is.getType<_isjcf5k8.SheetsAiPreviewRecord>,
           _is.getType<_izbpavhd.SheetsFillProposal>,
           _is.getType<_i1gi0ui2.SheetsFillRow>,
           _is.getType<_i2bhah0l.SheetsFormulaSuggestion>,
@@ -860,24 +988,43 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ik5lpvx4.CellHistory>,
           _is.getType<_ij1xvs09.CellHistoryEntry>,
           _is.getType<_i09xo3k8.CellHistoryPage>,
-          _is.getType<_i4tr28q5.ReservedSpace>,
           _is.getType<_ilv3hlxr.RevertResult>,
           _is.getType<_ipqum05l.RevertSkip>,
-          _is.getType<_it4o4dd3.ServerChangeRecord>,
+          _is.getType<_i3p6on16.Banding>,
+          _is.getType<_iofnuqg9.BasicFilter>,
+          _is.getType<_ifc5vn9h.Cell>,
+          _is.getType<_iy4zsn6m.ConditionalFormatRule>,
+          _is.getType<_i5c2bsv2.DataValidationRule>,
+          _is.getType<_i145vl5m.DimensionGroup>,
+          _is.getType<_iye9c0co.EmbeddedObject>,
+          _is.getType<_ilnsyzhq.Dimension>,
+          _is.getType<_ihfpm0ve.EmbeddedObjectKind>,
+          _is.getType<_iofwzekn.HorizontalAlign>,
+          _is.getType<_i0z9m4nl.RecalcMode>,
+          _is.getType<_io4oc09s.ScriptBuildStatus>,
+          _is.getType<_i8ne06ql.SheetKind>,
+          _is.getType<_irmtoho8.TriggerKind>,
+          _is.getType<_ivf2txqv.VerticalAlign>,
+          _is.getType<_iz9rjt8b.WrapStrategy>,
+          _is.getType<_igzd7u0m.FilterView>,
+          _is.getType<_iiq43rv8.Macro>,
+          _is.getType<_i57rr32y.MergedRange>,
+          _is.getType<_irrybuvb.NamedRange>,
+          _is.getType<_iz580og3.PivotTable>,
+          _is.getType<_iz1b7y52.ProtectedRange>,
+          _is.getType<_ibdybin0.ScriptBuild>,
+          _is.getType<_iplsajic.ScriptFile>,
+          _is.getType<_iy6gs0qh.ScriptProject>,
+          _is.getType<_ig9hff0r.ScriptProperty>,
+          _is.getType<_irlm292d.ScriptTrigger>,
+          _is.getType<_i8c5x9aj.Sheet>,
+          _is.getType<_i6chd4x2.SheetColumn>,
+          _is.getType<_i4k3x536.SheetRow>,
+          _is.getType<_ib6gxu4b.Spreadsheet>,
+          _is.getType<_ijtj1mph.ScriptUserProperty>,
           _is.getType<_iaehez21.SheetsActivitySummary>,
-          _is.getType<_i5z6gq3n.SheetsChangeLogReceipt>,
           _is.getType<_i9yjzgjk.SheetsContributorStat>,
-          _is.getType<_ign37bwd.SheetsDirtySpace>,
-          _is.getType<_i6vovdef.SheetsJournalSpace>,
-          _is.getType<_izigafhu.SheetsMergedSignal>,
-          _is.getType<_i09o85d1.SheetsRowJournal>,
           _is.getType<_iwl8v9t3.SheetsSnapshotIndex>,
-          _is.getType<_i19n72yw.SpaceKind>,
-          _is.getType<_i9g7m0kd.SpaceReservation>,
-          _is.getType<_izbczo40.SpaceStats>,
-          _is.getType<_i1qxq8ae.SpaceSubscription>,
-          _is.getType<_i6dq35xo.SubscribeResult>,
-          _is.getType<_ic8hyldr.SubscriptionReason>,
           _is.getType<_ibv2hdjr.ScriptAuthorization>,
           _is.getType<_icjzxy6x.ScriptAuthorizationView>,
           _is.getType<_iq0xpzf7.ScriptCompileResponse>,
@@ -905,7 +1052,25 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_iua8dx49.ChartSnapshotView>,
           _is.getType<_iq1h9id2.ChartSourceList>,
           _is.getType<_inygrvyi.ChartSourceSummary>,
-          _is.getType<_ircoml6y.DeckChangeLogReceipt>,
+          _is.getType<_ihkglt8b.ChartLink>,
+          _is.getType<_i6svv371.CodeState>,
+          _is.getType<_ioalf2ve.Deck>,
+          _is.getType<_i5vaufan.DeckTheme>,
+          _is.getType<_ipok3hcm.BuildKind>,
+          _is.getType<_isb6wks2.BuildTrigger>,
+          _is.getType<_isf9v7y6.DeckAppearance>,
+          _is.getType<_i4oq3vgh.PlaceholderType>,
+          _is.getType<_isah8148.SlideElementKind>,
+          _is.getType<_isghg0k1.SlideSizePreset>,
+          _is.getType<_i5m4q7yg.TableDimension>,
+          _is.getType<_ipsr29xb.Slide>,
+          _is.getType<_izfj14nk.SlideBuild>,
+          _is.getType<_ih1q77t5.SlideElement>,
+          _is.getType<_ic2hhlok.SlideGroup>,
+          _is.getType<_i3k3vjpp.SlideLayout>,
+          _is.getType<_igjrafa0.SlideMaster>,
+          _is.getType<_iewd9d8j.SlideTableAxis>,
+          _is.getType<_ibnoy0fr.SlideTableCell>,
           _is.getType<_ildgqgkz.PresentationBusMessage>,
           _is.getType<_iz9vxb2f.PresentationCommandEvent>,
           _is.getType<_ijdad65m.PresentationCommandUpdate>,
@@ -972,6 +1137,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ick3mhj2.WriteThemeRevisionView>,
           _is.getType<_ixbjd26z.WriteThemeView>,
           _is.getType<_is9bkd9t.WriteVersionDocument>,
+          _is.getType<_ihl3axv2.AclFutureCallFanOutModel?>,
           _is.getType<_icgheary.BoardFutureCallSummarizeModel?>,
           _is.getType<_if8h900w.BoardFutureCallTriageModel?>,
           _is.getType<_ixkvo7h1.BoardFutureCallWritePromptModel?>,
@@ -989,6 +1155,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ixdmbuaj.ItemViewDay?>,
           _is.getType<_ifmsnq1y.UserActivitySettings?>,
           _is.getType<_iyja8k5e.AiApplyMode?>,
+          _is.getType<_iuq1eobh.AiPreviewRecord?>,
           _is.getType<_ir7z75mb.AiProvider?>,
           _is.getType<_ic2q2fwi.AiProviderKeyView?>,
           _is.getType<_iviyoyk9.AiQuality?>,
@@ -1067,6 +1234,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i818olql.CommentThreadView?>,
           _is.getType<_i4xrxro7.CommentView?>,
           _is.getType<_ii98prcs.AccessRole?>,
+          _is.getType<_i2wc4tyi.ActorKind?>,
           _is.getType<_inb0isem.WonkyErrorCode?>,
           _is.getType<_igdswlrw.WonkyException?>,
           _is.getType<_iktwt5zz.DriveChange?>,
@@ -1132,6 +1300,28 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i8r9afjv.PresenceUpdated?>,
           _is.getType<_ik055xb9.PresenceState?>,
           _is.getType<_isz2sju0.PresenceUpdate?>,
+          _is.getType<_ie6clghy.RevAck?>,
+          _is.getType<_i6ck957q.RevPing?>,
+          _is.getType<_i6ck957q.RevRequestOps?>,
+          _is.getType<_i6ck957q.RevSubmit?>,
+          _is.getType<_ie6clghy.RevInit?>,
+          _is.getType<_ie6clghy.RevPong?>,
+          _is.getType<_ie6clghy.RevRejected?>,
+          _is.getType<_ie6clghy.RevRemoteOp?>,
+          _is.getType<_ie6clghy.RevResync?>,
+          _is.getType<_ie6clghy.RevRoleChanged?>,
+          _is.getType<_iyewfisw.RevBusMessage?>,
+          _is.getType<_ip7h3lg0.RevFile?>,
+          _is.getType<_ihwy023l.RevFileInfo?>,
+          _is.getType<_iwkehf4e.RevFileKind?>,
+          _is.getType<_ivfqwl6l.RevHookState?>,
+          _is.getType<_iax01zbg.RevOp?>,
+          _is.getType<_it4o2pk5.RevOpView?>,
+          _is.getType<_ium7xjeg.RevPage?>,
+          _is.getType<_i3q3ua5p.RevPageKind?>,
+          _is.getType<_if03ikx4.RevPageRequest?>,
+          _is.getType<_iilsyt4b.RevRejectCode?>,
+          _is.getType<_ibw3povl.ServerChangeRecord?>,
           _is.getType<_i8scn8dm.AccessRequest?>,
           _is.getType<_i7trut12.AccessRequestOutcome?>,
           _is.getType<_iimp60a4.AccessRequestView?>,
@@ -1171,7 +1361,6 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i4t3jyqe.SheetsAiPreview?>,
           _is.getType<_idzstekp.SheetsAiPreviewCall?>,
           _is.getType<_i49726iv.SheetsAiPreviewCell?>,
-          _is.getType<_isjcf5k8.SheetsAiPreviewRecord?>,
           _is.getType<_izbpavhd.SheetsFillProposal?>,
           _is.getType<_i1gi0ui2.SheetsFillRow?>,
           _is.getType<_i2bhah0l.SheetsFormulaSuggestion?>,
@@ -1181,24 +1370,43 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ik5lpvx4.CellHistory?>,
           _is.getType<_ij1xvs09.CellHistoryEntry?>,
           _is.getType<_i09xo3k8.CellHistoryPage?>,
-          _is.getType<_i4tr28q5.ReservedSpace?>,
           _is.getType<_ilv3hlxr.RevertResult?>,
           _is.getType<_ipqum05l.RevertSkip?>,
-          _is.getType<_it4o4dd3.ServerChangeRecord?>,
+          _is.getType<_i3p6on16.Banding?>,
+          _is.getType<_iofnuqg9.BasicFilter?>,
+          _is.getType<_ifc5vn9h.Cell?>,
+          _is.getType<_iy4zsn6m.ConditionalFormatRule?>,
+          _is.getType<_i5c2bsv2.DataValidationRule?>,
+          _is.getType<_i145vl5m.DimensionGroup?>,
+          _is.getType<_iye9c0co.EmbeddedObject?>,
+          _is.getType<_ilnsyzhq.Dimension?>,
+          _is.getType<_ihfpm0ve.EmbeddedObjectKind?>,
+          _is.getType<_iofwzekn.HorizontalAlign?>,
+          _is.getType<_i0z9m4nl.RecalcMode?>,
+          _is.getType<_io4oc09s.ScriptBuildStatus?>,
+          _is.getType<_i8ne06ql.SheetKind?>,
+          _is.getType<_irmtoho8.TriggerKind?>,
+          _is.getType<_ivf2txqv.VerticalAlign?>,
+          _is.getType<_iz9rjt8b.WrapStrategy?>,
+          _is.getType<_igzd7u0m.FilterView?>,
+          _is.getType<_iiq43rv8.Macro?>,
+          _is.getType<_i57rr32y.MergedRange?>,
+          _is.getType<_irrybuvb.NamedRange?>,
+          _is.getType<_iz580og3.PivotTable?>,
+          _is.getType<_iz1b7y52.ProtectedRange?>,
+          _is.getType<_ibdybin0.ScriptBuild?>,
+          _is.getType<_iplsajic.ScriptFile?>,
+          _is.getType<_iy6gs0qh.ScriptProject?>,
+          _is.getType<_ig9hff0r.ScriptProperty?>,
+          _is.getType<_irlm292d.ScriptTrigger?>,
+          _is.getType<_i8c5x9aj.Sheet?>,
+          _is.getType<_i6chd4x2.SheetColumn?>,
+          _is.getType<_i4k3x536.SheetRow?>,
+          _is.getType<_ib6gxu4b.Spreadsheet?>,
+          _is.getType<_ijtj1mph.ScriptUserProperty?>,
           _is.getType<_iaehez21.SheetsActivitySummary?>,
-          _is.getType<_i5z6gq3n.SheetsChangeLogReceipt?>,
           _is.getType<_i9yjzgjk.SheetsContributorStat?>,
-          _is.getType<_ign37bwd.SheetsDirtySpace?>,
-          _is.getType<_i6vovdef.SheetsJournalSpace?>,
-          _is.getType<_izigafhu.SheetsMergedSignal?>,
-          _is.getType<_i09o85d1.SheetsRowJournal?>,
           _is.getType<_iwl8v9t3.SheetsSnapshotIndex?>,
-          _is.getType<_i19n72yw.SpaceKind?>,
-          _is.getType<_i9g7m0kd.SpaceReservation?>,
-          _is.getType<_izbczo40.SpaceStats?>,
-          _is.getType<_i1qxq8ae.SpaceSubscription?>,
-          _is.getType<_i6dq35xo.SubscribeResult?>,
-          _is.getType<_ic8hyldr.SubscriptionReason?>,
           _is.getType<_ibv2hdjr.ScriptAuthorization?>,
           _is.getType<_icjzxy6x.ScriptAuthorizationView?>,
           _is.getType<_iq0xpzf7.ScriptCompileResponse?>,
@@ -1226,7 +1434,25 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_iua8dx49.ChartSnapshotView?>,
           _is.getType<_iq1h9id2.ChartSourceList?>,
           _is.getType<_inygrvyi.ChartSourceSummary?>,
-          _is.getType<_ircoml6y.DeckChangeLogReceipt?>,
+          _is.getType<_ihkglt8b.ChartLink?>,
+          _is.getType<_i6svv371.CodeState?>,
+          _is.getType<_ioalf2ve.Deck?>,
+          _is.getType<_i5vaufan.DeckTheme?>,
+          _is.getType<_ipok3hcm.BuildKind?>,
+          _is.getType<_isb6wks2.BuildTrigger?>,
+          _is.getType<_isf9v7y6.DeckAppearance?>,
+          _is.getType<_i4oq3vgh.PlaceholderType?>,
+          _is.getType<_isah8148.SlideElementKind?>,
+          _is.getType<_isghg0k1.SlideSizePreset?>,
+          _is.getType<_i5m4q7yg.TableDimension?>,
+          _is.getType<_ipsr29xb.Slide?>,
+          _is.getType<_izfj14nk.SlideBuild?>,
+          _is.getType<_ih1q77t5.SlideElement?>,
+          _is.getType<_ic2hhlok.SlideGroup?>,
+          _is.getType<_i3k3vjpp.SlideLayout?>,
+          _is.getType<_igjrafa0.SlideMaster?>,
+          _is.getType<_iewd9d8j.SlideTableAxis?>,
+          _is.getType<_ibnoy0fr.SlideTableCell?>,
           _is.getType<_ildgqgkz.PresentationBusMessage?>,
           _is.getType<_iz9vxb2f.PresentationCommandEvent?>,
           _is.getType<_ijdad65m.PresentationCommandUpdate?>,
@@ -1293,6 +1519,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ick3mhj2.WriteThemeRevisionView?>,
           _is.getType<_ixbjd26z.WriteThemeView?>,
           _is.getType<_is9bkd9t.WriteVersionDocument?>,
+          _is.getType<List<int>>,
           _is.getType<List<_ikcwdr17.ActivityViewer>>,
           _is.getType<List<_ighcq381.ActivityTrendPoint>>,
           _is.getType<List<String>>,
@@ -1313,6 +1540,8 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<_i4xrxro7.CommentView>>,
           _is.getType<List<_i6y7tspy.UserSummary>>,
           _is.getType<Map<String, List<int>>>,
+          _is.getType<List<_is.UuidValue>>,
+          _is.getType<List<_is.UuidValue>?>,
           _is.getType<List<_i8mh39wa.DriveItemKind>>,
           _is.getType<List<_i8mh39wa.DriveItemKind>?>,
           _is.getType<List<_iez45i4u.FileCategory>>,
@@ -1321,6 +1550,8 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<_i48sm9f2.ImportWarningView>>,
           _is.getType<List<_izfzk9h3.NotificationView>>,
           _is.getType<List<_iylgyc33.Participant>>,
+          _is.getType<List<_it4o2pk5.RevOpView>>,
+          _is.getType<List<_it4o2pk5.RevOpView>?>,
           _is.getType<List<_iead0ok9.PermissionView>>,
           _is.getType<List<_iimp60a4.AccessRequestView>>,
           _is.getType<List<_idzstekp.SheetsAiPreviewCall>>,
@@ -1344,7 +1575,6 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<_iv1j9wri.BoardSimilarPost>>,
           _is.getType<List<_ihypagkt.BoardTaskStatus>>,
           _is.getType<List<_id1usvpt.BoardReviewItem>>,
-          _is.getType<List<int>>,
           _is.getType<List<_i8qikgvy.BoardBundleSuggestionView>>,
           _is.getType<List<_ixzwh8hc.CommentThreadView>>,
           _is.getType<List<int>?>,
@@ -1361,6 +1591,9 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<String>?>,
           _is.getType<List<_iq57nmvp.SheetsAiCellResult>>,
           _is.getType<List<_ifqit8uo.SheetsAiCellRequest>>,
+          _is.getType<List<_iu7aww0d.RevOpView>>,
+          _is.getType<Map<String, String>>,
+          _is.getType<Map<String, String?>>,
           _is.getType<List<_isf59hoo.ScriptExecution>>,
           _is.getType<List<_iug1yx01.SlidesAiNote>>,
           _is.getType<List<_iqoob7q4.SlidesAiAltText>>,
@@ -1373,9 +1606,7 @@ class Protocol extends _is.DatabaseSerializationManager
         ],
         modules: const [
           _iais.Protocol.new,
-          _izehhkf5.Protocol.new,
           _iacs.Protocol.new,
-          _i810rwvy.Protocol.new,
           _isp.Protocol.new,
         ],
       );
@@ -1515,7 +1746,7 @@ class Protocol extends _is.DatabaseSerializationManager
           name: 'actorKind',
           columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'wonky_sync_models:ActorKind',
+          dartType: 'protocol:ActorKind',
         ),
         _isp.ColumnDefinition(
           name: 'type',
@@ -1648,6 +1879,93 @@ class Protocol extends _is.DatabaseSerializationManager
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'spreadsheetUuid',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'ai_preview_record',
+      dartName: 'AiPreviewRecord',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'previewId',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'previewJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'changesJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'expiresAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'ai_preview_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'previewId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'ai_preview_expires_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'expiresAt',
             ),
           ],
           type: 'btree',
@@ -2090,6 +2408,202 @@ class Protocol extends _is.DatabaseSerializationManager
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'updatedAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'banding',
+      dartName: 'Banding',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rangeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'styleJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'banding_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'banding_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'banding_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'basic_filter',
+      dartName: 'BasicFilter',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rangeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'criteriaJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'basic_filter_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'basic_filter_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'basic_filter_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
             ),
           ],
           type: 'btree',
@@ -3550,6 +4064,228 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'cell',
+      dartName: 'Cell',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rowId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'columnId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'content',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'note',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'numberFormat',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fontFamily',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fontSize',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'bold',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: true,
+          dartType: 'bool?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'italic',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: true,
+          dartType: 'bool?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'underline',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: true,
+          dartType: 'bool?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'strikethrough',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: true,
+          dartType: 'bool?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'textColor',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fillColor',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hAlign',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'protocol:HorizontalAlign?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'vAlign',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'protocol:VerticalAlign?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'wrap',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'protocol:WrapStrategy?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rotation',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'borderTop',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'borderRight',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'borderBottom',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'borderLeft',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'linkUrl',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'cell_fk_0',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'cell_row_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sheetId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'rowId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'cell_col_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sheetId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'columnId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'cell_history',
       dartName: 'CellHistory',
       schema: 'public',
@@ -3563,7 +4299,7 @@ class Protocol extends _is.DatabaseSerializationManager
           columnDefault: 'serial',
         ),
         _isp.ColumnDefinition(
-          name: 'spreadsheetUuid',
+          name: 'fileUuid',
           columnType: _isp.ColumnType.uuid,
           isNullable: false,
           dartType: 'UuidValue',
@@ -3587,10 +4323,10 @@ class Protocol extends _is.DatabaseSerializationManager
           dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
-          name: 'changeLogId',
-          columnType: _isp.ColumnType.uuid,
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
           isNullable: false,
-          dartType: 'UuidValue',
+          dartType: 'int',
         ),
         _isp.ColumnDefinition(
           name: 'userUuid',
@@ -3602,7 +4338,7 @@ class Protocol extends _is.DatabaseSerializationManager
           name: 'actorKind',
           columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'wonky_sync_models:ActorKind',
+          dartType: 'protocol:ActorKind',
         ),
         _isp.ColumnDefinition(
           name: 'label',
@@ -3637,7 +4373,7 @@ class Protocol extends _is.DatabaseSerializationManager
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'spreadsheetUuid',
+              definition: 'fileUuid',
             ),
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
@@ -3666,7 +4402,11 @@ class Protocol extends _is.DatabaseSerializationManager
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'changeLogId',
+              definition: 'fileUuid',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'revision',
             ),
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
@@ -3679,6 +4419,305 @@ class Protocol extends _is.DatabaseSerializationManager
           ],
           type: 'btree',
           isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'chart_link',
+      dartName: 'ChartLink',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'elementId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'spreadsheetItemUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'chartObjectId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sourceSpecJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'dataSnapshotJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sourceVersion',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedBy',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'autoUpdate',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'chart_link_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'chart_link_fk_1',
+          columns: ['elementId'],
+          referenceTable: 'slide_element',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'chart_link_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'chart_link_element_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'elementId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'code_state',
+      dartName: 'CodeState',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'elementId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'label',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'code',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'language',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'title',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'highlight',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'annotationsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'transitionJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'code_state_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'code_state_fk_1',
+          columns: ['elementId'],
+          referenceTable: 'slide_element',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'code_state_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'code_state_element_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'elementId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sortKey',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
           isPrimary: false,
         ),
       ],
@@ -3719,7 +4758,7 @@ class Protocol extends _is.DatabaseSerializationManager
           name: 'authorKind',
           columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'wonky_sync_models:ActorKind',
+          dartType: 'protocol:ActorKind',
         ),
         _isp.ColumnDefinition(
           name: 'body',
@@ -3963,75 +5002,664 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
-      name: 'deck_change_log_receipt',
-      dartName: 'DeckChangeLogReceipt',
+      name: 'conditional_format_rule',
+      dartName: 'ConditionalFormatRule',
       schema: 'public',
       module: 'wonky',
       columns: [
         _isp.ColumnDefinition(
           name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
           columnType: _isp.ColumnType.bigint,
           isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
+          dartType: 'int',
         ),
         _isp.ColumnDefinition(
-          name: 'changeLogId',
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
           columnType: _isp.ColumnType.uuid,
           isNullable: false,
           dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
-          name: 'deckUuid',
-          columnType: _isp.ColumnType.uuid,
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'UuidValue',
+          dartType: 'String',
         ),
         _isp.ColumnDefinition(
-          name: 'processedAt',
+          name: 'rangesJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ruleJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'enabled',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'true',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: false,
           dartType: 'DateTime',
         ),
-        _isp.ColumnDefinition(
-          name: 'completedAt',
-          columnType: _isp.ColumnType.timestampWithoutTimeZone,
-          isNullable: true,
-          dartType: 'DateTime?',
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'conditional_format_rule_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
         ),
-        _isp.ColumnDefinition(
-          name: 'doneConsumers',
-          columnType: _isp.ColumnType.json,
-          isNullable: false,
-          dartType: 'List<String>',
+        _isp.ForeignKeyDefinition(
+          constraintName: 'conditional_format_rule_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
         ),
       ],
-      foreignKeys: [],
       indexes: [
         _isp.IndexDefinition(
-          indexName: 'deck_change_log_receipt_idx',
+          indexName: 'conditional_format_rule_file_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'changeLogId',
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
             ),
           ],
           type: 'btree',
-          isUnique: true,
+          isUnique: false,
           isPrimary: false,
         ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'data_validation_rule',
+      dartName: 'DataValidationRule',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rangesJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'criteriaJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'strict',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'showDropdown',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'true',
+        ),
+        _isp.ColumnDefinition(
+          name: 'displayStyle',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'helpText',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'data_validation_rule_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'data_validation_rule_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
         _isp.IndexDefinition(
-          indexName: 'deck_change_log_receipt_deck_idx',
+          indexName: 'data_validation_rule_file_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'deckUuid',
+              definition: 'fileId',
             ),
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'processedAt',
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'deck',
+      dartName: 'Deck',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'title',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'width',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '1920.0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'height',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '1080.0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sizePreset',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:SlideSizePreset',
+          columnDefault: '\'widescreen16x9\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'themeId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'appearance',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:DeckAppearance',
+          columnDefault: '\'light\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'language',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'showSlideNumbers',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hideNumberOnTitle',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'true',
+        ),
+        _isp.ColumnDefinition(
+          name: 'firstSlideNumber',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '1',
+        ),
+        _isp.ColumnDefinition(
+          name: 'footerText',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'defaultsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'guidesJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'presentJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdBy',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'deck_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'deck_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'deck_theme',
+      dartName: 'DeckTheme',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'deckId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sourceKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'colorsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fontsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'textStylesJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'backgroundJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'shapeStyleJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'tableStyleJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'codeStyleJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'chartStyleJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'deck_theme_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'deck_theme_fk_1',
+          columns: ['deckId'],
+          referenceTable: 'deck',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'deck_theme_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'deck_theme_deck_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'deckId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'dimension_group',
+      dartName: 'DimensionGroup',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'dimension',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:Dimension',
+        ),
+        _isp.ColumnDefinition(
+          name: 'startId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'endId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'depth',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'collapsed',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'dimension_group_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'dimension_group_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'dimension_group_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
             ),
           ],
           type: 'btree',
@@ -4304,7 +5932,7 @@ class Protocol extends _is.DatabaseSerializationManager
           name: 'actorKind',
           columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'wonky_sync_models:ActorKind',
+          dartType: 'protocol:ActorKind',
         ),
         _isp.ColumnDefinition(
           name: 'createdAt',
@@ -4404,7 +6032,7 @@ class Protocol extends _is.DatabaseSerializationManager
           name: 'actorKind',
           columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'wonky_sync_models:ActorKind',
+          dartType: 'protocol:ActorKind',
         ),
         _isp.ColumnDefinition(
           name: 'sessionId',
@@ -4488,6 +6116,19 @@ class Protocol extends _is.DatabaseSerializationManager
           ],
           type: 'btree',
           isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'document_op_created_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
+            ),
+          ],
+          type: 'brin',
+          isUnique: false,
           isPrimary: false,
         ),
       ],
@@ -4867,6 +6508,19 @@ class Protocol extends _is.DatabaseSerializationManager
           isUnique: false,
           isPrimary: false,
         ),
+        _isp.IndexDefinition(
+          indexName: 'drive_item_trashed_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'trashedAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
       ],
       managed: true,
     ),
@@ -5007,6 +6661,19 @@ class Protocol extends _is.DatabaseSerializationManager
           isUnique: false,
           isPrimary: false,
         ),
+        _isp.IndexDefinition(
+          indexName: 'perm_expires_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'expiresAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
       ],
       managed: true,
     ),
@@ -5136,6 +6803,126 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'embedded_object',
+      dartName: 'EmbeddedObject',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:EmbeddedObjectKind',
+        ),
+        _isp.ColumnDefinition(
+          name: 'anchorJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'specJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'zIndex',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'title',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'altText',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'embedded_object_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'embedded_object_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'embedded_object_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'feedback_report',
       dartName: 'FeedbackReport',
       schema: 'public',
@@ -5228,6 +7015,119 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'filter_view',
+      dartName: 'FilterView',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rangeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'criteriaJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdBy',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'filter_view_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'filter_view_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'filter_view_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'headless_change',
       dartName: 'HeadlessChange',
       schema: 'public',
@@ -5304,7 +7204,7 @@ class Protocol extends _is.DatabaseSerializationManager
           name: 'actorKind',
           columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'wonky_sync_models:ActorKind',
+          dartType: 'protocol:ActorKind',
         ),
         _isp.ColumnDefinition(
           name: 'label',
@@ -5530,6 +7430,12 @@ class Protocol extends _is.DatabaseSerializationManager
           isNullable: true,
           dartType: 'int?',
         ),
+        _isp.ColumnDefinition(
+          name: 'capturingSince',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
       ],
       foreignKeys: [
         _isp.ForeignKeyDefinition(
@@ -5683,6 +7589,309 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'macro',
+      dartName: 'Macro',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'projectId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'functionName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'shortcutSlot',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'macro_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'macro_fk_1',
+          columns: ['projectId'],
+          referenceTable: 'script_project',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'macro_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'merged_range',
+      dartName: 'MergedRange',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rangeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'merged_range_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'merged_range_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'merged_range_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'named_range',
+      dartName: 'NamedRange',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'spreadsheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rangeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'formula',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'comment',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'metaJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'named_range_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'named_range_fk_1',
+          columns: ['spreadsheetId'],
+          referenceTable: 'spreadsheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'named_range_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'notification',
       dartName: 'UserNotification',
       schema: 'public',
@@ -5743,6 +7952,13 @@ class Protocol extends _is.DatabaseSerializationManager
           isNullable: true,
           dartType: 'DateTime?',
         ),
+        _isp.ColumnDefinition(
+          name: 'emailPending',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: true,
+          dartType: 'bool?',
+          columnDefault: 'false',
+        ),
       ],
       foreignKeys: [
         _isp.ForeignKeyDefinition(
@@ -5771,6 +7987,36 @@ class Protocol extends _is.DatabaseSerializationManager
             ),
           ],
           type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'notification_email_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'emailPending',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'notification_created_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
+            ),
+          ],
+          type: 'brin',
           isUnique: false,
           isPrimary: false,
         ),
@@ -5981,6 +8227,703 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'pivot_table',
+      dartName: 'PivotTable',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'anchorRowId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'anchorColId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sourceRangeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'specJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'pivot_table_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'pivot_table_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'pivot_table_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'protected_range',
+      dartName: 'ProtectedRange',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rangeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'exceptRangesJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'description',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'warningOnly',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'editorsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdBy',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'protected_range_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'protected_range_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'protected_range_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'rev_file',
+      dartName: 'RevFile',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:RevFileKind',
+        ),
+        _isp.ColumnDefinition(
+          name: 'itemId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'headRevision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'prunedBelow',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'initPending',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'purging',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'schemaHash',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'stats',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+          columnDefault: '\'{}\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'contentCount',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'rev_file_fk_0',
+          columns: ['itemId'],
+          referenceTable: 'drive_item',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.restrict,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'rev_file_uuid_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileUuid',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'rev_file_item_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'itemId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'rev_hook_state',
+      dartName: 'RevHookState',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'cursorsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'leaseOwner',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'leaseUntil',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'attempts',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'lastError',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'nextAttemptAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'rev_hook_state_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'rev_hook_state_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'rev_hook_state_due_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'nextAttemptAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'rev_op',
+      dartName: 'RevOp',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'clientOpId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'baseRevision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'authorId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'authorUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sessionId',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'onBehalfOfSessionId',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'actorKind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:ActorKind',
+        ),
+        _isp.ColumnDefinition(
+          name: 'label',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'groupId',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'groupIndex',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'groupLast',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'true',
+        ),
+        _isp.ColumnDefinition(
+          name: 'recordId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'offline',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'payload',
+          columnType: _isp.ColumnType.bytea,
+          isNullable: true,
+          dartType: 'dart:typed_data:ByteData?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'changeCount',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'summaryJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'detailJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'outcomeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'appliedEqualsSubmitted',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _isp.ColumnDefinition(
+          name: 'clientCreatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'committedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'rev_op_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'rev_op_rev_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'revision',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'rev_op_client_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'clientOpId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'rev_op_record_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'recordId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'rev_op_committed_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'committedAt',
+            ),
+          ],
+          type: 'brin',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'script_authorization',
       dartName: 'ScriptAuthorization',
       schema: 'public',
@@ -6041,6 +8984,176 @@ class Protocol extends _is.DatabaseSerializationManager
           ],
           type: 'btree',
           isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'script_build',
+      dartName: 'ScriptBuild',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'projectId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'status',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:ScriptBuildStatus',
+          columnDefault: '\'ok\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sourceHash',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'bytecodeFileUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'diagnosticsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'exportsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'apiVersion',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '1',
+        ),
+        _isp.ColumnDefinition(
+          name: 'compilerVersion',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+          columnDefault: '\'\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'requestedBy',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'lastGoodSourceHash',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'lastGoodBytecodeFileUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'lastGoodExportsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'lastGoodBuiltAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'positionsFileUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'builtAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_build_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_build_fk_1',
+          columns: ['projectId'],
+          referenceTable: 'script_project',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'script_build_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
           isPrimary: false,
         ),
       ],
@@ -6240,6 +9353,125 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'script_file',
+      dartName: 'ScriptFile',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'projectId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'source',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'contentHash',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedBy',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_file_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_file_fk_1',
+          columns: ['projectId'],
+          referenceTable: 'script_project',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'script_file_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'script_job',
       dartName: 'ScriptJob',
       schema: 'public',
@@ -6402,6 +9634,196 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'script_project',
+      dartName: 'ScriptProject',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'spreadsheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'settingsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_project_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_project_fk_1',
+          columns: ['spreadsheetId'],
+          referenceTable: 'spreadsheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'script_project_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'script_property',
+      dartName: 'ScriptProperty',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'projectId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'key',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'value',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_property_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_property_fk_1',
+          columns: ['projectId'],
+          referenceTable: 'script_project',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'script_property_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'script_quota_usage',
       dartName: 'ScriptQuotaUsage',
       schema: 'public',
@@ -6479,6 +9901,126 @@ class Protocol extends _is.DatabaseSerializationManager
           ],
           type: 'btree',
           isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'script_trigger',
+      dartName: 'ScriptTrigger',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'projectId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:TriggerKind',
+        ),
+        _isp.ColumnDefinition(
+          name: 'functionName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'scheduleJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'runAsUserId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'enabled',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'true',
+        ),
+        _isp.ColumnDefinition(
+          name: 'optionsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_trigger_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_trigger_fk_1',
+          columns: ['projectId'],
+          referenceTable: 'script_project',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'script_trigger_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
           isPrimary: false,
         ),
       ],
@@ -6591,6 +10133,87 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'script_user_property',
+      dartName: 'ScriptUserProperty',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'key',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'value',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'script_user_property_fk_0',
+          columns: ['userId'],
+          referenceTable: 'user_profile',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'script_user_property_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileUuid',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'key',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'server_change_record',
       dartName: 'ServerChangeRecord',
       schema: 'public',
@@ -6610,7 +10233,7 @@ class Protocol extends _is.DatabaseSerializationManager
           dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
-          name: 'spreadsheetUuid',
+          name: 'fileUuid',
           columnType: _isp.ColumnType.uuid,
           isNullable: false,
           dartType: 'UuidValue',
@@ -6625,7 +10248,7 @@ class Protocol extends _is.DatabaseSerializationManager
           name: 'actorKind',
           columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'wonky_sync_models:ActorKind',
+          dartType: 'protocol:ActorKind',
         ),
         _isp.ColumnDefinition(
           name: 'label',
@@ -6647,6 +10270,12 @@ class Protocol extends _is.DatabaseSerializationManager
         ),
         _isp.ColumnDefinition(
           name: 'forwardFileId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'recordId',
           columnType: _isp.ColumnType.uuid,
           isNullable: true,
           dartType: 'UuidValue?',
@@ -6685,12 +10314,25 @@ class Protocol extends _is.DatabaseSerializationManager
       foreignKeys: [],
       indexes: [
         _isp.IndexDefinition(
-          indexName: 'server_change_sheet_idx',
+          indexName: 'server_change_record_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'spreadsheetUuid',
+              definition: 'recordId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'server_change_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileUuid',
             ),
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
@@ -6804,47 +10446,122 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
-      name: 'sheets_ai_preview_record',
-      dartName: 'SheetsAiPreviewRecord',
+      name: 'sheet',
+      dartName: 'Sheet',
       schema: 'public',
       module: 'wonky',
       columns: [
         _isp.ColumnDefinition(
           name: 'id',
-          columnType: _isp.ColumnType.bigint,
+          columnType: _isp.ColumnType.uuid,
           isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
         ),
         _isp.ColumnDefinition(
-          name: 'previewId',
-          columnType: _isp.ColumnType.text,
-          isNullable: false,
-          dartType: 'String',
-        ),
-        _isp.ColumnDefinition(
-          name: 'userId',
+          name: 'fileId',
           columnType: _isp.ColumnType.bigint,
           isNullable: false,
           dartType: 'int',
         ),
         _isp.ColumnDefinition(
-          name: 'spreadsheetUuid',
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'spreadsheetId',
           columnType: _isp.ColumnType.uuid,
           isNullable: false,
           dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
-          name: 'previewJson',
+          name: 'name',
           columnType: _isp.ColumnType.text,
           isNullable: false,
           dartType: 'String',
         ),
         _isp.ColumnDefinition(
-          name: 'changesJson',
+          name: 'sortKey',
           columnType: _isp.ColumnType.text,
           isNullable: false,
           dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:SheetKind',
+          columnDefault: '\'grid\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hidden',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'tabColor',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rightToLeft',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'showGridlines',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'true',
+        ),
+        _isp.ColumnDefinition(
+          name: 'frozenRows',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'frozenColumns',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'defaultRowHeight',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '21.0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'defaultColumnWidth',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '100.0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'formatJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'printSettingsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
         ),
         _isp.ColumnDefinition(
           name: 'createdAt',
@@ -6852,35 +10569,59 @@ class Protocol extends _is.DatabaseSerializationManager
           isNullable: false,
           dartType: 'DateTime',
         ),
-        _isp.ColumnDefinition(
-          name: 'expiresAt',
-          columnType: _isp.ColumnType.timestampWithoutTimeZone,
-          isNullable: false,
-          dartType: 'DateTime',
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'sheet_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'sheet_fk_1',
+          columns: ['spreadsheetId'],
+          referenceTable: 'spreadsheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
         ),
       ],
-      foreignKeys: [],
       indexes: [
         _isp.IndexDefinition(
-          indexName: 'sheets_ai_preview_id_idx',
+          indexName: 'sheet_file_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'previewId',
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
             ),
           ],
           type: 'btree',
-          isUnique: true,
+          isUnique: false,
           isPrimary: false,
         ),
         _isp.IndexDefinition(
-          indexName: 'sheets_ai_preview_expires_idx',
+          indexName: 'sheet_order_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'expiresAt',
+              definition: 'spreadsheetId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sortKey',
             ),
           ],
           type: 'btree',
@@ -6891,69 +10632,246 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
-      name: 'sheets_change_log_receipt',
-      dartName: 'SheetsChangeLogReceipt',
+      name: 'sheet_column',
+      dartName: 'SheetColumn',
       schema: 'public',
       module: 'wonky',
       columns: [
         _isp.ColumnDefinition(
           name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
           columnType: _isp.ColumnType.bigint,
           isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
+          dartType: 'int',
         ),
         _isp.ColumnDefinition(
-          name: 'changeLogId',
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
           columnType: _isp.ColumnType.uuid,
           isNullable: false,
           dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
-          name: 'spaceUuid',
-          columnType: _isp.ColumnType.uuid,
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'UuidValue',
+          dartType: 'String',
         ),
         _isp.ColumnDefinition(
-          name: 'processedAt',
+          name: 'width',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hidden',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'formatJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: false,
           dartType: 'DateTime',
         ),
-        _isp.ColumnDefinition(
-          name: 'completedAt',
-          columnType: _isp.ColumnType.timestampWithoutTimeZone,
-          isNullable: true,
-          dartType: 'DateTime?',
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'sheet_column_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'sheet_column_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
         ),
       ],
-      foreignKeys: [],
       indexes: [
         _isp.IndexDefinition(
-          indexName: 'sheets_change_log_receipt_idx',
+          indexName: 'sheet_column_file_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'changeLogId',
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
             ),
           ],
           type: 'btree',
-          isUnique: true,
+          isUnique: false,
           isPrimary: false,
         ),
         _isp.IndexDefinition(
-          indexName: 'sheets_change_log_receipt_space_idx',
+          indexName: 'sheet_column_order_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'spaceUuid',
+              definition: 'sheetId',
             ),
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'processedAt',
+              definition: 'sortKey',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'sheet_row',
+      dartName: 'SheetRow',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheetId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'height',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hidden',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'formatJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'sheet_row_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'sheet_row_fk_1',
+          columns: ['sheetId'],
+          referenceTable: 'sheet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'sheet_row_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'sheet_row_order_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sheetId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sortKey',
             ),
           ],
           type: 'btree',
@@ -7219,6 +11137,1385 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'slide',
+      dartName: 'Slide',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'deckId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'groupId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'layoutId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'backgroundJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'skipped',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'notes',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'transitionJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hideMasterElements',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: true,
+          dartType: 'bool?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'timingsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_fk_1',
+          columns: ['deckId'],
+          referenceTable: 'deck',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'slide_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_order_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'deckId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sortKey',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'slide_build',
+      dartName: 'SlideBuild',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'slideId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'elementId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:BuildKind',
+        ),
+        _isp.ColumnDefinition(
+          name: 'effect',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'trigger',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:BuildTrigger',
+        ),
+        _isp.ColumnDefinition(
+          name: 'delayMs',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'durationMs',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'easing',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'optionsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_build_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_build_fk_1',
+          columns: ['slideId'],
+          referenceTable: 'slide',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_build_fk_2',
+          columns: ['elementId'],
+          referenceTable: 'slide_element',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'slide_build_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_build_slide_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'slideId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sortKey',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_build_element_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'elementId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'slide_element',
+      dartName: 'SlideElement',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'slideId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'layoutId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'masterId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'parentId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:SlideElementKind',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'x',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'y',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'width',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'height',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rotation',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'flipH',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'flipV',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'zKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'readingKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'locked',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hidden',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'placeholderType',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'protocol:PlaceholderType?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'placeholderOf',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'matchKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'text',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'textStyleJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fillJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'strokeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'effectsJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'opacity',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'dataJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'linkJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'altText',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'decorative',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_element_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_element_fk_1',
+          columns: ['slideId'],
+          referenceTable: 'slide',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_element_fk_2',
+          columns: ['layoutId'],
+          referenceTable: 'slide_layout',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_element_fk_3',
+          columns: ['masterId'],
+          referenceTable: 'slide_master',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_element_fk_4',
+          columns: ['parentId'],
+          referenceTable: 'slide_element',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'slide_element_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_element_slide_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'slideId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'zKey',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_element_layout_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'layoutId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_element_master_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'masterId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_element_parent_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'parentId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'slide_group',
+      dartName: 'SlideGroup',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'deckId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'title',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'parentId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'color',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'skipped',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_group_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_group_fk_1',
+          columns: ['deckId'],
+          referenceTable: 'deck',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'slide_group_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_group_order_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'deckId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sortKey',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'slide_layout',
+      dartName: 'SlideLayout',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'masterId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'key',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'backgroundJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hideMasterElements',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'hidden',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_layout_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_layout_fk_1',
+          columns: ['masterId'],
+          referenceTable: 'slide_master',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'slide_layout_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_layout_master_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'masterId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'slide_master',
+      dartName: 'SlideMaster',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'themeId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'backgroundJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_master_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_master_fk_1',
+          columns: ['themeId'],
+          referenceTable: 'deck_theme',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'slide_master_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_master_theme_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'themeId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'slide_table_axis',
+      dartName: 'SlideTableAxis',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'elementId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'dimension',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:TableDimension',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sortKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'size',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'header',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_table_axis_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_table_axis_fk_1',
+          columns: ['elementId'],
+          referenceTable: 'slide_element',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'slide_table_axis_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_table_axis_element_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'elementId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sortKey',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'slide_table_cell',
+      dartName: 'SlideTableCell',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'elementId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rowId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'columnId',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'text',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fill',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'borderTop',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'borderRight',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'borderBottom',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'borderLeft',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'vAlign',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'padding',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'rowSpan',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'colSpan',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_table_cell_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_table_cell_fk_1',
+          columns: ['elementId'],
+          referenceTable: 'slide_element',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_table_cell_fk_2',
+          columns: ['rowId'],
+          referenceTable: 'slide_table_axis',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'slide_table_cell_fk_3',
+          columns: ['columnId'],
+          referenceTable: 'slide_table_axis',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+          deferrable: _isp.DeferrableConstraint.initiallyDeferred,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'slide_table_cell_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'slide_table_cell_element_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'elementId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'slides_snapshot_index',
       dartName: 'SlidesSnapshotIndex',
       schema: 'public',
@@ -7286,36 +12583,108 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
-      name: 'space_reservation',
-      dartName: 'SpaceReservation',
+      name: 'spreadsheet',
+      dartName: 'Spreadsheet',
       schema: 'public',
       module: 'wonky',
       columns: [
         _isp.ColumnDefinition(
           name: 'id',
-          columnType: _isp.ColumnType.bigint,
+          columnType: _isp.ColumnType.uuid,
           isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
+          dartType: 'UuidValue',
+          columnDefault: 'random_v7',
         ),
         _isp.ColumnDefinition(
-          name: 'userId',
+          name: 'fileId',
           columnType: _isp.ColumnType.bigint,
           isNullable: false,
           dartType: 'int',
         ),
         _isp.ColumnDefinition(
-          name: 'spaceUuid',
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'title',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'locale',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'timeZone',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'recalcMode',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:RecalcMode',
+          columnDefault: '\'onChange\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'iterativeCalc',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'maxIterations',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '50',
+        ),
+        _isp.ColumnDefinition(
+          name: 'convergenceThreshold',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '0.05',
+        ),
+        _isp.ColumnDefinition(
+          name: 'defaultFontFamily',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+          columnDefault: '\'Inter\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'defaultFontSize',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '10.0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'themeJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'displayLanguage',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdBy',
           columnType: _isp.ColumnType.uuid,
           isNullable: false,
           dartType: 'UuidValue',
-        ),
-        _isp.ColumnDefinition(
-          name: 'kind',
-          columnType: _isp.ColumnType.text,
-          isNullable: false,
-          dartType: 'protocol:SpaceKind',
-          columnDefault: '\'spreadsheet\'',
         ),
         _isp.ColumnDefinition(
           name: 'createdAt',
@@ -7323,18 +12692,12 @@ class Protocol extends _is.DatabaseSerializationManager
           isNullable: false,
           dartType: 'DateTime',
         ),
-        _isp.ColumnDefinition(
-          name: 'usedAt',
-          columnType: _isp.ColumnType.timestampWithoutTimeZone,
-          isNullable: true,
-          dartType: 'DateTime?',
-        ),
       ],
       foreignKeys: [
         _isp.ForeignKeyDefinition(
-          constraintName: 'space_reservation_fk_0',
-          columns: ['userId'],
-          referenceTable: 'user_profile',
+          constraintName: 'spreadsheet_fk_0',
+          columns: ['fileId'],
+          referenceTable: 'rev_file',
           referenceTableSchema: 'public',
           referenceColumns: ['id'],
           onUpdate: _isp.ForeignKeyAction.noAction,
@@ -7344,149 +12707,16 @@ class Protocol extends _is.DatabaseSerializationManager
       ],
       indexes: [
         _isp.IndexDefinition(
-          indexName: 'space_reservation_space_idx',
+          indexName: 'spreadsheet_file_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'spaceUuid',
-            ),
-          ],
-          type: 'btree',
-          isUnique: true,
-          isPrimary: false,
-        ),
-        _isp.IndexDefinition(
-          indexName: 'space_reservation_user_idx',
-          tableSpace: null,
-          elements: [
-            _isp.IndexElementDefinition(
-              type: _isp.IndexElementDefinitionType.column,
-              definition: 'userId',
+              definition: 'fileId',
             ),
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
-              definition: 'usedAt',
-            ),
-          ],
-          type: 'btree',
-          isUnique: false,
-          isPrimary: false,
-        ),
-      ],
-      managed: true,
-    ),
-    _isp.TableDefinition(
-      name: 'space_subscription',
-      dartName: 'SpaceSubscription',
-      schema: 'public',
-      module: 'wonky',
-      columns: [
-        _isp.ColumnDefinition(
-          name: 'id',
-          columnType: _isp.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int?',
-          columnDefault: 'serial',
-        ),
-        _isp.ColumnDefinition(
-          name: 'userId',
-          columnType: _isp.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int',
-        ),
-        _isp.ColumnDefinition(
-          name: 'spreadsheetItemId',
-          columnType: _isp.ColumnType.bigint,
-          isNullable: false,
-          dartType: 'int',
-        ),
-        _isp.ColumnDefinition(
-          name: 'spaceUuid',
-          columnType: _isp.ColumnType.uuid,
-          isNullable: false,
-          dartType: 'UuidValue',
-        ),
-        _isp.ColumnDefinition(
-          name: 'kind',
-          columnType: _isp.ColumnType.text,
-          isNullable: false,
-          dartType: 'protocol:SpaceKind',
-          columnDefault: '\'spreadsheet\'',
-        ),
-        _isp.ColumnDefinition(
-          name: 'reason',
-          columnType: _isp.ColumnType.text,
-          isNullable: false,
-          dartType: 'protocol:SubscriptionReason',
-        ),
-        _isp.ColumnDefinition(
-          name: 'lastUsedAt',
-          columnType: _isp.ColumnType.timestampWithoutTimeZone,
-          isNullable: false,
-          dartType: 'DateTime',
-        ),
-        _isp.ColumnDefinition(
-          name: 'pinned',
-          columnType: _isp.ColumnType.boolean,
-          isNullable: false,
-          dartType: 'bool',
-          columnDefault: 'false',
-        ),
-        _isp.ColumnDefinition(
-          name: 'reasonExpiresAt',
-          columnType: _isp.ColumnType.timestampWithoutTimeZone,
-          isNullable: true,
-          dartType: 'DateTime?',
-        ),
-      ],
-      foreignKeys: [
-        _isp.ForeignKeyDefinition(
-          constraintName: 'space_subscription_fk_0',
-          columns: ['userId'],
-          referenceTable: 'user_profile',
-          referenceTableSchema: 'public',
-          referenceColumns: ['id'],
-          onUpdate: _isp.ForeignKeyAction.noAction,
-          onDelete: _isp.ForeignKeyAction.cascade,
-          matchType: null,
-        ),
-        _isp.ForeignKeyDefinition(
-          constraintName: 'space_subscription_fk_1',
-          columns: ['spreadsheetItemId'],
-          referenceTable: 'drive_item',
-          referenceTableSchema: 'public',
-          referenceColumns: ['id'],
-          onUpdate: _isp.ForeignKeyAction.noAction,
-          onDelete: _isp.ForeignKeyAction.cascade,
-          matchType: null,
-        ),
-      ],
-      indexes: [
-        _isp.IndexDefinition(
-          indexName: 'space_subscription_user_space_idx',
-          tableSpace: null,
-          elements: [
-            _isp.IndexElementDefinition(
-              type: _isp.IndexElementDefinitionType.column,
-              definition: 'userId',
-            ),
-            _isp.IndexElementDefinition(
-              type: _isp.IndexElementDefinitionType.column,
-              definition: 'spaceUuid',
-            ),
-          ],
-          type: 'btree',
-          isUnique: true,
-          isPrimary: false,
-        ),
-        _isp.IndexDefinition(
-          indexName: 'space_subscription_space_idx',
-          tableSpace: null,
-          elements: [
-            _isp.IndexElementDefinition(
-              type: _isp.IndexElementDefinitionType.column,
-              definition: 'spaceUuid',
+              definition: 'id',
             ),
           ],
           type: 'btree',
@@ -7759,6 +12989,44 @@ class Protocol extends _is.DatabaseSerializationManager
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'expiresAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'stored_file_owner_kind_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'ownerId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'kind',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'stored_file_status_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'status',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
             ),
           ],
           type: 'btree',
@@ -8284,6 +13552,19 @@ class Protocol extends _is.DatabaseSerializationManager
           isUnique: true,
           isPrimary: false,
         ),
+        _isp.IndexDefinition(
+          indexName: 'write_diff_cache_created_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
+            ),
+          ],
+          type: 'brin',
+          isUnique: false,
+          isPrimary: false,
+        ),
       ],
       managed: true,
     ),
@@ -8479,7 +13760,7 @@ class Protocol extends _is.DatabaseSerializationManager
           name: 'actorKind',
           columnType: _isp.ColumnType.text,
           isNullable: false,
-          dartType: 'wonky_sync_models:ActorKind',
+          dartType: 'protocol:ActorKind',
         ),
         _isp.ColumnDefinition(
           name: 'createdAt',
@@ -8522,12 +13803,7 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     ..._iais.Protocol.targetTableDefinitions,
-    ..._izehhkf5.Protocol.targetTableDefinitions,
     ..._iacs.Protocol.targetTableDefinitions,
-    ..._i810rwvy.Protocol() is _is.DatabaseSerializationManager
-        ? (_i810rwvy.Protocol() as _is.DatabaseSerializationManager)
-              .getTargetTableDefinitions()
-        : [],
     ..._isp.Protocol.targetTableDefinitions,
   ];
 
@@ -8558,6 +13834,9 @@ class Protocol extends _is.DatabaseSerializationManager
       }
     }
 
+    if (t == _ihl3axv2.AclFutureCallFanOutModel) {
+      return _ihl3axv2.AclFutureCallFanOutModel.fromJson(data) as T;
+    }
     if (t == _icgheary.BoardFutureCallSummarizeModel) {
       return _icgheary.BoardFutureCallSummarizeModel.fromJson(data) as T;
     }
@@ -8609,6 +13888,9 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (t == _iyja8k5e.AiApplyMode) {
       return _iyja8k5e.AiApplyMode.fromJson(data) as T;
+    }
+    if (t == _iuq1eobh.AiPreviewRecord) {
+      return _iuq1eobh.AiPreviewRecord.fromJson(data) as T;
     }
     if (t == _ir7z75mb.AiProvider) {
       return _ir7z75mb.AiProvider.fromJson(data) as T;
@@ -8844,6 +14126,9 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _ii98prcs.AccessRole) {
       return _ii98prcs.AccessRole.fromJson(data) as T;
     }
+    if (t == _i2wc4tyi.ActorKind) {
+      return _i2wc4tyi.ActorKind.fromJson(data) as T;
+    }
     if (t == _inb0isem.WonkyErrorCode) {
       return _inb0isem.WonkyErrorCode.fromJson(data) as T;
     }
@@ -9039,6 +14324,72 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _isz2sju0.PresenceUpdate) {
       return _isz2sju0.PresenceUpdate.fromJson(data) as T;
     }
+    if (t == _ie6clghy.RevAck) {
+      return _ie6clghy.RevAck.fromJson(data) as T;
+    }
+    if (t == _i6ck957q.RevPing) {
+      return _i6ck957q.RevPing.fromJson(data) as T;
+    }
+    if (t == _i6ck957q.RevRequestOps) {
+      return _i6ck957q.RevRequestOps.fromJson(data) as T;
+    }
+    if (t == _i6ck957q.RevSubmit) {
+      return _i6ck957q.RevSubmit.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevInit) {
+      return _ie6clghy.RevInit.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevPong) {
+      return _ie6clghy.RevPong.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevRejected) {
+      return _ie6clghy.RevRejected.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevRemoteOp) {
+      return _ie6clghy.RevRemoteOp.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevResync) {
+      return _ie6clghy.RevResync.fromJson(data) as T;
+    }
+    if (t == _ie6clghy.RevRoleChanged) {
+      return _ie6clghy.RevRoleChanged.fromJson(data) as T;
+    }
+    if (t == _iyewfisw.RevBusMessage) {
+      return _iyewfisw.RevBusMessage.fromJson(data) as T;
+    }
+    if (t == _ip7h3lg0.RevFile) {
+      return _ip7h3lg0.RevFile.fromJson(data) as T;
+    }
+    if (t == _ihwy023l.RevFileInfo) {
+      return _ihwy023l.RevFileInfo.fromJson(data) as T;
+    }
+    if (t == _iwkehf4e.RevFileKind) {
+      return _iwkehf4e.RevFileKind.fromJson(data) as T;
+    }
+    if (t == _ivfqwl6l.RevHookState) {
+      return _ivfqwl6l.RevHookState.fromJson(data) as T;
+    }
+    if (t == _iax01zbg.RevOp) {
+      return _iax01zbg.RevOp.fromJson(data) as T;
+    }
+    if (t == _it4o2pk5.RevOpView) {
+      return _it4o2pk5.RevOpView.fromJson(data) as T;
+    }
+    if (t == _ium7xjeg.RevPage) {
+      return _ium7xjeg.RevPage.fromJson(data) as T;
+    }
+    if (t == _i3q3ua5p.RevPageKind) {
+      return _i3q3ua5p.RevPageKind.fromJson(data) as T;
+    }
+    if (t == _if03ikx4.RevPageRequest) {
+      return _if03ikx4.RevPageRequest.fromJson(data) as T;
+    }
+    if (t == _iilsyt4b.RevRejectCode) {
+      return _iilsyt4b.RevRejectCode.fromJson(data) as T;
+    }
+    if (t == _ibw3povl.ServerChangeRecord) {
+      return _ibw3povl.ServerChangeRecord.fromJson(data) as T;
+    }
     if (t == _i8scn8dm.AccessRequest) {
       return _i8scn8dm.AccessRequest.fromJson(data) as T;
     }
@@ -9156,9 +14507,6 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _i49726iv.SheetsAiPreviewCell) {
       return _i49726iv.SheetsAiPreviewCell.fromJson(data) as T;
     }
-    if (t == _isjcf5k8.SheetsAiPreviewRecord) {
-      return _isjcf5k8.SheetsAiPreviewRecord.fromJson(data) as T;
-    }
     if (t == _izbpavhd.SheetsFillProposal) {
       return _izbpavhd.SheetsFillProposal.fromJson(data) as T;
     }
@@ -9186,59 +14534,116 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _i09xo3k8.CellHistoryPage) {
       return _i09xo3k8.CellHistoryPage.fromJson(data) as T;
     }
-    if (t == _i4tr28q5.ReservedSpace) {
-      return _i4tr28q5.ReservedSpace.fromJson(data) as T;
-    }
     if (t == _ilv3hlxr.RevertResult) {
       return _ilv3hlxr.RevertResult.fromJson(data) as T;
     }
     if (t == _ipqum05l.RevertSkip) {
       return _ipqum05l.RevertSkip.fromJson(data) as T;
     }
-    if (t == _it4o4dd3.ServerChangeRecord) {
-      return _it4o4dd3.ServerChangeRecord.fromJson(data) as T;
+    if (t == _i3p6on16.Banding) {
+      return _i3p6on16.Banding.fromJson(data) as T;
+    }
+    if (t == _iofnuqg9.BasicFilter) {
+      return _iofnuqg9.BasicFilter.fromJson(data) as T;
+    }
+    if (t == _ifc5vn9h.Cell) {
+      return _ifc5vn9h.Cell.fromJson(data) as T;
+    }
+    if (t == _iy4zsn6m.ConditionalFormatRule) {
+      return _iy4zsn6m.ConditionalFormatRule.fromJson(data) as T;
+    }
+    if (t == _i5c2bsv2.DataValidationRule) {
+      return _i5c2bsv2.DataValidationRule.fromJson(data) as T;
+    }
+    if (t == _i145vl5m.DimensionGroup) {
+      return _i145vl5m.DimensionGroup.fromJson(data) as T;
+    }
+    if (t == _iye9c0co.EmbeddedObject) {
+      return _iye9c0co.EmbeddedObject.fromJson(data) as T;
+    }
+    if (t == _ilnsyzhq.Dimension) {
+      return _ilnsyzhq.Dimension.fromJson(data) as T;
+    }
+    if (t == _ihfpm0ve.EmbeddedObjectKind) {
+      return _ihfpm0ve.EmbeddedObjectKind.fromJson(data) as T;
+    }
+    if (t == _iofwzekn.HorizontalAlign) {
+      return _iofwzekn.HorizontalAlign.fromJson(data) as T;
+    }
+    if (t == _i0z9m4nl.RecalcMode) {
+      return _i0z9m4nl.RecalcMode.fromJson(data) as T;
+    }
+    if (t == _io4oc09s.ScriptBuildStatus) {
+      return _io4oc09s.ScriptBuildStatus.fromJson(data) as T;
+    }
+    if (t == _i8ne06ql.SheetKind) {
+      return _i8ne06ql.SheetKind.fromJson(data) as T;
+    }
+    if (t == _irmtoho8.TriggerKind) {
+      return _irmtoho8.TriggerKind.fromJson(data) as T;
+    }
+    if (t == _ivf2txqv.VerticalAlign) {
+      return _ivf2txqv.VerticalAlign.fromJson(data) as T;
+    }
+    if (t == _iz9rjt8b.WrapStrategy) {
+      return _iz9rjt8b.WrapStrategy.fromJson(data) as T;
+    }
+    if (t == _igzd7u0m.FilterView) {
+      return _igzd7u0m.FilterView.fromJson(data) as T;
+    }
+    if (t == _iiq43rv8.Macro) {
+      return _iiq43rv8.Macro.fromJson(data) as T;
+    }
+    if (t == _i57rr32y.MergedRange) {
+      return _i57rr32y.MergedRange.fromJson(data) as T;
+    }
+    if (t == _irrybuvb.NamedRange) {
+      return _irrybuvb.NamedRange.fromJson(data) as T;
+    }
+    if (t == _iz580og3.PivotTable) {
+      return _iz580og3.PivotTable.fromJson(data) as T;
+    }
+    if (t == _iz1b7y52.ProtectedRange) {
+      return _iz1b7y52.ProtectedRange.fromJson(data) as T;
+    }
+    if (t == _ibdybin0.ScriptBuild) {
+      return _ibdybin0.ScriptBuild.fromJson(data) as T;
+    }
+    if (t == _iplsajic.ScriptFile) {
+      return _iplsajic.ScriptFile.fromJson(data) as T;
+    }
+    if (t == _iy6gs0qh.ScriptProject) {
+      return _iy6gs0qh.ScriptProject.fromJson(data) as T;
+    }
+    if (t == _ig9hff0r.ScriptProperty) {
+      return _ig9hff0r.ScriptProperty.fromJson(data) as T;
+    }
+    if (t == _irlm292d.ScriptTrigger) {
+      return _irlm292d.ScriptTrigger.fromJson(data) as T;
+    }
+    if (t == _i8c5x9aj.Sheet) {
+      return _i8c5x9aj.Sheet.fromJson(data) as T;
+    }
+    if (t == _i6chd4x2.SheetColumn) {
+      return _i6chd4x2.SheetColumn.fromJson(data) as T;
+    }
+    if (t == _i4k3x536.SheetRow) {
+      return _i4k3x536.SheetRow.fromJson(data) as T;
+    }
+    if (t == _ib6gxu4b.Spreadsheet) {
+      return _ib6gxu4b.Spreadsheet.fromJson(data) as T;
+    }
+    if (t == _ijtj1mph.ScriptUserProperty) {
+      return _ijtj1mph.ScriptUserProperty.fromJson(data) as T;
     }
     if (t == _iaehez21.SheetsActivitySummary) {
       return _iaehez21.SheetsActivitySummary.fromJson(data) as T;
     }
-    if (t == _i5z6gq3n.SheetsChangeLogReceipt) {
-      return _i5z6gq3n.SheetsChangeLogReceipt.fromJson(data) as T;
-    }
     if (t == _i9yjzgjk.SheetsContributorStat) {
       return _i9yjzgjk.SheetsContributorStat.fromJson(data) as T;
     }
-    if (t == _ign37bwd.SheetsDirtySpace) {
-      return _ign37bwd.SheetsDirtySpace.fromJson(data) as T;
-    }
-    if (t == _i6vovdef.SheetsJournalSpace) {
-      return _i6vovdef.SheetsJournalSpace.fromJson(data) as T;
-    }
-    if (t == _izigafhu.SheetsMergedSignal) {
-      return _izigafhu.SheetsMergedSignal.fromJson(data) as T;
-    }
-    if (t == _i09o85d1.SheetsRowJournal) {
-      return _i09o85d1.SheetsRowJournal.fromJson(data) as T;
-    }
     if (t == _iwl8v9t3.SheetsSnapshotIndex) {
       return _iwl8v9t3.SheetsSnapshotIndex.fromJson(data) as T;
-    }
-    if (t == _i19n72yw.SpaceKind) {
-      return _i19n72yw.SpaceKind.fromJson(data) as T;
-    }
-    if (t == _i9g7m0kd.SpaceReservation) {
-      return _i9g7m0kd.SpaceReservation.fromJson(data) as T;
-    }
-    if (t == _izbczo40.SpaceStats) {
-      return _izbczo40.SpaceStats.fromJson(data) as T;
-    }
-    if (t == _i1qxq8ae.SpaceSubscription) {
-      return _i1qxq8ae.SpaceSubscription.fromJson(data) as T;
-    }
-    if (t == _i6dq35xo.SubscribeResult) {
-      return _i6dq35xo.SubscribeResult.fromJson(data) as T;
-    }
-    if (t == _ic8hyldr.SubscriptionReason) {
-      return _ic8hyldr.SubscriptionReason.fromJson(data) as T;
     }
     if (t == _ibv2hdjr.ScriptAuthorization) {
       return _ibv2hdjr.ScriptAuthorization.fromJson(data) as T;
@@ -9321,8 +14726,62 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _inygrvyi.ChartSourceSummary) {
       return _inygrvyi.ChartSourceSummary.fromJson(data) as T;
     }
-    if (t == _ircoml6y.DeckChangeLogReceipt) {
-      return _ircoml6y.DeckChangeLogReceipt.fromJson(data) as T;
+    if (t == _ihkglt8b.ChartLink) {
+      return _ihkglt8b.ChartLink.fromJson(data) as T;
+    }
+    if (t == _i6svv371.CodeState) {
+      return _i6svv371.CodeState.fromJson(data) as T;
+    }
+    if (t == _ioalf2ve.Deck) {
+      return _ioalf2ve.Deck.fromJson(data) as T;
+    }
+    if (t == _i5vaufan.DeckTheme) {
+      return _i5vaufan.DeckTheme.fromJson(data) as T;
+    }
+    if (t == _ipok3hcm.BuildKind) {
+      return _ipok3hcm.BuildKind.fromJson(data) as T;
+    }
+    if (t == _isb6wks2.BuildTrigger) {
+      return _isb6wks2.BuildTrigger.fromJson(data) as T;
+    }
+    if (t == _isf9v7y6.DeckAppearance) {
+      return _isf9v7y6.DeckAppearance.fromJson(data) as T;
+    }
+    if (t == _i4oq3vgh.PlaceholderType) {
+      return _i4oq3vgh.PlaceholderType.fromJson(data) as T;
+    }
+    if (t == _isah8148.SlideElementKind) {
+      return _isah8148.SlideElementKind.fromJson(data) as T;
+    }
+    if (t == _isghg0k1.SlideSizePreset) {
+      return _isghg0k1.SlideSizePreset.fromJson(data) as T;
+    }
+    if (t == _i5m4q7yg.TableDimension) {
+      return _i5m4q7yg.TableDimension.fromJson(data) as T;
+    }
+    if (t == _ipsr29xb.Slide) {
+      return _ipsr29xb.Slide.fromJson(data) as T;
+    }
+    if (t == _izfj14nk.SlideBuild) {
+      return _izfj14nk.SlideBuild.fromJson(data) as T;
+    }
+    if (t == _ih1q77t5.SlideElement) {
+      return _ih1q77t5.SlideElement.fromJson(data) as T;
+    }
+    if (t == _ic2hhlok.SlideGroup) {
+      return _ic2hhlok.SlideGroup.fromJson(data) as T;
+    }
+    if (t == _i3k3vjpp.SlideLayout) {
+      return _i3k3vjpp.SlideLayout.fromJson(data) as T;
+    }
+    if (t == _igjrafa0.SlideMaster) {
+      return _igjrafa0.SlideMaster.fromJson(data) as T;
+    }
+    if (t == _iewd9d8j.SlideTableAxis) {
+      return _iewd9d8j.SlideTableAxis.fromJson(data) as T;
+    }
+    if (t == _ibnoy0fr.SlideTableCell) {
+      return _ibnoy0fr.SlideTableCell.fromJson(data) as T;
     }
     if (t == _ildgqgkz.PresentationBusMessage) {
       return _ildgqgkz.PresentationBusMessage.fromJson(data) as T;
@@ -9522,6 +14981,12 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _is9bkd9t.WriteVersionDocument) {
       return _is9bkd9t.WriteVersionDocument.fromJson(data) as T;
     }
+    if (t == _is.getType<_ihl3axv2.AclFutureCallFanOutModel?>()) {
+      return (data != null
+              ? _ihl3axv2.AclFutureCallFanOutModel.fromJson(data)
+              : null)
+          as T;
+    }
     if (t == _is.getType<_icgheary.BoardFutureCallSummarizeModel?>()) {
       return (data != null
               ? _icgheary.BoardFutureCallSummarizeModel.fromJson(data)
@@ -9604,6 +15069,10 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (t == _is.getType<_iyja8k5e.AiApplyMode?>()) {
       return (data != null ? _iyja8k5e.AiApplyMode.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iuq1eobh.AiPreviewRecord?>()) {
+      return (data != null ? _iuq1eobh.AiPreviewRecord.fromJson(data) : null)
+          as T;
     }
     if (t == _is.getType<_ir7z75mb.AiProvider?>()) {
       return (data != null ? _ir7z75mb.AiProvider.fromJson(data) : null) as T;
@@ -9911,6 +15380,9 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _is.getType<_ii98prcs.AccessRole?>()) {
       return (data != null ? _ii98prcs.AccessRole.fromJson(data) : null) as T;
     }
+    if (t == _is.getType<_i2wc4tyi.ActorKind?>()) {
+      return (data != null ? _i2wc4tyi.ActorKind.fromJson(data) : null) as T;
+    }
     if (t == _is.getType<_inb0isem.WonkyErrorCode?>()) {
       return (data != null ? _inb0isem.WonkyErrorCode.fromJson(data) : null)
           as T;
@@ -10159,6 +15631,78 @@ class Protocol extends _is.DatabaseSerializationManager
       return (data != null ? _isz2sju0.PresenceUpdate.fromJson(data) : null)
           as T;
     }
+    if (t == _is.getType<_ie6clghy.RevAck?>()) {
+      return (data != null ? _ie6clghy.RevAck.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i6ck957q.RevPing?>()) {
+      return (data != null ? _i6ck957q.RevPing.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i6ck957q.RevRequestOps?>()) {
+      return (data != null ? _i6ck957q.RevRequestOps.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i6ck957q.RevSubmit?>()) {
+      return (data != null ? _i6ck957q.RevSubmit.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ie6clghy.RevInit?>()) {
+      return (data != null ? _ie6clghy.RevInit.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ie6clghy.RevPong?>()) {
+      return (data != null ? _ie6clghy.RevPong.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ie6clghy.RevRejected?>()) {
+      return (data != null ? _ie6clghy.RevRejected.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ie6clghy.RevRemoteOp?>()) {
+      return (data != null ? _ie6clghy.RevRemoteOp.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ie6clghy.RevResync?>()) {
+      return (data != null ? _ie6clghy.RevResync.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ie6clghy.RevRoleChanged?>()) {
+      return (data != null ? _ie6clghy.RevRoleChanged.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iyewfisw.RevBusMessage?>()) {
+      return (data != null ? _iyewfisw.RevBusMessage.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ip7h3lg0.RevFile?>()) {
+      return (data != null ? _ip7h3lg0.RevFile.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ihwy023l.RevFileInfo?>()) {
+      return (data != null ? _ihwy023l.RevFileInfo.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iwkehf4e.RevFileKind?>()) {
+      return (data != null ? _iwkehf4e.RevFileKind.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ivfqwl6l.RevHookState?>()) {
+      return (data != null ? _ivfqwl6l.RevHookState.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iax01zbg.RevOp?>()) {
+      return (data != null ? _iax01zbg.RevOp.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_it4o2pk5.RevOpView?>()) {
+      return (data != null ? _it4o2pk5.RevOpView.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ium7xjeg.RevPage?>()) {
+      return (data != null ? _ium7xjeg.RevPage.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i3q3ua5p.RevPageKind?>()) {
+      return (data != null ? _i3q3ua5p.RevPageKind.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_if03ikx4.RevPageRequest?>()) {
+      return (data != null ? _if03ikx4.RevPageRequest.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iilsyt4b.RevRejectCode?>()) {
+      return (data != null ? _iilsyt4b.RevRejectCode.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ibw3povl.ServerChangeRecord?>()) {
+      return (data != null ? _ibw3povl.ServerChangeRecord.fromJson(data) : null)
+          as T;
+    }
     if (t == _is.getType<_i8scn8dm.AccessRequest?>()) {
       return (data != null ? _i8scn8dm.AccessRequest.fromJson(data) : null)
           as T;
@@ -10332,12 +15876,6 @@ class Protocol extends _is.DatabaseSerializationManager
               : null)
           as T;
     }
-    if (t == _is.getType<_isjcf5k8.SheetsAiPreviewRecord?>()) {
-      return (data != null
-              ? _isjcf5k8.SheetsAiPreviewRecord.fromJson(data)
-              : null)
-          as T;
-    }
     if (t == _is.getType<_izbpavhd.SheetsFillProposal?>()) {
       return (data != null ? _izbpavhd.SheetsFillProposal.fromJson(data) : null)
           as T;
@@ -10377,29 +15915,126 @@ class Protocol extends _is.DatabaseSerializationManager
       return (data != null ? _i09xo3k8.CellHistoryPage.fromJson(data) : null)
           as T;
     }
-    if (t == _is.getType<_i4tr28q5.ReservedSpace?>()) {
-      return (data != null ? _i4tr28q5.ReservedSpace.fromJson(data) : null)
-          as T;
-    }
     if (t == _is.getType<_ilv3hlxr.RevertResult?>()) {
       return (data != null ? _ilv3hlxr.RevertResult.fromJson(data) : null) as T;
     }
     if (t == _is.getType<_ipqum05l.RevertSkip?>()) {
       return (data != null ? _ipqum05l.RevertSkip.fromJson(data) : null) as T;
     }
-    if (t == _is.getType<_it4o4dd3.ServerChangeRecord?>()) {
-      return (data != null ? _it4o4dd3.ServerChangeRecord.fromJson(data) : null)
+    if (t == _is.getType<_i3p6on16.Banding?>()) {
+      return (data != null ? _i3p6on16.Banding.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iofnuqg9.BasicFilter?>()) {
+      return (data != null ? _iofnuqg9.BasicFilter.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ifc5vn9h.Cell?>()) {
+      return (data != null ? _ifc5vn9h.Cell.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iy4zsn6m.ConditionalFormatRule?>()) {
+      return (data != null
+              ? _iy4zsn6m.ConditionalFormatRule.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_i5c2bsv2.DataValidationRule?>()) {
+      return (data != null ? _i5c2bsv2.DataValidationRule.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i145vl5m.DimensionGroup?>()) {
+      return (data != null ? _i145vl5m.DimensionGroup.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iye9c0co.EmbeddedObject?>()) {
+      return (data != null ? _iye9c0co.EmbeddedObject.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ilnsyzhq.Dimension?>()) {
+      return (data != null ? _ilnsyzhq.Dimension.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ihfpm0ve.EmbeddedObjectKind?>()) {
+      return (data != null ? _ihfpm0ve.EmbeddedObjectKind.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iofwzekn.HorizontalAlign?>()) {
+      return (data != null ? _iofwzekn.HorizontalAlign.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i0z9m4nl.RecalcMode?>()) {
+      return (data != null ? _i0z9m4nl.RecalcMode.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_io4oc09s.ScriptBuildStatus?>()) {
+      return (data != null ? _io4oc09s.ScriptBuildStatus.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i8ne06ql.SheetKind?>()) {
+      return (data != null ? _i8ne06ql.SheetKind.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_irmtoho8.TriggerKind?>()) {
+      return (data != null ? _irmtoho8.TriggerKind.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ivf2txqv.VerticalAlign?>()) {
+      return (data != null ? _ivf2txqv.VerticalAlign.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iz9rjt8b.WrapStrategy?>()) {
+      return (data != null ? _iz9rjt8b.WrapStrategy.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_igzd7u0m.FilterView?>()) {
+      return (data != null ? _igzd7u0m.FilterView.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iiq43rv8.Macro?>()) {
+      return (data != null ? _iiq43rv8.Macro.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i57rr32y.MergedRange?>()) {
+      return (data != null ? _i57rr32y.MergedRange.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_irrybuvb.NamedRange?>()) {
+      return (data != null ? _irrybuvb.NamedRange.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iz580og3.PivotTable?>()) {
+      return (data != null ? _iz580og3.PivotTable.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iz1b7y52.ProtectedRange?>()) {
+      return (data != null ? _iz1b7y52.ProtectedRange.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ibdybin0.ScriptBuild?>()) {
+      return (data != null ? _ibdybin0.ScriptBuild.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iplsajic.ScriptFile?>()) {
+      return (data != null ? _iplsajic.ScriptFile.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iy6gs0qh.ScriptProject?>()) {
+      return (data != null ? _iy6gs0qh.ScriptProject.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ig9hff0r.ScriptProperty?>()) {
+      return (data != null ? _ig9hff0r.ScriptProperty.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_irlm292d.ScriptTrigger?>()) {
+      return (data != null ? _irlm292d.ScriptTrigger.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i8c5x9aj.Sheet?>()) {
+      return (data != null ? _i8c5x9aj.Sheet.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i6chd4x2.SheetColumn?>()) {
+      return (data != null ? _i6chd4x2.SheetColumn.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i4k3x536.SheetRow?>()) {
+      return (data != null ? _i4k3x536.SheetRow.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ib6gxu4b.Spreadsheet?>()) {
+      return (data != null ? _ib6gxu4b.Spreadsheet.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ijtj1mph.ScriptUserProperty?>()) {
+      return (data != null ? _ijtj1mph.ScriptUserProperty.fromJson(data) : null)
           as T;
     }
     if (t == _is.getType<_iaehez21.SheetsActivitySummary?>()) {
       return (data != null
               ? _iaehez21.SheetsActivitySummary.fromJson(data)
-              : null)
-          as T;
-    }
-    if (t == _is.getType<_i5z6gq3n.SheetsChangeLogReceipt?>()) {
-      return (data != null
-              ? _i5z6gq3n.SheetsChangeLogReceipt.fromJson(data)
               : null)
           as T;
     }
@@ -10409,48 +16044,10 @@ class Protocol extends _is.DatabaseSerializationManager
               : null)
           as T;
     }
-    if (t == _is.getType<_ign37bwd.SheetsDirtySpace?>()) {
-      return (data != null ? _ign37bwd.SheetsDirtySpace.fromJson(data) : null)
-          as T;
-    }
-    if (t == _is.getType<_i6vovdef.SheetsJournalSpace?>()) {
-      return (data != null ? _i6vovdef.SheetsJournalSpace.fromJson(data) : null)
-          as T;
-    }
-    if (t == _is.getType<_izigafhu.SheetsMergedSignal?>()) {
-      return (data != null ? _izigafhu.SheetsMergedSignal.fromJson(data) : null)
-          as T;
-    }
-    if (t == _is.getType<_i09o85d1.SheetsRowJournal?>()) {
-      return (data != null ? _i09o85d1.SheetsRowJournal.fromJson(data) : null)
-          as T;
-    }
     if (t == _is.getType<_iwl8v9t3.SheetsSnapshotIndex?>()) {
       return (data != null
               ? _iwl8v9t3.SheetsSnapshotIndex.fromJson(data)
               : null)
-          as T;
-    }
-    if (t == _is.getType<_i19n72yw.SpaceKind?>()) {
-      return (data != null ? _i19n72yw.SpaceKind.fromJson(data) : null) as T;
-    }
-    if (t == _is.getType<_i9g7m0kd.SpaceReservation?>()) {
-      return (data != null ? _i9g7m0kd.SpaceReservation.fromJson(data) : null)
-          as T;
-    }
-    if (t == _is.getType<_izbczo40.SpaceStats?>()) {
-      return (data != null ? _izbczo40.SpaceStats.fromJson(data) : null) as T;
-    }
-    if (t == _is.getType<_i1qxq8ae.SpaceSubscription?>()) {
-      return (data != null ? _i1qxq8ae.SpaceSubscription.fromJson(data) : null)
-          as T;
-    }
-    if (t == _is.getType<_i6dq35xo.SubscribeResult?>()) {
-      return (data != null ? _i6dq35xo.SubscribeResult.fromJson(data) : null)
-          as T;
-    }
-    if (t == _is.getType<_ic8hyldr.SubscriptionReason?>()) {
-      return (data != null ? _ic8hyldr.SubscriptionReason.fromJson(data) : null)
           as T;
     }
     if (t == _is.getType<_ibv2hdjr.ScriptAuthorization?>()) {
@@ -10581,10 +16178,68 @@ class Protocol extends _is.DatabaseSerializationManager
       return (data != null ? _inygrvyi.ChartSourceSummary.fromJson(data) : null)
           as T;
     }
-    if (t == _is.getType<_ircoml6y.DeckChangeLogReceipt?>()) {
-      return (data != null
-              ? _ircoml6y.DeckChangeLogReceipt.fromJson(data)
-              : null)
+    if (t == _is.getType<_ihkglt8b.ChartLink?>()) {
+      return (data != null ? _ihkglt8b.ChartLink.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i6svv371.CodeState?>()) {
+      return (data != null ? _i6svv371.CodeState.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ioalf2ve.Deck?>()) {
+      return (data != null ? _ioalf2ve.Deck.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i5vaufan.DeckTheme?>()) {
+      return (data != null ? _i5vaufan.DeckTheme.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ipok3hcm.BuildKind?>()) {
+      return (data != null ? _ipok3hcm.BuildKind.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_isb6wks2.BuildTrigger?>()) {
+      return (data != null ? _isb6wks2.BuildTrigger.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_isf9v7y6.DeckAppearance?>()) {
+      return (data != null ? _isf9v7y6.DeckAppearance.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i4oq3vgh.PlaceholderType?>()) {
+      return (data != null ? _i4oq3vgh.PlaceholderType.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_isah8148.SlideElementKind?>()) {
+      return (data != null ? _isah8148.SlideElementKind.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_isghg0k1.SlideSizePreset?>()) {
+      return (data != null ? _isghg0k1.SlideSizePreset.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i5m4q7yg.TableDimension?>()) {
+      return (data != null ? _i5m4q7yg.TableDimension.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ipsr29xb.Slide?>()) {
+      return (data != null ? _ipsr29xb.Slide.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_izfj14nk.SlideBuild?>()) {
+      return (data != null ? _izfj14nk.SlideBuild.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ih1q77t5.SlideElement?>()) {
+      return (data != null ? _ih1q77t5.SlideElement.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ic2hhlok.SlideGroup?>()) {
+      return (data != null ? _ic2hhlok.SlideGroup.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i3k3vjpp.SlideLayout?>()) {
+      return (data != null ? _i3k3vjpp.SlideLayout.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_igjrafa0.SlideMaster?>()) {
+      return (data != null ? _igjrafa0.SlideMaster.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iewd9d8j.SlideTableAxis?>()) {
+      return (data != null ? _iewd9d8j.SlideTableAxis.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ibnoy0fr.SlideTableCell?>()) {
+      return (data != null ? _ibnoy0fr.SlideTableCell.fromJson(data) : null)
           as T;
     }
     if (t == _is.getType<_ildgqgkz.PresentationBusMessage?>()) {
@@ -10896,6 +16551,9 @@ class Protocol extends _is.DatabaseSerializationManager
               : null)
           as T;
     }
+    if (t == List<int>) {
+      return (data as List).map((e) => deserialize<int>(e)).toList() as T;
+    }
     if (t == List<_ikcwdr17.ActivityViewer>) {
       return (data as List)
               .map((e) => deserialize<_ikcwdr17.ActivityViewer>(e))
@@ -11018,6 +16676,18 @@ class Protocol extends _is.DatabaseSerializationManager
           )
           as T;
     }
+    if (t == List<_is.UuidValue>) {
+      return (data as List).map((e) => deserialize<_is.UuidValue>(e)).toList()
+          as T;
+    }
+    if (t == _is.getType<List<_is.UuidValue>?>()) {
+      return (data != null
+              ? (data as List)
+                    .map((e) => deserialize<_is.UuidValue>(e))
+                    .toList()
+              : null)
+          as T;
+    }
     if (t == List<_i8mh39wa.DriveItemKind>) {
       return (data as List)
               .map((e) => deserialize<_i8mh39wa.DriveItemKind>(e))
@@ -11068,6 +16738,20 @@ class Protocol extends _is.DatabaseSerializationManager
       return (data as List)
               .map((e) => deserialize<_iylgyc33.Participant>(e))
               .toList()
+          as T;
+    }
+    if (t == List<_it4o2pk5.RevOpView>) {
+      return (data as List)
+              .map((e) => deserialize<_it4o2pk5.RevOpView>(e))
+              .toList()
+          as T;
+    }
+    if (t == _is.getType<List<_it4o2pk5.RevOpView>?>()) {
+      return (data != null
+              ? (data as List)
+                    .map((e) => deserialize<_it4o2pk5.RevOpView>(e))
+                    .toList()
+              : null)
           as T;
     }
     if (t == List<_iead0ok9.PermissionView>) {
@@ -11216,9 +16900,6 @@ class Protocol extends _is.DatabaseSerializationManager
               .toList()
           as T;
     }
-    if (t == List<int>) {
-      return (data as List).map((e) => deserialize<int>(e)).toList() as T;
-    }
     if (t == List<_i8qikgvy.BoardBundleSuggestionView>) {
       return (data as List)
               .map((e) => deserialize<_i8qikgvy.BoardBundleSuggestionView>(e))
@@ -11310,6 +16991,24 @@ class Protocol extends _is.DatabaseSerializationManager
               .toList()
           as T;
     }
+    if (t == List<_iu7aww0d.RevOpView>) {
+      return (data as List)
+              .map((e) => deserialize<_iu7aww0d.RevOpView>(e))
+              .toList()
+          as T;
+    }
+    if (t == Map<String, String>) {
+      return (data as Map).map(
+            (k, v) => MapEntry(deserialize<String>(k), deserialize<String>(v)),
+          )
+          as T;
+    }
+    if (t == Map<String, String?>) {
+      return (data as Map).map(
+            (k, v) => MapEntry(deserialize<String>(k), deserialize<String?>(v)),
+          )
+          as T;
+    }
     if (t == List<_isf59hoo.ScriptExecution>) {
       return (data as List)
               .map((e) => deserialize<_isf59hoo.ScriptExecution>(e))
@@ -11378,6 +17077,7 @@ class Protocol extends _is.DatabaseSerializationManager
 
   static String? getClassNameForType(Type type) {
     return switch (type) {
+      _ihl3axv2.AclFutureCallFanOutModel => 'AclFutureCallFanOutModel',
       _icgheary.BoardFutureCallSummarizeModel =>
         'BoardFutureCallSummarizeModel',
       _if8h900w.BoardFutureCallTriageModel => 'BoardFutureCallTriageModel',
@@ -11402,6 +17102,7 @@ class Protocol extends _is.DatabaseSerializationManager
       _ixdmbuaj.ItemViewDay => 'ItemViewDay',
       _ifmsnq1y.UserActivitySettings => 'UserActivitySettings',
       _iyja8k5e.AiApplyMode => 'AiApplyMode',
+      _iuq1eobh.AiPreviewRecord => 'AiPreviewRecord',
       _ir7z75mb.AiProvider => 'AiProvider',
       _ic2q2fwi.AiProviderKeyView => 'AiProviderKeyView',
       _iviyoyk9.AiQuality => 'AiQuality',
@@ -11480,6 +17181,7 @@ class Protocol extends _is.DatabaseSerializationManager
       _i818olql.CommentThreadView => 'CommentThreadView',
       _i4xrxro7.CommentView => 'CommentView',
       _ii98prcs.AccessRole => 'AccessRole',
+      _i2wc4tyi.ActorKind => 'ActorKind',
       _inb0isem.WonkyErrorCode => 'WonkyErrorCode',
       _igdswlrw.WonkyException => 'WonkyException',
       _iktwt5zz.DriveChange => 'DriveChange',
@@ -11545,6 +17247,28 @@ class Protocol extends _is.DatabaseSerializationManager
       _i8r9afjv.PresenceUpdated => 'PresenceUpdated',
       _ik055xb9.PresenceState => 'PresenceState',
       _isz2sju0.PresenceUpdate => 'PresenceUpdate',
+      _ie6clghy.RevAck => 'RevAck',
+      _i6ck957q.RevPing => 'RevPing',
+      _i6ck957q.RevRequestOps => 'RevRequestOps',
+      _i6ck957q.RevSubmit => 'RevSubmit',
+      _ie6clghy.RevInit => 'RevInit',
+      _ie6clghy.RevPong => 'RevPong',
+      _ie6clghy.RevRejected => 'RevRejected',
+      _ie6clghy.RevRemoteOp => 'RevRemoteOp',
+      _ie6clghy.RevResync => 'RevResync',
+      _ie6clghy.RevRoleChanged => 'RevRoleChanged',
+      _iyewfisw.RevBusMessage => 'RevBusMessage',
+      _ip7h3lg0.RevFile => 'RevFile',
+      _ihwy023l.RevFileInfo => 'RevFileInfo',
+      _iwkehf4e.RevFileKind => 'RevFileKind',
+      _ivfqwl6l.RevHookState => 'RevHookState',
+      _iax01zbg.RevOp => 'RevOp',
+      _it4o2pk5.RevOpView => 'RevOpView',
+      _ium7xjeg.RevPage => 'RevPage',
+      _i3q3ua5p.RevPageKind => 'RevPageKind',
+      _if03ikx4.RevPageRequest => 'RevPageRequest',
+      _iilsyt4b.RevRejectCode => 'RevRejectCode',
+      _ibw3povl.ServerChangeRecord => 'ServerChangeRecord',
       _i8scn8dm.AccessRequest => 'AccessRequest',
       _i7trut12.AccessRequestOutcome => 'AccessRequestOutcome',
       _iimp60a4.AccessRequestView => 'AccessRequestView',
@@ -11584,7 +17308,6 @@ class Protocol extends _is.DatabaseSerializationManager
       _i4t3jyqe.SheetsAiPreview => 'SheetsAiPreview',
       _idzstekp.SheetsAiPreviewCall => 'SheetsAiPreviewCall',
       _i49726iv.SheetsAiPreviewCell => 'SheetsAiPreviewCell',
-      _isjcf5k8.SheetsAiPreviewRecord => 'SheetsAiPreviewRecord',
       _izbpavhd.SheetsFillProposal => 'SheetsFillProposal',
       _i1gi0ui2.SheetsFillRow => 'SheetsFillRow',
       _i2bhah0l.SheetsFormulaSuggestion => 'SheetsFormulaSuggestion',
@@ -11594,24 +17317,43 @@ class Protocol extends _is.DatabaseSerializationManager
       _ik5lpvx4.CellHistory => 'CellHistory',
       _ij1xvs09.CellHistoryEntry => 'CellHistoryEntry',
       _i09xo3k8.CellHistoryPage => 'CellHistoryPage',
-      _i4tr28q5.ReservedSpace => 'ReservedSpace',
       _ilv3hlxr.RevertResult => 'RevertResult',
       _ipqum05l.RevertSkip => 'RevertSkip',
-      _it4o4dd3.ServerChangeRecord => 'ServerChangeRecord',
+      _i3p6on16.Banding => 'Banding',
+      _iofnuqg9.BasicFilter => 'BasicFilter',
+      _ifc5vn9h.Cell => 'Cell',
+      _iy4zsn6m.ConditionalFormatRule => 'ConditionalFormatRule',
+      _i5c2bsv2.DataValidationRule => 'DataValidationRule',
+      _i145vl5m.DimensionGroup => 'DimensionGroup',
+      _iye9c0co.EmbeddedObject => 'EmbeddedObject',
+      _ilnsyzhq.Dimension => 'Dimension',
+      _ihfpm0ve.EmbeddedObjectKind => 'EmbeddedObjectKind',
+      _iofwzekn.HorizontalAlign => 'HorizontalAlign',
+      _i0z9m4nl.RecalcMode => 'RecalcMode',
+      _io4oc09s.ScriptBuildStatus => 'ScriptBuildStatus',
+      _i8ne06ql.SheetKind => 'SheetKind',
+      _irmtoho8.TriggerKind => 'TriggerKind',
+      _ivf2txqv.VerticalAlign => 'VerticalAlign',
+      _iz9rjt8b.WrapStrategy => 'WrapStrategy',
+      _igzd7u0m.FilterView => 'FilterView',
+      _iiq43rv8.Macro => 'Macro',
+      _i57rr32y.MergedRange => 'MergedRange',
+      _irrybuvb.NamedRange => 'NamedRange',
+      _iz580og3.PivotTable => 'PivotTable',
+      _iz1b7y52.ProtectedRange => 'ProtectedRange',
+      _ibdybin0.ScriptBuild => 'ScriptBuild',
+      _iplsajic.ScriptFile => 'ScriptFile',
+      _iy6gs0qh.ScriptProject => 'ScriptProject',
+      _ig9hff0r.ScriptProperty => 'ScriptProperty',
+      _irlm292d.ScriptTrigger => 'ScriptTrigger',
+      _i8c5x9aj.Sheet => 'Sheet',
+      _i6chd4x2.SheetColumn => 'SheetColumn',
+      _i4k3x536.SheetRow => 'SheetRow',
+      _ib6gxu4b.Spreadsheet => 'Spreadsheet',
+      _ijtj1mph.ScriptUserProperty => 'ScriptUserProperty',
       _iaehez21.SheetsActivitySummary => 'SheetsActivitySummary',
-      _i5z6gq3n.SheetsChangeLogReceipt => 'SheetsChangeLogReceipt',
       _i9yjzgjk.SheetsContributorStat => 'SheetsContributorStat',
-      _ign37bwd.SheetsDirtySpace => 'SheetsDirtySpace',
-      _i6vovdef.SheetsJournalSpace => 'SheetsJournalSpace',
-      _izigafhu.SheetsMergedSignal => 'SheetsMergedSignal',
-      _i09o85d1.SheetsRowJournal => 'SheetsRowJournal',
       _iwl8v9t3.SheetsSnapshotIndex => 'SheetsSnapshotIndex',
-      _i19n72yw.SpaceKind => 'SpaceKind',
-      _i9g7m0kd.SpaceReservation => 'SpaceReservation',
-      _izbczo40.SpaceStats => 'SpaceStats',
-      _i1qxq8ae.SpaceSubscription => 'SpaceSubscription',
-      _i6dq35xo.SubscribeResult => 'SubscribeResult',
-      _ic8hyldr.SubscriptionReason => 'SubscriptionReason',
       _ibv2hdjr.ScriptAuthorization => 'ScriptAuthorization',
       _icjzxy6x.ScriptAuthorizationView => 'ScriptAuthorizationView',
       _iq0xpzf7.ScriptCompileResponse => 'ScriptCompileResponse',
@@ -11639,7 +17381,25 @@ class Protocol extends _is.DatabaseSerializationManager
       _iua8dx49.ChartSnapshotView => 'ChartSnapshotView',
       _iq1h9id2.ChartSourceList => 'ChartSourceList',
       _inygrvyi.ChartSourceSummary => 'ChartSourceSummary',
-      _ircoml6y.DeckChangeLogReceipt => 'DeckChangeLogReceipt',
+      _ihkglt8b.ChartLink => 'ChartLink',
+      _i6svv371.CodeState => 'CodeState',
+      _ioalf2ve.Deck => 'Deck',
+      _i5vaufan.DeckTheme => 'DeckTheme',
+      _ipok3hcm.BuildKind => 'BuildKind',
+      _isb6wks2.BuildTrigger => 'BuildTrigger',
+      _isf9v7y6.DeckAppearance => 'DeckAppearance',
+      _i4oq3vgh.PlaceholderType => 'PlaceholderType',
+      _isah8148.SlideElementKind => 'SlideElementKind',
+      _isghg0k1.SlideSizePreset => 'SlideSizePreset',
+      _i5m4q7yg.TableDimension => 'TableDimension',
+      _ipsr29xb.Slide => 'Slide',
+      _izfj14nk.SlideBuild => 'SlideBuild',
+      _ih1q77t5.SlideElement => 'SlideElement',
+      _ic2hhlok.SlideGroup => 'SlideGroup',
+      _i3k3vjpp.SlideLayout => 'SlideLayout',
+      _igjrafa0.SlideMaster => 'SlideMaster',
+      _iewd9d8j.SlideTableAxis => 'SlideTableAxis',
+      _ibnoy0fr.SlideTableCell => 'SlideTableCell',
       _ildgqgkz.PresentationBusMessage => 'PresentationBusMessage',
       _iz9vxb2f.PresentationCommandEvent => 'PresentationCommandEvent',
       _ijdad65m.PresentationCommandUpdate => 'PresentationCommandUpdate',
@@ -11720,6 +17480,8 @@ class Protocol extends _is.DatabaseSerializationManager
     }
 
     switch (data) {
+      case _ihl3axv2.AclFutureCallFanOutModel():
+        return 'AclFutureCallFanOutModel';
       case _icgheary.BoardFutureCallSummarizeModel():
         return 'BoardFutureCallSummarizeModel';
       case _if8h900w.BoardFutureCallTriageModel():
@@ -11754,6 +17516,8 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'UserActivitySettings';
       case _iyja8k5e.AiApplyMode():
         return 'AiApplyMode';
+      case _iuq1eobh.AiPreviewRecord():
+        return 'AiPreviewRecord';
       case _ir7z75mb.AiProvider():
         return 'AiProvider';
       case _ic2q2fwi.AiProviderKeyView():
@@ -11910,6 +17674,8 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'CommentView';
       case _ii98prcs.AccessRole():
         return 'AccessRole';
+      case _i2wc4tyi.ActorKind():
+        return 'ActorKind';
       case _inb0isem.WonkyErrorCode():
         return 'WonkyErrorCode';
       case _igdswlrw.WonkyException():
@@ -12040,6 +17806,50 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'PresenceState';
       case _isz2sju0.PresenceUpdate():
         return 'PresenceUpdate';
+      case _ie6clghy.RevAck():
+        return 'RevAck';
+      case _i6ck957q.RevPing():
+        return 'RevPing';
+      case _i6ck957q.RevRequestOps():
+        return 'RevRequestOps';
+      case _i6ck957q.RevSubmit():
+        return 'RevSubmit';
+      case _ie6clghy.RevInit():
+        return 'RevInit';
+      case _ie6clghy.RevPong():
+        return 'RevPong';
+      case _ie6clghy.RevRejected():
+        return 'RevRejected';
+      case _ie6clghy.RevRemoteOp():
+        return 'RevRemoteOp';
+      case _ie6clghy.RevResync():
+        return 'RevResync';
+      case _ie6clghy.RevRoleChanged():
+        return 'RevRoleChanged';
+      case _iyewfisw.RevBusMessage():
+        return 'RevBusMessage';
+      case _ip7h3lg0.RevFile():
+        return 'RevFile';
+      case _ihwy023l.RevFileInfo():
+        return 'RevFileInfo';
+      case _iwkehf4e.RevFileKind():
+        return 'RevFileKind';
+      case _ivfqwl6l.RevHookState():
+        return 'RevHookState';
+      case _iax01zbg.RevOp():
+        return 'RevOp';
+      case _it4o2pk5.RevOpView():
+        return 'RevOpView';
+      case _ium7xjeg.RevPage():
+        return 'RevPage';
+      case _i3q3ua5p.RevPageKind():
+        return 'RevPageKind';
+      case _if03ikx4.RevPageRequest():
+        return 'RevPageRequest';
+      case _iilsyt4b.RevRejectCode():
+        return 'RevRejectCode';
+      case _ibw3povl.ServerChangeRecord():
+        return 'ServerChangeRecord';
       case _i8scn8dm.AccessRequest():
         return 'AccessRequest';
       case _i7trut12.AccessRequestOutcome():
@@ -12118,8 +17928,6 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'SheetsAiPreviewCall';
       case _i49726iv.SheetsAiPreviewCell():
         return 'SheetsAiPreviewCell';
-      case _isjcf5k8.SheetsAiPreviewRecord():
-        return 'SheetsAiPreviewRecord';
       case _izbpavhd.SheetsFillProposal():
         return 'SheetsFillProposal';
       case _i1gi0ui2.SheetsFillRow():
@@ -12138,42 +17946,80 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'CellHistoryEntry';
       case _i09xo3k8.CellHistoryPage():
         return 'CellHistoryPage';
-      case _i4tr28q5.ReservedSpace():
-        return 'ReservedSpace';
       case _ilv3hlxr.RevertResult():
         return 'RevertResult';
       case _ipqum05l.RevertSkip():
         return 'RevertSkip';
-      case _it4o4dd3.ServerChangeRecord():
-        return 'ServerChangeRecord';
+      case _i3p6on16.Banding():
+        return 'Banding';
+      case _iofnuqg9.BasicFilter():
+        return 'BasicFilter';
+      case _ifc5vn9h.Cell():
+        return 'Cell';
+      case _iy4zsn6m.ConditionalFormatRule():
+        return 'ConditionalFormatRule';
+      case _i5c2bsv2.DataValidationRule():
+        return 'DataValidationRule';
+      case _i145vl5m.DimensionGroup():
+        return 'DimensionGroup';
+      case _iye9c0co.EmbeddedObject():
+        return 'EmbeddedObject';
+      case _ilnsyzhq.Dimension():
+        return 'Dimension';
+      case _ihfpm0ve.EmbeddedObjectKind():
+        return 'EmbeddedObjectKind';
+      case _iofwzekn.HorizontalAlign():
+        return 'HorizontalAlign';
+      case _i0z9m4nl.RecalcMode():
+        return 'RecalcMode';
+      case _io4oc09s.ScriptBuildStatus():
+        return 'ScriptBuildStatus';
+      case _i8ne06ql.SheetKind():
+        return 'SheetKind';
+      case _irmtoho8.TriggerKind():
+        return 'TriggerKind';
+      case _ivf2txqv.VerticalAlign():
+        return 'VerticalAlign';
+      case _iz9rjt8b.WrapStrategy():
+        return 'WrapStrategy';
+      case _igzd7u0m.FilterView():
+        return 'FilterView';
+      case _iiq43rv8.Macro():
+        return 'Macro';
+      case _i57rr32y.MergedRange():
+        return 'MergedRange';
+      case _irrybuvb.NamedRange():
+        return 'NamedRange';
+      case _iz580og3.PivotTable():
+        return 'PivotTable';
+      case _iz1b7y52.ProtectedRange():
+        return 'ProtectedRange';
+      case _ibdybin0.ScriptBuild():
+        return 'ScriptBuild';
+      case _iplsajic.ScriptFile():
+        return 'ScriptFile';
+      case _iy6gs0qh.ScriptProject():
+        return 'ScriptProject';
+      case _ig9hff0r.ScriptProperty():
+        return 'ScriptProperty';
+      case _irlm292d.ScriptTrigger():
+        return 'ScriptTrigger';
+      case _i8c5x9aj.Sheet():
+        return 'Sheet';
+      case _i6chd4x2.SheetColumn():
+        return 'SheetColumn';
+      case _i4k3x536.SheetRow():
+        return 'SheetRow';
+      case _ib6gxu4b.Spreadsheet():
+        return 'Spreadsheet';
+      case _ijtj1mph.ScriptUserProperty():
+        return 'ScriptUserProperty';
       case _iaehez21.SheetsActivitySummary():
         return 'SheetsActivitySummary';
-      case _i5z6gq3n.SheetsChangeLogReceipt():
-        return 'SheetsChangeLogReceipt';
       case _i9yjzgjk.SheetsContributorStat():
         return 'SheetsContributorStat';
-      case _ign37bwd.SheetsDirtySpace():
-        return 'SheetsDirtySpace';
-      case _i6vovdef.SheetsJournalSpace():
-        return 'SheetsJournalSpace';
-      case _izigafhu.SheetsMergedSignal():
-        return 'SheetsMergedSignal';
-      case _i09o85d1.SheetsRowJournal():
-        return 'SheetsRowJournal';
       case _iwl8v9t3.SheetsSnapshotIndex():
         return 'SheetsSnapshotIndex';
-      case _i19n72yw.SpaceKind():
-        return 'SpaceKind';
-      case _i9g7m0kd.SpaceReservation():
-        return 'SpaceReservation';
-      case _izbczo40.SpaceStats():
-        return 'SpaceStats';
-      case _i1qxq8ae.SpaceSubscription():
-        return 'SpaceSubscription';
-      case _i6dq35xo.SubscribeResult():
-        return 'SubscribeResult';
-      case _ic8hyldr.SubscriptionReason():
-        return 'SubscriptionReason';
       case _ibv2hdjr.ScriptAuthorization():
         return 'ScriptAuthorization';
       case _icjzxy6x.ScriptAuthorizationView():
@@ -12228,8 +18074,44 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'ChartSourceList';
       case _inygrvyi.ChartSourceSummary():
         return 'ChartSourceSummary';
-      case _ircoml6y.DeckChangeLogReceipt():
-        return 'DeckChangeLogReceipt';
+      case _ihkglt8b.ChartLink():
+        return 'ChartLink';
+      case _i6svv371.CodeState():
+        return 'CodeState';
+      case _ioalf2ve.Deck():
+        return 'Deck';
+      case _i5vaufan.DeckTheme():
+        return 'DeckTheme';
+      case _ipok3hcm.BuildKind():
+        return 'BuildKind';
+      case _isb6wks2.BuildTrigger():
+        return 'BuildTrigger';
+      case _isf9v7y6.DeckAppearance():
+        return 'DeckAppearance';
+      case _i4oq3vgh.PlaceholderType():
+        return 'PlaceholderType';
+      case _isah8148.SlideElementKind():
+        return 'SlideElementKind';
+      case _isghg0k1.SlideSizePreset():
+        return 'SlideSizePreset';
+      case _i5m4q7yg.TableDimension():
+        return 'TableDimension';
+      case _ipsr29xb.Slide():
+        return 'Slide';
+      case _izfj14nk.SlideBuild():
+        return 'SlideBuild';
+      case _ih1q77t5.SlideElement():
+        return 'SlideElement';
+      case _ic2hhlok.SlideGroup():
+        return 'SlideGroup';
+      case _i3k3vjpp.SlideLayout():
+        return 'SlideLayout';
+      case _igjrafa0.SlideMaster():
+        return 'SlideMaster';
+      case _iewd9d8j.SlideTableAxis():
+        return 'SlideTableAxis';
+      case _ibnoy0fr.SlideTableCell():
+        return 'SlideTableCell';
       case _ildgqgkz.PresentationBusMessage():
         return 'PresentationBusMessage';
       case _iz9vxb2f.PresentationCommandEvent():
@@ -12369,23 +18251,11 @@ class Protocol extends _is.DatabaseSerializationManager
           ? className
           : 'serverpod_auth_idp.$className';
     }
-    className = _izehhkf5.Protocol().getClassNameForObject(data);
-    if (className != null) {
-      return className.contains('.')
-          ? className
-          : 'serverpod_offline_sync.$className';
-    }
     className = _iacs.Protocol().getClassNameForObject(data);
     if (className != null) {
       return className.contains('.')
           ? className
           : 'serverpod_auth_core.$className';
-    }
-    className = _i810rwvy.Protocol().getClassNameForObject(data);
-    if (className != null) {
-      return className.contains('.')
-          ? className
-          : 'wonky_sync_models.$className';
     }
     className = _isp.Protocol().getClassNameForObject(data);
     if (className != null) {
@@ -12399,6 +18269,9 @@ class Protocol extends _is.DatabaseSerializationManager
     var dataClassName = data['className'];
     if (dataClassName is! String) {
       return super.deserializeByClassName(data);
+    }
+    if (dataClassName == 'AclFutureCallFanOutModel') {
+      return deserialize<_ihl3axv2.AclFutureCallFanOutModel>(data['data']);
     }
     if (dataClassName == 'BoardFutureCallSummarizeModel') {
       return deserialize<_icgheary.BoardFutureCallSummarizeModel>(data['data']);
@@ -12462,6 +18335,9 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (dataClassName == 'AiApplyMode') {
       return deserialize<_iyja8k5e.AiApplyMode>(data['data']);
+    }
+    if (dataClassName == 'AiPreviewRecord') {
+      return deserialize<_iuq1eobh.AiPreviewRecord>(data['data']);
     }
     if (dataClassName == 'AiProvider') {
       return deserialize<_ir7z75mb.AiProvider>(data['data']);
@@ -12697,6 +18573,9 @@ class Protocol extends _is.DatabaseSerializationManager
     if (dataClassName == 'AccessRole') {
       return deserialize<_ii98prcs.AccessRole>(data['data']);
     }
+    if (dataClassName == 'ActorKind') {
+      return deserialize<_i2wc4tyi.ActorKind>(data['data']);
+    }
     if (dataClassName == 'WonkyErrorCode') {
       return deserialize<_inb0isem.WonkyErrorCode>(data['data']);
     }
@@ -12892,6 +18771,72 @@ class Protocol extends _is.DatabaseSerializationManager
     if (dataClassName == 'PresenceUpdate') {
       return deserialize<_isz2sju0.PresenceUpdate>(data['data']);
     }
+    if (dataClassName == 'RevAck') {
+      return deserialize<_ie6clghy.RevAck>(data['data']);
+    }
+    if (dataClassName == 'RevPing') {
+      return deserialize<_i6ck957q.RevPing>(data['data']);
+    }
+    if (dataClassName == 'RevRequestOps') {
+      return deserialize<_i6ck957q.RevRequestOps>(data['data']);
+    }
+    if (dataClassName == 'RevSubmit') {
+      return deserialize<_i6ck957q.RevSubmit>(data['data']);
+    }
+    if (dataClassName == 'RevInit') {
+      return deserialize<_ie6clghy.RevInit>(data['data']);
+    }
+    if (dataClassName == 'RevPong') {
+      return deserialize<_ie6clghy.RevPong>(data['data']);
+    }
+    if (dataClassName == 'RevRejected') {
+      return deserialize<_ie6clghy.RevRejected>(data['data']);
+    }
+    if (dataClassName == 'RevRemoteOp') {
+      return deserialize<_ie6clghy.RevRemoteOp>(data['data']);
+    }
+    if (dataClassName == 'RevResync') {
+      return deserialize<_ie6clghy.RevResync>(data['data']);
+    }
+    if (dataClassName == 'RevRoleChanged') {
+      return deserialize<_ie6clghy.RevRoleChanged>(data['data']);
+    }
+    if (dataClassName == 'RevBusMessage') {
+      return deserialize<_iyewfisw.RevBusMessage>(data['data']);
+    }
+    if (dataClassName == 'RevFile') {
+      return deserialize<_ip7h3lg0.RevFile>(data['data']);
+    }
+    if (dataClassName == 'RevFileInfo') {
+      return deserialize<_ihwy023l.RevFileInfo>(data['data']);
+    }
+    if (dataClassName == 'RevFileKind') {
+      return deserialize<_iwkehf4e.RevFileKind>(data['data']);
+    }
+    if (dataClassName == 'RevHookState') {
+      return deserialize<_ivfqwl6l.RevHookState>(data['data']);
+    }
+    if (dataClassName == 'RevOp') {
+      return deserialize<_iax01zbg.RevOp>(data['data']);
+    }
+    if (dataClassName == 'RevOpView') {
+      return deserialize<_it4o2pk5.RevOpView>(data['data']);
+    }
+    if (dataClassName == 'RevPage') {
+      return deserialize<_ium7xjeg.RevPage>(data['data']);
+    }
+    if (dataClassName == 'RevPageKind') {
+      return deserialize<_i3q3ua5p.RevPageKind>(data['data']);
+    }
+    if (dataClassName == 'RevPageRequest') {
+      return deserialize<_if03ikx4.RevPageRequest>(data['data']);
+    }
+    if (dataClassName == 'RevRejectCode') {
+      return deserialize<_iilsyt4b.RevRejectCode>(data['data']);
+    }
+    if (dataClassName == 'ServerChangeRecord') {
+      return deserialize<_ibw3povl.ServerChangeRecord>(data['data']);
+    }
     if (dataClassName == 'AccessRequest') {
       return deserialize<_i8scn8dm.AccessRequest>(data['data']);
     }
@@ -13009,9 +18954,6 @@ class Protocol extends _is.DatabaseSerializationManager
     if (dataClassName == 'SheetsAiPreviewCell') {
       return deserialize<_i49726iv.SheetsAiPreviewCell>(data['data']);
     }
-    if (dataClassName == 'SheetsAiPreviewRecord') {
-      return deserialize<_isjcf5k8.SheetsAiPreviewRecord>(data['data']);
-    }
     if (dataClassName == 'SheetsFillProposal') {
       return deserialize<_izbpavhd.SheetsFillProposal>(data['data']);
     }
@@ -13039,59 +18981,116 @@ class Protocol extends _is.DatabaseSerializationManager
     if (dataClassName == 'CellHistoryPage') {
       return deserialize<_i09xo3k8.CellHistoryPage>(data['data']);
     }
-    if (dataClassName == 'ReservedSpace') {
-      return deserialize<_i4tr28q5.ReservedSpace>(data['data']);
-    }
     if (dataClassName == 'RevertResult') {
       return deserialize<_ilv3hlxr.RevertResult>(data['data']);
     }
     if (dataClassName == 'RevertSkip') {
       return deserialize<_ipqum05l.RevertSkip>(data['data']);
     }
-    if (dataClassName == 'ServerChangeRecord') {
-      return deserialize<_it4o4dd3.ServerChangeRecord>(data['data']);
+    if (dataClassName == 'Banding') {
+      return deserialize<_i3p6on16.Banding>(data['data']);
+    }
+    if (dataClassName == 'BasicFilter') {
+      return deserialize<_iofnuqg9.BasicFilter>(data['data']);
+    }
+    if (dataClassName == 'Cell') {
+      return deserialize<_ifc5vn9h.Cell>(data['data']);
+    }
+    if (dataClassName == 'ConditionalFormatRule') {
+      return deserialize<_iy4zsn6m.ConditionalFormatRule>(data['data']);
+    }
+    if (dataClassName == 'DataValidationRule') {
+      return deserialize<_i5c2bsv2.DataValidationRule>(data['data']);
+    }
+    if (dataClassName == 'DimensionGroup') {
+      return deserialize<_i145vl5m.DimensionGroup>(data['data']);
+    }
+    if (dataClassName == 'EmbeddedObject') {
+      return deserialize<_iye9c0co.EmbeddedObject>(data['data']);
+    }
+    if (dataClassName == 'Dimension') {
+      return deserialize<_ilnsyzhq.Dimension>(data['data']);
+    }
+    if (dataClassName == 'EmbeddedObjectKind') {
+      return deserialize<_ihfpm0ve.EmbeddedObjectKind>(data['data']);
+    }
+    if (dataClassName == 'HorizontalAlign') {
+      return deserialize<_iofwzekn.HorizontalAlign>(data['data']);
+    }
+    if (dataClassName == 'RecalcMode') {
+      return deserialize<_i0z9m4nl.RecalcMode>(data['data']);
+    }
+    if (dataClassName == 'ScriptBuildStatus') {
+      return deserialize<_io4oc09s.ScriptBuildStatus>(data['data']);
+    }
+    if (dataClassName == 'SheetKind') {
+      return deserialize<_i8ne06ql.SheetKind>(data['data']);
+    }
+    if (dataClassName == 'TriggerKind') {
+      return deserialize<_irmtoho8.TriggerKind>(data['data']);
+    }
+    if (dataClassName == 'VerticalAlign') {
+      return deserialize<_ivf2txqv.VerticalAlign>(data['data']);
+    }
+    if (dataClassName == 'WrapStrategy') {
+      return deserialize<_iz9rjt8b.WrapStrategy>(data['data']);
+    }
+    if (dataClassName == 'FilterView') {
+      return deserialize<_igzd7u0m.FilterView>(data['data']);
+    }
+    if (dataClassName == 'Macro') {
+      return deserialize<_iiq43rv8.Macro>(data['data']);
+    }
+    if (dataClassName == 'MergedRange') {
+      return deserialize<_i57rr32y.MergedRange>(data['data']);
+    }
+    if (dataClassName == 'NamedRange') {
+      return deserialize<_irrybuvb.NamedRange>(data['data']);
+    }
+    if (dataClassName == 'PivotTable') {
+      return deserialize<_iz580og3.PivotTable>(data['data']);
+    }
+    if (dataClassName == 'ProtectedRange') {
+      return deserialize<_iz1b7y52.ProtectedRange>(data['data']);
+    }
+    if (dataClassName == 'ScriptBuild') {
+      return deserialize<_ibdybin0.ScriptBuild>(data['data']);
+    }
+    if (dataClassName == 'ScriptFile') {
+      return deserialize<_iplsajic.ScriptFile>(data['data']);
+    }
+    if (dataClassName == 'ScriptProject') {
+      return deserialize<_iy6gs0qh.ScriptProject>(data['data']);
+    }
+    if (dataClassName == 'ScriptProperty') {
+      return deserialize<_ig9hff0r.ScriptProperty>(data['data']);
+    }
+    if (dataClassName == 'ScriptTrigger') {
+      return deserialize<_irlm292d.ScriptTrigger>(data['data']);
+    }
+    if (dataClassName == 'Sheet') {
+      return deserialize<_i8c5x9aj.Sheet>(data['data']);
+    }
+    if (dataClassName == 'SheetColumn') {
+      return deserialize<_i6chd4x2.SheetColumn>(data['data']);
+    }
+    if (dataClassName == 'SheetRow') {
+      return deserialize<_i4k3x536.SheetRow>(data['data']);
+    }
+    if (dataClassName == 'Spreadsheet') {
+      return deserialize<_ib6gxu4b.Spreadsheet>(data['data']);
+    }
+    if (dataClassName == 'ScriptUserProperty') {
+      return deserialize<_ijtj1mph.ScriptUserProperty>(data['data']);
     }
     if (dataClassName == 'SheetsActivitySummary') {
       return deserialize<_iaehez21.SheetsActivitySummary>(data['data']);
     }
-    if (dataClassName == 'SheetsChangeLogReceipt') {
-      return deserialize<_i5z6gq3n.SheetsChangeLogReceipt>(data['data']);
-    }
     if (dataClassName == 'SheetsContributorStat') {
       return deserialize<_i9yjzgjk.SheetsContributorStat>(data['data']);
     }
-    if (dataClassName == 'SheetsDirtySpace') {
-      return deserialize<_ign37bwd.SheetsDirtySpace>(data['data']);
-    }
-    if (dataClassName == 'SheetsJournalSpace') {
-      return deserialize<_i6vovdef.SheetsJournalSpace>(data['data']);
-    }
-    if (dataClassName == 'SheetsMergedSignal') {
-      return deserialize<_izigafhu.SheetsMergedSignal>(data['data']);
-    }
-    if (dataClassName == 'SheetsRowJournal') {
-      return deserialize<_i09o85d1.SheetsRowJournal>(data['data']);
-    }
     if (dataClassName == 'SheetsSnapshotIndex') {
       return deserialize<_iwl8v9t3.SheetsSnapshotIndex>(data['data']);
-    }
-    if (dataClassName == 'SpaceKind') {
-      return deserialize<_i19n72yw.SpaceKind>(data['data']);
-    }
-    if (dataClassName == 'SpaceReservation') {
-      return deserialize<_i9g7m0kd.SpaceReservation>(data['data']);
-    }
-    if (dataClassName == 'SpaceStats') {
-      return deserialize<_izbczo40.SpaceStats>(data['data']);
-    }
-    if (dataClassName == 'SpaceSubscription') {
-      return deserialize<_i1qxq8ae.SpaceSubscription>(data['data']);
-    }
-    if (dataClassName == 'SubscribeResult') {
-      return deserialize<_i6dq35xo.SubscribeResult>(data['data']);
-    }
-    if (dataClassName == 'SubscriptionReason') {
-      return deserialize<_ic8hyldr.SubscriptionReason>(data['data']);
     }
     if (dataClassName == 'ScriptAuthorization') {
       return deserialize<_ibv2hdjr.ScriptAuthorization>(data['data']);
@@ -13174,8 +19173,62 @@ class Protocol extends _is.DatabaseSerializationManager
     if (dataClassName == 'ChartSourceSummary') {
       return deserialize<_inygrvyi.ChartSourceSummary>(data['data']);
     }
-    if (dataClassName == 'DeckChangeLogReceipt') {
-      return deserialize<_ircoml6y.DeckChangeLogReceipt>(data['data']);
+    if (dataClassName == 'ChartLink') {
+      return deserialize<_ihkglt8b.ChartLink>(data['data']);
+    }
+    if (dataClassName == 'CodeState') {
+      return deserialize<_i6svv371.CodeState>(data['data']);
+    }
+    if (dataClassName == 'Deck') {
+      return deserialize<_ioalf2ve.Deck>(data['data']);
+    }
+    if (dataClassName == 'DeckTheme') {
+      return deserialize<_i5vaufan.DeckTheme>(data['data']);
+    }
+    if (dataClassName == 'BuildKind') {
+      return deserialize<_ipok3hcm.BuildKind>(data['data']);
+    }
+    if (dataClassName == 'BuildTrigger') {
+      return deserialize<_isb6wks2.BuildTrigger>(data['data']);
+    }
+    if (dataClassName == 'DeckAppearance') {
+      return deserialize<_isf9v7y6.DeckAppearance>(data['data']);
+    }
+    if (dataClassName == 'PlaceholderType') {
+      return deserialize<_i4oq3vgh.PlaceholderType>(data['data']);
+    }
+    if (dataClassName == 'SlideElementKind') {
+      return deserialize<_isah8148.SlideElementKind>(data['data']);
+    }
+    if (dataClassName == 'SlideSizePreset') {
+      return deserialize<_isghg0k1.SlideSizePreset>(data['data']);
+    }
+    if (dataClassName == 'TableDimension') {
+      return deserialize<_i5m4q7yg.TableDimension>(data['data']);
+    }
+    if (dataClassName == 'Slide') {
+      return deserialize<_ipsr29xb.Slide>(data['data']);
+    }
+    if (dataClassName == 'SlideBuild') {
+      return deserialize<_izfj14nk.SlideBuild>(data['data']);
+    }
+    if (dataClassName == 'SlideElement') {
+      return deserialize<_ih1q77t5.SlideElement>(data['data']);
+    }
+    if (dataClassName == 'SlideGroup') {
+      return deserialize<_ic2hhlok.SlideGroup>(data['data']);
+    }
+    if (dataClassName == 'SlideLayout') {
+      return deserialize<_i3k3vjpp.SlideLayout>(data['data']);
+    }
+    if (dataClassName == 'SlideMaster') {
+      return deserialize<_igjrafa0.SlideMaster>(data['data']);
+    }
+    if (dataClassName == 'SlideTableAxis') {
+      return deserialize<_iewd9d8j.SlideTableAxis>(data['data']);
+    }
+    if (dataClassName == 'SlideTableCell') {
+      return deserialize<_ibnoy0fr.SlideTableCell>(data['data']);
     }
     if (dataClassName == 'PresentationBusMessage') {
       return deserialize<_ildgqgkz.PresentationBusMessage>(data['data']);
@@ -13379,17 +19432,9 @@ class Protocol extends _is.DatabaseSerializationManager
       data['className'] = dataClassName.substring(19);
       return _iais.Protocol().deserializeByClassName(data);
     }
-    if (dataClassName.startsWith('serverpod_offline_sync.')) {
-      data['className'] = dataClassName.substring(23);
-      return _izehhkf5.Protocol().deserializeByClassName(data);
-    }
     if (dataClassName.startsWith('serverpod_auth_core.')) {
       data['className'] = dataClassName.substring(20);
       return _iacs.Protocol().deserializeByClassName(data);
-    }
-    if (dataClassName.startsWith('wonky_sync_models.')) {
-      data['className'] = dataClassName.substring(18);
-      return _i810rwvy.Protocol().deserializeByClassName(data);
     }
     if (dataClassName.startsWith('serverpod.')) {
       data['className'] = dataClassName.substring(10);
@@ -13400,9 +19445,7 @@ class Protocol extends _is.DatabaseSerializationManager
 
   void _registerHostProtocols() {
     _iais.Protocol().registerHostProtocol('wonky', this);
-    _izehhkf5.Protocol().registerHostProtocol('wonky', this);
     _iacs.Protocol().registerHostProtocol('wonky', this);
-    _i810rwvy.Protocol().registerHostProtocol('wonky', this);
   }
 
   @override
@@ -13414,22 +19457,7 @@ class Protocol extends _is.DatabaseSerializationManager
       }
     }
     {
-      var table = _izehhkf5.Protocol().getTableForType(t);
-      if (table != null) {
-        return table;
-      }
-    }
-    {
       var table = _iacs.Protocol().getTableForType(t);
-      if (table != null) {
-        return table;
-      }
-    }
-    {
-      var protocol = _i810rwvy.Protocol();
-      var table = protocol is _is.DatabaseSerializationManager
-          ? (protocol as _is.DatabaseSerializationManager).getTableForType(t)
-          : null;
       if (table != null) {
         return table;
       }
@@ -13447,6 +19475,8 @@ class Protocol extends _is.DatabaseSerializationManager
         return _ixdmbuaj.ItemViewDay.t;
       case _ifmsnq1y.UserActivitySettings:
         return _ifmsnq1y.UserActivitySettings.t;
+      case _iuq1eobh.AiPreviewRecord:
+        return _iuq1eobh.AiPreviewRecord.t;
       case _i7i53on7.AiUsage:
         return _i7i53on7.AiUsage.t;
       case _ivv7zvxt.AiUserKey:
@@ -13493,6 +19523,14 @@ class Protocol extends _is.DatabaseSerializationManager
         return _im8eh74x.StoredFile.t;
       case _ik59hiyp.UserNotification:
         return _ik59hiyp.UserNotification.t;
+      case _ip7h3lg0.RevFile:
+        return _ip7h3lg0.RevFile.t;
+      case _ivfqwl6l.RevHookState:
+        return _ivfqwl6l.RevHookState.t;
+      case _iax01zbg.RevOp:
+        return _iax01zbg.RevOp.t;
+      case _ibw3povl.ServerChangeRecord:
+        return _ibw3povl.ServerChangeRecord.t;
       case _i8scn8dm.AccessRequest:
         return _i8scn8dm.AccessRequest.t;
       case _iuzgacy4.DriveItemPermission:
@@ -13517,22 +19555,58 @@ class Protocol extends _is.DatabaseSerializationManager
         return _ibe5uno1.ItemVersionState.t;
       case _i5vk0z7t.AiFunctionCache:
         return _i5vk0z7t.AiFunctionCache.t;
-      case _isjcf5k8.SheetsAiPreviewRecord:
-        return _isjcf5k8.SheetsAiPreviewRecord.t;
       case _i74ohdg2.SheetsImportJob:
         return _i74ohdg2.SheetsImportJob.t;
       case _ik5lpvx4.CellHistory:
         return _ik5lpvx4.CellHistory.t;
-      case _it4o4dd3.ServerChangeRecord:
-        return _it4o4dd3.ServerChangeRecord.t;
-      case _i5z6gq3n.SheetsChangeLogReceipt:
-        return _i5z6gq3n.SheetsChangeLogReceipt.t;
+      case _i3p6on16.Banding:
+        return _i3p6on16.Banding.t;
+      case _iofnuqg9.BasicFilter:
+        return _iofnuqg9.BasicFilter.t;
+      case _ifc5vn9h.Cell:
+        return _ifc5vn9h.Cell.t;
+      case _iy4zsn6m.ConditionalFormatRule:
+        return _iy4zsn6m.ConditionalFormatRule.t;
+      case _i5c2bsv2.DataValidationRule:
+        return _i5c2bsv2.DataValidationRule.t;
+      case _i145vl5m.DimensionGroup:
+        return _i145vl5m.DimensionGroup.t;
+      case _iye9c0co.EmbeddedObject:
+        return _iye9c0co.EmbeddedObject.t;
+      case _igzd7u0m.FilterView:
+        return _igzd7u0m.FilterView.t;
+      case _iiq43rv8.Macro:
+        return _iiq43rv8.Macro.t;
+      case _i57rr32y.MergedRange:
+        return _i57rr32y.MergedRange.t;
+      case _irrybuvb.NamedRange:
+        return _irrybuvb.NamedRange.t;
+      case _iz580og3.PivotTable:
+        return _iz580og3.PivotTable.t;
+      case _iz1b7y52.ProtectedRange:
+        return _iz1b7y52.ProtectedRange.t;
+      case _ibdybin0.ScriptBuild:
+        return _ibdybin0.ScriptBuild.t;
+      case _iplsajic.ScriptFile:
+        return _iplsajic.ScriptFile.t;
+      case _iy6gs0qh.ScriptProject:
+        return _iy6gs0qh.ScriptProject.t;
+      case _ig9hff0r.ScriptProperty:
+        return _ig9hff0r.ScriptProperty.t;
+      case _irlm292d.ScriptTrigger:
+        return _irlm292d.ScriptTrigger.t;
+      case _i8c5x9aj.Sheet:
+        return _i8c5x9aj.Sheet.t;
+      case _i6chd4x2.SheetColumn:
+        return _i6chd4x2.SheetColumn.t;
+      case _i4k3x536.SheetRow:
+        return _i4k3x536.SheetRow.t;
+      case _ib6gxu4b.Spreadsheet:
+        return _ib6gxu4b.Spreadsheet.t;
+      case _ijtj1mph.ScriptUserProperty:
+        return _ijtj1mph.ScriptUserProperty.t;
       case _iwl8v9t3.SheetsSnapshotIndex:
         return _iwl8v9t3.SheetsSnapshotIndex.t;
-      case _i9g7m0kd.SpaceReservation:
-        return _i9g7m0kd.SpaceReservation.t;
-      case _i1qxq8ae.SpaceSubscription:
-        return _i1qxq8ae.SpaceSubscription.t;
       case _ibv2hdjr.ScriptAuthorization:
         return _ibv2hdjr.ScriptAuthorization.t;
       case _i4bc0fek.ScriptExecution:
@@ -13543,8 +19617,30 @@ class Protocol extends _is.DatabaseSerializationManager
         return _itn7c5zm.ScriptQuotaUsage.t;
       case _ixysij0q.ScriptTriggerState:
         return _ixysij0q.ScriptTriggerState.t;
-      case _ircoml6y.DeckChangeLogReceipt:
-        return _ircoml6y.DeckChangeLogReceipt.t;
+      case _ihkglt8b.ChartLink:
+        return _ihkglt8b.ChartLink.t;
+      case _i6svv371.CodeState:
+        return _i6svv371.CodeState.t;
+      case _ioalf2ve.Deck:
+        return _ioalf2ve.Deck.t;
+      case _i5vaufan.DeckTheme:
+        return _i5vaufan.DeckTheme.t;
+      case _ipsr29xb.Slide:
+        return _ipsr29xb.Slide.t;
+      case _izfj14nk.SlideBuild:
+        return _izfj14nk.SlideBuild.t;
+      case _ih1q77t5.SlideElement:
+        return _ih1q77t5.SlideElement.t;
+      case _ic2hhlok.SlideGroup:
+        return _ic2hhlok.SlideGroup.t;
+      case _i3k3vjpp.SlideLayout:
+        return _i3k3vjpp.SlideLayout.t;
+      case _igjrafa0.SlideMaster:
+        return _igjrafa0.SlideMaster.t;
+      case _iewd9d8j.SlideTableAxis:
+        return _iewd9d8j.SlideTableAxis.t;
+      case _ibnoy0fr.SlideTableCell:
+        return _ibnoy0fr.SlideTableCell.t;
       case _iy6ry83r.SlidesSnapshotIndex:
         return _iy6ry83r.SlidesSnapshotIndex.t;
       case _iilidizm.HeadlessChange:
@@ -13587,9 +19683,6 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     try {
       return _iais.Protocol().mapRecordToJson(record);
-    } catch (_) {}
-    try {
-      return _izehhkf5.Protocol().mapRecordToJson(record);
     } catch (_) {}
     try {
       return _iacs.Protocol().mapRecordToJson(record);

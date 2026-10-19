@@ -1,0 +1,98 @@
+name: Goldens
+
+# Image golden tests (`golden` tag, test/goldens/) on a pinned Linux runner
+# (ubuntu-24.04) with the pinned Flutter (specs/15-writing-tests.md §7;
+# CQ-64d). Masters are rendered and compared only here: font rasterization
+# differs per OS, so masters from macOS or Windows never match. The other
+# test jobs run `-x golden`.
+#
+# - Pull requests and main: `flutter test -t golden` in every package with
+#   committed masters (tool/golden_packages.sh --with-masters). Packages whose
+#   masters aren't committed yet are listed in the job summary and skipped.
+#   On a mismatch the `failures/` images are uploaded as an artifact.
+# - Manual run with `update` checked: renders the masters of every golden
+#   package (`--update-goldens`) and uploads them as the `golden-masters`
+#   artifact; commit its PNGs. tool/update_goldens.sh does the same locally
+#   with Docker (ubuntu:24.04 with the same Flutter).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      update:
+        description: Render new masters and upload them as an artifact
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  # Keep in step with FLUTTER_VERSION in the other workflows and
+  # tool/update_goldens.sh.
+  FLUTTER_VERSION: '3.47.5'
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+jobs:
+  goldens:
+    # A fixed runner image, so font rasterization stays the same between the
+    # run that renders masters and the runs that compare them (there is no
+    # prebuilt Flutter container for the pinned version).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{env.FLUTTER_VERSION}}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Update masters
+        if: inputs.update
+        run: |
+          for p in $(bash tool/golden_packages.sh); do
+            echo "== $p"
+            (cd "$p" && flutter test --update-goldens -t golden test/goldens)
+          done
+
+      - name: Upload masters
+        if: inputs.update
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-masters
+          path: '**/test/goldens/**/*.png'
+
+      - name: Compare with the masters
+        if: ${{ !inputs.update }}
+        run: |
+          with=$(bash tool/golden_packages.sh --with-masters)
+          for p in $(bash tool/golden_packages.sh); do
+            case " $(echo $with) " in
+              *" $p "*) ;;
+              *) echo "- \`$p\`: no committed masters yet (run tool/update_goldens.sh)" >> "$GITHUB_STEP_SUMMARY" ;;
+            esac
+          done
+          status=0
+          for p in $with; do
+            echo "== $p"
+            (cd "$p" && flutter test -t golden test/goldens) || status=1
+          done
+          exit $status
+
+      - name: Upload failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: '**/test/goldens/**/failures/*.png'

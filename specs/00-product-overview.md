@@ -12,8 +12,8 @@ schemes, desktop packaging, OS windows, OS drag-and-drop in native builds) are d
 |-----|---------|------------------|-----------|
 | **Wonky Drive** (`wonky_drive`, v2) | The unified drive: all documents, spreadsheets, presentations and uploaded files in one place; previews; storage (50 MB per user) | Google Drive | Shared shell drive (`wonky_app`), Serverpod file uploads, in-app previews |
 | **Wonky Write** (`wonky_write`) | Collaborative Markdown-first word processor | Google Docs | `super_editor`, Quill Delta OT over Serverpod streams |
-| **Wonky Sheets** (`wonky_sheets`) | Collaborative, offline-first spreadsheet | Google Sheets | Serverpod offline-first sync (`database: sync`), formula engine, Dart scripting (`dart_eval`) |
-| **Wonky Slides** (`wonky_slides`, v2) | Collaborative, offline-first presentations with Keynote-class animations, code blocks with type-in, linked (3D) charts from Sheets, PDF export | Keynote / Google Slides / Pitch | Offline-first sync like Sheets (one deck = one space), `wonky_slides_core`, shared `wonky_charts` and `wonky_code` |
+| **Wonky Sheets** (`wonky_sheets`) | Collaborative, offline-first spreadsheet | Google Sheets | RevLog offline-first sync over Serverpod streams ([17](17-revlog-sync.md)), formula engine, Dart scripting (`dart_eval`) |
+| **Wonky Slides** (`wonky_slides`, v2) | Collaborative, offline-first presentations with Keynote-class animations, code blocks with type-in, linked (3D) charts from Sheets, PDF export | Keynote / Google Slides / Pitch | RevLog offline-first sync like Sheets, `wonky_slides_core`, shared `wonky_charts` and `wonky_code` |
 
 All apps are served by the same server from one origin (`/drive/`, `/write/`, `/sheets/`,
 `/slides/`; `/` opens Wonky Write's home) and share one account system and sign-in session, one file system
@@ -111,15 +111,15 @@ settings are **Wonky Work settings** (D4).
 |------|---------|
 | **Drive item** | A folder, document (Write), spreadsheet (Sheets), presentation (Slides) or uploaded file in Wonky Drive. |
 | **File** (v2) | An uploaded drive item of any type (`DriveItemKind.file`): stored as-is, previewed in Drive. |
-| **Presentation / deck** (v2) | A Wonky Slides file. One deck = one sync space (Slides 02). |
+| **Presentation / deck** (v2) | A Wonky Slides file ([Slides 02](wonky_slides/02-data-model.md)). |
 | **App home** (v2) | An app's documents view (`/write/`, `/sheets/`, `/slides/`): the drive filtered to the app's kind, with the left menu. |
 | **Storage quota** (v2) | 50 MB per user, counted for item owners ([Drive 03](wonky_drive/03-storage-quota.md)). |
 | **Document** | A Wonky Write file. Content is a Quill Delta whose attributes map 1:1 to GFM. |
 | **Spreadsheet** | A Wonky Sheets file. Contains one or more **sheets** (tabs). |
-| **Space** | Offline-sync ownership/sharing unit. **One spreadsheet = one space**, **one deck = one space** (see the Sheets and Slides data models). |
+| **RevLog** | The sync of Sheets and Slides: each spreadsheet or deck is one file with a server-sequenced op log; clients keep a local cache and an outbox of their own changes ([17](17-revlog-sync.md)). |
 | **Command** | A named, typed, invocable action (`write.format.bold`, `sheets.rows.insertAbove`). |
 | **Undo transaction** | A group of state changes that undo/redo as one step. |
-| **Revision** | Monotonic version number of a Write document's operation log. |
+| **Revision** | Monotonic version number of a Write document's operation log, or of a spreadsheet's or deck's RevLog op log. |
 | **Presence** | Ephemeral real-time info about who is viewing/editing and where. |
 | **MCP** | Model Context Protocol — the tool interface for AI agents. |
 | **UI bridge** | The channel through which MCP tools drive a live, open app session. |

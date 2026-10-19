@@ -209,12 +209,14 @@ sheetsAi:
   - applyPreview:
   - evaluateAiCells:
   - discardPreview:
+sheetsDoc:
+  - connect:
+  - page:
+  - ops:
+  - info:
 sheets:
-  - reserveSpaces:
-  - subscribe:
-  - unsubscribe:
-  - ensureSubscribed:
-  - spaceStats:
+  - getUserProperties:
+  - setUserProperties:
   - namedFunctions:
   - spreadsheetTheme:
   - revertChange:
@@ -222,8 +224,6 @@ sheets:
   - cellHistory:
   - activitySummary:
   - fetchImage:
-sheetsSync:
-  - sync:
 sheetsImport:
   - importInto:
   - watchImport:
@@ -261,16 +261,14 @@ slidesCharts:
   - listCharts:
   - resolveSnapshot:
   - checkLinks:
+slidesDoc:
+  - connect:
+  - page:
+  - ops:
+  - info:
 slides:
-  - reserveSpaces:
-  - subscribe:
-  - unsubscribe:
-  - ensureSubscribed:
-  - spaceStats:
   - revertChange:
   - reapplyChange:
-slidesSync:
-  - sync:
 slidesExport:
   - export:
   - exportWithProgress:

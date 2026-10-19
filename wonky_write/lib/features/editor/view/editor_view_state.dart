@@ -281,11 +281,11 @@ class EditorViewState extends ChangeNotifier {
           entry.key: entry.value.copyWith(
             selection: DeltaSelection(
               change.transformPosition(
-                entry.value.selection.base,
+                entry.value.selection.anchor,
                 force: false,
               ),
               change.transformPosition(
-                entry.value.selection.extent,
+                entry.value.selection.head,
                 force: false,
               ),
             ),

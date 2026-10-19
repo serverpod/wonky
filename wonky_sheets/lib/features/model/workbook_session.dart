@@ -106,6 +106,10 @@ abstract class WorkbookSession {
   /// Completes when everything applied so far is stored locally.
   Future<void> flush();
 
+  /// The sync group [plan] was sent in (RevLog spec 06 §4.6); null when the
+  /// session doesn't sync.
+  String? groupOf(MutationPlan plan) => null;
+
   /// Batches that came from other devices or the server.
   Stream<WorkbookChangeBatch> get remoteBatches;
 

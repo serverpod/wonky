@@ -155,7 +155,7 @@ class GroupGutterLayer extends GridLayer {
       canvas.clipRect(
         Rect.fromLTRB(0, g.colHeaderHeight, g.rowGutter, g.size.height),
       );
-      for (final br in layout._brackets[Dimension.rows] ?? const []) {
+      for (final br in layout._brackets[Dimension.rows] ?? const <_Bracket>[]) {
         if (br.collapsed || br.to - br.from < 2) continue;
         canvas.drawLine(
           Offset(br.across, br.from + 2),
@@ -181,7 +181,8 @@ class GroupGutterLayer extends GridLayer {
       canvas.clipRect(
         Rect.fromLTRB(g.rowHeaderWidth, 0, g.size.width, g.colGutter),
       );
-      for (final br in layout._brackets[Dimension.columns] ?? const []) {
+      for (final br
+          in layout._brackets[Dimension.columns] ?? const <_Bracket>[]) {
         if (br.collapsed || br.to - br.from < 2) continue;
         canvas.drawLine(
           Offset(br.from + 2, br.across),

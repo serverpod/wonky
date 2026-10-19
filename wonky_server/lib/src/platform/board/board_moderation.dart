@@ -65,12 +65,12 @@ abstract final class BoardModerationService {
     );
   }
 
-  static Expression _unchecked(BoardPostTable t) =>
+  static Expression<Object?> _unchecked(BoardPostTable t) =>
       t.triageState.equals(BoardTriageState.unchecked) &
       t.moderation.equals(BoardModeration.visible) &
       t.deletedAt.equals(null);
 
-  static Expression _duplicates(BoardPostTable t) =>
+  static Expression<Object?> _duplicates(BoardPostTable t) =>
       t.possibleDuplicateOfId.notEquals(null) &
       t.duplicateHintDismissed.equals(false) &
       t.status.notEquals(BoardPostStatus.duplicate) &
@@ -229,6 +229,13 @@ abstract final class BoardModerationService {
                 ? BoardTriageState.done
                 : post.triageState,
           ),
+          columns: (t) => [
+            t.moderation,
+            t.moderationReason,
+            t.needsCheck,
+            t.removedAt,
+            t.triageState,
+          ],
         );
         if (post.moderation != BoardModeration.visible) {
           await BoardPipeline.afterVisible(session, updated);
@@ -241,6 +248,7 @@ abstract final class BoardModerationService {
             moderationReason: why ?? 'Waiting for review.',
             removedAt: null,
           ),
+          columns: (t) => [t.moderation, t.moderationReason, t.removedAt],
         );
         if (post.moderation != BoardModeration.held) {
           await BoardNotify.postStatus(
@@ -260,6 +268,7 @@ abstract final class BoardModerationService {
             moderationReason: why ?? 'Removed by a moderator.',
             removedAt: now,
           ),
+          columns: (t) => [t.moderation, t.moderationReason, t.removedAt],
         );
         if (post.moderation != BoardModeration.removed) {
           await BoardNotify.postStatus(
@@ -282,6 +291,7 @@ abstract final class BoardModerationService {
             moderationReason: null,
             removedAt: null,
           ),
+          columns: (t) => [t.moderation, t.moderationReason, t.removedAt],
         );
       case BoardModerationAction.removeScreenshot:
         updated = await BoardPosts.deleteScreenshot(session, post);
@@ -294,6 +304,7 @@ abstract final class BoardModerationService {
                 ? BoardTriageState.done
                 : post.triageState,
           ),
+          columns: (t) => [t.needsCheck, t.triageState],
         );
     }
     await BoardLog.write(
@@ -358,7 +369,16 @@ abstract final class BoardModerationService {
       case BoardModerationAction.removeScreenshot:
         throw Errors.invalid('Comments have no screenshot.');
     }
-    final saved = await BoardComment.db.updateRow(session, updated);
+    final saved = await BoardComment.db.updateRow(
+      session,
+      updated,
+      columns: (t) => [
+        t.moderation,
+        t.moderationReason,
+        t.needsCheck,
+        t.removedAt,
+      ],
+    );
     await BoardLog.write(
       session,
       adminId: c.id,
@@ -397,6 +417,15 @@ abstract final class BoardModerationService {
             : null,
         needsCheck: false,
       ),
+      columns: (t) => [
+        t.title,
+        t.body,
+        t.editedByModerator,
+        t.editedAt,
+        t.moderation,
+        t.moderationReason,
+        t.needsCheck,
+      ],
     );
     await BoardLog.write(
       session,
@@ -423,6 +452,7 @@ abstract final class BoardModerationService {
     final updated = await BoardPost.db.updateRow(
       session,
       post.copyWith(kind: kind, area: area, size: size, aiLabels: false),
+      columns: (t) => [t.kind, t.area, t.size, t.aiLabels],
     );
     Map<String, Object?> labels(BoardPost p) => {
       'kind': p.kind.name,
@@ -454,6 +484,7 @@ abstract final class BoardModerationService {
     final updated = await BoardPost.db.updateRow(
       session,
       post.copyWith(title: suggested, suggestedTitle: null),
+      columns: (t) => [t.title, t.suggestedTitle],
     );
     await BoardLog.write(
       session,
@@ -477,6 +508,7 @@ abstract final class BoardModerationService {
     final updated = await BoardPost.db.updateRow(
       session,
       post.copyWith(duplicateHintDismissed: true),
+      columns: (t) => [t.duplicateHintDismissed],
     );
     await BoardLog.write(
       session,
@@ -724,6 +756,7 @@ abstract final class BoardModerationService {
     final updated = await BoardPost.db.updateRow(
       session,
       post.copyWith(status: BoardPostStatus.declined, declineReason: why),
+      columns: (t) => [t.status, t.declineReason],
     );
     await BoardLog.write(
       session,
@@ -754,6 +787,7 @@ abstract final class BoardModerationService {
     final updated = await BoardPost.db.updateRow(
       session,
       post.copyWith(status: BoardPostStatus.open, declineReason: null),
+      columns: (t) => [t.status, t.declineReason],
     );
     await BoardLog.write(
       session,
@@ -795,6 +829,12 @@ abstract final class BoardModerationService {
         blockedReason: why,
         blockedById: c.id,
       ),
+      columns: (t) => [
+        t.blockedAt,
+        t.blockedUntil,
+        t.blockedReason,
+        t.blockedById,
+      ],
     );
     await BoardVotes.recomputeVotesOf(session, userId);
     await BoardLog.write(
@@ -824,6 +864,12 @@ abstract final class BoardModerationService {
         blockedReason: null,
         blockedById: null,
       ),
+      columns: (t) => [
+        t.blockedAt,
+        t.blockedUntil,
+        t.blockedReason,
+        t.blockedById,
+      ],
     );
     await BoardVotes.recomputeVotesOf(session, userId);
     await BoardLog.write(

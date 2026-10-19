@@ -11,7 +11,7 @@ import 'package:wonky_server/src/platform/mcp/mcp_http.dart';
 import 'package:wonky_server/src/platform/mcp/mcp_route.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
 import 'package:wonky_server/src/slides/charts/slides_chart_service.dart';
-import 'package:wonky_server/src/slides/headless/headless_deck_cache.dart';
+import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_server/src/slides/mcp/slides_writes.dart';
 
 import '../../../support/mcp_harness.dart';
@@ -44,7 +44,7 @@ void main() {
     tearDownAll(() => handler.closeAll());
     tearDown(() {
       DeckAgentPresence.clear();
-      HeadlessDeckCache.clear();
+      HeadlessFileCache.clear();
       HeadlessWorkbookProvider.clear();
       SlidesChartService.reset();
     });

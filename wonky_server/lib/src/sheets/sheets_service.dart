@@ -10,8 +10,7 @@ import '../platform/common/time.dart';
 import '../platform/sharing/access_service.dart';
 import '../platform/users/user_service.dart';
 import 'headless/headless_workbook_provider.dart';
-import 'sync/server_sheets_writer.dart';
-import 'sync/sync_db.dart';
+import 'revlog/sheets_server_writes.dart';
 
 /// Online-only Sheets operations (Sheets 10 §5–7, 12 §2.5).
 abstract final class SheetsService {
@@ -111,10 +110,10 @@ abstract final class SheetsService {
     final item = await _spreadsheet(
       session,
       actor,
-      record.spreadsheetUuid,
+      record.fileUuid,
       Role.editor,
     );
-    return ServerSheetsWriter.revert(session, actor, item, changeId);
+    return SheetsServerWrites.revert(session, actor, item, changeId);
   }
 
   static Future<RevertResult> reapplyChange(
@@ -131,10 +130,10 @@ abstract final class SheetsService {
     final item = await _spreadsheet(
       session,
       actor,
-      record.spreadsheetUuid,
+      record.fileUuid,
       Role.editor,
     );
-    return ServerSheetsWriter.reapply(session, actor, item, record.changeId);
+    return SheetsServerWrites.reapply(session, actor, item, record.changeId);
   }
 
   /// Older value history of a cell from [CellHistory] (newest first).
@@ -148,12 +147,13 @@ abstract final class SheetsService {
     String? cursor,
     int limit = 50,
   }) async {
-    await _spreadsheet(session, actor, spreadsheetUuid, Role.viewer);
+    // History is Editor+ (Sheets 10 §6, CQ-17), like the app's command.
+    await _spreadsheet(session, actor, spreadsheetUuid, Role.editor);
     final before = cursor == null ? null : DateTime.tryParse(cursor);
     final rows = await CellHistory.db.find(
       session,
       where: (t) =>
-          t.spreadsheetUuid.equals(spreadsheetUuid) &
+          t.fileUuid.equals(spreadsheetUuid) &
           t.sheetId.equals(sheetId) &
           t.rowId.equals(rowId) &
           t.colId.equals(colId) &
@@ -173,7 +173,7 @@ abstract final class SheetsService {
       entries: [
         for (final r in rows)
           CellHistoryEntry(
-            changeLogId: r.changeLogId,
+            revision: r.revision,
             user: summaries[byAuth[r.userUuid]?.id],
             actorKind: r.actorKind,
             label: r.label,
@@ -203,17 +203,30 @@ abstract final class SheetsService {
       return cached.$2;
     }
     final since = nowUtc().subtract(Duration(days: span));
-    final db = syncSessionOf(session);
-    final logs = await ChangeLog.db.find(
-      db,
-      where: (t) => t.spreadsheetId.equals(spreadsheetUuid) & (t.at > since),
-      limit: 50000,
-    );
-    final profiles = await UserProfile.db.find(
+    final file = await RevFile.db.findFirstRow(
       session,
-      where: (t) => t.authUserId.inSet({for (final l in logs) l.userId}),
+      where: (t) => t.fileUuid.equals(spreadsheetUuid),
     );
-    final idByAuth = {for (final p in profiles) p.authUserId: p.id!};
+    // The op log (RevLog spec 02 §1), only the columns the summary needs
+    // (never the payloads). System ops (creation, title mirror, script
+    // builds) are no edits.
+    final rows = file == null
+        ? const <List<Object?>>[]
+        : await session.db.unsafeQuery(
+            'SELECT "authorId", "actorKind", "committedAt", "summaryJson" '
+            'FROM rev_op WHERE "fileId" = @f AND "committedAt" > @since '
+            "AND \"actorKind\" <> 'system' LIMIT 50000",
+            parameters: QueryParameters.named({'f': file.id, 'since': since}),
+          );
+    final logs = [
+      for (final r in rows)
+        (
+          authorId: r[0] as int?,
+          actorKind: ActorKind.values.byName(r[1]! as String),
+          committedAt: (r[2]! as DateTime).toUtc(),
+          summaryJson: r[3] as String?,
+        ),
+    ];
     final edits = <int, int>{};
     final last = <int, DateTime>{};
     final kinds = <int, ActorKind>{};
@@ -223,11 +236,12 @@ abstract final class SheetsService {
     var ai = 0;
     var script = 0;
     for (final l in logs) {
-      final uid = idByAuth[l.userId] ?? 0;
+      final uid = l.authorId ?? 0;
+      final at = l.committedAt;
       edits[uid] = (edits[uid] ?? 0) + 1;
-      if (last[uid] == null || l.at.isAfter(last[uid]!)) last[uid] = l.at;
+      if (last[uid] == null || at.isAfter(last[uid]!)) last[uid] = at;
       kinds[uid] ??= l.actorKind;
-      final day = l.at.toIso8601String().substring(0, 10);
+      final day = at.toIso8601String().substring(0, 10);
       final dayMap = perDay.putIfAbsent(day, () => {});
       dayMap[uid] = (dayMap[uid] ?? 0) + 1;
       switch (l.actorKind) {
@@ -241,7 +255,7 @@ abstract final class SheetsService {
           break;
       }
       try {
-        final summary = jsonDecode(l.summaryJson);
+        final summary = jsonDecode(l.summaryJson ?? '{}');
         if (summary is Map && summary['sheets'] is List) {
           for (final s in summary['sheets'] as List) {
             perSheet['$s'] = (perSheet['$s'] ?? 0) + 1;

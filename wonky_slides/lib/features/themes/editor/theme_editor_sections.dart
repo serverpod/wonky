@@ -288,7 +288,8 @@ Widget _colors(ThemeEditScope s) {
                 compact: true,
                 enabled: s.enabled,
                 onChanged: (v) => s.edit(DeckThemeColumn.colorsJson, (j) {
-                  final list = (j['custom'] as List).cast<Map>();
+                  final list = (j['custom'] as List)
+                      .cast<Map<Object?, Object?>>();
                   list[i][app.name] = ColorRef.formatHex(v);
                 }),
               ),
@@ -301,7 +302,8 @@ Widget _colors(ThemeEditScope s) {
                   semanticLabel: l.themeEditorCustomColorName,
                   maxLength: 60,
                   onCommit: (v) => s.edit(DeckThemeColumn.colorsJson, (j) {
-                    final list = (j['custom'] as List).cast<Map>();
+                    final list = (j['custom'] as List)
+                        .cast<Map<Object?, Object?>>();
                     list[i]['name'] = v;
                   }),
                 ),

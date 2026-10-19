@@ -1,0 +1,33 @@
+### One RevLog file (RevLog spec 02 §1): a spreadsheet or deck whose rows
+### are written only through the op log.
+class: RevFile
+table: rev_file
+serverOnly: true
+fields:
+  ### Drive item uuid = root row id.
+  fileUuid: UuidValue
+  kind: RevFileKind
+  ### The drive item; purge deletes this row first (05 §10.1).
+  item: DriveItem?, relation(onDelete=Restrict)
+  headRevision: int, default=0
+  ### Ops below this revision have no payload any more (05 §10).
+  prunedBelow: int, default=0
+  ### createFile wrote the row but not all initial ops yet (05 §8.3).
+  initPending: bool, default=false
+  ### Purge in progress: connects and submits are refused (05 §10.1).
+  purging: bool, default=false
+  ### RevSchema hash of the last write.
+  schemaHash: String
+  ### Binding-defined JSON (02 §1.1).
+  stats: String, default='{}'
+  ### Sheets: grid cells (Σ rows × cols); Slides: elements.
+  contentCount: int, default=0
+  createdAt: DateTime
+  updatedAt: DateTime
+indexes:
+  rev_file_uuid_idx:
+    fields: fileUuid
+    unique: true
+  rev_file_item_idx:
+    fields: itemId
+    unique: true

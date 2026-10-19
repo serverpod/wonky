@@ -1,0 +1,15 @@
+### Who performed a change: a person, an agent or the system. Used by the
+### RevLog ops, activity, comments, presence and the Write op log.
+enum: ActorKind
+serialized: byName
+values:
+  ### A person through an app.
+  - user
+  ### An MCP client acting with a personal access token.
+  - mcp
+  ### The built-in AI assistant.
+  - ai
+  ### A Sheets script (trigger, macro, custom function).
+  - script
+  ### The server itself (jobs, migrations, normalizers).
+  - system

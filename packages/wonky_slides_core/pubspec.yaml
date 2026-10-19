@@ -8,10 +8,11 @@ environment:
 resolution: workspace
 
 dependencies:
+  wonky_revlog:
+    path: ../wonky_revlog
   # Version snapshots are gzip NDJSON (09 §4.1).
   archive: ^4.5.1
   clock: ^1.1.3
-  collection: ^1.19.1
   crypto: ^3.0.7
   # HTML clipboard content (03 §12.5: tables, rich text from other apps).
   html: ^0.15.7
@@ -29,11 +30,10 @@ dependencies:
     path: ../wonky_fonts
   wonky_rich_text:
     path: ../wonky_rich_text
-  wonky_sync_kit:
-    path: ../wonky_sync_kit
   wonky_sync_models:
     path: ../wonky_sync_models
 
 dev_dependencies:
-  lints: '>=3.0.0 <7.0.0'
+  wonky_lints:
+    path: ../wonky_lints
   test: ^1.25.5

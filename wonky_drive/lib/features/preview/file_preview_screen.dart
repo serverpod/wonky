@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
@@ -68,7 +70,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (s.driveSelection.value.isNotEmpty) s.driveSelection.value = const [];
     });
-    _c.load();
+    unawaited(_c.load());
   }
 
   @override

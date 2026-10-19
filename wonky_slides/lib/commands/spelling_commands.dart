@@ -138,7 +138,9 @@ List<Command<CommandArgs>> spellingCommands(ShellServices s) {
         }
         final word = a.string('word');
         if (word != null && plain.substring(start, start + length) != word) {
-          return const CommandResult.failed('The text has changed');
+          return CommandResult.failed(
+            slidesL10nOf(ed.services).errorTextChanged,
+          );
         }
         final r = replaceSpelling(ed, {
           t: [(start, length, a.requireString('replacement'))],
@@ -205,7 +207,7 @@ List<Command<CommandArgs>> spellingCommands(ShellServices s) {
       run: (ctx, ed, a) async {
         final word = a.requireString('word').trim();
         if (word.isEmpty || word.contains(RegExp(r'\s'))) {
-          return const CommandResult.failed('One word is expected');
+          return CommandResult.failed(slidesL10nOf(ed.services).errorOneWord);
         }
         final added = await SlidesSpelling.of(ed).addToDictionary(word);
         if (!added) {

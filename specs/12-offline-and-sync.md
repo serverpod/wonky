@@ -3,15 +3,15 @@
 | App | Online sync | Offline strategy | Local store |
 |-----|-------------|------------------|-------------|
 | Write | Server-authoritative OT over a Serverpod stream (Quill Delta) | Local op queue + snapshot cache; rebase (transform) on reconnect | SQLite (`sqlite_async`, same infra as Sheets) — `write_cache_<userId>.db` |
-| Sheets | `serverpod_offline_sync` CRDT replication | Native: local SQLite is the primary store | `sheets_<userId>.db` (synced tables + local-only tables) |
-| Slides (v2) | `serverpod_offline_sync` CRDT replication (one deck = one space) | Native, like Sheets (§2.6) | `slides_<userId>.db` |
+| Sheets | RevLog: server-sequenced op log over a Serverpod stream ([17](17-revlog-sync.md)) | Local cache of the file's rows + durable outbox of local ops, sent on reconnect | `sheets_cache_<userId>.db` |
+| Slides (v2) | RevLog, like Sheets ([17](17-revlog-sync.md)) | Like Sheets | `slides_cache_<userId>.db` |
 | Shell (all homes, incl. Drive) | RPC + `drive.watch` stream | Cached drive listing + queued drive ops + (v2) cached storage usage | device key-value store (§3) |
 | Drive uploads (v2) | `drive.createFileUpload` / storage upload / `completeFileUpload` | Persistent upload queue, started when online | `LocalPendingUpload` in the Drive app's local DB (`drive_<userId>.db`, §1.1) |
 
 All local databases are **per user** (file name includes the user's UUID). Signing out keeps them
 (encrypted at rest on desktop via OS file protection; on web relies on origin storage);
 *Settings › Offline & storage › Clear local data* deletes them (desktop) or clears them (web — DB
-deletion is unsupported on web, so tables are truncated and the engine re-syncs).
+deletion is unsupported on web, so tables are truncated and files download again when opened).
 
 Web storage: `sqlite_async` with `sqlite3.wasm` + `db_worker.js` in `web/` (versions must match
 the `sqlite_async` version). `WebSqlite.connectToRecommended` picks **OPFS** when available,
@@ -23,10 +23,8 @@ the UI shows "Offline storage is limited in this browser". Build web with `--was
 > the same prerequisites (`storage_mode_web.dart`: secure context, `FileSystemFileHandle`, a
 > working `navigator.storage.getDirectory()`). Without them, Settings › Offline & storage shows
 > the warning (`OfflineUsage.warnings`), a toast says it once per user and device, and
-> `SheetsSyncController.cellCap` (200,000) applies after each sync: the spreadsheets opened
-> least recently on this device (from `LocalViewState` times) that are not open, have no
-> unsynced writes and aren't the personal space leave the active set (`sheets.unsubscribe`;
-> owners keep their spreadsheets, they are asked once per run) and are purged locally.
+> the RevLog client's availability policy keeps the files opened most recently (17, 06 §2.5),
+> with 200,000 cells (Sheets) or 50,000 elements (Slides) on such devices.
 
 ---
 
@@ -107,246 +105,47 @@ reference `wonky-file://<fileUuid>` before the bytes arrive; clients render a pl
 
 Details of the OT protocol are in [Write 03 · Sync protocol](wonky_write/03-sync-protocol.md).
 
-## 2. Sheets (spreadsheets)
+## 2. Sheets and Slides (RevLog)
 
-### 2.1 Engine facts that shape the design (serverpod_offline_sync 0.0.9)
-- A **space** is the unit of replication; rows never change space; ids are global (UUID); FKs
-  must stay inside a space; unique indexes must include `spaceId` and a releasable column;
-  synced ↔ non-synced relations are forbidden (use plain `UuidValue`).
-- Field-level last-writer-wins by HLC; **every update must name its columns** (otherwise all
-  fields are recorded as touched and concurrent edits are clobbered). A repository lint test
-  (as in toptap) fails the build on any synced-table update without `columnValues`.
-- Deletes are tombstones; re-inserting the same id revives the row.
-- Two inserts of the same id (deterministic cell ids created on two devices) merge **per
-  column**: a column an insert leaves null is not authored by it (vendored patch OS-4; upstream
-  merges such inserts as whole rows, newest wins).
-- Roles: `readOnly` / `readWrite`. Membership managed only on the server.
-- **A client syncs every space it is a member of** (no partial/lazy sync, no local eviction API).
-- Continuous sync is a ~1.2 s lockstep loop → remote propagation ≈ 0.2–2.5 s.
-- No per-change server hooks; only per-space `onMergeSuccess(spaceUuid, hlc)` in a custom sync
-  endpoint.
-- One space per transaction.
-- Schema changes are lock-step via `syncTablesHash`.
+Spreadsheets and decks sync through **RevLog**, specified in [17 · RevLog sync](17-revlog-sync.md).
+In short:
 
-### 2.2 Spaces
-- **One spreadsheet = one space**; `Spreadsheet.id == space UUID` (toptap pattern D1).
-- New spreadsheets offline: each device keeps a **pool of 3 reserved spaces**
-  (`SheetsEndpoint.reserveSpaces(count)` → `spaces.createFor(me)`), stored in a local
-  `ReservedSpace` client table. A reservation is usable after the next sync delivers membership.
-  After creating the `Spreadsheet` row, the client calls `drive.registerSpreadsheet(spaceUuid,
-  …)` (queued if offline; idempotent).
-- **A spreadsheet's drive item UUID is its space UUID** (every creation path: registration,
-  `drive.createSpreadsheet`, templates, imports, copies). A spreadsheet created offline therefore
-  opens at `/s/<space>` at once and keeps that URL after the queued registration.
-- Client-only tables (`ReservedSpace`, `SheetsDirtySpace`, `SheetsRowJournal`,
-  `SheetsJournalSpace`) are `database: client` models of the server project
-  (`wonky_server/lib/src/sheets/models/`). Owning at least one client table is what makes the
-  generator emit `Client.createSyncSession` and the client migrations
-  (`wonky_client/lib/migrations/`); the shared `database: sync` models are merged into that
-  schema.
-- The user's **personal space** (UUID = user id; implicit in the engine — always `readWrite`,
-  no creation step needed) holds per-user synced data that is not tied to
-  a spreadsheet (e.g. custom number formats library, recent colors) — small.
+- **One file = one op log.** Each spreadsheet or deck is a file with a head revision. The server
+  applies each op (a change set of row changes) in one transaction to the domain tables, gives it
+  the next revision and streams it to every other open connection (about one round trip).
+- **Offline.** The client keeps a local cache of the file's rows (`rev_row`) and a durable outbox
+  of its own ops. A file opened before (or created on the device) opens offline from the cache;
+  edits go into the outbox and are sent when the connection returns. Conflicts: last arrival
+  wins per column; a deleted row stays deleted; the outcome of each op is reported back.
+- **Opening.** A file not on the device loads with bootstrap pages: the structure first, then the
+  cells of the viewport, then the rest (Sheets 02 §6); decks load in one page.
+- **Access.** Every submit and every stream checks the drive ACL; protected ranges are enforced
+  by the server.
+- **Server writes** (MCP, AI, imports, scripts, restores) are submitted as server changes with the
+  same rules, in op groups, with records for undo.
 
-### 2.3 Active set ("subscriptions") — working around "sync all spaces"
-Because clients sync every member space, membership doubles as subscription. The server
-maintains an **active set** per user:
-
-```yaml
-class: SpaceSubscription          # server-only (database: server)
-table: space_subscription
-fields:
-  userId: int
-  spreadsheetItemId: int
-  spaceUuid: UuidValue
-  reason: SubscriptionReason      # open, pinned, recent, mcp, script
-  lastUsedAt: DateTime
-  pinned: bool
-```
-
-- Opening a spreadsheet calls `SheetsEndpoint.subscribe(itemUuid)` → server grants membership
-  (role mirrored from ACL) if not yet granted; the client waits for the next sync cycle to
-  deliver the space (progress UI: "Downloading spreadsheet… 42%" based on row counts from
-  `SheetsEndpoint.spaceStats`).
-- Active set limit: `sheets.maxActiveSpacesPerUser` (default 30). LRU eviction runs daily
-  server-side and **never** evicts pinned spaces or spaces used in the last 30 days.
-- **Pending-change guard**: before each sync session starts, the client lists spaces with
-  unsynced local changes and calls `SheetsEndpoint.ensureSubscribed(spaces)` so a
-  revoked-but-dirty space is re-granted before syncing (prevents stranded edits). The engine
-  metadata can't tell "not yet acknowledged by the server" offline, so the writer marks the space
-  in the local `SheetsDirtySpace` table on every write; the marks are cleared after a complete
-  `syncOnce` for spaces that are still members (marks newer than the cycle's start stay).
-- After eviction, rows stay on disk hidden by the engine; the client runs a local purge of
-  hidden spaces' rows weekly (custom maintenance using the engine's space metadata) — tracked as
-  an upstream requirement (see §4). **As built:** `SheetsSyncController.runMaintenance` after a
-  sync, at most every 7 days (time in the user store): spaces with rows but no membership of
-  the user, no dirty mark, not open → `SheetsReplica.purgeSpace` deletes their data rows,
-  `crdt_data_rows` (cascading field metadata) and `offline_sync_space_nodes` (the checkpoints).
-  Offline-sync patch **OS-5** makes a space without local rows ask for everything in its
-  handshake (also the device's own earlier changes), so a re-granted purged space downloads
-  completely.
-- **Bulk local writes (as built, patch OS-7):** `OfflineSyncDatabase.bulkWrite` writes many rows
-  of one table in a few set-based statements (inserts from one JSON parameter, batched updates
-  and revives) when no foreign-key/unique projection can change, with the same CRDT records as
-  the per-row calls; Sheets' `SheetsWriter` and the server's `SheetsBulkWriter` use it.
-
-### 2.4 Live feel on top of the CRDT loop
-- Local writes are visible instantly (local DB + watch).
-- For collaborators, cell commits are additionally broadcast as **ephemeral hints** over the
-  presence stream (`CellCommitHint {sheetId, rowId, colId, input, hlcMillis}`); receivers render
-  the hinted value (italic-less, same style) until the synced row arrives or 5 s elapse. The
-  CRDT row is always the source of truth.
-- Watches must be **viewport-scoped** (query by sheet + visible row id ranges) because watch
-  re-runs the whole query on any metadata change.
-
-### 2.5 Sync lifecycle (client)
-`SheetsSyncController`: after sign-in → open `sheets_<userId>.db` via
-`client.createSyncSession(path, persistentUserId: userUuid)` → pending-change guard →
-`syncOnce` → reservation refill → `syncContinuously` (through a **custom sync endpoint**
-`sheetsSync.sync` wrapping `session.offlineSync.sync` so the server gets `onMergeSuccess` for
-change-log processing; the client plugs it in as
-`OfflineSyncClient((changes, once) => client.sheetsSync.sync(...))`) → on stream end, reconnect
-(1 s after a normal end, backoff 1 s → 30 s with jitter after errors). Going offline
-(`ConnectivityService`, incl. *Simulate offline*) cancels the stream; coming back wakes the loop.
-Sync runs while the app is visible; when the app is hidden (web `visibilitychange`, desktop
-lifecycle, via `AppLifecycleListener`) sync pauses after 30 s.
-On open failure the DB is moved aside (desktop: `sheets_<userId>.db.broken-<ms>`, kept for
-recovery) and a fresh replica re-syncs. **Recovery export** (desktop, `replica_recovery*.dart`):
-before moving it aside, the file is read read-only with plain SQLite; the spreadsheets with a
-`SheetsDirtySpace` mark (local writes not known to be synced) are read with their visible rows
-(`crdt_data_rows.visibility`), and a toast offers **Download unsynced changes**: a ZIP with one
-XLSX per spreadsheet (core exporters) and `rows.json` (the raw rows, lossless). On the web the
-replica is emptied instead (no file to read). *Clear local data* deletes the file (desktop) or empties every table
-(web) and re-syncs.
-
-Implementation: the table-agnostic pieces are the shared sync kit (v2, Drive 05 D-6) —
-`wonky_sync_kit` (pure: `RowChange`, `MutationPlan`, `UndoInverter` with table hooks,
-`RowPatch`, `SyncTableSet`, the `*.rows` undo entry/handler) and `wonky_sync_kit_flutter`
-(`SyncReplica` — the database, spaces, reservations, dirty marks, space loading; `ChangeJournal`
-— U11 below; `SyncWriter` — `RowChange`s → chunked `transactionForUser`, `columnValues`,
-`bulkWrite` runs, the app's change-log row; `AppSyncController` — loop, reservations,
-maintenance, sessions; `SpaceWriteQueue`, `JournalIngestion`, `SpaceOpening` — building blocks
-of a synced file session; `ReplicaInstallation`/`ReplicaOfflineProvider` — per-user lifecycle
-and Settings › Offline & storage; `ReplicaRecoveryReader`, `ReplicaFiles`,
-`offlineStorageLimited`). Sheets binds them in `wonky_sheets/lib/features/sync/`:
-`SheetsReplica` (Sheets tables + viewport cell reads), `SheetsWriter` (`ChangeLog`, cell keys),
-`RemotePatch` (Sheets table order), `SyncedWorkbookSession` (the editor's `WorkbookSession`,
-viewport-first loading), `SheetsSyncController` (cell cap, `createLocalSpreadsheet`,
-`openSession`) and `SheetsData` (install at sign-in, `openWorkbookSession`,
-`createSpreadsheet`, XLSX recovery ZIP). The generic table codec (table name + column map ⇄
-generated ORM class, typed ORM calls) is `package:wonky_sync_models/tables.dart`.
-
-### 2.6 Slides (v2)
-
-Slides uses the same engine and the same patterns as Sheets ([Slides 02 §9](wonky_slides/02-data-model.md)):
-one deck = one space (`Deck.id` = space UUID = drive item UUID), a per-user replica
-`slides_<userId>.db`, a pool of reserved spaces for offline creation
-(`drive.registerPresentation`, queued in `PendingDriveOp`), a custom sync endpoint
-`slidesSync.sync` (for `onMergeSuccess` → the deck change log), subscriptions as membership, the
-pending-change guard, U11-style change journal, recovery export, and the `slides.rows` undo
-domain. The generic client pieces (replica, sync controller, writer, journal, undo inverter)
-are extracted from `wonky_sheets` into the shared packages `wonky_sync_kit` (pure Dart) and
-`wonky_sync_kit_flutter` (client part, 01 §2) so both apps run the same code.
-
-**Every space kind in every replica.** Because a client syncs every space it is a member of
-(§2.1), the Sheets replica would also download decks and the Slides replica spreadsheets once
-decks are spaces. The server tables `SpaceSubscription` and `SpaceReservation` gain
-`kind: SpaceKind { spreadsheet, deck }` (active set limits per kind; as built, D-1: default
-`spreadsheet`, and `SpaceSubscription.spreadsheetItemId` keeps its column name and holds the
-deck's item for `deck` rows), and — **decided (v2 review,
-Q19)** — the vendored patch **OS-8** adds a per-endpoint space filter
-(`offlineSync.sync(…, spaceFilter: …)`, `sheetsSync` passes spreadsheet spaces + the personal
-space, `slidesSync` deck spaces + the personal space). It is a first step towards U1 and lands
-in M8 wave 1, before any deck space exists (fallback if the patch slips: [Slides 02
-§9.2](wonky_slides/02-data-model.md)). Drive opens no replica.
-
-**As built (D-4):**
-- *Engine (OS-8):* `OfflineSyncEngine.sync` / `OfflineSyncDatabase.sync` take
-  `spaceFilter: OfflineSyncSpaceFilter` — a **batch** callback
-  `(List<UuidValue> sharedSpaces) → FutureOr<Iterable<UuidValue>>` instead of a per-space
-  predicate, so new memberships are classified in one query. Authoritative peers only; the
-  personal space is always kept and never passed in; called whenever the session re-resolves
-  membership (start and every cycle). Filtered spaces are not announced, so the follower never
-  materializes or downloads them and loses the membership if the filter drops a space later;
-  inbound changes for them are ignored.
-- *Server:* `platform/spaces/` — `SpaceSync.sync(session, actor, kind:, …)` runs the vendored
-  engine (configured like `initializeOfflineSync`; the hosted `session.offlineSync.sync` facade
-  has no filter parameter) with a per-stream `SpaceKindFilter`; `sheetsSync` uses
-  `kind: spreadsheet`, `slidesSync` (SL-5) `kind: deck`. A space's kind is recorded from birth
-  and never changes: the drive item holding it (spreadsheet / presentation) wins, else its
-  `SpaceReservation.kind`; the filter caches recorded kinds per stream. **Unrecorded spaces
-  count as spreadsheets** (v1 spaces and server-created spreadsheets before their drive item —
-  Sheets behaves exactly as in v1), so every deck space must be recorded at creation:
-  `SpaceService.reserveSpaces(kind: deck)` for offline creation and
-  `SpaceService.createSpace(kind: deck)` (a used reservation row) for server-side creation.
-  `SpaceService.useReservation(kind:)` refuses a reservation of another kind.
-- *Limits per kind:* unused reservations (25) are counted per kind; the active set is evicted
-  per kind (`sheets.maxActiveSpacesPerUser`, `slides.maxActiveSpacesPerUser`, both 30);
-  subscriptions take their kind from the item.
-- *Client:* nothing changes — the follower adopts the announced set; the weekly purge already
-  removes rows of spaces without membership.
+Sheets and Slides use no CRDT engine, sync spaces, active set or reserved spaces. The
+remaining code of the former engine (`third_party/serverpod_offline_sync`, `platform/spaces`,
+`wonky_sync_kit*`) is removed by the last step of M13 ([14](14-roadmap.md)).
 
 ## 3. Shell (drive)
 Drive listing cache + `PendingDriveOp` queue (rename, move, star, trash, registerSpreadsheet,
-(v2) registerPresentation, createDocument) replayed in order on reconnect. (v2) The cache also
-keeps the last `StorageUsage` (meter offline). Each app caches the items of its home's kind;
+(v2) registerPresentation, createDocument) replayed in order on reconnect.
+`registerSpreadsheet` / `registerPresentation` create the RevLog file of a spreadsheet or deck
+made on the device with `initialize: false`, so the creation op in the device's outbox becomes
+its first revision ([05 §2](05-drive-and-files.md), [17](17-revlog-sync.md) part 4 §5). (v2)
+The cache also keeps the last `StorageUsage` (meter offline). Each app caches the items of its home's kind;
 the Drive app caches the last 500 items of any kind plus all pinned items. Drive's upload queue
 is in its own local DB (§1.1), not in the key-value store, because it holds file bytes. Both are per user (`u.<userUuid>.` keys) in the
 device key-value store (`shared_preferences`; the data is small and needs no queries, so the
 shell does not use a separate `shell_<userId>.db`). A queued `createDocument` whose folder is gone
 by the time it replays is created in My Drive instead.
 
-## 4. Upstream requirements for `serverpod_offline_sync`
+## 4. Scale limits
 
-The following are needed to reach the 10M-cell target and better UX. The module is
-**vendored** (`third_party/serverpod_offline_sync`, suite [01 §2.3](01-architecture.md)), so
-each requirement can be implemented **in our copy first** (as patches `OS-n` in its
-`PATCHES.md`) and contributed upstream, rather than waiting for an upstream release. The app is
-designed so that each workaround below can be removed independently once the corresponding
-patch exists. Priority for in-house patches: U11 (M0), U7 and U6 (M3), U1/U2 (M4–M5), U3/U5
-(before raising the cell limit), the rest as needed.
+| Limit | Value | Enforced by |
+|-------|-------|-------------|
+| Cells per spreadsheet | `sheets.maxCellsPerSpreadsheet` (1,000,000) | the server on every op (`limitExceeded`), the client's cell counters |
+| Sheets per spreadsheet | `sheets.maxSheetsPerSpreadsheet` | the server on every op |
 
-| # | Requirement | Workaround until then |
-|---|-------------|----------------------|
-| U1 | Client-selectable space subscriptions (partial sync) per device | Server-managed active set via membership; (v2) patch OS-8 filters spaces per sync endpoint (spreadsheets vs decks, §2.6) |
-| U2 | Local eviction/purge of a space's rows + metadata | Weekly local purge job |
-| U3 | Streaming/bounded outbound capture and inbound merge (no whole-cycle buffering) | Limit cells per spreadsheet (§5) |
-| U4 | HLC-indexed change capture (avoid scanning all metadata each cycle) | — (server CPU budget monitored) |
-| U5 | Bootstrapping a new replica from a server snapshot (bulk download) | Initial sync via engine (slow for big sheets) |
-| U6 | Server push / adaptive cycle (sub-second propagation) | Ephemeral commit hints over presence |
-| U7 | Per-change server hooks (row-level) | Synced `ChangeLog` table + `onMergeSuccess` |
-| U8 | Cross-space transactions | Ordered single-space transactions |
-| U9 | Server-side write validation/rejection | Client-side guards; protected ranges advisory |
-| U10 | Rolling schema evolution (additive columns without lock-step) | Batched synced-schema releases |
-| U11 | Client API: rows changed in a space since an HLC (`changedRowsSince`) for incremental in-memory models | **Done app-side** (no engine patch): merged changes keep their author's HLC, so a late offline edit has an *old* HLC and "since HLC h" misses it. Instead SQLite triggers on the synced tables and on `crdt_data_rows` (visibility: deletes, revivals, FK projection) append `(space, table, row)` to the local `sheets_row_journal`, whose integer id is a local change sequence; only spaces open on the device (`sheets_journal_space`) are journaled. Sessions re-read the journaled rows after each merge (`SheetsChangeJournal`, `RemotePatch`). |
-| U12 | A synced-schema (registry) change must not re-project every space synchronously on the first database access (incident 2026-10-15: S-1 crashed `serverpod start` with an exhausted connection pool) | **Done in-house, patch OS-9** (below) |
-
-
-**Projection rebuild after a synced-schema change (OS-9).** Each synced-schema release
-(S-1…S-3, §2.6) changes the CRDT registry, and the foreign key projection (visibility, FK
-repair, unique claims) of the affected spaces must be recomputed for the new graph. The
-reconciliation now persists *which* spaces need it in the same transaction as the registry
-change (rows of a reserved registry entry `#projection_rebuild`, one per space with its seed
-tables), so a crash or restart resumes instead of silently skipping. Only spaces holding rows
-of a table whose registry entry changed are affected (one indexed query per changed table): a
-new table has no rows yet, so S-1's 13 new tables rebuilt nothing; a dropped table rebuilds
-its spaces over every table. Startup does not wait: a background queue (start delay 2 s,
-one space per transaction, one at a time, a short pause between spaces) rebuilds the spaces,
-taking the node lock that writes and merges take; a failure is logged and retried with a
-doubling backoff (30 s … 10 min) and never fails the server. A **write or merge** into a still
-pending space (`transactionForUser`) rebuilds that space first, so it acts on the new graph;
-**reads** of a pending space serve its previous projection until it is rebuilt — identical for
-every row outside the changed tables, and the rebuild is deterministic from the authored state
-(tombstones, field HLCs, attempted values), so nothing synced depends on it. The dev server
-also runs with `maxConnectionCount: 20` (`config/development.yaml`), since hot reloads restart
-it while long transactions still hold connections.
-## 5. Scale limits (staged)
-
-| Stage | Max cells / spreadsheet | Gate to raise |
-|-------|-------------------------|---------------|
-| M3 (first Sheets release) | 1,000,000 | Perf suite: 1M-cell import, cold sync < 60 s on desktop, < 120 s web/OPFS |
-| After U3+U5 | 5,000,000 | Same suite at 5M |
-| After U1–U5 | 10,000,000 (Google Sheets parity) | Same suite at 10M |
-
-Limits are server config (`sheets.maxCellsPerSpreadsheet`) and enforced by the client (cell
-counters in `SheetStats`) and by server-side imports/MCP writes.
+Raising them is gated by the performance gates of [17](17-revlog-sync.md) part 7.

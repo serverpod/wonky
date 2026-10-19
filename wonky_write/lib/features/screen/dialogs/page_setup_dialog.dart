@@ -165,6 +165,7 @@ class _PageSetupDialogState extends State<PageSetupDialog> {
     final valid = errors.isEmpty;
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.pageSetup'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(l.pageSetupTitle),
       description: ro ? Text(l.pageSetupReadOnly) : null,
       constraints: const BoxConstraints(maxWidth: 680),

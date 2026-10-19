@@ -576,6 +576,9 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get cmdSelectAll => 'Select all';
 
   @override
+  String get cmdSetDescription => 'Edit description';
+
+  @override
   String get cmdSetTheme => 'App theme';
 
   @override
@@ -5097,6 +5100,9 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get cmdSelectAll => '[Šéļéçţ åļļ one]';
+
+  @override
+  String get cmdSetDescription => '[Éðîţ ðéšçŕîþţîöñ one tw]';
 
   @override
   String get cmdSetTheme => '[Åþþ ţĥéɱé one]';

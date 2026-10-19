@@ -8,7 +8,7 @@ import 'package:wonky_sheets_core/formula.dart' show CellPos;
 import 'package:wonky_sheets_core/model.dart';
 
 import '../features/clipboard/system_clipboard.dart';
-import '../features/images/image_clipboard.dart';
+import 'package:wonky_app/platform.dart' show ImageClipboard;
 import '../features/objects/object_png.dart';
 import '../features/objects/alt_text_dialog.dart';
 import '../features/objects/object_ops.dart';

@@ -1,17 +1,19 @@
 import 'package:serverpod/serverpod.dart';
 
+import '../common/guarded.dart';
 import '../common/models.dart';
 import '../common/time.dart';
 import '../files/file_service.dart';
 import 'board_access.dart';
+import 'board_comments.dart';
 import 'board_common.dart';
 import 'board_pipeline.dart';
-import 'board_tasks.dart';
+import 'board_task_claims.dart';
 import 'board_votes.dart';
 import 'github/board_github.dart';
 
 /// The recurring board job `wonky.boardSweep` (every 10 minutes, specs/16
-/// §8.2, §11): claims, unchecked posts and retention.
+/// §8.2, §11): claims, unchecked posts and comments, and retention.
 abstract final class BoardSweep {
   static const removedRetention = Duration(days: 90);
   static const deletedRetention = Duration(days: 30);
@@ -21,20 +23,16 @@ abstract final class BoardSweep {
   static Future<int> run(Session session) async {
     var count = 0;
     Future<void> part(String name, Future<int> Function() job) async {
-      try {
-        count += await job();
-      } on Exception catch (e, st) {
-        session.log(
-          'board.sweep $name failed: $e',
-          level: LogLevel.error,
-          stackTrace: st,
-        );
-      }
+      count += await runGuarded(session, 'board.sweep $name', job) ?? 0;
     }
 
-    await part('expireClaims', () => BoardTasks.expireClaims(session));
-    await part('warnClaims', () => BoardTasks.warnClaims(session));
+    await part('expireClaims', () => BoardTaskClaims.expireClaims(session));
+    await part('warnClaims', () => BoardTaskClaims.warnClaims(session));
     await part('retriage', () => BoardPipeline.retriageUnchecked(session));
+    await part(
+      'recheckComments',
+      () => BoardComments.recheckUnchecked(session),
+    );
     await part('purge', () => purge(session));
     await part('github', () => BoardGithub.sweep(session));
     return count;

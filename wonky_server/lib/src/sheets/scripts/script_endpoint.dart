@@ -6,9 +6,12 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 
 import '../../platform/common/models.dart';
+import '../../platform/common/rate_limiter.dart';
 import '../../platform/users/user_service.dart';
 import '../sheets_service.dart';
 import 'script_service.dart';
+import 'script_executions.dart';
+import 'script_authorizations.dart';
 import 'script_triggers.dart';
 
 /// Scripts of a spreadsheet (Sheets 09): build, run on server, executions
@@ -109,7 +112,7 @@ class ScriptEndpoint extends Endpoint {
     ScriptExecutionStatus? status,
     DateTime? before,
     int limit = 50,
-  }) async => ScriptService.executions(
+  }) async => ScriptExecutions.executions(
     session,
     await UserService.actorOf(session),
     spreadsheetUuid,
@@ -124,7 +127,7 @@ class ScriptEndpoint extends Endpoint {
     Session session,
     UuidValue spreadsheetUuid,
     List<ScriptExecution> executions,
-  ) async => ScriptService.reportExecutions(
+  ) async => ScriptExecutions.reportExecutions(
     session,
     await UserService.actorOf(session),
     spreadsheetUuid,
@@ -150,7 +153,7 @@ class ScriptEndpoint extends Endpoint {
   Future<ScriptAuthorizationView> authorization(
     Session session,
     UuidValue spreadsheetUuid,
-  ) async => ScriptService.authorization(
+  ) async => ScriptAuthorizations.authorization(
     session,
     await UserService.actorOf(session),
     spreadsheetUuid,
@@ -161,7 +164,7 @@ class ScriptEndpoint extends Endpoint {
     Session session,
     UuidValue spreadsheetUuid,
     List<String> scopes,
-  ) async => ScriptService.authorize(
+  ) async => ScriptAuthorizations.authorize(
     session,
     await UserService.actorOf(session),
     spreadsheetUuid,
@@ -172,7 +175,7 @@ class ScriptEndpoint extends Endpoint {
   Future<void> revokeAuthorization(
     Session session,
     UuidValue spreadsheetUuid,
-  ) async => ScriptService.revokeAuthorization(
+  ) async => ScriptAuthorizations.revokeAuthorization(
     session,
     await UserService.actorOf(session),
     spreadsheetUuid,
@@ -180,6 +183,10 @@ class ScriptEndpoint extends Endpoint {
 
   /// The app opened the spreadsheet online: runs installable onOpen
   /// triggers (09 §8.7.3). Returns the number of runs.
+  ///
+  /// Opens beyond [openLimiter] (per user and spreadsheet) and
+  /// [openLimiterAll] (per spreadsheet, all users) run nothing and return
+  /// 0: the triggers run with their installer's authorization and quota.
   Future<int> notifyOpen(Session session, UuidValue spreadsheetUuid) async {
     ScriptService.requireEnabled();
     final actor = await UserService.actorOf(session);
@@ -189,6 +196,24 @@ class ScriptEndpoint extends Endpoint {
       spreadsheetUuid,
       Role.viewer,
     );
+    if (await openLimiter.check('${actor.userId}:${item.id}') != null ||
+        await openLimiterAll.check('${item.id}') != null) {
+      return 0;
+    }
     return ScriptTriggerService.fireOpen(session, item);
   }
+
+  /// onOpen runs per user and spreadsheet.
+  static final openLimiter = RateLimiter(
+    name: 'script:notifyOpen',
+    limit: 10,
+    window: const Duration(minutes: 1),
+  );
+
+  /// onOpen runs per spreadsheet (all users together).
+  static final openLimiterAll = RateLimiter(
+    name: 'script:notifyOpenAll',
+    limit: 120,
+    window: const Duration(minutes: 1),
+  );
 }

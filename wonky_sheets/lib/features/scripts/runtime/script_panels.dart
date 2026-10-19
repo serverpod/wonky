@@ -369,6 +369,7 @@ class _ScriptPanelDialogState extends State<_ScriptPanelDialog>
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.scriptPanel'),
+        closeIcon: const WonkyDialogCloseButton(),
         constraints: BoxConstraints(maxWidth: width + 48),
         title: Text(title),
         child: SizedBox(

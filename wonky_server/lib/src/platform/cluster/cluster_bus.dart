@@ -34,16 +34,21 @@ abstract final class ClusterBus {
 
   /// Posts [message] on [channelName]. [coalesceKey] (unique within the
   /// channel) lets a later message replace this one while both are queued.
+  /// With [immediate], the queue (this message and everything before it, so
+  /// the order holds) is published now instead of after [flushInterval]: ops
+  /// that other instances must apply without a second of delay.
   static Future<void> post(
     Session session,
     String channelName,
     SerializableModel message, {
     String? coalesceKey,
+    bool immediate = false,
   }) => postOn(
     session.serverpod,
     channelName,
     message,
     coalesceKey: coalesceKey,
+    immediate: immediate,
   );
 
   /// [post] without a session (timers).
@@ -52,6 +57,7 @@ abstract final class ClusterBus {
     String channelName,
     SerializableModel message, {
     String? coalesceKey,
+    bool immediate = false,
   }) async {
     await pod.server.messageCentral.postMessage(
       channelName,
@@ -60,7 +66,12 @@ abstract final class ClusterBus {
     );
     if (!_remote(pod)) return;
     unawaited(listen(pod));
-    (_outboxes[pod] ??= _Outbox(pod)).add(channelName, message, coalesceKey);
+    (_outboxes[pod] ??= _Outbox(pod)).add(
+      channelName,
+      message,
+      coalesceKey,
+      immediate: immediate,
+    );
   }
 
   static bool _remote(Serverpod pod) =>
@@ -111,7 +122,12 @@ class _Outbox {
   Timer? _timer;
   var _warned = false;
 
-  void add(String channel, SerializableModel message, String? coalesceKey) {
+  void add(
+    String channel,
+    SerializableModel message,
+    String? coalesceKey, {
+    bool immediate = false,
+  }) {
     final data = pod.serializationManager.encodeWithType(message);
     final Object key = coalesceKey == null ? _seq++ : '$channel\n$coalesceKey';
     // Re-adding moves a coalesced message to the end: it stays behind the
@@ -120,7 +136,7 @@ class _Outbox {
     if (old != null) _bytes -= old.$2.length;
     _queue[key] = (channel, data);
     _bytes += data.length;
-    if (_bytes >= ClusterBus.maxBatchBytes) {
+    if (immediate || _bytes >= ClusterBus.maxBatchBytes) {
       unawaited(flush());
     } else {
       _timer ??= Timer(ClusterBus.flushInterval, () => unawaited(flush()));

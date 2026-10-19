@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -7,6 +10,9 @@ import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/drive/drive_file_service.dart';
 import 'package:wonky_server/src/platform/files/file_routes.dart';
 import 'package:wonky_server/src/platform/files/file_url_tokens.dart';
+import 'package:wonky_server/src/platform/files/download_budget.dart';
+import 'package:wonky_server/src/platform/files/storage_reads.dart';
+import 'package:wonky_server/src/platform/config/wonky_config.dart';
 
 import '../../support/file_fixtures.dart';
 import '../../support/test_drive.dart';
@@ -72,6 +78,75 @@ void main() {
             download: true,
           )).url!,
         );
+
+    group('with small stream pieces', () {
+      setUp(() => StorageReads.chunkSize = 1000);
+      tearDown(() {
+        StorageReads.chunkSize = 1024 * 1024;
+        StorageReads.forceWholeReads = false;
+      });
+
+      for (final whole in [false, true]) {
+        test('when downloading a file of several pieces'
+            '${whole ? ' with whole reads' : ''} then every byte arrives '
+            'once', () async {
+          StorageReads.forceWholeReads = whole;
+          final bytes = [for (var i = 0; i < 4321; i++) i % 251];
+          final item = await TestFiles.upload(
+            endpoints,
+            anna,
+            name: 'data.bin',
+            bytes: bytes,
+          );
+
+          final reply = await send('GET', await downloadPath(anna, item));
+
+          expect(reply.status, 200);
+          expect(reply.bytes, bytes);
+          expect(reply.headers.contentLength, bytes.length);
+        });
+      }
+
+      test('when a text file larger than a sample completes then its lines '
+          'are counted while streaming', () async {
+        final text = List.filled(30000, 'line').join('\n');
+        final item = await TestFiles.upload(
+          endpoints,
+          anna,
+          name: 'big.txt',
+          bytes: utf8.encode(text),
+        );
+
+        expect(item.mimeType, startsWith('text/plain'));
+        expect(jsonDecode(item.fileMetaJson!)['lines'], 30000);
+      });
+    });
+
+    test('when the daily download allowance is used up then the download '
+        'is refused with 429', () async {
+      final saved = WonkyConfig.current;
+      WonkyConfig.current = WonkyConfig(downloadBytesPerDay: 100);
+      addTearDown(() {
+        WonkyConfig.current = saved;
+        DownloadBudget.clear();
+      });
+      final item = await TestFiles.upload(
+        endpoints,
+        anna,
+        name: 'a.txt',
+        bytes: List.filled(60, 0x61),
+      );
+      final path = await downloadPath(anna, item);
+
+      final first = await send('GET', path);
+      final head = await send('HEAD', path);
+      final second = await send('GET', path);
+
+      expect(first.status, 200);
+      expect(head.status, 200);
+      expect(second.status, 429);
+      expect(DownloadBudget.usedToday(anna.id), 60);
+    });
 
     test(
       'when downloading then the bytes come as an attachment with forced headers',

@@ -1,7 +1,7 @@
 import 'column_letters.dart';
 
-/// Row or column axis of a sheet. (Named `GridDimension` to avoid clashing with the synced
-/// `Dimension` enum of `wonky_sync_models`.)
+/// Row or column axis of a sheet. (Named `GridDimension` to avoid clashing with the
+/// `Dimension` enum of the Sheets tables.)
 enum GridDimension { rows, columns }
 
 /// A cell position in current (zero-based) indices.

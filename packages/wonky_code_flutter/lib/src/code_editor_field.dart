@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show mapEquals, setEquals;
 import 'package:flutter/material.dart' show Theme;
 import 'package:flutter/services.dart';
@@ -121,6 +123,7 @@ class CodeEditorField extends StatefulWidget {
     this.autofocus = true,
     this.focusNode,
     this.tokenizer,
+    this.syncTokenizeLength = 20000,
     this.onChanged,
     this.onExit,
     this.semanticsLabel,
@@ -158,6 +161,14 @@ class CodeEditorField extends StatefulWidget {
 
   /// Tokenizer of the colors (default: the shared cached tokenizer).
   final CodeTokenizer? tokenizer;
+
+  /// Texts up to this many UTF-16 units are tokenized on every edit;
+  /// longer ones keep their tokens shifted past the edit and are
+  /// tokenized again once typing pauses for [retokenizeDelay] (CD-2).
+  final int syncTokenizeLength;
+
+  /// The pause after which a long text is tokenized again.
+  static const retokenizeDelay = Duration(milliseconds: 150);
   final ValueChanged<String>? onChanged;
 
   /// `Esc`.
@@ -201,6 +212,12 @@ class CodeEditorFieldState extends State<CodeEditorField> {
   CodeLines? _tokensFor;
   List<CodeToken> _tokens = const [];
   List<int> _lineStarts = const [0];
+  String? _tokensText;
+  Timer? _retokenize;
+
+  /// Whole-text tokenizations so far (tests).
+  @visibleForTesting
+  int debugTokenizations = 0;
 
   static const _noLigatures = [
     FontFeature.disable('calt'),
@@ -228,7 +245,11 @@ class CodeEditorFieldState extends State<CodeEditorField> {
       _styler = CodeTextStyler(widget.palette, tabSize: widget.tabSize);
       _tokensFor = null;
     }
-    if (old.language != widget.language) _tokensFor = null;
+    if (old.language != widget.language ||
+        !identical(old.tokenizer, widget.tokenizer)) {
+      _tokensFor = null;
+      _tokensText = null;
+    }
     final next = widget.text.replaceAll('\r\n', '\n');
     if (next != old.text.replaceAll('\r\n', '\n') && next != controller.text) {
       _lastText = next;
@@ -248,6 +269,7 @@ class CodeEditorFieldState extends State<CodeEditorField> {
 
   @override
   void dispose() {
+    _retokenize?.cancel();
     controller.removeListener(_onEdit);
     controller.dispose();
     super.dispose();
@@ -275,6 +297,12 @@ class CodeEditorFieldState extends State<CodeEditorField> {
     widget.onChanged?.call(t);
   }
 
+  CodeTokenizer get _tokenizer =>
+      widget.tokenizer ?? CachedCodeTokenizer.shared;
+
+  bool get _highlights =>
+      widget.language.isNotEmpty && _tokenizer.supports(widget.language);
+
   void _ensureTokens() {
     final lines = controller.codeLines;
     if (identical(lines, _tokensFor)) return;
@@ -285,10 +313,77 @@ class CodeEditorFieldState extends State<CodeEditorField> {
       if (text.codeUnitAt(i) == 0x0a) starts.add(i + 1);
     }
     _lineStarts = starts;
-    final tk = widget.tokenizer ?? CachedCodeTokenizer.shared;
-    _tokens = widget.language.isEmpty || !tk.supports(widget.language)
-        ? const []
-        : tk.tokenize(text, widget.language);
+    if (!_highlights) {
+      _tokens = const [];
+      _tokensText = text;
+      return;
+    }
+    final previous = _tokensText;
+    if (text.length <= widget.syncTokenizeLength || previous == null) {
+      _tokenize(text);
+      return;
+    }
+    // A long text: the old tokens, shifted past the edit (the edited
+    // range stays plain), until typing pauses.
+    _tokens = shiftTokens(_tokens, previous, text);
+    _tokensText = text;
+    _retokenize?.cancel();
+    _retokenize = Timer(CodeEditorField.retokenizeDelay, _retokenizeNow);
+  }
+
+  void _tokenize(String text) {
+    _retokenize?.cancel();
+    debugTokenizations++;
+    _tokens = _tokenizer.tokenize(text, widget.language);
+    _tokensText = text;
+  }
+
+  void _retokenizeNow() {
+    if (!mounted || !_highlights) return;
+    _tokenize(controller.text);
+    _tokensFor = controller.codeLines;
+    // re_editor lays its lines out again (and asks [_span] for new spans)
+    // when the selection changes; a round trip through the other caret
+    // affinity ends where it started.
+    final sel = controller.selection;
+    controller.selection = sel.copyWith(
+      extentAffinity: sel.extentAffinity == TextAffinity.downstream
+          ? TextAffinity.upstream
+          : TextAffinity.downstream,
+    );
+    controller.selection = sel;
+  }
+
+  /// [tokens] of [before] moved onto [after] (one edit): tokens before the
+  /// changed range stay, tokens after it shift by the length change, and
+  /// tokens overlapping it are dropped.
+  @visibleForTesting
+  static List<CodeToken> shiftTokens(
+    List<CodeToken> tokens,
+    String before,
+    String after,
+  ) {
+    final n = before.length < after.length ? before.length : after.length;
+    var prefix = 0;
+    while (prefix < n &&
+        before.codeUnitAt(prefix) == after.codeUnitAt(prefix)) {
+      prefix++;
+    }
+    var suffix = 0;
+    while (suffix < n - prefix &&
+        before.codeUnitAt(before.length - 1 - suffix) ==
+            after.codeUnitAt(after.length - 1 - suffix)) {
+      suffix++;
+    }
+    final changedEnd = before.length - suffix;
+    final delta = after.length - before.length;
+    return [
+      for (final t in tokens)
+        if (t.end <= prefix)
+          t
+        else if (t.start >= changedEnd)
+          CodeToken(t.start + delta, t.end + delta, t.token),
+    ];
   }
 
   TextSpan _span({

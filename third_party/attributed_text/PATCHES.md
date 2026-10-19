@@ -18,3 +18,16 @@ Every change is marked with `// WONKY PATCH <id>` in the code.
 - **Spec**: Write 04 §10 (inline formatting), §2.2 SE-5 (fixes found by our test suites)
 - **Upstream**: to be filed against superlistapp/super_editor (attributed_text); generally
   applicable.
+
+## AT-2 — Log messages built only when logged
+
+- **Reason**: `AttributedSpans` and `AttributedText` interpolated their log messages (every
+  marker's and span's `toString()`) on every call, logging on or off. `collapseSpans` runs for
+  each text component build, so this showed up in the Write perf suite (CQ-42): with a whole
+  100-page document selected, `MultiAttributionSpan.toString` alone was ~4 % of a frame.
+- **Changes**: every `_log.fine/finer/finest/info(...)` call passes a closure (`() => '…'`);
+  `package:logging` evaluates it only when the level is logged.
+- **Files**: `lib/src/attributed_spans.dart`, `lib/src/attributed_text.dart`
+- **Tests**: the package's suite (behavior unchanged).
+- **Spec**: Write 04 §36
+- **Upstream**: generally useful; to be proposed.

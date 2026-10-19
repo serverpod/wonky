@@ -14,7 +14,6 @@ final class SlidesSnapshotHeader {
     required this.deckId,
     required this.capturedAt,
     this.engineHlc,
-    this.syncTablesHash,
     this.counts = const {},
     this.keys = const {},
   });
@@ -35,7 +34,6 @@ final class SlidesSnapshotHeader {
   /// Hash of the synced table definitions at capture: a snapshot of an
   /// older schema still decodes (records are lenient), the hash tells why
   /// columns are missing.
-  final String? syncTablesHash;
 
   /// Row counts per table.
   final Map<String, int> counts;
@@ -51,7 +49,6 @@ final class SlidesSnapshotHeader {
     'deckId': deckId,
     'capturedAt': capturedAt.toUtc().toIso8601String(),
     'engineHlc': ?engineHlc,
-    'syncTablesHash': ?syncTablesHash,
     'counts': counts,
     if (keys.isNotEmpty) 'keys': keys,
   };
@@ -75,7 +72,6 @@ final class SlidesSnapshotHeader {
       deckId: deckId,
       capturedAt: at.toUtc(),
       engineHlc: m['engineHlc'] as String?,
-      syncTablesHash: m['syncTablesHash'] as String?,
       counts: {
         for (final e in ((m['counts'] as Map?) ?? const {}).entries)
           '${e.key}': (e.value as num).toInt(),
@@ -133,7 +129,6 @@ abstract final class SlidesSnapshotCodec {
     required String deckId,
     required DateTime capturedAt,
     String? engineHlc,
-    String? syncTablesHash,
   }) {
     final byTable = <String, List<Map<String, Object?>>>{};
     for (final (t, c) in rows) {
@@ -168,7 +163,6 @@ abstract final class SlidesSnapshotCodec {
       deckId: deckId,
       capturedAt: capturedAt,
       engineHlc: engineHlc,
-      syncTablesHash: syncTablesHash,
       counts: {for (final t in tables) t: byTable[t]!.length},
       keys: keys,
     );

@@ -934,6 +934,7 @@ class _LinkDialogState extends State<_LinkDialog> {
     final theme = ShadTheme.of(context);
     return ShadDialog(
       key: const ValueKey<String>('dialog.markdown.link'),
+      closeIcon: const WonkyDialogCloseButton(),
       title: Text(widget.labels.link),
       actions: [
         if (widget.current != null)

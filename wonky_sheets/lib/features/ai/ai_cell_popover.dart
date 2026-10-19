@@ -54,7 +54,7 @@ class AiCellPopoverHost extends StatelessWidget {
       listenable: Listenable.merge([ai.popover, ed.scroll, ed]),
       builder: (context, _) {
         final s = ai.popover.value;
-        final g = ed.lastGeometry;
+        final g = ed.geometry;
         if (s == null || g == null || s.sheetId != ed.activeSheetId) {
           return const SizedBox.shrink();
         }

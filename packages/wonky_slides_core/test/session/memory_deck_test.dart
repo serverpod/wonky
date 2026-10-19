@@ -4,7 +4,7 @@ import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/schema.dart';
 import 'package:wonky_slides_core/session.dart';
 import 'package:wonky_slides_core/testing.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 import 'package:wonky_sync_models/ids.dart';
 
 MemoryDeck _deck(DeckModel model) => MemoryDeck(

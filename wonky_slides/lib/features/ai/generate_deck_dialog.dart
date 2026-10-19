@@ -5,6 +5,7 @@ import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_slides_core/ai.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/slides_l10n.dart';
 import 'ai_widgets.dart';
@@ -713,6 +714,7 @@ class _GenerateDeckDialogState extends State<GenerateDeckDialog>
     final busy = _step == _Step.planning || _step == _Step.building;
     final o = _outline;
     return ShadDialog(
+      closeIcon: const WonkyDialogCloseButton(),
       constraints: const BoxConstraints(maxWidth: 760),
       key: GenerateDeckKeys.dialog,
       title: Text(

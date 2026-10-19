@@ -1,9 +1,12 @@
+@Tags(['integration'])
+library;
+
 import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
-import 'package:wonky_server/src/sheets/scripts/script_service.dart';
+import 'package:wonky_server/src/sheets/scripts/script_authorizations.dart';
 
 import '../../../support/mcp_harness.dart';
 import '../../../support/sheets_fixtures.dart';
@@ -277,7 +280,7 @@ Object? fetch() => UrlFetchApp.fetch('https://example.com').statusCode;
       () async {
         await save(_main);
         final session = anna.session;
-        final u = await ScriptService.usage(session, anna.id);
+        final u = await ScriptAuthorizations.usage(session, anna.id);
         await ScriptQuotaUsage.db.updateRow(
           session,
           u.copyWith(serverRuntimeMs: 999999999),

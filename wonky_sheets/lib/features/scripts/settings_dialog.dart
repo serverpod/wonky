@@ -7,6 +7,7 @@ import 'package:wonky_core/wonky_core.dart' show InvocationSource, Role;
 import 'package:wonky_sheets_core/model.dart';
 import 'package:wonky_sheets_script/wonky_sheets_script.dart';
 
+import '../history/change_labels.dart';
 import '../../l10n/sheets_l10n.dart';
 import '../sheet_editor/sheet_editor_controller.dart';
 import 'script_project.dart';
@@ -28,7 +29,7 @@ void applyScriptSettings(
       ctx,
       GenericRowWrite(SheetsTables.scriptProject, project.id, {
         ScriptCols.name: name.trim(),
-      }, label: 'Script settings'),
+      }, label: SheetsChangeLabels.scriptSettings),
     );
   }
   final settings = {...ScriptService.of(ed).settings};
@@ -188,7 +189,7 @@ void deleteScriptProject(CommandContext ctx, SheetEditorController ed) {
       project.id,
       const {},
       delete: true,
-      label: 'Delete script project',
+      label: SheetsChangeLabels.deleteScriptProject,
     ),
   );
 }

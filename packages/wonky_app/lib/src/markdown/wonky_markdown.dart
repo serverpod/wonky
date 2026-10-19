@@ -126,6 +126,22 @@ class WonkyMarkdown extends StatefulWidget {
 class _WonkyMarkdownState extends State<WonkyMarkdown> {
   final List<TapGestureRecognizer> _recognizers = [];
 
+  // The parsed blocks of the last text (parsing is skipped while the text
+  // is unchanged, e.g. when a streamed reply rebuilds its neighbours).
+  List<MdBlock> _blocks = const [];
+  String? _parsedText;
+  bool? _parsedHardBreaks;
+
+  List<MdBlock> _parse() {
+    final hard = widget.profile.hardBreaks;
+    if (_parsedText != widget.text || _parsedHardBreaks != hard) {
+      _blocks = MarkdownBlocks.parse(widget.text, hardBreaks: hard);
+      _parsedText = widget.text;
+      _parsedHardBreaks = hard;
+    }
+    return _blocks;
+  }
+
   @override
   void dispose() {
     _disposeRecognizers();
@@ -161,7 +177,7 @@ class _WonkyMarkdownState extends State<WonkyMarkdown> {
   Widget build(BuildContext context) {
     _disposeRecognizers();
     final p = widget.profile;
-    final blocks = MarkdownBlocks.parse(widget.text, hardBreaks: p.hardBreaks);
+    final blocks = _parse();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       // The assistant's layout predates the profiles (it fills its slot).

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_sheets_core/model.dart';
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../../l10n/sheets_l10n.dart';
 import 'mcp_dialog_state.dart';
@@ -214,6 +215,7 @@ class _CustomNumberFormatDialogState
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.customNumberFormat'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.dialogCustomNumberFormatTitle),
         actions: [
           ShadButton.outline(

@@ -16,6 +16,14 @@ Spec map: [01](01-overview.md) · [02](02-data-model.md) · [03](03-editor-canva
 [08](../08-commands-and-undo.md), [12](../12-offline-and-sync.md), [14](../14-roadmap.md),
 [15](../15-writing-tests.md).
 
+> **Historical plan (M9–M11).** This plan is kept as built and is not updated. Since milestone
+> **M13** (suite [14 · Roadmap](../14-roadmap.md), RevLog) Wonky Slides syncs through RevLog
+> ([17](../17-revlog-sync.md)) instead of the `serverpod_offline_sync` engine: deck spaces,
+> reserved spaces, `slidesSync`, the replica, `SlidesWriter`/`ServerSlidesWriter`,
+> `DeckChangeLog` and its consumer, `HeadlessDeckCache`, `SyncedDeckSession` and the shared sync
+> kit's client named below are gone. Current behavior: Slides [02](02-data-model.md) §3, §9–§12,
+> [09](09-collaboration-history.md) §4–§6, [11](11-mcp-and-ai.md) §2.1 and [STATUS](STATUS.md).
+
 ---
 
 ## 1. Milestones
@@ -182,6 +190,7 @@ Paths below: `app/` = `wonky_slides/lib/`, `core/` = `packages/wonky_slides_core
 ### 4.3 M9 wave 1 — contracts and foundations
 
 **SL-2 · Synced schema S-1** (02 §3, §14)
+*Superseded by RevLog (M13): the tables are server tables, 02 §3, §14.1.*
 - Scope: every `.spy.yaml` of 02 §3 + enums + the synced additions of 03–11 known now,
   `SlidesIds` (deterministic ids), table codec registration in `wonky_sync_kit`, server and client
   migrations, `syncTablesHash` bump coordinated with Sheets, columns lint test.
@@ -246,6 +255,7 @@ Paths below: `app/` = `wonky_slides/lib/`, `core/` = `packages/wonky_slides_core
   undo 15, benchmark 2 tagged `slow`).
 
 **SL-5 · Server: deck spaces, `slidesSync`, change-log consumer** (02 §9, 09)
+*Superseded by RevLog (M13): `slidesDoc`, `SlidesRevBinding` and its hooks, 02 §3.10, §9.*
 - Scope: deck kind on `SpaceService` (D-4), `slidesSync.sync` with `onMergeSuccess` and the
   OS-8 filter (deck spaces + personal space), `SlidesEndpoint.{reserveSpaces, subscribe,
   ensureSubscribed, spaceStats}` (+ `revertChange`/`reapplyChange` stubs), membership mirrored
@@ -362,6 +372,7 @@ Paths below: `app/` = `wonky_slides/lib/`, `core/` = `packages/wonky_slides_core
   `test/integration/slides/slides_headless_test.dart` 12 ([STATUS.md](STATUS.md)).
 
 **SL-9 · Client sync and sessions** (02 §9, suite 12)
+*Superseded by RevLog (M13): `SlidesRevLog`, `LoggedDeckSession`, 02 §9.*
 - Scope: `SlidesSyncController` on `wonky_sync_kit_flutter`, replica `slides_<userId>.db` (web
   OPFS/IndexedDB), reserved-space pool, `SyncedDeckSession`, offline *New presentation* with
   the queued `drive.registerPresentation`, remote batches, recovery export (web: download of
@@ -1169,7 +1180,7 @@ Paths below: `app/` = `wonky_slides/lib/`, `core/` = `packages/wonky_slides_core
   `wonky_slides/lib/features/{ai,assistant,undo}/` + `commands/ai_commands.dart` (assistant panel and
   adapter, Generate presentation, Rewrite, speaker notes, alt text incl. the Accessibility panel's
   *Generate with AI*, Design ideas, AI changes preview with before/after thumbnails; the shared
-  `slides.serverChange` undo handler). Deviations: previews in `sheets_ai_preview_record` (no
+  `slides.serverChange` undo handler). Deviations: previews in the shared `ai_preview_record` (no
   `SlidesAiPreviewRecord` table); rewrite in a dialog instead of a canvas overlay; design ideas are
   theme layouts only; the Drive assistant (P1), code walkthrough, *Animate this slide* and §6.11 are
   not built; the injection corpus is §8.4's (the plan's "§7.8"). Details: 11 §6.12; tests: server
@@ -1243,6 +1254,8 @@ Names are binding unless changed via a contract PR.
 
 ### 5.1 Shared sync kit — pure Dart (extracted from Sheets)
 
+*Superseded by RevLog (M13): the row types live in `wonky_revlog` ([17](../17-revlog-sync.md) part 3).*
+
 Built by Drive 05 D-6 (`packages/wonky_sync_kit`); the signatures below are the implemented
 ones (README of the package for the full list).
 
@@ -1301,6 +1314,8 @@ defines `SlidesChangeSummary` and `typedef SlidesPlan = MutationPlan<SlidesChang
 `slides.rows` `RowsUndoEntry`/`RowsUndoHandler` with `TableCoupledColumns` for P4.
 
 ### 5.2 Shared sync kit — client (`wonky_sync_kit_flutter`; extracted from `wonky_sheets/lib/features/sync/`)
+
+*Superseded by RevLog (M13): `wonky_revlog_flutter` and `LoggedDeckSession` ([17](../17-revlog-sync.md) part 6).*
 
 ```dart
 class SyncReplica {                     // per user + app (`SyncReplica.fileName('slides', userId)`)
@@ -1543,6 +1558,9 @@ the app's `CodeFrames.sceneOf`/`applyFrame` (`features/elements/code/code_frames
 
 ### 5.7 Server
 
+*The change-log consumer and writer contracts are superseded by RevLog (M13): hooks of
+`SlidesRevBinding` and `SlidesServerWrites` (02 §3.10, §12.2).*
+
 ```dart
 abstract interface class DeckChangeLogConsumer {   // registered plugins: drive mirror, activity,
   String get id;                                   // orphaning, versions, agent cursors, headless cache
@@ -1610,6 +1628,7 @@ Every command: execute → undo → redo equality (model state + selection) head
 permission matrix per role (`forEachRole`).
 
 ### 7.3 Multi-client sync harness
+*With RevLog (M13) the clients run against `FakeRevServer` / `FakeRevHub` ([17](../17-revlog-sync.md) As built 16).*
 As Sheets 13 §7.3: server (`serverpod_test` with the offline-sync engine) + N clients in isolates
 with their own replicas, `DeckModel`s, writers and undo stacks.
 - **Scripted**: every row of [09 §6.4](09-collaboration-history.md) and 06 §11 / 07 / 08

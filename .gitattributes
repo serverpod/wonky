@@ -1,0 +1,42 @@
+# Line endings (CQ-64c, plans/code-quality-review findings R-4): the index
+# holds LF for every text file, and checkouts use LF on every platform, so the
+# generators (Serverpod, gen-l10n, dart format), which write LF, never produce
+# whole-file line-ending diffs on Windows.
+* text=auto eol=lf
+
+# Windows scripts keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: never converted or diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.bmp binary
+*.tif binary
+*.tiff binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.wasm binary
+*.mp3 binary
+*.mp4 binary
+*.zip binary
+*.gz binary
+*.pdf binary
+*.xlsx binary
+*.ods binary
+*.docx binary
+*.odt binary
+*.pptx binary
+*.epub binary
+*.exe binary
+*.bin binary
+*.icns binary
+# Hunspell dictionaries: large, legacy encodings, kept byte for byte.
+*.dic binary
+*.aff binary

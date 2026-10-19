@@ -3,9 +3,8 @@ import 'package:shad/shad.dart' show LucideIcons;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
 import '../editor/controller/editor_types.dart';
 import 'write_ai_controller.dart';
 

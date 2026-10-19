@@ -197,7 +197,10 @@ void main() {
       () async {
         select([f.a]);
         await roundTrip('slides.format.effects', {'shadow': true});
-        expect(json(f.a, ElementCols.effectsJson)!['shadow'], isA<Map>());
+        expect(
+          json(f.a, ElementCols.effectsJson)!['shadow'],
+          isA<Map<Object?, Object?>>(),
+        );
         await roundTrip('slides.format.effects', {'glow': true});
         final fx = json(f.a, ElementCols.effectsJson)!;
         expect(fx.keys, containsAll(['shadow', 'glow']));
@@ -234,7 +237,10 @@ void main() {
         'targetIds': [f.a],
       });
 
-      expect(json(f.a, ElementCols.effectsJson)!['shadow'], isA<Map>());
+      expect(
+        json(f.a, ElementCols.effectsJson)!['shadow'],
+        isA<Map<Object?, Object?>>(),
+      );
       expect(d.model.element(f.a)!.opacity, 0.5);
       expect(json(f.a, ElementCols.textStyleJson), {
         'v': 1,
@@ -337,7 +343,7 @@ void main() {
         'it in one step', () async {
       select([text]);
       final copied = await d.run('slides.format.copyStyle');
-      expect((copied.data! as Map)['style'], isA<Map>());
+      expect((copied.data! as Map)['style'], isA<Map<Object?, Object?>>());
       select([f.a, f.bShape]);
       await roundTrip('slides.format.pasteStyle');
       for (final id in [f.a, f.bShape]) {

@@ -9,7 +9,6 @@ import '../sheet_editor/sheet_editor_controller.dart';
 import '../sheet_editor/write_gate.dart';
 import 'protection_dialogs.dart';
 import 'protection_layer.dart';
-import 'write_intents.dart';
 
 /// One protection of the workbook with its resolved geometry.
 @immutable
@@ -191,35 +190,7 @@ class ProtectionController extends ChangeNotifier {
       () =>
           SheetsMutationPlanner().plan(op, model, editor.session.planContext()),
     );
-    final guard = ProtectionGuard(model);
-    final hits = <ProtectionHit>[];
-    var blocked = false;
-    void add(GuardResult r) {
-      if (r.isAllowed) return;
-      hits.addAll(r.hits);
-      if (r.isBlocked) blocked = true;
-    }
-
-    for (final intent in writes.intents) {
-      add(guard.check(intent, userId, isOwner: isOwner));
-    }
-    for (final ins in writes.inserts) {
-      final a = guard.check(ins.line(ins.before), userId, isOwner: isOwner);
-      final b = guard.check(ins.line(ins.at), userId, isOwner: isOwner);
-      final both = a.protectionIds.intersection(b.protectionIds);
-      if (both.isEmpty) continue;
-      final inside = [
-        for (final h in a.hits)
-          if (both.contains(h.protectionId)) h,
-      ];
-      hits.addAll(inside);
-      if (inside.any((h) => !h.warningOnly)) blocked = true;
-    }
-    if (hits.isEmpty) return GuardResult.allowed;
-    return GuardResult(
-      blocked ? GuardStatus.blocked : GuardStatus.warnings,
-      hits,
-    );
+    return ProtectionCheck.ofWrites(model, writes, userId, isOwner: isOwner);
   }
 
   void _gate(CommandContext? ctx, SheetsOperation op) {

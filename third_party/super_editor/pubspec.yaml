@@ -49,7 +49,8 @@ dependencies:
     sdk: flutter
   flutter_test_robots: ^0.0.24
   clock: ^1.1.1
-  golden_toolkit: ^0.15.0
+  # WONKY PATCH (infra, CQ-45): golden_toolkit moved to dev_dependencies;
+  # as a regular dependency its Roboto font shipped in every app bundle.
   meta: ^1.8.0
   matcher: ^0.12.16+1
   mockito: ^5.0.4
@@ -76,6 +77,8 @@ dev_dependencies:
   flutter_test_goldens: ^0.0.11
   golden_bricks: ^1.0.0
   golden_runner: ^0.2.0
+  # WONKY PATCH (infra, CQ-45): only `lib/super_test.dart` (goldens) uses it.
+  golden_toolkit: ^0.15.0
 
 flutter:
   # no Flutter configuration

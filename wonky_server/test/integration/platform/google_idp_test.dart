@@ -1,3 +1,7 @@
+@Tags(['integration'])
+library;
+
+import 'package:clock/clock.dart';
 import 'package:serverpod_auth_idp_server/core.dart' as auth;
 import 'package:serverpod_auth_idp_server/providers/google.dart';
 import 'package:test/test.dart';
@@ -75,8 +79,7 @@ void main() {
       'when the email is new then a profile is created with the Google name',
       () async {
         final session = sessionBuilder.build();
-        final email =
-            'new.${DateTime.now().microsecondsSinceEpoch}@example.test';
+        final email = 'new.${clock.now().microsecondsSinceEpoch}@example.test';
         final (authUser, account) = await newGoogleAccount(email);
 
         await rememberGoogleDetails(

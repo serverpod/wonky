@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:wonky_sync_kit/rows.dart' as kit;
-import 'package:wonky_sync_kit/rows.dart'
+import 'package:wonky_revlog/rows.dart' as kit;
+import 'package:wonky_revlog/rows.dart'
     show
         CurrentRowReader,
         RowChange,
+        RowOp,
         SkippedColumn,
         TableColumnwiseInserts,
         UndoInverter;
@@ -13,11 +14,11 @@ import 'package:wonky_sync_kit/rows.dart'
 import '../model/schema.dart';
 
 // The generic row changes, plans, undo inverter and remote patching live in
-// the shared sync kit (`wonky_sync_kit`, Drive 05 D-6). Sheets keeps its
-// names: [ChangeSummary] is Sheets' summary (implementing the kit's
-// interface) and [MutationPlan] the kit's plan over it. The kit's
+// `wonky_revlog` (RevLog spec 03). Sheets keeps its names: [ChangeSummary]
+// is Sheets' summary (implementing the RevLog interface) and [MutationPlan]
+// the RevLog plan over it. The RevLog
 // `UndoInverter` is not re-exported: [SheetsUndo] binds Sheets' cell rule.
-export 'package:wonky_sync_kit/rows.dart'
+export 'package:wonky_revlog/rows.dart'
     show
         ColumnwiseInserts,
         CoupledColumns,
@@ -26,7 +27,6 @@ export 'package:wonky_sync_kit/rows.dart'
         RowOp,
         RowPatch,
         SkippedColumn,
-        SyncTxAdapter,
         TableColumnwiseInserts,
         TableCoupledColumns,
         TableRank;
@@ -64,6 +64,52 @@ final class ChangeSummary implements kit.ChangeSummary {
        kinds = kinds ?? {},
        deleted = deleted ?? {},
        revived = revived ?? {};
+
+  /// A summary of [changes] without a plan (undo/redo, remote
+  /// re-application, server-side ops without a client summary): sheets,
+  /// kinds and deleted/revived structure ids.
+  factory ChangeSummary.ofChanges(Iterable<RowChange> changes) {
+    final s = ChangeSummary();
+    for (final c in changes) {
+      final sheet =
+          c.columnsAfter[Cols.sheetId] ?? c.columnsBefore[Cols.sheetId];
+      if (sheet != null) s.sheets.add('$sheet');
+      s.kinds.add(switch (c.table) {
+        SheetsTables.cell =>
+          c.touchedColumns.any(
+                (k) => k == CellCols.content || k == CellCols.note,
+              )
+              ? ChangeKinds.values
+              : ChangeKinds.format,
+        SheetsTables.sheetRow ||
+        SheetsTables.sheetColumn ||
+        SheetsTables.mergedRange ||
+        SheetsTables.dimensionGroup => ChangeKinds.structure,
+        SheetsTables.sheet => ChangeKinds.sheets,
+        SheetsTables.spreadsheet => ChangeKinds.settings,
+        SheetsTables.namedRange => ChangeKinds.names,
+        SheetsTables.protectedRange => ChangeKinds.protection,
+        SheetsTables.basicFilter ||
+        SheetsTables.filterView => ChangeKinds.filters,
+        SheetsTables.embeddedObject ||
+        SheetsTables.pivotTable => ChangeKinds.objects,
+        SheetsTables.conditionalFormatRule ||
+        SheetsTables.dataValidationRule ||
+        SheetsTables.banding => ChangeKinds.rules,
+        _ => ChangeKinds.scripts,
+      });
+      final kind = switch (c.table) {
+        SheetsTables.sheetRow => 'rows',
+        SheetsTables.sheetColumn => 'cols',
+        SheetsTables.sheet => 'sheets',
+        _ => null,
+      };
+      if (kind == null) continue;
+      if (c.op == RowOp.delete) s.addDeleted(kind, c.rowId);
+      if (c.op == RowOp.insert) s.addRevived(kind, c.rowId);
+    }
+    return s;
+  }
 
   /// Max ids per deleted/revived list before [structureOverflow].
   static const maxIds = 1000;
@@ -121,8 +167,11 @@ final class ChangeSummary implements kit.ChangeSummary {
   String encode() => jsonEncode(toJson());
 
   /// Parses `summaryJson`.
-  static ChangeSummary parse(String json) {
-    final m = jsonDecode(json) as Map<String, Object?>;
+  static ChangeSummary parse(String json) =>
+      ChangeSummary.fromJson(jsonDecode(json) as Map<String, Object?>);
+
+  /// Reads the [toJson] form (an op's summary).
+  factory ChangeSummary.fromJson(Map<String, Object?> m) {
     List<String> strs(Object? v) =>
         v is List ? v.map((e) => e.toString()).toList() : [];
     Map<String, List<String>> lists(Object? v) => v is Map

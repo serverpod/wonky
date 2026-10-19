@@ -11,10 +11,9 @@ import 'package:wonky_slides_core/scene.dart';
 import 'package:wonky_slides_core/schema.dart' show DeckThemeCols;
 import 'package:wonky_slides_core/themes.dart';
 
-import '../../platform/common/models.dart';
 import '../../platform/mcp/drive_tool_handlers.dart';
 import '../../platform/mcp/tool_support.dart';
-import '../../sheets/sync/sync_db.dart';
+import '../revlog/slides_revlog.dart';
 import 'slides_input.dart';
 import 'slides_mcp_support.dart';
 
@@ -38,15 +37,9 @@ abstract final class SlidesReadHandlers {
       .replace(path: '/slides/p/${t.item.uuid.uuid}')
       .toString();
 
-  /// The last `DeckChangeLog` id of the deck (`sync_version`).
-  static Future<String?> syncVersion(Session session, SlidesTarget t) async {
-    final row = await DeckChangeLog.db.findFirstRow(
-      syncSessionOf(session),
-      where: (c) => c.deckId.equals(t.space),
-      orderBy: (c) => c.at.desc(),
-    );
-    return row?.id.uuid;
-  }
+  /// The deck's head revision (`sync_version`, RevLog spec 08 §7).
+  static Future<String> syncVersion(Session session, SlidesTarget t) async =>
+      '${await SlidesRevlog.headRevision(session, t.space)}';
 
   static String? _transitionType(String? json) {
     final t = _json(json)?['type'];
@@ -533,7 +526,8 @@ abstract final class SlidesReadHandlers {
           'routing': d?['routing'],
           'connects': [
             for (final end in ['start', 'end'])
-              if ((d?[end] as Map?)?['connect'] case final Map c)
+              if ((d?[end] as Map?)?['connect']
+                  case final Map<Object?, Object?> c)
                 {
                   'end': end,
                   'element_id': _decodeB62(c['elementId']),
@@ -567,10 +561,12 @@ abstract final class SlidesReadHandlers {
       'delay_ms': b.delayMs,
       'duration_ms': b.durationMs,
       'easing': b.easing,
-      if (options['params'] case final Map p when p.isNotEmpty) 'params': p,
-      if (options['delivery'] case final Map d)
+      if (options['params'] case final Map<Object?, Object?> p
+          when p.isNotEmpty)
+        'params': p,
+      if (options['delivery'] case final Map<Object?, Object?> d)
         'delivery': SlidesInput.snake(_snakeValues(d)),
-      if (options['afterBuild'] case final Map ab)
+      if (options['afterBuild'] case final Map<Object?, Object?> ab)
         'after_build': SlidesInput.snake(ab),
     };
   }

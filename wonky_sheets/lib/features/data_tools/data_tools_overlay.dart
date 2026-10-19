@@ -174,7 +174,7 @@ class _SplitChipPositioned extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([editor.scroll, editor.overlaySignal]),
     builder: (context, _) {
-      final g = editor.lastGeometry;
+      final g = editor.geometry;
       if (g == null || editor.activeSheetId != state.sheetId) {
         return const SizedBox.shrink();
       }

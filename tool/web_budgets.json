@@ -1,0 +1,31 @@
+{
+  "_comment": "Bundle-size budgets in bytes for `dart run tool/build_web.dart --budget tool/web_budgets.json` (CI job `web`, .github/workflows/build.yml; CQ-64a). About 10 % over the sizes measured on 2026-10-18 (Flutter 3.47, --wasm, after tool/prune_web_fonts.dart): drive wasm 6.31 MB / js 6.77 / assets 25.0 / start-up fonts 0.42 / total 68.7; write 9.08 / 9.64 / 25.0 / 0.44 / 74.5; sheets 12.49 / 13.59 / 32.2 (41.3 before the duplicate cell fonts were dropped) / 1.33 / 89.0; slides 11.02 / 11.86 / 34.9 / 4.29 / 88.5. Raise a budget only in the change that explains the growth. `total` excludes the CanvasKit .symbols files.",
+  "drive": {
+    "wasm": 6900000,
+    "js": 7450000,
+    "assets": 27500000,
+    "startupFonts": 500000,
+    "total": 76000000
+  },
+  "write": {
+    "wasm": 10000000,
+    "js": 10600000,
+    "assets": 27500000,
+    "startupFonts": 500000,
+    "total": 82000000
+  },
+  "sheets": {
+    "wasm": 13700000,
+    "js": 15000000,
+    "assets": 35500000,
+    "startupFonts": 1500000,
+    "total": 98000000
+  },
+  "slides": {
+    "wasm": 12100000,
+    "js": 13000000,
+    "assets": 38500000,
+    "startupFonts": 4750000,
+    "total": 97500000
+  }
+}

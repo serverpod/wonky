@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:html/parser.dart' as html;
@@ -302,6 +303,42 @@ void main() {
         expect(a.pageCount, 2);
       },
     );
+
+    test('when Cancel is pressed during a long export on the UI isolate '
+        '(a yielder) then the export stops (07 §4.3, W-07)', () async {
+      final long = md(
+        List.generate(400, (i) => 'Paragraph $i with text.').join('\n\n'),
+      );
+      final cancel = CancellationToken();
+      final yielder = ExportYielder(slice: Duration.zero);
+      // A timer only runs when the export gives the event loop a turn.
+      Timer.run(cancel.cancel);
+
+      await expectLater(
+        const PdfExporter().export(
+          input(long, cancel: cancel, yielder: yielder),
+          const PdfExportOptions(),
+        ),
+        throwsA(isA<ExportCancelledException>()),
+      );
+      expect(yielder.turns, greaterThan(0));
+    });
+
+    test('when exporting with a yielder then the bytes equal an export '
+        'without one', () async {
+      final doc = md(sample);
+
+      final a = await const PdfExporter().export(
+        input(doc, yielder: ExportYielder(slice: Duration.zero)),
+        const PdfExportOptions(),
+      );
+      final b = await const PdfExporter().export(
+        input(doc),
+        const PdfExportOptions(),
+      );
+
+      expect(a.bytes, b.bytes);
+    });
 
     test('when counting pages then the counter matches the exporter', () async {
       final long = md(

@@ -10,10 +10,9 @@ import 'package:wonky_client/wonky_client.dart'
     show DriveItemKind, DriveItemView, UuidValue;
 import 'package:wonky_ui/wonky_ui.dart' show SyncStatus;
 import 'package:wonky_core/wonky_core.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../document/write_document_session.dart';
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
 import '../editor/commands/editor_command_catalog.dart';
 import '../editor/commands/write_editor_commands.dart';
 import '../editor/controller/editor_types.dart';
@@ -392,12 +391,25 @@ class WriteDocumentController extends DocumentController {
     WriteExportOptions options = const WriteExportOptions(),
   }) async {
     final l = writeL10nOf(services);
-    final toast = services.toasts.show(
+    // Progress with *Cancel* (Write 07 §4.3): the export runs on this
+    // isolate and gives the event loop turns, so both work (W-07).
+    final cancel = CancellationToken();
+    final progress = ValueNotifier<double?>(null);
+    final toast = services.toasts.showProgress(
       l.screenPreparingExport(format.labelOf(l)),
-      duration: const Duration(seconds: 30),
+      progress: progress,
+      cancelLabel: l.commonCancel,
+      onCancel: cancel.cancel,
     );
     try {
-      final artifact = await exportAs(format, options: options);
+      final artifact = await exportAs(
+        format,
+        options: options,
+        cancel: cancel,
+        progress: (phase, value) {
+          if (phase == ExportPhase.layout) progress.value = value;
+        },
+      );
       services.toasts.hide(toast);
       final saved = await saveArtifact(artifact, l: l);
       if (saved) {
@@ -409,6 +421,9 @@ class WriteDocumentController extends DocumentController {
         );
       }
       return saved;
+    } on ExportCancelledException {
+      services.toasts.hide(toast);
+      return false;
     } catch (e) {
       services.toasts.hide(toast);
       services.toasts.error(l.screenExportFailed, description: '$e');
@@ -439,6 +454,8 @@ class WriteDocumentController extends DocumentController {
   Future<ExportArtifact> exportAs(
     WriteDownloadFormat format, {
     WriteExportOptions options = const WriteExportOptions(),
+    CancellationToken? cancel,
+    ExportProgressSink? progress,
   }) {
     final resolver = imageResolverFor(services, itemUuid.uuid);
     final exporter = WriteExporter(
@@ -447,7 +464,13 @@ class WriteDocumentController extends DocumentController {
       origin: Uri.base.hasAuthority ? Uri.base.origin : '',
     );
     return exporter
-        .export(exportSource(), format, options: options)
+        .export(
+          exportSource(),
+          format,
+          options: options,
+          cancel: cancel,
+          progress: progress,
+        )
         .whenComplete(resolver.dispose);
   }
 
@@ -479,8 +502,8 @@ class WriteDocumentController extends DocumentController {
     final s = editor.selection;
     if (s == null) return null;
     return SelectionSnapshot('write.editor', {
-      'base': s.base,
-      'extent': s.extent,
+      'base': s.anchor,
+      'extent': s.head,
     });
   }
 
@@ -571,7 +594,7 @@ class WriteDocumentController extends DocumentController {
       'role': role.name,
       'word_count': insights.stats.words,
       'page_count': pageCount.value,
-      if (s != null) 'selection': {'anchor': s.base, 'head': s.extent},
+      if (s != null) 'selection': {'anchor': s.anchor, 'head': s.head},
       if (insights.currentHeading != null)
         'current_heading': insights.outline[insights.currentHeading!].text,
       if (find.isActive)

@@ -357,12 +357,16 @@ class _OutlineRowWidgetState extends State<_OutlineRowWidget> {
                 height: 30,
                 child: widget.row.hasChildren
                     ? Semantics(
+                        // Its own node with its own tap: otherwise it merges
+                        // into the row, whose tap goes to the heading.
+                        container: true,
                         button: true,
                         expanded: !widget.collapsed,
                         label: widget.collapsed
                             ? l.outlineExpandSection(text)
                             : l.outlineCollapseSection(text),
                         excludeSemantics: true,
+                        onTap: widget.onToggle,
                         child: GestureDetector(
                           // The whole 18×30 cell toggles, not only the icon.
                           behavior: HitTestBehavior.opaque,

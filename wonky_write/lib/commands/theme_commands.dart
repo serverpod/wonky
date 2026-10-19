@@ -7,8 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart' show LucideIcons;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart';
-import 'package:wonky_write_core/wonky_write_core.dart'
-    hide DeltaSelection, ThemeCatalog;
+import 'package:wonky_write_core/wonky_write_core.dart' hide ThemeCatalog;
 
 import '../features/screen/write_document_controller.dart';
 import '../features/theme_editor/theme_dialogs.dart';

@@ -1,9 +1,8 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/widgets.dart';
 import 'package:wonky_slides_core/themes.dart';
 
 import '../stage/slide_renderer.dart';
+import 'slide_thumbnail_cache.dart';
 
 /// A slide thumbnail (navigator, grid view, slide picker; 04 §5): the
 /// renderer's cached picture of the slide at [width], repainted when the
@@ -49,7 +48,7 @@ class SlideThumbnail extends StatelessWidget {
             );
             return CustomPaint(
               size: Size(width, height),
-              painter: _PicturePainter(picture?.picture),
+              painter: _PicturePainter(picture),
             );
           },
         ),
@@ -59,20 +58,23 @@ class SlideThumbnail extends StatelessWidget {
 }
 
 class _PicturePainter extends CustomPainter {
-  _PicturePainter(this.picture);
+  _PicturePainter(this.thumbnail);
 
-  final ui.Picture? picture;
+  final SlideThumbnailPicture? thumbnail;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final p = picture;
-    if (p == null) return;
+    final t = thumbnail;
+    // A replaced picture is disposed after the frame; the thumbnail
+    // rebuilds with the new one.
+    if (t == null || t.disposed) return;
     canvas.save();
     canvas.clipRect(Offset.zero & size);
-    canvas.drawPicture(p);
+    canvas.drawPicture(t.picture);
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_PicturePainter old) => !identical(old.picture, picture);
+  bool shouldRepaint(_PicturePainter old) =>
+      !identical(old.thumbnail, thumbnail);
 }

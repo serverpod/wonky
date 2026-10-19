@@ -3,7 +3,7 @@ import 'package:wonky_slides_core/model.dart';
 import 'package:wonky_slides_core/ops.dart';
 import 'package:wonky_slides_core/schema.dart';
 import 'package:wonky_slides_core/themes.dart';
-import 'package:wonky_sync_kit/rows.dart';
+import 'package:wonky_revlog/rows.dart';
 
 import '../../support/planner_fixture.dart';
 

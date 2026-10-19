@@ -438,8 +438,8 @@ abstract interface class CodeSceneSource {
   });
 }
 
-/// What a scene builder needs besides the resolved element (03 §1.3
-/// `ElementKindHandler.buildScene`): the resolved theme, the text layout
+/// What a scene builder needs besides the resolved element (03 §1.3):
+/// the resolved theme, the text layout
 /// engine and whether editor-only nodes (prompts) are wanted.
 ///
 /// SL-10 added (additive): [deck] (tables, code states, chart links),

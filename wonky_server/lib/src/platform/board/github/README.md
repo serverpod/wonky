@@ -20,7 +20,7 @@ enabled` is true.
 | `github_review_ai.dart` | `PrReviewer` and its Gemini implementation (tool `report_review`, feature `pr_review` in the board AI ledger) |
 | `github_lifecycle.dart` | Merged → done, closed → released, reopened, deploy → shipped |
 
-Tests: `wonky_server/test/platform/board/github/` (fake GitHub API, recorded payload fixtures in
+Tests: `wonky_server/test/integration/platform/board/github/` and `test/unit/board/github/` (fake GitHub API, recorded payload fixtures in
 `fixtures/`, a fake reviewer, and the Gemini reviewer on `FakeAiModelClient`).
 
 ## Setting up the App (once, by an owner of the `serverpod` organization)

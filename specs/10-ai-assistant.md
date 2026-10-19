@@ -71,7 +71,19 @@ never reach clients). The assistant acts on documents through the **same tool la
 - **Limits & cost control**: per-user daily token budget (config), per-request timeout 10 min
   (3 min idle), concurrency 2 requests per user. Retries (429/5xx/connection) are the provider
   SDKs'. Usage stored in `AiUsage` table (userId, model, input/output/cache tokens, at); cache
-  token counts are not reported through dartantic (0).
+  token counts are not reported through dartantic (0). (CQ-31) Today's usage is one `SUM` query
+  per check; each assistant run stops before a model request once it used `maxRunTokens`
+  (default 600k budget tokens, error code `run_budget`); proofreading checks the daily budget
+  and the run cap between sections; the history sent per request is fitted to
+  `historyTokenBudget` (default 100k estimated tokens, `AssistantHistory.fit`): tool results
+  over 400 characters in exchanges older than the last two are replaced by a note, then the
+  oldest exchanges between the first (the document snapshot) and the last are left out; inline
+  AI text fields are capped at 50,000 characters (`tooLarge`). Concurrency slots are taken
+  last, after everything that can fail, and `beginRun`/`endRun` are paired in `try/finally`.
+- **Untrusted text**: document, cell, slide, post and pull request contents are delimited with
+  `UntrustedText.wrap`/`escape` (`platform/ai/untrusted_text.dart`): opening and closing tags
+  of the delimiter inside the content are defused (`<\/document>`), the same rule in Write,
+  Sheets, Slides and the board.
 - **Privacy**: AI is opt-out per user (Settings → AI) and can be disabled server-wide
   (`config: ai.enabled`). The panel shows a notice naming the provider content is sent to.
 
@@ -90,7 +102,7 @@ Anthropic `baseUrl`, and our own retry policy honouring `retry-after`.
 |------|----------------|
 | `llm/ai_client.dart`, `llm/dartantic_ai_client.dart` | `AiModelClient` interface and its `dartantic_ai` implementation (OpenAI, Anthropic, Gemini), stream accumulation, error mapping. |
 | `ai_config.dart`, `ai_keys.dart` | Config (`wonky: ai:`), server keys, user keys, key resolution (server > user > none). |
-| `assistant_service.dart` | Agent loop: build request, stream, execute tools via `ToolExecutor`, loop until `end_turn`. One loop = one undo transaction for the user ("AI: …"). |
+| `assistant_service.dart` | Agent loop: build request, stream, execute tools via `ToolExecutor`, loop until `end_turn`. One loop = one undo transaction for the user ("AI: …"). For spreadsheets and decks each mutating call is a recorded RevLog server change (`submitServerChange`, `actorKind: ai`, one op group per call; [17](17-revlog-sync.md) part 5 §8), and the run's records are combined into one composite record (`SheetsChanges.composite`, `SlidesCompositeChanges.composite`), so *Undo* reverts the whole run. Suggest mode plans against a shadow of the leased headless model (`SheetsShadows`, `DeckOverlays`) and records the calls instead of committing them; *Apply* submits the selected calls as server changes. |
 | `context_builder.dart` | Builds document context: Write → Markdown of doc (or outline + selected sections if > 200k tokens); Sheets → sheet list, used ranges, headers, sample rows, selection values, named ranges; (v2) Slides → deck outline (groups, slide titles, text, notes, layouts, builds summary) + the current slide's elements ([Slides 11](wonky_slides/11-mcp-and-ai.md)); Drive → the current folder's listing (names, kinds, sizes, dates), the selection, storage usage (§4 Drive). |
 | `prompts/` | System prompts per app/mode, versioned constants. |
 | `assistant_endpoint.dart` | Endpoint `assistant`: `chat(threadId, message, contextHints)` → `Stream<AssistantEvent>`; `listThreads(itemUuid)`, `getThread`, `deleteThread`, `stop(threadId)`. |
@@ -213,14 +225,15 @@ assistant lists candidates; it never deletes without confirmation).
   `AiResponse`, `AiApiException`, `AiCancelToken`; `DartanticAiClient` + `AiStreamAccumulator`;
   `FakeAiModelClient` + `AiScript` replay scripted turns in tests), `ai_models.dart` (the only
   place with model ids; `AiTier` = model size + effort), `ai_config.dart`, `ai_keys.dart`
-  (`AiKeys.resolve`, `AiBackend`), `assistant_history.dart` (stored turns, legacy
+  (`AiKeys.resolve`, `AiBackend`), `ai_call.dart` (`AiCall.open` = availability, budget and backend; `AiCall.send` = one turn with the concurrency slot, the usage record and refusal/provider errors mapped to `WonkyException`; `AiCall.stream` = a background run holding one slot, cancelled when the client closes the stream, failures emitted as events through `AiFailure`: every AI feature (assistant, Write inline AI and proofreading, Sheets and Slides inline AI) uses it, CQ-51), `assistant_history.dart` (stored turns, legacy
   conversion), `ai_usage_service.dart`, `assistant_tools.dart`, `assistant_service.dart`,
   `assistant_endpoint.dart`. Write parts in `wonky_server/lib/src/write/ai/`
   (`write_prompts.dart`, `write_context_builder.dart`, `inline_ai_service.dart`,
   `proofread_service.dart`).
 - **Configuration**: `wonky: features: ai` + `wonky: ai:` (`enabled`, `provider`,
   `allowUserKeys`, `models: {<provider>: {model, fastModel}}`, `dailyTokenBudget`,
-  `maxConcurrentRequests`, `requestTimeoutMinutes`, `maxToolRounds`) in
+  `maxConcurrentRequests`, `requestTimeoutMinutes`, `maxToolRounds`, `historyTokenBudget`,
+  `maxRunTokens`) in
   `config/<runMode>.yaml`, env overrides `WONKY_AI_*`; the keys are the passwords
   `anthropicApiKey`, `openaiApiKey`, `geminiApiKey`. Without any key `assistant.getStatus`
   reports `reason: notConfigured` with `userKeysAllowed: true`, and the apps offer *Add an API

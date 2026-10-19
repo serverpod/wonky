@@ -338,7 +338,10 @@ void main() {
       () async {
         final id = await chart();
         ObjectsController.of(s.editor).select(id);
-        await pumpEventQueue();
+        // Cursor updates are throttled to one per 100 ms: the update may
+        // wait for the window of the one sent on attach (timing-dependent
+        // before: it passed only when the setup took over 100 ms).
+        await Future<void>.delayed(const Duration(milliseconds: 150));
         final sent = SheetsPresenceCursor.tryParse(
           s.presenceRepo.updates.last.cursorJson,
         );

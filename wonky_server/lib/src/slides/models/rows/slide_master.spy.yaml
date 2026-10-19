@@ -1,0 +1,24 @@
+### A master of a deck theme (Slides 02 §3.2, 05 §4). Its content
+### (placeholders, decorations) are SlideElement rows owned by the master.
+class: SlideMaster
+table: slide_master
+serverOnly: true
+fields:
+  ### SlidesIds.themePartId for copied themes.
+  id: UuidValue, defaultModel=random_v7
+  ### The RevLog file (set by the sequencer; RevLog spec 02 §2.1).
+  file: RevFile?, relation(onDelete=Cascade)
+  ### The revision that last wrote the row.
+  revision: int, default=0
+  theme: DeckTheme?, relation(onDelete=Cascade, deferred)
+  name: String
+  ### Order among the masters of the theme.
+  sortKey: String
+  ### null = theme background.
+  backgroundJson: String?
+  createdAt: DateTime, defaultModel=now
+indexes:
+  slide_master_file_idx:
+    fields: fileId, id
+  slide_master_theme_idx:
+    fields: themeId

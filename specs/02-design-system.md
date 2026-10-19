@@ -78,7 +78,7 @@ Icons: `LucideIcons.*` only, except the product icons (§5) that stand for a pro
 | Text fields | `ShadInput`, `ShadTextarea`, `ShadInputOTP` |
 | Markdown text fields (board composer) | `WonkyRichEditor` (`wonky_rich_editor`): super_editor styled exactly like `ShadTextarea` (border, radius, padding, focus ring, disabled), with a `ShadToggle` formatting toolbar, spelling squiggles and a right-click menu (suggestions, Cut / Copy / Paste) when given a spell checker (16 §7.3) |
 | Forms | `ShadForm` + `Shad*FormField` |
-| Dialogs | `ShadDialog`, `ShadDialog.alert`, `showShadDialog` |
+| Dialogs | `ShadDialog` (X: `WonkyDialogCloseButton`, §4.20), `ShadDialog.alert`, `showShadDialog` |
 | Side sheets (mobile-ish / narrow) | `ShadSheet` |
 | Popovers / tooltips | `ShadPopover`, `ShadTooltip` |
 | Toasts | `ShadSonner` (stacked), `ShadToast.destructive` for errors |
@@ -231,6 +231,14 @@ segment in `muted`), 8 px high (4 px compact variant for meters), rounded ends, 
 `Semantics` label listing the segments. Used by the storage meter, the Storage page and
 Settings › Storage ([Drive 03 §6](wonky_drive/03-storage-quota.md)). Colors from `chart1–5`;
 threshold tints (`warning`, `destructive`) are passed in by the caller.
+
+### 4.20 `WonkyDialogCloseButton`
+The X of every `ShadDialog` with one (`closeIcon: const WonkyDialogCloseButton()`): shad's
+default close button has no accessible label, so it fails `labeledTapTargetGuideline`. Same look
+(20 px ghost icon button, foreground at 50 %), labelled *Close*; it closes with
+`Navigator.maybePop` (a dialog's `PopScope` is honored), or runs `onPressed` instead — dialogs
+with a draft pass their cancel path so the X asks before discarding, like *Cancel* and Esc
+(e.g. the Write table editor). Dialogs without an X pass `closeIcon: const SizedBox.shrink()`.
 
 ## 5. Product icons
 

@@ -87,6 +87,7 @@ class _RotationAngleDialogState extends McpDialogState<RotationAngleDialog> {
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.rotation'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.dialogRotationTitle),
         actions: [
           ShadButton.outline(

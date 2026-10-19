@@ -14,7 +14,7 @@ import '../../commands/slides_command.dart' show editorOfServices;
 import '../../config/slides_features.dart';
 import '../../l10n/slides_l10n.dart';
 import '../editor_screen/deck_editor_controller.dart';
-import 'pdf_view.dart';
+import 'package:wonky_app/platform.dart' show PdfView, printPdf;
 import 'print_controller.dart';
 import 'print_settings_panel.dart';
 import 'slides_client_export.dart';
@@ -440,7 +440,12 @@ class _PrintPreviewScreenState extends State<PrintPreviewScreen>
         child: PdfView(
           key: const ValueKey<String>('slides.print.preview'),
           bytes: pdf,
-          pageCount: c!.pageCount,
+          desktopTitle: c!.pageCount == null
+              ? l.printPdfReady
+              : l.printPdfReadyPages(c.pageCount!),
+          desktopHint: l.printPdfDesktopHint,
+          thumbnails: true,
+          fitPage: true,
         ),
       ),
     );

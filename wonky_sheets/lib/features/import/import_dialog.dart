@@ -612,6 +612,7 @@ class _ImportDialogState extends State<ImportDialog>
       bindings: {const SingleActivator(LogicalKeyboardKey.enter): _submit},
       child: ShadDialog(
         key: const ValueKey<String>('dialog.import'),
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(l.importDialogTitle),
         actions: [
           ShadButton.outline(

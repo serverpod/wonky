@@ -10,6 +10,7 @@ import '../common/time.dart';
 import '../config/wonky_config.dart';
 import '../sharing/access_service.dart';
 import '../storage/storage_service.dart';
+import 'storage_reads.dart';
 
 /// Files in cloud storage (suite 12 §1.1, specs/13 §1): upload descriptions
 /// for client uploads with a client-chosen, idempotent [StoredFile.fileUuid],
@@ -231,14 +232,16 @@ abstract final class FileService {
     }
     var status = StoredFileStatus.ready;
     if (imageMimeTypes.contains(file.mimeType)) {
-      final bytes = await session.storage.retrieveFile(
-        storageId: file.storageId,
-        path: file.path,
+      // The magic bytes only (CQ-30): never the whole object.
+      final size = await StorageReads.length(session, file) ?? 0;
+      final (head, _) = await StorageReads.sample(
+        session,
+        file,
+        size: size,
+        head: size < 64 ? size : 64,
+        tail: 0,
       );
-      if (sniffImage(
-            bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-          ) !=
-          file.mimeType) {
+      if (sniffImage(head) != file.mimeType) {
         status = StoredFileStatus.failed;
         await session.storage.deleteFile(
           storageId: file.storageId,
@@ -250,6 +253,7 @@ abstract final class FileService {
       final row = await StoredFile.db.updateRow(
         session,
         file.copyWith(status: status, completedAt: nowUtc()),
+        columns: (t) => [t.status, t.completedAt],
         transaction: tx,
       );
       // (v2) Reserved → used (images), or released (Drive 03 §5).
@@ -514,11 +518,17 @@ abstract final class FileService {
       bytes: bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
       fileUuid: newFileUuid,
     );
-    await StorageService.instance.addAttachment(
-      session,
-      target,
-      copy.sizeBytes,
-    );
+    try {
+      await StorageService.instance.addAttachment(
+        session,
+        target,
+        copy.sizeBytes,
+      );
+    } on Object {
+      // Not charged (CQ-34): the copy must not stay behind untracked.
+      await _deleteStored(session, copy);
+      rethrow;
+    }
     return _view(session, copy);
   }
 
@@ -561,21 +571,59 @@ abstract final class FileService {
     }
   }
 
+  /// Files deleted per query of [cleanupExpired].
+  static const cleanupBatch = 1000;
+
   /// Hourly job: deletes expired files (imports, exports) and abandoned
-  /// pending uploads older than a day. Returns the count.
-  static Future<int> cleanupExpired(Session session, {DateTime? now}) async {
+  /// pending uploads older than a day, in batches until none are left or
+  /// [budget] is spent. Returns the count. The two conditions are separate
+  /// queries, each on its own index (`stored_file_expiry_idx`,
+  /// `stored_file_status_idx`): an OR of both could use neither.
+  static Future<int> cleanupExpired(
+    Session session, {
+    DateTime? now,
+    Duration budget = const Duration(minutes: 5),
+  }) async {
     final at = now ?? nowUtc();
-    final expired = await StoredFile.db.find(
-      session,
-      where: (t) =>
-          (t.expiresAt < at) |
-          (t.status.equals(StoredFileStatus.pending) &
-              (t.createdAt < at.subtract(const Duration(days: 1)))),
-      limit: 1000,
-    );
-    for (final f in expired) {
-      await _deleteStored(session, f);
+    final watch = Stopwatch()..start();
+    final queries = <Future<List<StoredFile>> Function(Set<int> skip)>[
+      (skip) => StoredFile.db.find(
+        session,
+        where: (t) => (t.expiresAt < at) & t.id.notInSet(skip),
+        limit: cleanupBatch,
+      ),
+      (skip) => StoredFile.db.find(
+        session,
+        where: (t) =>
+            t.status.equals(StoredFileStatus.pending) &
+            (t.createdAt < at.subtract(const Duration(days: 1))) &
+            t.id.notInSet(skip),
+        limit: cleanupBatch,
+      ),
+    ];
+    // Files whose deletion failed this run (not offered again).
+    final failed = <int>{};
+    var count = 0;
+    for (final query in queries) {
+      while (watch.elapsed < budget) {
+        final batch = await query(failed);
+        if (batch.isEmpty) break;
+        for (final f in batch) {
+          try {
+            await _deleteStored(session, f);
+            count++;
+          } on Object catch (e, st) {
+            failed.add(f.id!);
+            session.log(
+              'Deleting stored file ${f.fileUuid} failed: $e',
+              level: LogLevel.warning,
+              stackTrace: st,
+            );
+          }
+        }
+        if (batch.length < cleanupBatch) break;
+      }
     }
-    return expired.length;
+    return count;
   }
 }

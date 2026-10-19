@@ -13,8 +13,6 @@ import '../files/file_service.dart';
 /// ([SheetsImportService]).
 abstract final class ImportService {
   static Set<String> get documentFormats => WriteImportService.formats;
-  static const spreadsheetFormats = SheetsImportService.formats;
-
   static String _format(StoredFile file, DriveImportOptions options) {
     final explicit = options.format?.toLowerCase().trim();
     if (explicit != null && explicit.isNotEmpty && explicit != 'auto') {

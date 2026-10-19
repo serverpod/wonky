@@ -116,7 +116,7 @@ abstract class WonkyAppConfig {
   String itemPath(String uuid);
 
   /// Builds the editor screen for `itemPath` routes. The screen should use
-  /// `EditorScaffold` and wrap its controller in a `DocumentScope`.
+  /// `EditorScaffold`, which makes its controller the active document.
   Widget buildEditor(BuildContext context, GoRouterState state, String uuid);
 
   /// Extra app routes (`/d/:uuid/history`, `/themes`, `/s/:uuid/script` …),

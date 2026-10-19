@@ -9,6 +9,7 @@ import 'package:wonky_core/wonky_core.dart' show CommandResult;
 import 'package:wonky_drive/config/drive_app_config.dart';
 import 'package:wonky_drive/features/preview/preview_commands.dart';
 import 'package:wonky_drive/features/uploads/upload_host.dart';
+import 'package:wonky_drive/features/uploads/upload_precheck.dart';
 import 'package:wonky_drive/features/uploads/upload_queue.dart';
 import 'package:wonky_drive/features/uploads/upload_store.dart';
 import 'package:wonky_drive/features/uploads/upload_task.dart';
@@ -125,6 +126,70 @@ void main() {
 
       final byName = {for (final t in q.tasks) t.fileName: t};
       expect(byName['photo.raw']!.failure, UploadFailure.tooLarge);
+      expect(byName['ok.txt']!.status, UploadStatus.done);
+      expect(api.requests.map((r) => r.name), ['ok.txt']);
+    });
+
+    test('when a picked file is over 50 MB then it is refused from its '
+        'size without reading it, and only the accepted file is read '
+        '(DR-1)', () async {
+      final read = <String>[];
+      UploadFile picked(String name, int size) => UploadFile.lazy(
+        name: name,
+        size: size,
+        read: () async {
+          read.add(name);
+          return bytesOf(10);
+        },
+      );
+
+      await upload([picked('video.mp4', 2000 * mb), picked('ok.txt', 10)]);
+      await settle();
+
+      final byName = {for (final t in q.tasks) t.fileName: t};
+      expect(byName['video.mp4']!.failure, UploadFailure.tooLarge);
+      expect(byName['video.mp4']!.sizeBytes, 2000 * mb);
+      expect(byName['ok.txt']!.status, UploadStatus.done);
+      expect(read, ['ok.txt']);
+    });
+
+    test('when more files are picked than a batch allows then none of '
+        'them is read', () async {
+      var reads = 0;
+      final files = [
+        for (var i = 0; i <= maxUploadBatchFiles; i++)
+          UploadFile.lazy(
+            name: '$i.txt',
+            size: 10,
+            read: () async {
+              reads++;
+              return bytesOf(10);
+            },
+          ),
+      ];
+
+      await upload(files);
+      await settle();
+
+      expect(reads, 0);
+      expect(q.tasks, isEmpty);
+    });
+
+    test('when an accepted file can no longer be read then its row fails '
+        'and the others upload', () async {
+      await upload([
+        UploadFile.lazy(
+          name: 'gone.txt',
+          size: 10,
+          read: () async => throw StateError('moved'),
+        ),
+        textFile('ok.txt'),
+      ]);
+      await settle();
+
+      final byName = {for (final t in q.tasks) t.fileName: t};
+      expect(byName['gone.txt']!.status, UploadStatus.failed);
+      expect(byName['gone.txt']!.failure, UploadFailure.notSaved);
       expect(byName['ok.txt']!.status, UploadStatus.done);
       expect(api.requests.map((r) => r.name), ['ok.txt']);
     });

@@ -67,7 +67,7 @@ abstract final class OverlayLifecycle {
             );
           }
         }
-      } on Exception catch (e, st) {
+      } on Object catch (e, st) {
         session.log(
           'Overlay transition ${t.key} failed: $e',
           level: LogLevel.error,

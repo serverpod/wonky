@@ -8,9 +8,10 @@ import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_ui/wonky_ui.dart';
 
-import '../features/editor/applier/delta_applier.dart' show DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show DeltaSelection, DeltaUtils;
 import '../features/editor/commands/editor_command_catalog.dart';
-import '../features/editor/dnd/external_drop.dart';
+import 'package:wonky_app/platform.dart';
 import '../features/editor/popovers/editor_popovers.dart';
 import '../features/images/image_services.dart';
 import '../features/import/import_service.dart';
@@ -526,7 +527,7 @@ Future<void> handleDroppedFiles(
       if (last is! String || !last.endsWith('\n')) {
         delta = delta.compose(
           Delta()
-            ..retain(delta.length)
+            ..retain(DeltaUtils.documentLength(delta))
             ..insert('\n'),
         );
       }

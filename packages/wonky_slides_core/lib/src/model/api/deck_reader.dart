@@ -1,4 +1,4 @@
-import 'package:wonky_sync_kit/rows.dart' show CurrentRowReader;
+import 'package:wonky_revlog/rows.dart' show CurrentRowReader;
 
 import 'kinds.dart';
 import 'records.dart';

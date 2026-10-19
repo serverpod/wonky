@@ -1,6 +1,14 @@
 tags:
+  # Needs Serverpod and the database (`withServerpod`). Every file under
+  # test/integration/ carries `@Tags(['integration'])` (package:test has no
+  # folder-level tags; unit/source_rules_test.dart checks it), and
+  # `withServerpod` tags its group too. `dart test -x integration` runs
+  # the unit tests only.
   integration: {}
+  # Longer than 2 s per test (perf suites, specs/15 §3): not on PRs (CI runs
+  # `-x slow`); run nightly or with `dart test -t slow`.
+  slow: {}
   # Calls the real board AI providers (Jev, Gemini; specs/16 §15). Never in
-  # CI. Run: dart test -t live-ai --run-skipped test/platform/board/ai/eval
+  # CI. Run: dart test -t live-ai --run-skipped test/integration/platform/board/ai/eval
   live-ai:
     skip: 'Calls the real AI providers; run with -t live-ai --run-skipped.'

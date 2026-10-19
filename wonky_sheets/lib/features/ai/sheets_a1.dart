@@ -61,7 +61,7 @@ extension SheetsEditorA1 on SheetEditorController {
 
   /// The range visible in the main pane (null before the first paint).
   String? get visibleRangeA1 {
-    final g = lastGeometry;
+    final g = geometry;
     if (g == null || g.main.isEmpty) return null;
     final (r0, r1) = g.visibleRows;
     final (c0, c1) = g.visibleCols;

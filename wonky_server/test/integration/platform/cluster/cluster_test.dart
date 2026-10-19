@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:test/test.dart';
 import 'package:wonky_server/src/platform/cluster/cluster.dart';
 import 'package:wonky_server/src/platform/common/models.dart';

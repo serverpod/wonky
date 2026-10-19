@@ -68,7 +68,7 @@ abstract final class ObjectOps {
 
   /// The visible viewport of the main pane in sheet px (100 % zoom).
   static ChartRect? viewport(SheetEditorController ed) {
-    final g = ed.lastGeometry;
+    final g = ed.geometry;
     if (g == null) return null;
     final m = g.main;
     final x = g.sheet.columns.offsetOf(m.firstCol) + m.scrollX / g.zoom;

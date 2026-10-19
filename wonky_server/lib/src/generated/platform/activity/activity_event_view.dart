@@ -12,8 +12,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:wonky_server/src/generated/protocol.dart' as _il4umwa0;
-import 'package:wonky_sync_models/wonky_sync_models.dart' as _i810rwvy;
 import '../../platform/activity/activity_type.dart' as _ib69qjv6;
+import '../../platform/common/actor_kind.dart' as _ipbpecg8;
 import '../../platform/users/user_summary.dart' as _itg9e9ms;
 
 abstract class ActivityEventView
@@ -31,7 +31,7 @@ abstract class ActivityEventView
     required int id,
     required _ib69qjv6.ActivityType type,
     _itg9e9ms.UserSummary? actor,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required String summary,
     required DateTime at,
   }) = _ActivityEventViewImpl;
@@ -47,7 +47,7 @@ abstract class ActivityEventView
           : _il4umwa0.Protocol().deserialize<_itg9e9ms.UserSummary>(
               jsonSerialization['actor'],
             ),
-      actorKind: _i810rwvy.ActorKind.fromJson(
+      actorKind: _ipbpecg8.ActorKind.fromJson(
         (jsonSerialization['actorKind'] as String),
       ),
       summary: jsonSerialization['summary'] as String,
@@ -61,7 +61,7 @@ abstract class ActivityEventView
 
   _itg9e9ms.UserSummary? actor;
 
-  _i810rwvy.ActorKind actorKind;
+  _ipbpecg8.ActorKind actorKind;
 
   String summary;
 
@@ -74,7 +74,7 @@ abstract class ActivityEventView
     int? id,
     _ib69qjv6.ActivityType? type,
     _itg9e9ms.UserSummary? actor = const _UndefinedActivityEventView$actor(),
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     String? summary,
     DateTime? at,
   });
@@ -120,7 +120,7 @@ class _ActivityEventViewImpl extends ActivityEventView {
     required int id,
     required _ib69qjv6.ActivityType type,
     _itg9e9ms.UserSummary? actor,
-    required _i810rwvy.ActorKind actorKind,
+    required _ipbpecg8.ActorKind actorKind,
     required String summary,
     required DateTime at,
   }) : super._(
@@ -140,7 +140,7 @@ class _ActivityEventViewImpl extends ActivityEventView {
     int? id,
     _ib69qjv6.ActivityType? type,
     _itg9e9ms.UserSummary? actor = const _UndefinedActivityEventView$actor(),
-    _i810rwvy.ActorKind? actorKind,
+    _ipbpecg8.ActorKind? actorKind,
     String? summary,
     DateTime? at,
   }) {

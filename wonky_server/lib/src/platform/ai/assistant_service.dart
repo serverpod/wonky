@@ -18,6 +18,7 @@ import '../common/time.dart';
 import '../mcp/tool_executor.dart';
 import '../mcp/tool_support.dart';
 import '../mcp/wonky_mcp_server.dart';
+import 'ai_call.dart';
 import 'ai_config.dart';
 import 'ai_keys.dart';
 import 'ai_models.dart';
@@ -64,7 +65,7 @@ class AssistantRun {
 /// The assistant agent loop (suite 10 §2): builds the request (tools →
 /// frozen system prompt → document snapshot → conversation, a stable
 /// prefix for provider-side prompt caches), streams the answer from the
-/// user's provider ([AiKeys.backendFor]), executes tool calls through the MCP
+/// user's provider ([AiCall.open]), executes tool calls through the MCP
 /// [ToolExecutor] (in parallel, results in one user message), and loops
 /// until the model ends its turn. Every op of a run carries the run id as
 /// `groupId` and the requesting app session as `onBehalfOfSessionId`, so
@@ -93,7 +94,7 @@ abstract final class AssistantService {
   /// Tool results are capped at this many characters.
   static const maxToolResultChars = 50000;
 
-  static const refusalText = "The assistant can't help with that request.";
+  static const refusalText = AiFailure.refusalText;
 
   // ------------------------------------------------------------------ chat
 
@@ -113,9 +114,9 @@ abstract final class AssistantService {
     final text = message.trim();
     if (text.isEmpty) throw Errors.invalid('The message is empty.');
     if (text.length > 20000) throw Errors.tooLarge('The message is too long.');
-    await AiUsageService.requireAvailable(session, actor.userId);
+    final ai = await AiCall.open(session, actor);
     final target = await AssistantTarget.resolve(session, actor, itemUuid);
-    AssistantThread thread;
+    AssistantThread? existing;
     if (threadId != null) {
       final t = await AssistantThread.db.findById(session, threadId);
       if (t == null || t.userId != actor.userId) {
@@ -124,25 +125,40 @@ abstract final class AssistantService {
       if (t.itemId != target.item.id) {
         throw Errors.invalid('The conversation belongs to another file.');
       }
-      thread = t;
-    } else {
-      thread = await AssistantThread.db.insertRow(
-        session,
-        AssistantThread(
-          userId: actor.userId,
-          itemId: target.item.id,
-          title: _title(text),
-          createdAt: nowUtc(),
-          updatedAt: nowUtc(),
-        ),
-      );
+      existing = t;
     }
-    final busyRun = _runs.values.where((r) => r.threadId == thread.id);
-    if (busyRun.isNotEmpty) {
+    final quality = await ai.quality(session);
+    if (Cluster.distributed) await _listenForRelays(session);
+    // Checked after the last await before the run is registered, so two
+    // concurrent sends to one chat cannot both start.
+    final existingId = existing?.id;
+    if (existingId != null &&
+        _runs.values.any((r) => r.threadId == existingId)) {
       throw Errors.busy('The assistant is still answering in this chat.');
     }
-    if (Cluster.distributed) await _listenForRelays(session);
+    // The slot is taken last, and released when anything before the run
+    // starts throws (a leaked slot blocks the user until a restart). A new
+    // thread is created only once the slot is taken (no empty thread is
+    // left behind by a busy error).
     final release = AiUsageService.acquire(actor.userId);
+    final AssistantThread thread;
+    try {
+      thread =
+          existing ??
+          await AssistantThread.db.insertRow(
+            session,
+            AssistantThread(
+              userId: actor.userId,
+              itemId: target.item.id,
+              title: _title(text),
+              createdAt: nowUtc(),
+              updatedAt: nowUtc(),
+            ),
+          );
+    } on Object {
+      release();
+      rethrow;
+    }
     final run = AssistantRun(
       const Uuid().v7(),
       actor.userId,
@@ -151,7 +167,6 @@ abstract final class AssistantService {
     _runs[run.runId] = run;
     final out = StreamController<AssistantEvent>();
     out.onCancel = run.cancel.cancel;
-    final quality = await AiUsageService.quality(session, actor.userId);
     Future<void> body() async {
       final s = runSession == null
           ? await session.serverpod.createSession(enableLogging: false)
@@ -160,6 +175,7 @@ abstract final class AssistantService {
         await _Loop(
           session: s,
           actor: actor,
+          backend: ai.backend,
           ar: run,
           thread: thread,
           target: target,
@@ -498,6 +514,7 @@ class _Loop {
   _Loop({
     required this.session,
     required this.actor,
+    required this.backend,
     required this.ar,
     required this.thread,
     required this.target,
@@ -516,6 +533,7 @@ class _Loop {
   final String message;
   final AssistantContextHints hints;
   final AiQuality quality;
+  final AiBackend backend;
   final ToolExecutor executor;
   final void Function(AssistantEvent) emit;
 
@@ -531,15 +549,6 @@ class _Loop {
   );
 
   Future<void> execute() async {
-    final backend = await AiKeys.backendFor(session, actor.userId);
-    if (backend == null) {
-      emit(
-        _ev(AssistantEventType.error)
-          ..error = AiUsageService.notConfiguredMessage
-          ..errorCode = AiUsageService.notConfigured,
-      );
-      return;
-    }
     final applyMode = target.applyMode(hints.applyMode);
     final ui = target.uiTools(hints);
     _uiTools = {for (final d in ui) d.name};
@@ -554,19 +563,87 @@ class _Loop {
     await _loadHistory();
     final userMessageId = await _appendUserTurn(applyMode);
     emit(_ev(AssistantEventType.started)..messageId = userMessageId);
-    await target.beginRun(
-      session,
-      actor,
-      runId: ar.runId,
-      applyMode: applyMode,
-    );
+    // From beginRun on, endRun always runs (suggest-mode shadows and
+    // previews are per run and kept until then) and the `ui.*` listener is
+    // always removed, also when the run throws.
+    var ended = false;
+    try {
+      await target.beginRun(
+        session,
+        actor,
+        runId: ar.runId,
+        applyMode: applyMode,
+      );
+      final done = await _rounds(applyMode, runner, toolset, backend);
+      ended = true;
+      await target.endRun(
+        session,
+        actor,
+        runId: ar.runId,
+        changeIds: _changeIds,
+        title: thread.title,
+        done: done,
+        emit: emit,
+      );
+      emit(done);
+    } finally {
+      if (!ended) {
+        try {
+          await target.endRun(
+            session,
+            actor,
+            runId: ar.runId,
+            changeIds: _changeIds,
+            title: thread.title,
+            done: _ev(AssistantEventType.done, text: _answer.toString())
+              ..messageId = _lastAssistantId
+              ..errorCode = 'internal',
+            emit: emit,
+          );
+        } on Object catch (e, st) {
+          session.log(
+            'Assistant run ${ar.runId}: cleanup after a failure failed: $e',
+            level: LogLevel.warning,
+            stackTrace: st,
+          );
+        }
+      }
+      if (_uiListening) {
+        _uiListening = false;
+        session.messages.removeListener(
+          AssistantService.uiChannel(ar.runId),
+          _onUiReply,
+        );
+      }
+    }
+  }
 
+  /// The model rounds of the run; returns its `done` event.
+  Future<AssistantEvent> _rounds(
+    AiApplyMode applyMode,
+    AssistantToolRunner runner,
+    AssistantToolset toolset,
+    AiBackend backend,
+  ) async {
     final tier = AiTier.chat(quality);
     final client = backend.client;
     final config = AiConfig.current;
     var stoppedEarly = true;
+    // Budget tokens of this run (CQ-31: one run can't spend the day).
+    var runTokens = 0;
     for (var round = 0; round < config.maxToolRounds; round++) {
       if (ar.cancel.isCancelled) break;
+      if (runTokens >= config.maxRunTokens) {
+        emit(
+          _ev(AssistantEventType.error)
+            ..error =
+                'The assistant stopped: this request used its token limit. '
+                'Send a message to let it continue.'
+            ..errorCode = 'run_budget',
+        );
+        stoppedEarly = false;
+        break;
+      }
       try {
         await AiUsageService.requireBudget(session, actor.userId);
       } on WonkyException catch (e) {
@@ -583,7 +660,12 @@ class _Loop {
         effort: tier.effort,
         system: target.system,
         tools: toolset.apiTools,
-        messages: List.of(_messages),
+        // Older tool results elided, oldest exchanges left out past the
+        // history budget (CQ-31).
+        messages: AssistantHistory.fit(
+          _messages,
+          budgetTokens: config.historyTokenBudget,
+        ),
         userId: 'u${actor.userId}',
         feature: 'chat',
         cacheKey: 'wonky-thread-${ar.threadId}',
@@ -629,8 +711,8 @@ class _Loop {
         }
         emit(
           _ev(AssistantEventType.error)
-            ..error = AssistantErrors.message(e)
-            ..errorCode = AssistantErrors.code(e),
+            ..error = AiFailure.fromApi(e).message
+            ..errorCode = AiFailure.fromApi(e).code,
         );
         stoppedEarly = false;
         break;
@@ -642,6 +724,7 @@ class _Loop {
         feature: 'chat',
         usage: msg.usage,
       );
+      runTokens += AiUsageService.budgetTokens(msg.usage);
       emit(
         _ev(AssistantEventType.usage)
           ..inputTokens = msg.usage.inputTokens
@@ -724,22 +807,7 @@ class _Loop {
     final done = _ev(AssistantEventType.done, text: _answer.toString())
       ..messageId = _lastAssistantId
       ..errorCode = ar.cancel.isCancelled ? 'stopped' : null;
-    await target.endRun(
-      session,
-      actor,
-      runId: ar.runId,
-      changeIds: _changeIds,
-      title: thread.title,
-      done: done,
-      emit: emit,
-    );
-    emit(done);
-    if (_uiListening) {
-      session.messages.removeListener(
-        AssistantService.uiChannel(ar.runId),
-        _onUiReply,
-      );
-    }
+    return done;
   }
 
   /// `change_id`s of the run's successful tool calls, in order.
@@ -1041,33 +1109,5 @@ class _Loop {
           '${AssistantService.maxToolResultChars} characters]';
     }
     return finish(text, error: false);
-  }
-}
-
-/// User-facing messages for API failures.
-abstract final class AssistantErrors {
-  static String message(AiApiException e) {
-    if (e.isAuth) {
-      return 'The AI provider rejected the API key. Check the key in '
-          'Settings › AI providers, or ask an administrator.';
-    }
-    if (e.isRateLimit || e.isOverloaded) {
-      return 'The AI service is busy right now. Try again in a moment.';
-    }
-    if (e.type == 'timeout') return 'The AI service took too long to answer.';
-    if (e.statusCode == 0) {
-      return 'The connection to the AI service was interrupted. Try again.';
-    }
-    if (e.statusCode == 413) return 'The request is too large for the model.';
-    return 'The AI service returned an error. Try again.';
-  }
-
-  static String code(AiApiException e) {
-    if (e.isAuth) return 'auth';
-    if (e.isRateLimit) return 'rate_limited';
-    if (e.isOverloaded) return 'overloaded';
-    if (e.type == 'timeout') return 'timeout';
-    if (e.statusCode == 0) return 'connection';
-    return 'api_error';
   }
 }

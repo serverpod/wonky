@@ -1,6 +1,7 @@
-// Tests for the Wonky patches DE-1 … DE-21 (PATCHES.md).
+// Tests for the Wonky patches DE-1 … DE-22 (PATCHES.md).
 import 'package:dart_eval/dart_eval.dart';
 import 'package:dart_eval/dart_eval_bridge.dart';
+import 'package:dart_eval/dart_eval_internals.dart' as internals;
 import 'package:dart_eval/src/eval/runtime/runtime.dart' show RuntimeException;
 import 'package:dart_eval/src/eval/shared/stdlib/core/type.dart' show $Type;
 import 'package:dart_eval/stdlib/core.dart';
@@ -207,6 +208,13 @@ void main() {
   test('DE-19 UncatchableException is exported', () {
     expect(_Abort(), isA<UncatchableException>());
     expect($null(), isA<$Value>());
+  });
+
+  test('DE-22 the internals library exports what the script host uses', () {
+    expect(internals.CompileError('x'), isA<Exception>());
+    expect(internals.RuntimeException, isNotNull);
+    expect(internals.WrappedException, isNotNull);
+    expect(internals.$InstanceImpl, isNotNull);
   });
 }
 

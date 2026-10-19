@@ -242,6 +242,32 @@ void main() {
     });
   });
 
+  // ------------------------------------------------------------ DR-3
+
+  group('Given a 3 MB log file', () {
+    testWidgets('when it is previewed then only the first megabyte is '
+        'requested, cached and shown as cut', (tester) async {
+      final big = Uint8List.fromList(
+        List<int>.generate(3 * 1024 * 1024, (i) => i % 64 == 63 ? 10 : 97),
+      );
+      final v = t.api.addFile(
+        'server.log',
+        mimeType: 'text/plain',
+        category: FileCategory.text,
+        content: big,
+      );
+
+      await t.pump(tester, v);
+
+      expect(
+        t.api.calls,
+        contains('fetch.firstBytes:${PreviewLimits.textBytes + 1}'),
+      );
+      expect(active().bytes!.length, PreviewLimits.textBytes + 1);
+      expect(active().text!.truncated, isTrue);
+    });
+  });
+
   // ------------------------------------------------------------ states
 
   group('Given preview states', () {
@@ -545,6 +571,32 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('drive.preview.previous')));
       await t.settleImages(tester);
       expect(active().itemUuid, b.uuid);
+    });
+
+    testWidgets('when stepping through the folder then it is listed once '
+        '(DR-6)', (tester) async {
+      await t.pump(tester, a);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await t.settleImages(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await t.settleImages(tester);
+
+      expect(active().itemUuid, c.uuid);
+      expect(t.api.calls.where((c) => c == 'filesIn'), hasLength(1));
+    });
+
+    testWidgets('when stepping after the listing is 30 s old then the folder '
+        'is listed again', (tester) async {
+      var now = DateTime.utc(2026, 1, 1);
+      t.host.now = () => now;
+      await t.pump(tester, a);
+
+      now = now.add(const Duration(seconds: 31));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await t.settleImages(tester);
+
+      expect(t.api.calls.where((c) => c == 'filesIn'), hasLength(2));
     });
 
     testWidgets('when Esc is pressed after stepping then the folder opens '

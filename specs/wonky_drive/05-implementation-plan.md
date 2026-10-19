@@ -10,6 +10,10 @@ work, owns its folders, names the contracts it provides and consumes, and ends w
 tests. The decisions of the [v2 review](../v2-review.md) are binding; v2 is **web only** (suite
 [01 A13](../01-architecture.md)).
 
+> **History.** This plan is the record of M8. Its sync parts (D-4 space kinds and OS-8, D-6 the
+> sync kit, the space and replica notes in D-1, D-9 and §3) were superseded by RevLog (M13,
+> [14 §2.1b](../14-roadmap.md), [17](../17-revlog-sync.md)); they are kept as written.
+
 ## 1. How Drive is built
 
 - **New Flutter app `wonky_drive/`**, a pub workspace member like the other apps:
@@ -35,7 +39,7 @@ tests. The decisions of the [v2 review](../v2-review.md) are binding; v2 is **we
   `routes` → `/storage`, `homeScope = HomeScope.all`, `appSettingsSections` → Drive settings,
   `importHandler` → `DriveUploadHandler` (uploads files instead of importing),
   `mcpUiTools` → `ui.drive.*`.
-- Drive opens no sync session (no Sheets/Slides replica, no Write document cache): it only uses
+- Drive opens no sync session (no Sheets/Slides cache, no Write document cache): it only uses
   the shell's drive cache and the upload queue store (suite 12 §3).
 
 ## 2. How the agents work
@@ -248,7 +252,7 @@ v2 review Q27)
 - Acceptance: all Sheets core and app tests green; chart scene JSON goldens byte-identical;
   Sheets chart goldens (2D and 3D) unchanged; dependency check passes.
 
-**D-4 · Space kinds + OS-8** (suite 12 §2.6, Slides 02 §9.2, v2 review Q19)
+**D-4 · Space kinds + OS-8** (v2 review Q19; *superseded by RevLog, M13*)
 - Scope: vendored patch **OS-8** — `offlineSync.sync(…, spaceFilter:)` — with tests and a
   `PATCHES.md` entry; Sheets' `spaces/` service generalized to `platform/spaces/`
   (`SpaceService` with `SpaceKind`, reservations and subscriptions per kind, active-set limits
@@ -271,7 +275,7 @@ v2 review Q27)
   `sheets/spaces/sheets_spaces.dart` (`SheetsSpaces`: the `sheets.*` space endpoints with
   `SubscribeResult`/`SpaceStats`), `SheetsSyncService.sync` → `SpaceSync` with `spreadsheet`.
   Config `slides.maxActiveSpacesPerUser` (`WonkyConfig.maxActiveDecksPerUser`, 30). No client
-  change (suite 12 §2.6 as built). For SL-5: `SlidesEndpoint` wraps `SpaceService` with
+  change (then suite 12 §2.6, removed with M13). For SL-5: `SlidesEndpoint` wraps `SpaceService` with
   `kind: deck` and `slidesSync` calls `SpaceSync.sync(kind: deck)`.
 
 **D-5 · Drive app scaffold, serving, root redirect, CI** — web-build token
@@ -311,7 +315,8 @@ v2 review Q27)
 
 ### 4.3 Wave 2 — services, shell, remaining extractions
 
-**D-6 · Extract `wonky_sync_kit` + `wonky_sync_kit_flutter`** (Slides 12 §5.1–5.2)
+**D-6 · Extract `wonky_sync_kit` + `wonky_sync_kit_flutter`** (Slides 12 §5.1–5.2; *superseded
+by RevLog, M13: `wonky_revlog` + `wonky_revlog_flutter`*)
 - Scope: pure `RowChange`, `RowOp`, `ChangeSummary`, `MutationPlan`, `CoupledColumns`,
   `UndoInverter`, `SyncTxAdapter` (Sheets' cell-specific undo rule becomes a table hook);
   Flutter `SyncReplica`, `AppSyncController`, `SyncWriter`, `ChangeJournal`, recovery export

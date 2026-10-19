@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_core/wonky_core.dart' show InvocationSource;
 import 'package:wonky_ui/wonky_ui.dart';
 
 import '../branding/product_icon.dart';
@@ -31,31 +32,52 @@ class DriveDetailsPanel extends StatefulWidget {
 class _DriveDetailsPanelState extends State<DriveDetailsPanel> {
   Future<List<DriveItemView>>? _path;
   final _desc = TextEditingController();
-  String? _loadedFor;
+  final _descFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _load(widget.item);
+  }
+
+  @override
+  void didUpdateWidget(DriveDetailsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final item = widget.item;
+    if (item?.uuid != oldWidget.item?.uuid) {
+      _load(item);
+    } else if (item != null &&
+        item.description != oldWidget.item?.description &&
+        !_descFocus.hasFocus) {
+      // Changed elsewhere (undo, another device): show it unless the user
+      // is typing.
+      _desc.text = item.description ?? '';
+    }
+  }
 
   @override
   void dispose() {
     _desc.dispose();
+    _descFocus.dispose();
     super.dispose();
   }
 
-  void _ensure(DriveItemView item) {
-    if (_loadedFor == item.uuid.uuid) return;
-    _loadedFor = item.uuid.uuid;
+  void _load(DriveItemView? item) {
+    if (item == null) return;
     _desc.text = item.description ?? '';
     _path = widget.services.drive.path(item.uuid);
   }
 
+  /// Saves the description through `shell.drive.setDescription`, so it is
+  /// undoable and visible to agents (08 §1.1; CQ-54).
   Future<void> _saveDescription(DriveItemView item) async {
     final text = _desc.text.trim();
     if (text == (item.description ?? '')) return;
     try {
-      final v = await widget.services.drive.updateDescription(
-        item.uuid,
-        text.isEmpty ? null : text,
-      );
-      widget.services.emitDriveChange(
-        DriveChange(kind: DriveChangeKind.updated, itemUuid: v.uuid, item: v),
+      await widget.services.dispatcher.invoke(
+        'shell.drive.setDescription',
+        args: {'uuid': item.uuid.uuid, 'description': text},
+        source: InvocationSource.ui,
       );
     } catch (e) {
       widget.services.toasts.error(
@@ -77,7 +99,6 @@ class _DriveDetailsPanelState extends State<DriveDetailsPanel> {
         size: 80,
       );
     }
-    _ensure(item);
     final date = intl.DateFormat.yMMMd().add_jm();
     Widget row(String label, Widget value) => Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -152,6 +173,7 @@ class _DriveDetailsPanelState extends State<DriveDetailsPanel> {
           l.detailsDescription,
           item.canEdit
               ? Focus(
+                  focusNode: _descFocus,
                   onFocusChange: (f) {
                     if (!f) _saveDescription(item);
                   },

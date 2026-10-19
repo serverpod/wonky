@@ -274,6 +274,10 @@ class WriteExporter {
     now: clock.now(),
     cancel: cancel,
     progress: progress,
+    // Exports run on the UI isolate (Write 07 §4.3): turns for the event
+    // loop between blocks and pages keep the progress dialog painting and
+    // make *Cancel* work (W-07).
+    yielder: ExportYielder(),
   );
 
   /// Exports [src] as [format].

@@ -1,0 +1,253 @@
+name: Nightly
+
+# The parts of the test strategy that are too slow for every pull request
+# (specs/15-writing-tests.md §3, §8, §10; CQ-64f, findings R-9):
+#
+# - `slow`: tests tagged `slow` (> 2 s; perf and benchmark-style checks), in
+#   every workspace member that has some, plus the server's.
+# - `perf`: the timed perf suites with budgets (`perf` tag, skipped by default:
+#   Write 04 §36, Slides 03 §18) and the Sheets core benchmarks (report only,
+#   spec Sheets 05 §21).
+# - `property-long`: the property tests with long run counts, once with the
+#   fixed seeds and once with a random seed (printed as WONKY_SEED=… for
+#   replay).
+# - `lo-diff`: the formula engine against LibreOffice Calc (Sheets 05 §22.5).
+#
+# The E2E journeys have their own nightly workflow (e2e.yml).
+
+on:
+  schedule:
+    - cron: '7 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+env:
+  # Keep in step with tests.yml.
+  FLUTTER_VERSION: '3.47.5'
+
+jobs:
+  # Members (other than the server) with `slow` or `property` tests, with the
+  # runner each needs and whether its dart_test.yaml has a `slow` preset (the
+  # pure packages exclude `slow` by default, which only the preset overrides).
+  list-packages:
+    runs-on: ubuntu-latest
+    outputs:
+      slow: ${{steps.list.outputs.slow}}
+      property: ${{steps.list.outputs.property}}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: list
+        run: |
+          members=$(awk '/^workspace:/{f=1;next} /^[^ -]/{f=0} f && /^ *- /{sub(/^ *- */,""); sub(/ *#.*/,""); print}' pubspec.yaml)
+          list() {
+            tag=$1
+            json='['
+            sep=''
+            for p in $members; do
+              [ "$p" = wonky_server ] && continue
+              [ -d "$p/test" ] || continue
+              grep -rqlE "@Tags\(\[[^]]*'$tag'|tags: \[?'$tag'" "$p/test" || continue
+              if grep -qE '^  flutter:' "$p/pubspec.yaml"; then tool=flutter; else tool=dart; fi
+              if grep -qE '^presets:' "$p/dart_test.yaml" 2>/dev/null; then preset=true; else preset=false; fi
+              json="$json$sep{\"path\":\"$p\",\"tool\":\"$tool\",\"preset\":$preset}"
+              sep=','
+            done
+            echo "$json]"
+          }
+          echo "slow=$(list slow)" | tee -a "$GITHUB_OUTPUT"
+          echo "property=$(list property)" | tee -a "$GITHUB_OUTPUT"
+
+  slow:
+    name: slow (${{matrix.package.path}})
+    needs: list-packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{fromJSON(needs.list-packages.outputs.slow)}}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{env.FLUTTER_VERSION}}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run slow tests
+        working-directory: ${{matrix.package.path}}
+        run: |
+          if [ "${{matrix.package.tool}}" = flutter ]; then
+            flutter test -t slow -x golden
+          elif [ "${{matrix.package.preset}}" = true ]; then
+            dart test -P slow
+          else
+            dart test -t slow
+          fi
+
+  # The server's `slow` tests (perf of the RevLog and server writes), against
+  # the embedded PostgreSQL as in tests.yml.
+  server-slow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VERSION: '4.1.0-beta.3'
+      # Non-secret: the test database is an embedded PostgreSQL that exists
+      # only for the run (same values as tests.yml).
+      SERVERPOD_PASSWORD_database: '8hI_nurnnhk2QTfnxCOHS_hqtFwFEvsG'
+      SERVERPOD_PASSWORD_redis: 'FQOvu3laYz0fOw_TmBW7VVIYlrUlEiLU'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{env.FLUTTER_VERSION}}
+          cache: true
+
+      - name: Cache embedded PostgreSQL binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/serverpod/pg-binaries
+          key: serverpod-pg-binaries-${{runner.os}}-${{env.VERSION}}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install Serverpod CLI
+        run: |
+          dart install serverpod_cli@$VERSION
+          echo "${XDG_STATE_HOME:-$HOME/.local/state}/Dart/install/bin" >> "$GITHUB_PATH"
+
+      - name: Run Serverpod generator
+        working-directory: wonky_server
+        run: serverpod generate
+
+      - name: Run slow tests
+        working-directory: wonky_server
+        run: dart test -t slow
+
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{env.FLUTTER_VERSION}}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Write perf suite
+        working-directory: wonky_write
+        run: flutter test -t perf --run-skipped test/perf
+
+      - name: Slides perf suite
+        if: always()
+        working-directory: wonky_slides
+        run: flutter test -t perf --run-skipped test/perf
+
+      # Numbers only (no budgets yet): compare with specs/wonky_sheets/STATUS.md.
+      - name: Sheets core benchmarks
+        if: always()
+        working-directory: packages/wonky_sheets_core
+        run: |
+          { echo '### Sheets core benchmarks'; echo; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          for b in benchmark/*.dart; do
+            dart run "$b" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  property-long:
+    name: property (${{matrix.package.path}})
+    needs: list-packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{fromJSON(needs.list-packages.outputs.property)}}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{env.FLUTTER_VERSION}}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fixed seeds, long runs
+        working-directory: ${{matrix.package.path}}
+        env:
+          WONKY_PROPERTY_RUNS: '2000'
+        run: ${{matrix.package.tool}} test -t property
+
+      # Every package's seed helper accepts an integer WONKY_SEED. The seed
+      # is printed; replay a failure with it.
+      - name: Random seed, long runs
+        if: always()
+        working-directory: ${{matrix.package.path}}
+        env:
+          WONKY_PROPERTY_RUNS: '2000'
+        run: |
+          export WONKY_SEED=$(( (RANDOM << 15) | RANDOM ))
+          echo "WONKY_SEED=$WONKY_SEED" | tee -a "$GITHUB_STEP_SUMMARY"
+          ${{matrix.package.tool}} test -t property
+
+  # Differential test against LibreOffice Calc (Sheets 05 §22.5; CQ-61):
+  # random arguments for numeric, statistical and financial functions,
+  # computed by LibreOffice (headless) and the engine. Disagreements are
+  # triaged by hand: Google Sheets decides, and the outcome becomes a golden
+  # vector (packages/wonky_sheets_core/test/formula/golden/).
+  lo-diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{env.FLUTTER_VERSION}}
+          cache: true
+
+      - name: Install LibreOffice
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-calc-nogui
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Compare with LibreOffice
+        working-directory: packages/wonky_sheets_core
+        run: |
+          seed=$(( (RANDOM << 15) | RANDOM ))
+          echo "seed $seed" | tee -a "$GITHUB_STEP_SUMMARY"
+          dart run tool/compat/lo_diff.dart --cases 500 --seed "$seed" --keep lo_diff_out
+
+      - name: Upload the LibreOffice files
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lo-diff
+          path: packages/wonky_sheets_core/lo_diff_out

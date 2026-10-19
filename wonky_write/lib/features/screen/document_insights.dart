@@ -3,9 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/super_editor.dart'
     show DocumentChangeLog, MutableDocument;
-import 'package:wonky_write_core/wonky_write_core.dart' hide DeltaSelection;
+import 'package:wonky_write_core/wonky_write_core.dart';
 
-import '../editor/applier/delta_applier.dart' show DeltaSelection;
 import '../editor/controller/write_editor_controller.dart';
 
 /// Derived, read-only data of the open document (Write 04 §26–27): the
@@ -113,11 +112,14 @@ class DocumentInsights extends ChangeNotifier {
     if (s.isCollapsed) {
       _selectionStats = null;
     } else {
-      final length = (s.end - s.start).clamp(0, delta.length);
+      // `Delta.length` is the number of operations; clamp to the document.
+      final docLength = DeltaUtils.documentLength(delta);
+      final start = s.start.clamp(0, docLength);
+      final length = (s.end.clamp(0, docLength) - start).clamp(0, docLength);
       try {
         _selectionStats = const DocumentStatsCalculator().stats(
           delta,
-          start: s.start,
+          start: start,
           length: length,
         );
       } catch (_) {

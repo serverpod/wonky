@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:serverpod/serverpod.dart';
-import 'package:yaml/yaml.dart';
 
 import '../config/wonky_config.dart';
+import '../config/wonky_config_file.dart';
 
 /// Settings of the `/mcp` endpoint from the `wonky: mcp:` section of
 /// `config/<runMode>.yaml` (suite 09 §1–2):
@@ -72,22 +72,12 @@ class McpConfig {
   };
 
   static McpConfig _load() {
-    String runMode;
+    final section = WonkyConfigFile.section('mcp');
     ServerpodConfig? config;
     try {
-      final pod = Serverpod.instance;
-      runMode = pod.runMode;
-      config = pod.config;
-    } on Object {
-      runMode = ServerpodRunMode.development;
-    }
-    final file = File('${Directory.current.path}/config/$runMode.yaml');
-    Map<dynamic, dynamic> section = const {};
-    if (file.existsSync()) {
-      final yaml = loadYaml(file.readAsStringSync());
-      if (yaml is Map && yaml['wonky'] is Map && yaml['wonky']['mcp'] is Map) {
-        section = yaml['wonky']['mcp'] as Map;
-      }
+      config = Serverpod.instance.config;
+    } on StateError {
+      // No server (unit tests, tools).
     }
     Set<String>? strings(Object? v) =>
         v is List ? {for (final e in v) '$e'.toLowerCase()} : null;
