@@ -1239,8 +1239,13 @@ light and dark, the checklist after changes).
 ## When you are done
 - Run the checklist in AGENTS.md (analyze, format, tests).
 - Update the specs if behavior changed.
+- Before you open the pull request, stop and ask the user to verify the feature or the fixed bug
+  by hand: tell them how to try it (which app to start, where to go, what to do and what they
+  should see) and wait for their answer. If they find a problem, fix it, run the checklist again
+  and ask again. Do not open the pull request until they confirm that it works.
 
-Open a pull request against `main`. Its description contains these two lines:
+Once the user has confirmed, open a pull request against `main`. Its description contains these
+two lines:
 
 ~~~
 Wonky-Task: T-12
@@ -1255,6 +1260,12 @@ a ```` ``` ```` block). For the claimant the server builds it with their actual 
 (`claimCode:`), as above; admins' views keep the placeholder
 `Wonky-Claim: <your claim code from the task page>`. Nobody else gets the prompt (§8.1), so the
 claim code still reaches no one but the claimant.
+
+**Manual verification before the pull request.** The frame always tells the agent to stop before
+the pull request and have the user try the feature or fix by hand
+(`TaskPromptTemplate.manualVerificationStep`), whatever the AI wrote in the body: no pull request
+is opened for a change nobody has seen working. The frame is added when the task is shown
+(`board_views.dart`), so tasks written before this rule get it too.
 
 ### 10.2 Admin review (when the lint flags the prompt)
 
