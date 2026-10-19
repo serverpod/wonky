@@ -121,7 +121,10 @@ void main() {
       pr = GithubHarness.prNumber();
       sha = GithubHarness.sha();
       githubHas(sha);
-      start = clock.now().toUtc();
+      // Noon UTC: the scenarios add minutes to `start` and count reviews per
+      // day, so a start just before midnight would split them over two days.
+      final now = clock.now().toUtc();
+      start = DateTime.utc(now.year, now.month, now.day, 12);
       await withClock(Clock.fixed(start), () => push(sha, action: 'opened'));
     });
     tearDown(() => h.uninstall());
