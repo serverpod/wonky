@@ -21,7 +21,7 @@ void main() {
       final md = File(
         '../wonky_server/lib/src/platform/drive/templates/builtin_templates.dart',
       ).readAsStringSync();
-      final start = md.indexOf('# Welcome to Wonky Write');
+      final start = md.indexOf('# Welcome to Wonky Work');
       final welcome = md.substring(start, md.indexOf("'''", start));
       final server = FakeDocumentServer(
         initial: const MarkdownCodec().importMarkdown(welcome).delta,
@@ -65,18 +65,15 @@ void main() {
       await tester.pumpAndSettle();
       await tester.placeCaretInParagraph(
         h.session.editor.document.first.id,
-        22,
+        21,
       );
       await tester.typeImeText(' there');
       await tester.pump(const Duration(milliseconds: 400));
       await tester.runAsync(pumpEventQueue);
-      expect(
-        DeltaUtils.text(h.doc),
-        startsWith('Welcome to Wonky Write there'),
-      );
+      expect(DeltaUtils.text(h.doc), startsWith('Welcome to Wonky Work there'));
       expect(
         DeltaUtils.text(server.document),
-        startsWith('Welcome to Wonky Write there'),
+        startsWith('Welcome to Wonky Work there'),
       );
       expect(h.undo.canUndo.value, isTrue);
 
