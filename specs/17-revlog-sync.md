@@ -1849,7 +1849,7 @@ static Future<RevLocalStore> open({required RevSchema schema, required String us
 // file: '<app>_cache_<userUuid>.db', via LocalDatabases.open(…, migrations: revCacheMigrations(schema))
 ```
 
-- **PRAGMAs** as today's replica (`sync_replica.dart:63-76`): 64 MB page cache, in-memory temp store, WAL autocheckpoint 20,000.
+- **PRAGMAs** as today's replica (`sync_replica.dart:63-76`): 64 MB page cache, in-memory temp store, WAL autocheckpoint 20,000. On the web they are set directly on the single worker connection: `sqlite_async`'s web `withAllConnections` holds the write lock but passes the unlocked database to its block, so a statement inside it deadlocks and the cache never opens ("storage on this device didn't start").
 - **Old engine files.** On first start of the new build, remove `sheets_<userUuid>.db` / `slides_<userUuid>.db` without reading them. On desktop, `LocalDatabases.delete`. On the web, where `LocalDatabases.canDelete` is false (`local_database.dart:57`), open them and drop every table (one transaction), then record `rev_meta.oldReplicaCleared` so it runs once.
 
 #### 2.2 Writes
