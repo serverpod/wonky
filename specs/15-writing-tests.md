@@ -211,7 +211,7 @@ endpoints the test tools are regenerated (automatic under `serverpod start`, oth
   semantics announcements asserted via `tester.takeAnnouncements()` where specs require them.
 - **Goldens**: `test/goldens/<area>/<name>_<variant>_<light|dark>.png`, tagged `golden`.
   Masters are generated and compared **only on Linux** in the pinned
-  `ghcr.io/cirruslabs/flutter:<version>` container with bundled fonts (OS font rendering
+  `ubuntu-24.04` runner with the pinned Flutter and bundled fonts (OS font rendering
   differs); locally run `flutter test -x golden`. Update masters with `tool/update_goldens.sh
   [package…]` (Docker: copies the checkout into the container, runs `flutter test
   --update-goldens -t golden test/goldens` and copies only the PNGs back) or the `Goldens`
