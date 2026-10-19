@@ -228,6 +228,35 @@ void main() {
         expect(guide, contains(part), reason: command);
       }
     }
+    expect(guide, contains(boardClaSignLine));
+  });
+
+  testWidgets('Given How to contribute then forking and cloning are their own '
+      'steps and the last step is signing the CLA and following up on the '
+      'review', (tester) async {
+    current = await pumpBoard(
+      tester,
+      '/improvements/contribute',
+      board: withTask(),
+      size: const Size(1200, 2400),
+    );
+
+    final fork = find.text('Fork the repository');
+    final clone = find.text('Clone the repository');
+    final cla = find.text('Sign the CLA and follow up');
+    for (final title in [fork, clone, cla]) {
+      expect(title, findsOneWidget);
+    }
+    expect(find.text('Fork and clone the repository'), findsNothing);
+    expect(byKey('board.contribute.fork'), findsOneWidget);
+    expect(find.text('9'), findsOneWidget);
+    expect(tester.getTopLeft(fork).dy, lessThan(tester.getTopLeft(clone).dy));
+    expect(
+      tester.getTopLeft(byKey('board.contribute.copy.prLines')).dy,
+      lessThan(tester.getTopLeft(cla).dy),
+    );
+    expect(find.text(boardClaSignLine), findsOneWidget);
+    await settleTooltips(tester);
   });
 
   testWidgets('Given an admin when Create task is confirmed while the AI '
