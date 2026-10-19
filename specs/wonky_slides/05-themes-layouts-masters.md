@@ -461,8 +461,12 @@ Design notes per theme (decorations and layout styling live in the built-in defi
 expands into a `ThemePackage` (theme row + master + 16 layouts + elements, JSON via
 `ThemePackage.toJson`/`fromJson`) for a slide size; `BuiltInThemes.package(key, size:)`):
 
-- **Wonky**: title slide with a large accent1 → accent6 gradient blob (shape, bottom-right, 20 %
-  opacity); `bigNumber` in accent1; cards (`bg2`, radius 32) in `comparison`.
+- **Wonky** (`builtin:wonky@2`): a plain `bg1` background and no decorations on the title slide
+  or the master, so a *Blank* presentation starts plain; `bigNumber` in accent1; cards (`bg2`,
+  radius 32) in `comparison` (the only decorations). Version 1 drew an accent1 → accent6
+  gradient blob on the title layout; it was dropped in version 2 (report #19: Blank decks showed
+  a purple circle). Decks holding a `@1` copy keep it; the built-in list and the template
+  gallery only offer the current version.
 - **Paper**: thin `text1` hairline under titles; quote layout with an oversized “ in accent1;
   images with 12 su radius.
 - **Midnight**: background `bg1` + radial gradient overlay (accent1 at 12 % from top-left);
