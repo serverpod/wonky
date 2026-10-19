@@ -14,8 +14,8 @@ import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/tasks.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 
-import 'common_editor_operations.dart';
-import 'default_document_editor_reactions.dart';
+import 'package:super_editor/src/default_editor/common_editor_operations.dart';
+import 'package:super_editor/src/default_editor/default_document_editor_reactions.dart';
 
 Editor createDefaultDocumentEditor({
   MutableDocument? document,

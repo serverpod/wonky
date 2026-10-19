@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/selection_aware_viewmodel.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 
-import '../core/document.dart';
-import 'box_component.dart';
-import 'layout_single_column/layout_single_column.dart';
+import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/default_editor/box_component.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
 
 /// [DocumentNode] that represents an image at a URL.
 @immutable
@@ -559,7 +559,7 @@ extension on Uint8List {
       return true;
     }
 
-    if (this.lengthInBytes != other.lengthInBytes) {
+    if (lengthInBytes != other.lengthInBytes) {
       return false;
     }
 

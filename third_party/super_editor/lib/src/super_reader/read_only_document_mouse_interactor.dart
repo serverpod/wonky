@@ -16,8 +16,8 @@ import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 
-import '../core/document_composer.dart';
-import '../core/editor.dart';
+import 'package:super_editor/src/core/document_composer.dart';
+import 'package:super_editor/src/core/editor.dart';
 
 /// Governs mouse gesture interaction with a read-only document, such as scrolling
 /// a document with a scroll wheel and tap-and-dragging to create an expanded selection.

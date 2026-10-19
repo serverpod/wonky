@@ -99,7 +99,6 @@ class TestDocumentConfigurator {
   FocusNode? _focusNode;
   bool _autoFocus = false;
   String? _tapRegionGroupId;
-  DocumentSelection? _selection;
   WidgetBuilder? _androidToolbarBuilder;
   DocumentFloatingToolbarBuilder? _iOSToolbarBuilder;
 
@@ -163,8 +162,10 @@ class TestDocumentConfigurator {
   }
 
   /// Configures the [SuperReader] to use the given [selection] as its initial selection.
+  ///
+  /// WONKY PATCH (infra, SE-10): upstream stored [selection] but never applied it;
+  /// the unused field is gone and this stays a no-op.
   TestDocumentConfigurator withSelection(DocumentSelection? selection) {
-    _selection = selection;
     return this;
   }
 

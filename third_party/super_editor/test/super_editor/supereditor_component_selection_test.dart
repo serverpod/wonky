@@ -661,7 +661,6 @@ class _ButtonNode extends BlockNode {
     return _ButtonNode(id: id);
   }
 
-  @override
   DocumentNode copy() {
     return _ButtonNode(id: id);
   }

@@ -59,7 +59,7 @@ void main() {
         ParagraphNode(
           id: '1',
           text: AttributedText('main() {}'),
-          metadata: {
+          metadata: const {
             'blockType': codeAttribution,
             codeLanguageMetadataKey: 'dart'
           },
@@ -67,7 +67,7 @@ void main() {
         ParagraphNode(
             id: '2',
             text: AttributedText('x'),
-            metadata: {'blockType': codeAttribution}),
+            metadata: const {'blockType': codeAttribution}),
       ]);
 
       expect(
@@ -93,7 +93,7 @@ void main() {
             TextNode(
                 id: 'c2',
                 text: AttributedText('2'),
-                metadata: {TextNodeMetadata.textAlign: 'right'}),
+                metadata: const {TextNodeMetadata.textAlign: 'right'}),
           ],
         ]),
       ]);

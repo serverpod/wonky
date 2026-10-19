@@ -7,9 +7,9 @@ import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/pausable_value_notifier.dart';
 
-import '../default_editor/document_ime/document_input_ime.dart';
-import 'document_selection.dart';
-import 'editor.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_input_ime.dart';
+import 'package:super_editor/src/core/document_selection.dart';
+import 'package:super_editor/src/core/editor.dart';
 
 /// Maintains a [DocumentSelection] within a [Document] and
 /// uses that selection to edit the document.

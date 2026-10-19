@@ -14,7 +14,7 @@ import 'package:super_editor/src/super_textfield/ios/ios_textfield.dart';
 import 'package:super_editor/src/infrastructure/text_input.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import 'styles.dart';
+import 'package:super_editor/src/super_textfield/styles.dart';
 
 export 'android/android_textfield.dart';
 export 'desktop/desktop_textfield.dart';

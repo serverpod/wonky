@@ -9,7 +9,7 @@ import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/flutter/geometry.dart';
 
-import '../core/document_layout.dart';
+import 'package:super_editor/src/core/document_layout.dart';
 
 // ignore: unused_element
 final _log = Logger(scope: 'box_component.dart');

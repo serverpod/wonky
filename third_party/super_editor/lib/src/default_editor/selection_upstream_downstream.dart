@@ -50,7 +50,9 @@ class UpstreamDownstreamNodeSelection implements NodeSelection {
     required this.extent,
   });
 
+  @override
   final UpstreamDownstreamNodePosition base;
+  @override
   final UpstreamDownstreamNodePosition extent;
 
   bool get isCollapsed => base == extent;

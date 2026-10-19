@@ -5,8 +5,8 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
-import '../../core/document.dart';
-import '_presenter.dart';
+import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/_presenter.dart';
 
 /// [SingleColumnLayoutStylePhase] that draws an underline beneath the text in the IME's
 /// composing region.

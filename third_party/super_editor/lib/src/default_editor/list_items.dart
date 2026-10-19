@@ -15,10 +15,10 @@ import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
 import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../core/document.dart';
-import 'layout_single_column/layout_single_column.dart';
-import 'paragraph.dart';
-import 'text.dart';
+import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
+import 'package:super_editor/src/default_editor/paragraph.dart';
+import 'package:super_editor/src/default_editor/text.dart';
 
 final _log = Logger(scope: 'list_items.dart');
 

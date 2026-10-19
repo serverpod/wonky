@@ -395,7 +395,6 @@ enum _Panel {
 /// which owns the [editor] and [editorFocusNode].
 class _SuperEditorFocusOnTap extends StatelessWidget {
   const _SuperEditorFocusOnTap({
-    super.key,
     required this.editorFocusNode,
     required this.editor,
     required this.child,

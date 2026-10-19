@@ -27,7 +27,7 @@ import 'package:super_editor/src/super_textfield/infrastructure/text_field_scrol
 import 'package:super_editor/src/super_textfield/super_textfield.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../infrastructure/fill_width_if_constrained.dart';
+import 'package:super_editor/src/super_textfield/infrastructure/fill_width_if_constrained.dart';
 
 final _log = textFieldLog;
 
@@ -1674,12 +1674,15 @@ class _SuperTextFieldImeInteractorState extends State<SuperTextFieldImeInteracto
     final attributions = text.getAllAttributionsAt(selection.extentOffset);
     textStyle = widget.textStyleBuilder(attributions);
 
-    _textController.inputConnectionNotifier.value!.setStyle(
-      fontFamily: textStyle.fontFamily,
-      fontSize: textStyle.fontSize,
-      fontWeight: textStyle.fontWeight,
-      textDirection: widget.textDirection ?? TextDirection.ltr,
-      textAlign: widget.textAlign ?? TextAlign.left,
+    // WONKY PATCH (infra, SE-10): `updateStyle` replaces the deprecated `setStyle`.
+    _textController.inputConnectionNotifier.value!.updateStyle(
+      TextInputStyle(
+        fontFamily: textStyle.fontFamily,
+        fontSize: textStyle.fontSize,
+        fontWeight: textStyle.fontWeight,
+        textDirection: widget.textDirection ?? TextDirection.ltr,
+        textAlign: widget.textAlign ?? TextAlign.left,
+      ),
     );
   }
 

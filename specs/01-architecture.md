@@ -52,7 +52,9 @@ Flutter ≥ 3.47.0) covers every workspace member, whose list is derived from th
 - `tests.yml`: the server tests (embedded Postgres, after `serverpod generate`, `-x slow`), one
   matrix job per other member that has tests (`dart test -x slow,e2e`, or `flutter test -x
   golden,slow,e2e` for Flutter packages), and the vendored suites of `super_editor` (`flutter
-  test -x golden`) and `attributed_text` (§2.3 rule 4); *All tests* is the required check.
+  test -x golden`) and `attributed_text` (§2.3 rule 4), each after `dart analyze --fatal-infos`
+  (they resolve their own lock files, so the `analyze` job doesn't cover them); *All tests* is
+  the required check.
 - `build.yml`: the `--wasm` web build of every app through `tool/build_web.dart` with the
   bundle-size budgets of `tool/web_budgets.json` (sizes in the job summary; CQ-64a).
 - `goldens.yml`: image goldens in the pinned `ghcr.io/cirruslabs/flutter` container for the

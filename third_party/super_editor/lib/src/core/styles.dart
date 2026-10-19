@@ -3,7 +3,7 @@ import 'package:flutter/painting.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
 
-import 'document.dart';
+import 'package:super_editor/src/core/document.dart';
 
 /// Stylesheet for styling content within a document.
 ///

@@ -405,7 +405,7 @@ void main() {
                     ParagraphNode(
                       id: Editor.createNodeId(),
                       text: AttributedText('Document #1'),
-                      metadata: {
+                      metadata: const {
                         'blockType': header1Attribution,
                       },
                     ),
@@ -446,7 +446,7 @@ void main() {
                     ParagraphNode(
                       id: Editor.createNodeId(),
                       text: AttributedText('Document #1'),
-                      metadata: {
+                      metadata: const {
                         'blockType': header1Attribution,
                       },
                     ),

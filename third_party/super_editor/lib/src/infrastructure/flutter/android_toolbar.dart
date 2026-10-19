@@ -29,7 +29,7 @@ class AndroidPopoverToolbar extends StatefulWidget {
   final ToolbarBuilder toolbarBuilder;
 
   @override
-  _AndroidPopoverToolbarState createState() => _AndroidPopoverToolbarState();
+  State<AndroidPopoverToolbar> createState() => _AndroidPopoverToolbarState();
 }
 
 class _AndroidPopoverToolbarState extends State<AndroidPopoverToolbar> with TickerProviderStateMixin {

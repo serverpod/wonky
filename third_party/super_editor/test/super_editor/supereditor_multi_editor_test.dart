@@ -341,7 +341,7 @@ MutableDocument _createDocument1() {
       ParagraphNode(
         id: "Editor1_Header",
         text: AttributedText('Document #1'),
-        metadata: {
+        metadata: const {
           'blockType': header1Attribution,
         },
       ),
@@ -361,7 +361,7 @@ MutableDocument _createDocument2() {
       ParagraphNode(
         id: "Editor2_Header",
         text: AttributedText('Document #2'),
-        metadata: {
+        metadata: const {
           'blockType': header1Attribution,
         },
       ),

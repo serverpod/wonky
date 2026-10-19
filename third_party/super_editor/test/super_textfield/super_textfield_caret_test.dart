@@ -5,7 +5,6 @@ import 'package:flutter_test_robots/flutter_test_robots.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_text_field_test.dart';
-import 'package:super_text_layout/super_text_layout.dart';
 
 void main() {
   group("SuperTextField caret", () {

@@ -1,3 +1,7 @@
+// WONKY PATCH (infra, SE-10): test tooling reads and drives the widgets' test-only state by
+// design (`lib/src/test/`, exported by `super_test.dart`).
+// ignore_for_file: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';

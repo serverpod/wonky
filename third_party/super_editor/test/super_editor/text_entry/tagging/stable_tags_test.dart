@@ -96,7 +96,7 @@ void main() {
 
         // Ensure that "@john" was attributed.
         final text = SuperEditorInspector.findTextInComponent("1");
-        expect(text.text, "before @john after");
+        expect(text.toPlainText(includePlaceholders: false), "before @john after");
         expect(
           text.getAttributedRange({stableTagComposingAttribution}, 7),
           const SpanRange(7, 11),
@@ -491,7 +491,7 @@ void main() {
 
         // Ensure that "@john" was attributed.
         final text = SuperEditorInspector.findTextInComponent("1");
-        expect(text.text, "before @john after");
+        expect(text.toPlainText(includePlaceholders: false), "before @john after");
         expect(
           text.getAttributedRange({const CommittedStableTagAttribution("john")}, 7),
           const SpanRange(7, 11),

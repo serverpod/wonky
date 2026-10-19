@@ -7,11 +7,11 @@ import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../core/document.dart';
-import 'layout_single_column/layout_single_column.dart';
-import 'paragraph.dart';
-import 'text.dart';
-import 'text_tools.dart';
+import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
+import 'package:super_editor/src/default_editor/paragraph.dart';
+import 'package:super_editor/src/default_editor/text.dart';
+import 'package:super_editor/src/default_editor/text_tools.dart';
 
 // ignore: unused_element
 final _log = Logger(scope: 'blockquote.dart');

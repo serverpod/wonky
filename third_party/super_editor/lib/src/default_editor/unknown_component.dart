@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
-import '../core/document.dart';
-import 'layout_single_column/layout_single_column.dart';
+import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
 
 class UnknownComponentBuilder implements ComponentBuilder {
   const UnknownComponentBuilder();

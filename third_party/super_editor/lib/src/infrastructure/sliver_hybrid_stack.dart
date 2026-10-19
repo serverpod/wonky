@@ -173,7 +173,8 @@ class _RenderSliverHybridStack extends RenderSliver
   @override
   void applyPaintTransform(covariant RenderObject child, Matrix4 transform) {
     final childParentData = child.parentData! as SliverLogicalParentData;
-    transform.translate(0.0, childParentData.layoutOffset!);
+    // WONKY PATCH (infra, SE-10): `translate` is deprecated (vector_math).
+    transform.translateByDouble(0.0, childParentData.layoutOffset!, 0.0, 1.0);
   }
 
   @override

@@ -45,7 +45,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   ActionTagsPlugin({
     TagRule? tagRule,
     this.actionTagId = defaultActionTagId,
-  }) : this.tagRule = tagRule ?? defaultActionTagRule {
+  }) : tagRule = tagRule ?? defaultActionTagRule {
     _requestHandlers = <EditRequestHandler>[
       (editor, request) => request is SubmitComposingActionTagRequest //
           ? SubmitComposingActionTagCommand()

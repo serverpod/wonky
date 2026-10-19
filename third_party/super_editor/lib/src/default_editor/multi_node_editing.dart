@@ -11,7 +11,7 @@ import 'package:super_editor/src/default_editor/selection_upstream_downstream.da
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
-import 'paragraph.dart';
+import 'package:super_editor/src/default_editor/paragraph.dart';
 
 final _log = Logger(scope: 'multi_node_editing.dart');
 
