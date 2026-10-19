@@ -141,7 +141,7 @@ abstract final class BoardAccess {
       number,
       transaction: transaction,
     );
-    if (post == null || !canSeePost(c, post)) throw Errors.notFound('Post');
+    if (post == null || !canSeePost(c, post)) throw Errors.notFound('Issue');
     return post;
   }
 
@@ -160,7 +160,7 @@ abstract final class BoardAccess {
       transaction: transaction,
     );
     if (post.deletedAt != null || post.moderation != BoardModeration.visible) {
-      throw Errors.conflict('This post is not public.');
+      throw Errors.conflict('This issue is not public.');
     }
     return post;
   }

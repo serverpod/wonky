@@ -1678,7 +1678,7 @@
   "mcpScopeSlidesEdit": "Presentations: edit",
   "mcpScopeScriptsRun": "Scripts: run",
   "mcpScopeUiControl": "Control app windows (ui.* tools)",
-  "mcpScopeBoard": "Bugs & improvements: read, post, vote, claim tasks",
+  "mcpScopeBoard": "Bugs & improvements: read, report issues, vote, claim tasks",
   "tokenCreateHint": "The token acts as you with the permissions you choose. You can revoke it at any time.",
   "tokenNameRequired": "Give the token a name.",
   "tokenScopesRequired": "Choose at least one permission.",
@@ -2005,7 +2005,7 @@
   "boardReportName": "Bugs & improvements",
   "boardContributeNav": "Contribute & build",
   "@boardContributeNav": {
-    "description": "Home left menu (wrench icon): opens the Bugs & improvements board, where people vote on posts and pick up tasks to build."
+    "description": "Home left menu (wrench icon): opens the Bugs & improvements board, where people vote on issues and pick up tasks to build."
   },
   "@boardReportName": {
     "description": "The product name of the public bug and idea board; title of the report dialog and the entry points."
@@ -2024,7 +2024,7 @@
   "boardReportOptional": "(optional)",
   "boardReportTitleLength": "Use {min} to {max} characters.",
   "@boardReportTitleLength": {
-    "description": "Validation of the post title.",
+    "description": "Validation of the issue title.",
     "placeholders": {
       "min": {
         "type": "int"
@@ -2042,10 +2042,10 @@
       }
     }
   },
-  "boardReportSimilarTitle": "Similar posts",
+  "boardReportSimilarTitle": "Similar issues",
   "boardReportSimilarVotes": "{count, plural, =1{1 vote} other{{count} votes}}",
   "@boardReportSimilarVotes": {
-    "description": "Semantics label of a similar post's score.",
+    "description": "Semantics label of a similar issue's score.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -2130,8 +2130,8 @@
       }
     }
   },
-  "boardReportAiNotice": "Posts are public and checked automatically by AI (Jev, Gemini).",
-  "boardReportPublicNotice": "Posts are public.",
+  "boardReportAiNotice": "Issues are public and checked automatically by AI (Jev, Gemini).",
+  "boardReportPublicNotice": "Issues are public.",
   "boardReportSecurityNotice": "Security issue? Don’t post it here: email {contact}",
   "@boardReportSecurityNotice": {
     "placeholders": {
@@ -2173,7 +2173,7 @@
     }
   },
   "boardReportDiscardTitle": "Discard draft?",
-  "boardReportDiscardBody": "Your report hasn’t been posted yet.",
+  "boardReportDiscardBody": "Your issue hasn’t been posted yet.",
   "boardReportDiscard": "Discard",
   "boardReportKeepDraft": "Keep draft",
   "errorReportBug": "Report this bug",
@@ -2217,12 +2217,12 @@
       }
     }
   },
-  "boardTitle": "Bugs & improvements",
+  "boardTitle": "Contribute & build",
   "@boardTitle": {
-    "description": "Name of the board (specs/16), page title and command category."
+    "description": "Name of the board pages (specs/16 §4.3): the breadcrumb root and the page title, like the home menu entry boardContributeNav. The report dialog, Help menu and command category keep boardReportName."
   },
   "boardBreadcrumb": "Breadcrumb",
-  "boardClose": "Close Bugs & improvements",
+  "boardClose": "Close Contribute & build",
   "boardShowPath": "Show the full path",
   "boardTabWithCount": "{name}, {count}",
   "@boardTabWithCount": {
@@ -2237,9 +2237,9 @@
   },
   "boardReportBug": "Report a bug",
   "boardSuggestImprovement": "Suggest an improvement",
-  "boardSearch": "Search posts",
+  "boardSearch": "Search issues",
   "boardSignIn": "Sign in",
-  "boardSignInToVote": "Sign in to vote and post.",
+  "boardSignInToVote": "Sign in to vote and report issues.",
   "@boardSignInToVote": {
     "description": "Banner on the board for signed-out visitors."
   },
@@ -2281,7 +2281,7 @@
   },
   "boardSearchResultsFor": "Results for “{query}”",
   "@boardSearchResultsFor": {
-    "description": "Header and breadcrumb of the board's search results across all posts.",
+    "description": "Header and breadcrumb of the board's search results across all issues.",
     "placeholders": {
       "query": {
         "type": "String"
@@ -2289,8 +2289,8 @@
     }
   },
   "boardSearchStartTitle": "Search the board",
-  "boardSearchStartHint": "Find posts by their words, part of a title or their number.",
-  "boardEmptySearchHint": "Try fewer words or part of a word, or include closed posts.",
+  "boardSearchStartHint": "Find issues by their words, part of a title or their number.",
+  "boardEmptySearchHint": "Try fewer words or part of a word, or include closed issues.",
   "boardEmptyClaimed": "No claimed tasks",
   "boardEmptyClaimedHint": "Tasks show here while someone works on them, and while their pull request is in review.",
   "boardTabDone": "Done",
@@ -2342,7 +2342,7 @@
   "boardFilterStatus": "Status",
   "boardFilterMine": "Mine",
   "@boardFilterMine": {
-    "description": "Board filter: posts I wrote or voted on."
+    "description": "Board filter: issues I wrote or voted on."
   },
   "boardFilterAny": "Any",
   "boardSelect": "Select",
@@ -2355,7 +2355,7 @@
       }
     }
   },
-  "boardCreateTaskFrom": "{count, plural, =1{Create task from 1 post…} other{Create task from {count} posts…}}",
+  "boardCreateTaskFrom": "{count, plural, =1{Create task from 1 issue…} other{Create task from {count} issues…}}",
   "@boardCreateTaskFrom": {
     "placeholders": {
       "count": {
@@ -2363,14 +2363,14 @@
       }
     }
   },
-  "boardCreateTaskHint": "The draft task gets an AI-written prompt that you review before publishing.",
+  "boardCreateTaskHint": "The draft task gets an AI-written prompt. It is published once the prompt is written.",
   "boardAddToTask": "Add to task",
   "boardAddToTaskEllipsis": "Add to task…",
   "boardNoOpenTasks": "There are no draft or published tasks.",
   "boardLoadMore": "Load more",
   "boardShowing": "{shown} of {total}",
   "@boardShowing": {
-    "description": "Under the board list: how many posts are shown.",
+    "description": "Under the board list: how many issues are shown.",
     "placeholders": {
       "shown": {
         "type": "int"
@@ -2380,14 +2380,14 @@
       }
     }
   },
-  "boardLoadFailed": "Couldn't load Bugs & improvements",
+  "boardLoadFailed": "Couldn’t load Contribute & build",
   "boardEmptyIdeas": "No improvements here yet",
   "boardEmptyBugs": "No bugs here",
   "boardEmptyDone": "Nothing finished yet",
-  "boardEmptySearch": "No posts match your search",
-  "boardEmptyHint": "Change the filters, or be the first to post.",
+  "boardEmptySearch": "No issues match your search",
+  "boardEmptyHint": "Change the filters, or be the first to report one.",
   "boardEmptyTasks": "No tasks up for grabs",
-  "boardEmptyTasksHint": "Admins publish tasks from the most wanted posts. Check back soon.",
+  "boardEmptyTasksHint": "Admins publish tasks from the most wanted issues. Check back soon.",
   "boardDoneTasks": "Finished tasks",
   "boardUpvoteLabel": "Upvote, {score} votes",
   "@boardUpvoteLabel": {
@@ -2459,7 +2459,7 @@
   "boardCopied": "Copied",
   "boardPromptCopied": "Prompt copied",
   "boardFlagged": "Thanks. A moderator will take a look.",
-  "boardPostNotFound": "Post #{number} doesn't exist or isn't public",
+  "boardPostNotFound": "Issue #{number} doesn't exist or isn't public",
   "@boardPostNotFound": {
     "placeholders": {
       "number": {
@@ -2475,10 +2475,10 @@
       }
     }
   },
-  "boardBackToBoard": "Back to Bugs & improvements",
+  "boardBackToBoard": "Back to Contribute & build",
   "boardAdminActions": "Admin",
   "@boardAdminActions": {
-    "description": "Heading of the admin entries in the post's actions menu."
+    "description": "Heading of the admin entries in the issue's actions menu."
   },
   "boardEditAndApprove": "Edit and approve…",
   "boardActionApprove": "Approve",
@@ -2500,7 +2500,7 @@
   "boardEditEllipsis": "Edit…",
   "boardDismiss": "Dismiss",
   "boardApply": "Apply",
-  "boardMergedFromNote": "#{number} was merged into this post.",
+  "boardMergedFromNote": "#{number} was merged into this issue.",
   "@boardMergedFromNote": {
     "placeholders": {
       "number": {
@@ -2508,8 +2508,8 @@
       }
     }
   },
-  "boardPostDeleted": "This post was deleted.",
-  "boardChecking": "Checking your post…",
+  "boardPostDeleted": "This issue was deleted.",
+  "boardChecking": "Checking your issue…",
   "boardWaitingForReview": "Waiting for review: a moderator will look at it.",
   "boardHeldAdmin": "Held for review. {reason}",
   "@boardHeldAdmin": {
@@ -2595,7 +2595,7 @@
     }
   },
   "boardOpenScreenshot": "Open screenshot",
-  "boardScreenshotAlt": "Screenshot of post #{number}",
+  "boardScreenshotAlt": "Screenshot of issue #{number}",
   "@boardScreenshotAlt": {
     "placeholders": {
       "number": {
@@ -2615,8 +2615,8 @@
       }
     }
   },
-  "boardMergedFrom": "Duplicates merged into this post:",
-  "boardSimilarPosts": "Similar posts",
+  "boardMergedFrom": "Duplicates merged into this issue:",
+  "boardSimilarPosts": "Similar issues",
   "boardScore": "{score, plural, =1{1 vote} other{{score} votes}}",
   "@boardScore": {
     "placeholders": {
@@ -2669,6 +2669,55 @@
   "boardEventShipped": "marked the task shipped",
   "boardEventCancelled": "cancelled the task",
   "boardEventMerged": "merged a duplicate",
+  "boardEventMergedInto": "merged this task into {task}",
+  "@boardEventMergedInto": {
+    "description": "Task activity (admins): the task was merged into another one. {task} is like T-3.",
+    "placeholders": {
+      "task": {
+        "type": "String"
+      }
+    }
+  },
+  "boardEventMergedTasks": "merged {tasks} into this task",
+  "@boardEventMergedTasks": {
+    "description": "Task activity (admins): other tasks were merged into this one. {tasks} is like 'T-5, T-7'.",
+    "placeholders": {
+      "tasks": {
+        "type": "String"
+      }
+    }
+  },
+  "boardEventUnmerged": "undid a merge of tasks",
+  "boardEventRewriting": "changed the issues; the task is a draft until the AI has rewritten the prompt",
+  "boardMergeTasksTitle": "{count, plural, =1{Merge 1 task…} other{Merge {count} tasks…}}",
+  "@boardMergeTasksTitle": {
+    "description": "Up for grabs selection bar (admins) and the merge dialog's title.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "boardMergeTasksHint": "The oldest task keeps all the issues and gets a new AI-written prompt. The other tasks are cancelled. Until the prompt is written, the task is a draft.",
+  "boardMergeTasksNeedsTwo": "Select two tasks or more to merge them",
+  "boardActionMerge": "Merge",
+  "boardTaskMergedNotice": "This task was merged into T-{number}.",
+  "@boardTaskMergedNotice": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "boardOpenTask": "Open T-{number}",
+  "@boardOpenTask": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "cmdBoardMergeTasks": "Merge tasks",
   "boardUpForGrabs": "Up for grabs",
   "boardClaimedBy": "Claimed by {name} · {hours} h left",
   "@boardClaimedBy": {
@@ -2689,7 +2738,7 @@
       }
     }
   },
-  "boardPostCount": "{count, plural, =1{1 post} other{{count} posts}}",
+  "boardPostCount": "{count, plural, =1{1 issue} other{{count} issues}}",
   "@boardPostCount": {
     "placeholders": {
       "count": {
@@ -2720,12 +2769,12 @@
       }
     }
   },
-  "boardTaskCancelledNotice": "This task was cancelled. Its posts are open again.",
-  "boardLinkedPosts": "Linked posts",
-  "boardNoLinkedPosts": "No posts are linked to this task.",
+  "boardTaskCancelledNotice": "This task was cancelled. Its issues are open again.",
+  "boardLinkedPosts": "Linked issues",
+  "boardNoLinkedPosts": "No issues are linked to this task.",
   "boardRemoveFromTask": "Remove from task",
-  "boardAddPosts": "Add posts…",
-  "boardFieldPostNumbers": "Post numbers",
+  "boardAddPosts": "Add issues…",
+  "boardFieldPostNumbers": "Issue numbers",
   "boardHowToBuild": "How to build it",
   "boardStepSetupNumber": "1.",
   "@boardStepSetupNumber": {
@@ -2798,11 +2847,11 @@
   "boardContributeGuide": "Full guide on GitHub",
   "boardFieldTitle": "Title",
   "boardTitleLength": "Use 8 to 120 characters.",
-  "boardModeratorEditHint": "The post shows Edited by a moderator.",
+  "boardModeratorEditHint": "The issue shows Edited by a moderator.",
   "boardFieldReason": "Reason",
   "boardFieldNote": "Note (optional)",
   "boardFieldNoteForAuthor": "Message to the author (optional)",
-  "boardFlagHint": "Flagged posts are hidden for review after 3 people flag them.",
+  "boardFlagHint": "Flagged issues are hidden for review after 3 people flag them.",
   "boardFlagAction": "Flag",
   "boardRemoveTitle": "Remove",
   "boardDeclineOutOfScope": "Out of scope",
@@ -2816,7 +2865,7 @@
       }
     }
   },
-  "boardMergeHint": "Votes on #{number} move to the post that remains.",
+  "boardMergeHint": "Votes on #{number} move to the issue that remains.",
   "@boardMergeHint": {
     "placeholders": {
       "number": {
@@ -2824,9 +2873,9 @@
       }
     }
   },
-  "boardFieldTargetPost": "Post that remains",
-  "boardInvalidPostNumber": "Enter a post number",
-  "boardMergeSelf": "A post can't be merged into itself",
+  "boardFieldTargetPost": "Issue that remains",
+  "boardInvalidPostNumber": "Enter an issue number",
+  "boardMergeSelf": "An issue can't be merged into itself",
   "boardFieldKind": "Kind",
   "boardFieldArea": "Area",
   "boardFieldSize": "Size",
@@ -2896,9 +2945,9 @@
   "boardReviewDrafts": "Draft tasks",
   "boardReviewEmpty": "Nothing to review.",
   "cmdBoardVote": "Vote",
-  "cmdBoardCreatePost": "Post report",
-  "cmdBoardEditPost": "Edit post",
-  "cmdBoardDeletePost": "Delete post",
+  "cmdBoardCreatePost": "Report issue",
+  "cmdBoardEditPost": "Edit issue",
+  "cmdBoardDeletePost": "Delete issue",
   "cmdBoardRemoveScreenshot": "Remove screenshot",
   "cmdBoardComment": "Comment",
   "cmdBoardEditComment": "Edit comment",
@@ -2920,7 +2969,7 @@
   "cmdBoardBlock": "Block user from the board",
   "cmdBoardCreateTask": "Create task",
   "cmdBoardEditTask": "Edit task",
-  "cmdBoardSetTaskPosts": "Change the task's posts",
+  "cmdBoardSetTaskPosts": "Change the task's issues",
   "cmdBoardRegeneratePrompt": "Regenerate prompt",
   "cmdBoardEditPrompt": "Edit prompt",
   "cmdBoardPublishTask": "Publish task",
@@ -2934,7 +2983,7 @@
   "@notifyBoard": {
     "description": "Notification settings: replies, status changes and claims on the board."
   },
-  "notifyBoardHint": "Replies to your posts, status changes and your task claims",
+  "notifyBoardHint": "Replies to your issues, status changes and your task claims",
   "boardEventPrClosed": "Pull request closed without merge: {url}. The task is open again.",
   "@boardEventPrClosed": {
     "placeholders": {

@@ -167,7 +167,7 @@ void main() {
     await settleTooltips(tester);
   });
 
-  testWidgets('Given my post still checking then I see Checking your post', (
+  testWidgets('Given my post still checking then I see Checking your issue', (
     tester,
   ) async {
     final b = FakeBoardRepository()
@@ -175,7 +175,7 @@ void main() {
     current = await pumpBoard(tester, '/improvements/p/1', board: b);
 
     expect(byKey('board.post.notice.checking'), findsOneWidget);
-    expect(find.text('Checking your post…'), findsOneWidget);
+    expect(find.text('Checking your issue…'), findsOneWidget);
   });
 
   testWidgets('Given my held post then I see Waiting for review; others '

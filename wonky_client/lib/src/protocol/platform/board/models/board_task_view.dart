@@ -44,6 +44,7 @@ abstract class BoardTaskView
     this.prNumber,
     this.prAuthorLogin,
     this.reviewJson,
+    this.mergedInto,
     this.publishedAt,
     this.doneAt,
     this.shippedAt,
@@ -73,6 +74,7 @@ abstract class BoardTaskView
     int? prNumber,
     String? prAuthorLogin,
     String? reviewJson,
+    int? mergedInto,
     DateTime? publishedAt,
     DateTime? doneAt,
     DateTime? shippedAt,
@@ -132,6 +134,7 @@ abstract class BoardTaskView
       prNumber: jsonSerialization['prNumber'] as int?,
       prAuthorLogin: jsonSerialization['prAuthorLogin'] as String?,
       reviewJson: jsonSerialization['reviewJson'] as String?,
+      mergedInto: jsonSerialization['mergedInto'] as int?,
       publishedAt: jsonSerialization['publishedAt'] == null
           ? null
           : _isc.DateTimeJsonExtension.fromJson(
@@ -204,6 +207,9 @@ abstract class BoardTaskView
   /// The latest PR review (specs/16 §13.5), JSON.
   String? reviewJson;
 
+  /// The task this cancelled task was merged into (specs/16 §9.3).
+  int? mergedInto;
+
   DateTime? publishedAt;
 
   DateTime? doneAt;
@@ -240,6 +246,7 @@ abstract class BoardTaskView
     int? prNumber,
     String? prAuthorLogin,
     String? reviewJson,
+    int? mergedInto,
     DateTime? publishedAt = const _isc.$UndefinedDateTime(),
     DateTime? doneAt = const _isc.$UndefinedDateTime(),
     DateTime? shippedAt = const _isc.$UndefinedDateTime(),
@@ -272,6 +279,7 @@ abstract class BoardTaskView
       if (prNumber != null) 'prNumber': prNumber,
       if (prAuthorLogin != null) 'prAuthorLogin': prAuthorLogin,
       if (reviewJson != null) 'reviewJson': reviewJson,
+      if (mergedInto != null) 'mergedInto': mergedInto,
       if (publishedAt != null) 'publishedAt': publishedAt?.toJson(),
       if (doneAt != null) 'doneAt': doneAt?.toJson(),
       if (shippedAt != null) 'shippedAt': shippedAt?.toJson(),
@@ -307,6 +315,7 @@ abstract class BoardTaskView
       if (prNumber != null) 'prNumber': prNumber,
       if (prAuthorLogin != null) 'prAuthorLogin': prAuthorLogin,
       if (reviewJson != null) 'reviewJson': reviewJson,
+      if (mergedInto != null) 'mergedInto': mergedInto,
       if (publishedAt != null) 'publishedAt': publishedAt?.toJson(),
       if (doneAt != null) 'doneAt': doneAt?.toJson(),
       if (shippedAt != null) 'shippedAt': shippedAt?.toJson(),
@@ -351,6 +360,7 @@ class _BoardTaskViewImpl extends BoardTaskView {
     int? prNumber,
     String? prAuthorLogin,
     String? reviewJson,
+    int? mergedInto,
     DateTime? publishedAt,
     DateTime? doneAt,
     DateTime? shippedAt,
@@ -378,6 +388,7 @@ class _BoardTaskViewImpl extends BoardTaskView {
          prNumber: prNumber,
          prAuthorLogin: prAuthorLogin,
          reviewJson: reviewJson,
+         mergedInto: mergedInto,
          publishedAt: publishedAt,
          doneAt: doneAt,
          shippedAt: shippedAt,
@@ -413,6 +424,7 @@ class _BoardTaskViewImpl extends BoardTaskView {
     Object? prNumber = _Undefined,
     Object? prAuthorLogin = _Undefined,
     Object? reviewJson = _Undefined,
+    Object? mergedInto = _Undefined,
     DateTime? publishedAt = const _isc.$UndefinedDateTime(),
     DateTime? doneAt = const _isc.$UndefinedDateTime(),
     DateTime? shippedAt = const _isc.$UndefinedDateTime(),
@@ -457,6 +469,7 @@ class _BoardTaskViewImpl extends BoardTaskView {
           ? prAuthorLogin
           : this.prAuthorLogin,
       reviewJson: reviewJson is String? ? reviewJson : this.reviewJson,
+      mergedInto: mergedInto is int? ? mergedInto : this.mergedInto,
       publishedAt: publishedAt is _isc.UndefinedSentinel
           ? this.publishedAt
           : publishedAt,

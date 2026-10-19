@@ -42,7 +42,7 @@ abstract final class BoardComments {
         limit: 2000,
       );
     } else {
-      throw Errors.invalid('Name a post or a task.');
+      throw Errors.invalid('Name an issue or a task.');
     }
     return BoardViews.comments(session, c, [
       for (final r in rows)
@@ -216,10 +216,10 @@ abstract final class BoardComments {
     final c = await BoardAccess.requireWriter(session);
     if (taskNumber != null) {
       throw Errors.invalid(
-        'Tasks have no discussion: comment on one of its posts.',
+        'Tasks have no discussion: comment on one of its issues.',
       );
     }
-    if (postNumber == null) throw Errors.invalid('Name the post.');
+    if (postNumber == null) throw Errors.invalid('Name the issue.');
     final existing = await BoardComment.db.findFirstRow(
       session,
       where: (t) => t.uuid.equals(uuid),
@@ -233,7 +233,7 @@ abstract final class BoardComments {
     final clean = BoardText.body(body, what: 'comment');
     final post = await BoardAccess.post(session, c, postNumber);
     if (post.deletedAt != null || post.moderation == BoardModeration.removed) {
-      throw Errors.conflict('This post can no longer be commented on.');
+      throw Errors.conflict('This issue can no longer be commented on.');
     }
     await BoardRateLimits.check(BoardLimit.commentsPerHour, c);
     final verdict = await check(session, clean);
@@ -404,7 +404,7 @@ abstract final class BoardComments {
     UuidValue? commentUuid,
   ) async {
     if ((number == null) == (commentUuid == null)) {
-      throw Errors.invalid('Flag a post or a comment.');
+      throw Errors.invalid('Flag an issue or a comment.');
     }
     if (number != null) {
       return (await BoardAccess.post(session, c, number), null);
@@ -522,7 +522,7 @@ abstract final class BoardComments {
         await BoardNotify.postStatus(
           session,
           held,
-          'Your post ${BoardText.quoted(held.title)} is hidden until a '
+          'Your issue ${BoardText.quoted(held.title)} is hidden until a '
           'moderator reviews it.',
           voters: false,
         );

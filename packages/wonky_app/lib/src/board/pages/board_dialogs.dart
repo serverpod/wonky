@@ -428,10 +428,12 @@ Future<(BoardPostKind, BoardArea?, BoardSize?)?> showBoardLabelsDialog(
   );
 }
 
-/// *Create task from N posts…* ([count] set) or *Edit task*.
+/// *Create task from N issues…* ([count] set), *Merge N tasks…*
+/// ([mergeCount] set) or *Edit task*.
 Future<(String, BoardArea, BoardSize)?> showBoardTaskDialog(
   BuildContext context, {
   int? count,
+  int? mergeCount,
   required String title,
   required BoardArea area,
   required BoardSize size,
@@ -440,8 +442,16 @@ Future<(String, BoardArea, BoardSize)?> showBoardTaskDialog(
   final r = await showWonkyFormDialog(
     context,
     WonkyDialogSpec(
-      title: count == null ? l.cmdBoardEditTask : l.boardCreateTaskFrom(count),
-      description: count == null ? null : l.boardCreateTaskHint,
+      title: switch ((count, mergeCount)) {
+        (final n?, _) => l.boardCreateTaskFrom(n),
+        (_, final n?) => l.boardMergeTasksTitle(n),
+        _ => l.cmdBoardEditTask,
+      },
+      description: switch ((count, mergeCount)) {
+        (_?, _) => l.boardCreateTaskHint,
+        (_, _?) => l.boardMergeTasksHint,
+        _ => null,
+      },
       dialogKey: 'dialog.board.task',
       fields: [
         TextFieldSpec(
@@ -471,7 +481,11 @@ Future<(String, BoardArea, BoardSize)?> showBoardTaskDialog(
         DialogButtonSpec(id: 'cancel', label: l.actionCancel),
         DialogButtonSpec(
           id: 'ok',
-          label: count == null ? l.actionSave : l.boardActionCreateTask,
+          label: switch ((count, mergeCount)) {
+            (_?, _) => l.boardActionCreateTask,
+            (_, _?) => l.boardActionMerge,
+            _ => l.actionSave,
+          },
           primary: true,
         ),
       ],

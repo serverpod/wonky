@@ -250,6 +250,21 @@ class BoardEndpoint extends Endpoint {
     List<int> postNumbers,
   ) => BoardService.setTaskPosts(session, number, postNumbers);
 
+  /// Merges the tasks [numbers] into the oldest one, which takes all their
+  /// issues and [title], [area] and [size]; the AI rewrites its prompt
+  /// (specs/16 §9.3). Only tasks nobody has claimed.
+  Future<BoardTaskView> mergeTasks(
+    Session session,
+    List<int> numbers,
+    String title,
+    BoardArea area,
+    BoardSize size,
+  ) => BoardService.mergeTasks(session, numbers, title, area, size);
+
+  /// Reverts the last merge into task [number] (the undo of [mergeTasks]).
+  Future<BoardTaskView> unmergeTasks(Session session, int number) =>
+      BoardService.unmergeTasks(session, number);
+
   Future<BoardTaskView> regeneratePrompt(Session session, int number) =>
       BoardService.regeneratePrompt(session, number);
 

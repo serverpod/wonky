@@ -624,7 +624,19 @@ class _BoardTaskPageState extends State<BoardTaskPage> {
               text: l.boardPromptNote(note),
               tone: cs.warning,
             ),
-          if (t.status == BoardTaskStatus.cancelled)
+          if (t.mergedInto case final into?)
+            BoardNotice(
+              key: const ValueKey<String>('board.task.notice.merged'),
+              icon: LucideIcons.merge,
+              text: l.boardTaskMergedNotice(into),
+              action: ShadButton.outline(
+                key: const ValueKey<String>('board.task.openMerged'),
+                size: ShadButtonSize.sm,
+                onPressed: () => boardOpenTask(s, into, context: context),
+                child: Text(l.boardOpenTask(into)),
+              ),
+            )
+          else if (t.status == BoardTaskStatus.cancelled)
             BoardNotice(
               icon: LucideIcons.circleX,
               text: l.boardTaskCancelledNotice,

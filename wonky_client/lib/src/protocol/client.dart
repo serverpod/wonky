@@ -1227,6 +1227,33 @@ class EndpointBoard extends _isc.EndpointRef {
     },
   );
 
+  /// Merges the tasks [numbers] into the oldest one, which takes all their
+  /// issues and [title], [area] and [size]; the AI rewrites its prompt
+  /// (specs/16 §9.3). Only tasks nobody has claimed.
+  _ida.Future<_icqm1m07.BoardTaskView> mergeTasks(
+    List<int> numbers,
+    String title,
+    _ix53eas0.BoardArea area,
+    _iky4nxq3.BoardSize size,
+  ) => caller.callServerEndpoint<_icqm1m07.BoardTaskView>(
+    'board',
+    'mergeTasks',
+    {
+      'numbers': numbers,
+      'title': title,
+      'area': area,
+      'size': size,
+    },
+  );
+
+  /// Reverts the last merge into task [number] (the undo of [mergeTasks]).
+  _ida.Future<_icqm1m07.BoardTaskView> unmergeTasks(int number) =>
+      caller.callServerEndpoint<_icqm1m07.BoardTaskView>(
+        'board',
+        'unmergeTasks',
+        {'number': number},
+      );
+
   _ida.Future<_icqm1m07.BoardTaskView> regeneratePrompt(int number) =>
       caller.callServerEndpoint<_icqm1m07.BoardTaskView>(
         'board',

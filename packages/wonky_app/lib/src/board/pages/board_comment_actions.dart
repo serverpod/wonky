@@ -59,6 +59,10 @@ String boardActivityText(WonkyAppLocalizations l, BoardCommentView c) {
     'shipped' => l.boardEventShipped,
     'cancelled' => l.boardEventCancelled,
     'merged' => l.boardEventMerged,
+    'mergedInto' => l.boardEventMergedInto(body),
+    'mergedTasks' => l.boardEventMergedTasks(body),
+    'unmerged' => l.boardEventUnmerged,
+    'rewriting' => l.boardEventRewriting,
     _ => c.systemEvent ?? '',
   };
   return '$who · $what';

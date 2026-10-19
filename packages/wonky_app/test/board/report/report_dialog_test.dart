@@ -441,7 +441,7 @@ void main() {
       await openReport(tester);
       expect(
         find.text(
-          'Posts are public and checked automatically by AI (Jev, Gemini).',
+          'Issues are public and checked automatically by AI (Jev, Gemini).',
         ),
         findsOneWidget,
       );
@@ -453,11 +453,11 @@ void main() {
       );
     });
 
-    testWidgets('when the board AI is off then only "Posts are public." '
+    testWidgets('when the board AI is off then only "Issues are public." '
         'shows', (tester) async {
       board.meValue = board.meValue.copyWith(aiChecks: false);
       await openReport(tester);
-      expect(find.text('Posts are public.'), findsOneWidget);
+      expect(find.text('Issues are public.'), findsOneWidget);
       expect(find.textContaining('Jev'), findsNothing);
     });
   });

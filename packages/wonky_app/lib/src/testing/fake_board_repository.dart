@@ -138,6 +138,9 @@ class FakeBoardTask {
   /// [FakeBoardRepository.writesPromptLater]).
   bool promptPending = false;
   String? promptNote;
+
+  /// The task this cancelled one was merged into.
+  int? mergedInto;
   final DateTime createdAt;
 }
 
@@ -607,6 +610,7 @@ class FakeBoardRepository implements BoardRepository {
       pullRequestUrl: t.pullRequestUrl,
       prNumber: t.prNumber,
       reviewJson: t.reviewJson,
+      mergedInto: t.status == BoardTaskStatus.cancelled ? t.mergedInto : null,
       publishedAt: t.publishedAt,
       createdAt: t.createdAt,
     );
@@ -1429,8 +1433,117 @@ class FakeBoardRepository implements BoardRepository {
     for (final n in postNumbers) {
       posts[n]?.taskNumber = number;
     }
-    _syncPosts(t);
+    _rewritePrompt(t);
     return _taskView(t);
+  }
+
+  /// Like the server after the issues of [t] changed: the prompt is
+  /// rewritten, and a published task waits as a draft while
+  /// [writesPromptLater]; [finishPrompt] publishes it again.
+  void _rewritePrompt(FakeBoardTask t) {
+    if (!writesPromptLater) {
+      t.promptBody = '## Goal\n${t.title}';
+      _syncPosts(t);
+      return;
+    }
+    t
+      ..promptPending = true
+      ..promptNote = null;
+    if (_status(t) == BoardTaskStatus.published) {
+      t
+        ..status = BoardTaskStatus.draft
+        ..claimedById = null
+        ..claimedAt = null
+        ..claimExpiresAt = null
+        ..claimCode = null;
+    }
+  }
+
+  /// The tasks a merge replaced: `{target: [snapshots of all tasks]}`.
+  final Map<int, List<Map<String, Object?>>> _merges = {};
+
+  @override
+  Future<BoardTaskView> mergeTasks(
+    List<int> numbers,
+    String title,
+    BoardArea area,
+    BoardSize size,
+  ) async {
+    _log('mergeTasks ${numbers.join(',')}');
+    _admin();
+    final ids = numbers.toSet().toList()..sort();
+    if (ids.length < 2) {
+      throw _err(WonkyErrorCode.invalidArgument, 'Select at least two.');
+    }
+    final tasks = [for (final n in ids) _task(n)];
+    for (final t in tasks) {
+      final s = _status(t);
+      if (s != BoardTaskStatus.draft && s != BoardTaskStatus.published) {
+        throw _err(WonkyErrorCode.conflict, 'T-${t.number} is claimed.');
+      }
+    }
+    _merges[ids.first] = [
+      for (final t in tasks)
+        {
+          'number': t.number,
+          'status': _status(t),
+          'title': t.title,
+          'area': t.area,
+          'size': t.size,
+          'promptBody': t.promptBody,
+          'posts': [...t.posts],
+        },
+    ];
+    final target = tasks.first;
+    for (final s in tasks.skip(1)) {
+      for (final n in s.posts) {
+        posts[n]?.taskNumber = target.number;
+      }
+      target.posts.addAll(s.posts);
+      s.posts.clear();
+      s
+        ..status = BoardTaskStatus.cancelled
+        ..mergedInto = target.number;
+    }
+    target
+      ..title = title
+      ..area = area
+      ..size = size;
+    _rewritePrompt(target);
+    return _taskView(target);
+  }
+
+  @override
+  Future<BoardTaskView> unmergeTasks(int number) async {
+    _log('unmergeTasks $number');
+    _admin();
+    final before = _merges.remove(number);
+    if (before == null) {
+      throw _err(WonkyErrorCode.conflict, 'No merge to undo.');
+    }
+    for (final m in before) {
+      final t = _task(m['number']! as int)
+        ..status = m['status']! as BoardTaskStatus
+        ..title = m['title']! as String
+        ..area = m['area']! as BoardArea
+        ..size = m['size']! as BoardSize
+        ..promptBody = m['promptBody']! as String
+        ..promptPending = false
+        ..mergedInto = null;
+      final own = m['posts']! as List<int>;
+      if (t.number == number) {
+        t.posts.removeWhere((n) => !own.contains(n));
+      } else {
+        t.posts
+          ..clear()
+          ..addAll(own);
+        for (final n in own) {
+          posts[n]?.taskNumber = t.number;
+        }
+      }
+      _syncPosts(t);
+    }
+    return _taskView(_task(number));
   }
 
   @override

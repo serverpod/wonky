@@ -2627,7 +2627,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get mcpScopeBoard =>
-      'Bugs & improvements: read, post, vote, claim tasks';
+      'Bugs & improvements: read, report issues, vote, claim tasks';
 
   @override
   String get tokenCreateHint =>
@@ -3117,7 +3117,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   }
 
   @override
-  String get boardReportSimilarTitle => 'Similar posts';
+  String get boardReportSimilarTitle => 'Similar issues';
 
   @override
   String boardReportSimilarVotes(int count) {
@@ -3235,10 +3235,10 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardReportAiNotice =>
-      'Posts are public and checked automatically by AI (Jev, Gemini).';
+      'Issues are public and checked automatically by AI (Jev, Gemini).';
 
   @override
-  String get boardReportPublicNotice => 'Posts are public.';
+  String get boardReportPublicNotice => 'Issues are public.';
 
   @override
   String boardReportSecurityNotice(String contact) {
@@ -3290,7 +3290,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardReportDiscardTitle => 'Discard draft?';
 
   @override
-  String get boardReportDiscardBody => 'Your report hasn’t been posted yet.';
+  String get boardReportDiscardBody => 'Your issue hasn’t been posted yet.';
 
   @override
   String get boardReportDiscard => 'Discard';
@@ -3365,13 +3365,13 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   }
 
   @override
-  String get boardTitle => 'Bugs & improvements';
+  String get boardTitle => 'Contribute & build';
 
   @override
   String get boardBreadcrumb => 'Breadcrumb';
 
   @override
-  String get boardClose => 'Close Bugs & improvements';
+  String get boardClose => 'Close Contribute & build';
 
   @override
   String get boardShowPath => 'Show the full path';
@@ -3388,13 +3388,13 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardSuggestImprovement => 'Suggest an improvement';
 
   @override
-  String get boardSearch => 'Search posts';
+  String get boardSearch => 'Search issues';
 
   @override
   String get boardSignIn => 'Sign in';
 
   @override
-  String get boardSignInToVote => 'Sign in to vote and post.';
+  String get boardSignInToVote => 'Sign in to vote and report issues.';
 
   @override
   String get boardSignInToComment => 'Sign in to comment';
@@ -3457,11 +3457,11 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardSearchStartHint =>
-      'Find posts by their words, part of a title or their number.';
+      'Find issues by their words, part of a title or their number.';
 
   @override
   String get boardEmptySearchHint =>
-      'Try fewer words or part of a word, or include closed posts.';
+      'Try fewer words or part of a word, or include closed issues.';
 
   @override
   String get boardEmptyClaimed => 'No claimed tasks';
@@ -3615,15 +3615,15 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Create task from $count posts…',
-      one: 'Create task from 1 post…',
+      other: 'Create task from $count issues…',
+      one: 'Create task from 1 issue…',
     );
     return '$_temp0';
   }
 
   @override
   String get boardCreateTaskHint =>
-      'The draft task gets an AI-written prompt that you review before publishing.';
+      'The draft task gets an AI-written prompt. It is published once the prompt is written.';
 
   @override
   String get boardAddToTask => 'Add to task';
@@ -3643,7 +3643,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   }
 
   @override
-  String get boardLoadFailed => 'Couldn\'t load Bugs & improvements';
+  String get boardLoadFailed => 'Couldn’t load Contribute & build';
 
   @override
   String get boardEmptyIdeas => 'No improvements here yet';
@@ -3655,17 +3655,18 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardEmptyDone => 'Nothing finished yet';
 
   @override
-  String get boardEmptySearch => 'No posts match your search';
+  String get boardEmptySearch => 'No issues match your search';
 
   @override
-  String get boardEmptyHint => 'Change the filters, or be the first to post.';
+  String get boardEmptyHint =>
+      'Change the filters, or be the first to report one.';
 
   @override
   String get boardEmptyTasks => 'No tasks up for grabs';
 
   @override
   String get boardEmptyTasksHint =>
-      'Admins publish tasks from the most wanted posts. Check back soon.';
+      'Admins publish tasks from the most wanted issues. Check back soon.';
 
   @override
   String get boardDoneTasks => 'Finished tasks';
@@ -3745,7 +3746,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String boardPostNotFound(int number) {
-    return 'Post #$number doesn\'t exist or isn\'t public';
+    return 'Issue #$number doesn\'t exist or isn\'t public';
   }
 
   @override
@@ -3754,7 +3755,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   }
 
   @override
-  String get boardBackToBoard => 'Back to Bugs & improvements';
+  String get boardBackToBoard => 'Back to Contribute & build';
 
   @override
   String get boardAdminActions => 'Admin';
@@ -3821,14 +3822,14 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String boardMergedFromNote(int number) {
-    return '#$number was merged into this post.';
+    return '#$number was merged into this issue.';
   }
 
   @override
-  String get boardPostDeleted => 'This post was deleted.';
+  String get boardPostDeleted => 'This issue was deleted.';
 
   @override
-  String get boardChecking => 'Checking your post…';
+  String get boardChecking => 'Checking your issue…';
 
   @override
   String get boardWaitingForReview =>
@@ -3914,7 +3915,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String boardScreenshotAlt(int number) {
-    return 'Screenshot of post #$number';
+    return 'Screenshot of issue #$number';
   }
 
   @override
@@ -3926,10 +3927,10 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   }
 
   @override
-  String get boardMergedFrom => 'Duplicates merged into this post:';
+  String get boardMergedFrom => 'Duplicates merged into this issue:';
 
   @override
-  String get boardSimilarPosts => 'Similar posts';
+  String get boardSimilarPosts => 'Similar issues';
 
   @override
   String boardScore(int score) {
@@ -3999,6 +4000,55 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardEventMerged => 'merged a duplicate';
 
   @override
+  String boardEventMergedInto(String task) {
+    return 'merged this task into $task';
+  }
+
+  @override
+  String boardEventMergedTasks(String tasks) {
+    return 'merged $tasks into this task';
+  }
+
+  @override
+  String get boardEventUnmerged => 'undid a merge of tasks';
+
+  @override
+  String get boardEventRewriting =>
+      'changed the issues; the task is a draft until the AI has rewritten the prompt';
+
+  @override
+  String boardMergeTasksTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Merge $count tasks…',
+      one: 'Merge 1 task…',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get boardMergeTasksHint =>
+      'The oldest task keeps all the issues and gets a new AI-written prompt. The other tasks are cancelled. Until the prompt is written, the task is a draft.';
+
+  @override
+  String get boardMergeTasksNeedsTwo =>
+      'Select two tasks or more to merge them';
+
+  @override
+  String boardTaskMergedNotice(int number) {
+    return 'This task was merged into T-$number.';
+  }
+
+  @override
+  String boardOpenTask(int number) {
+    return 'Open T-$number';
+  }
+
+  @override
+  String get cmdBoardMergeTasks => 'Merge tasks';
+
+  @override
   String get boardUpForGrabs => 'Up for grabs';
 
   @override
@@ -4016,8 +4066,8 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count posts',
-      one: '1 post',
+      other: '$count issues',
+      one: '1 issue',
     );
     return '$_temp0';
   }
@@ -4058,22 +4108,22 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardTaskCancelledNotice =>
-      'This task was cancelled. Its posts are open again.';
+      'This task was cancelled. Its issues are open again.';
 
   @override
-  String get boardLinkedPosts => 'Linked posts';
+  String get boardLinkedPosts => 'Linked issues';
 
   @override
-  String get boardNoLinkedPosts => 'No posts are linked to this task.';
+  String get boardNoLinkedPosts => 'No issues are linked to this task.';
 
   @override
   String get boardRemoveFromTask => 'Remove from task';
 
   @override
-  String get boardAddPosts => 'Add posts…';
+  String get boardAddPosts => 'Add issues…';
 
   @override
-  String get boardFieldPostNumbers => 'Post numbers';
+  String get boardFieldPostNumbers => 'Issue numbers';
 
   @override
   String get boardHowToBuild => 'How to build it';
@@ -4222,7 +4272,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardTitleLength => 'Use 8 to 120 characters.';
 
   @override
-  String get boardModeratorEditHint => 'The post shows Edited by a moderator.';
+  String get boardModeratorEditHint => 'The issue shows Edited by a moderator.';
 
   @override
   String get boardFieldReason => 'Reason';
@@ -4235,7 +4285,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardFlagHint =>
-      'Flagged posts are hidden for review after 3 people flag them.';
+      'Flagged issues are hidden for review after 3 people flag them.';
 
   @override
   String get boardFlagAction => 'Flag';
@@ -4259,17 +4309,17 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String boardMergeHint(int number) {
-    return 'Votes on #$number move to the post that remains.';
+    return 'Votes on #$number move to the issue that remains.';
   }
 
   @override
-  String get boardFieldTargetPost => 'Post that remains';
+  String get boardFieldTargetPost => 'Issue that remains';
 
   @override
-  String get boardInvalidPostNumber => 'Enter a post number';
+  String get boardInvalidPostNumber => 'Enter an issue number';
 
   @override
-  String get boardMergeSelf => 'A post can\'t be merged into itself';
+  String get boardMergeSelf => 'An issue can\'t be merged into itself';
 
   @override
   String get boardFieldKind => 'Kind';
@@ -4365,13 +4415,13 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get cmdBoardVote => 'Vote';
 
   @override
-  String get cmdBoardCreatePost => 'Post report';
+  String get cmdBoardCreatePost => 'Report issue';
 
   @override
-  String get cmdBoardEditPost => 'Edit post';
+  String get cmdBoardEditPost => 'Edit issue';
 
   @override
-  String get cmdBoardDeletePost => 'Delete post';
+  String get cmdBoardDeletePost => 'Delete issue';
 
   @override
   String get cmdBoardRemoveScreenshot => 'Remove screenshot';
@@ -4437,7 +4487,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get cmdBoardEditTask => 'Edit task';
 
   @override
-  String get cmdBoardSetTaskPosts => 'Change the task\'s posts';
+  String get cmdBoardSetTaskPosts => 'Change the task\'s issues';
 
   @override
   String get cmdBoardRegeneratePrompt => 'Regenerate prompt';
@@ -4471,7 +4521,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get notifyBoardHint =>
-      'Replies to your posts, status changes and your task claims';
+      'Replies to your issues, status changes and your task claims';
 
   @override
   String boardEventPrClosed(String url) {
@@ -7207,7 +7257,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get mcpScopeBoard =>
-      '[Ɓûĝš & îɱþŕöṽéɱéñţš: ŕéåð, þöšţ, ṽöţé, çļåîɱ ţåšķš one two three fo]';
+      '[Ɓûĝš & îɱþŕöṽéɱéñţš: ŕéåð, ŕéþöŕţ îššûéš, ṽöţé, çļåîɱ ţåšķš one two three four]';
 
   @override
   String get tokenCreateHint =>
@@ -7703,7 +7753,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   }
 
   @override
-  String get boardReportSimilarTitle => '[Šîɱîļåŕ þöšţš one t]';
+  String get boardReportSimilarTitle => '[Šîɱîļåŕ îššûéš one t]';
 
   @override
   String boardReportSimilarVotes(int count) {
@@ -7822,10 +7872,10 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardReportAiNotice =>
-      '[Þöšţš åŕé þûƀļîç åñð çĥéçķéð åûţöɱåţîçåļļý ƀý ÅÎ (Ĵéṽ, Ĝéɱîñî). one two three four]';
+      '[Îššûéš åŕé þûƀļîç åñð çĥéçķéð åûţöɱåţîçåļļý ƀý ÅÎ (Ĵéṽ, Ĝéɱîñî). one two three four f]';
 
   @override
-  String get boardReportPublicNotice => '[Þöšţš åŕé þûƀļîç. one tw]';
+  String get boardReportPublicNotice => '[Îššûéš åŕé þûƀļîç. one tw]';
 
   @override
   String boardReportSecurityNotice(String contact) {
@@ -7879,7 +7929,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardReportDiscardBody =>
-      '[Ýöûŕ ŕéþöŕţ ĥåšñ’ţ ƀééñ þöšţéð ýéţ. one two thr]';
+      '[Ýöûŕ îššûé ĥåšñ’ţ ƀééñ þöšţéð ýéţ. one two thr]';
 
   @override
   String get boardReportDiscard => '[Ðîšçåŕð one]';
@@ -7954,13 +8004,13 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   }
 
   @override
-  String get boardTitle => '[Ɓûĝš & îɱþŕöṽéɱéñţš one tw]';
+  String get boardTitle => '[Çöñţŕîƀûţé & ƀûîļð one tw]';
 
   @override
   String get boardBreadcrumb => '[Ɓŕéåðçŕûɱƀ one]';
 
   @override
-  String get boardClose => '[Çļöšé Ɓûĝš & îɱþŕöṽéɱéñţš one two]';
+  String get boardClose => '[Çļöšé Çöñţŕîƀûţé & ƀûîļð one two]';
 
   @override
   String get boardShowPath => '[Šĥöŵ ţĥé ƒûļļ þåţĥ one tw]';
@@ -7977,13 +8027,14 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get boardSuggestImprovement => '[Šûĝĝéšţ åñ îɱþŕöṽéɱéñţ one two]';
 
   @override
-  String get boardSearch => '[Šéåŕçĥ þöšţš one]';
+  String get boardSearch => '[Šéåŕçĥ îššûéš one t]';
 
   @override
   String get boardSignIn => '[Šîĝñ îñ one]';
 
   @override
-  String get boardSignInToVote => '[Šîĝñ îñ ţö ṽöţé åñð þöšţ. one two]';
+  String get boardSignInToVote =>
+      '[Šîĝñ îñ ţö ṽöţé åñð ŕéþöŕţ îššûéš. one two th]';
 
   @override
   String get boardSignInToComment => '[Šîĝñ îñ ţö çöɱɱéñţ one tw]';
@@ -8047,11 +8098,11 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardSearchStartHint =>
-      '[Ƒîñð þöšţš ƀý ţĥéîŕ ŵöŕðš, þåŕţ öƒ å ţîţļé öŕ ţĥéîŕ ñûɱƀéŕ. one two three fou]';
+      '[Ƒîñð îššûéš ƀý ţĥéîŕ ŵöŕðš, þåŕţ öƒ å ţîţļé öŕ ţĥéîŕ ñûɱƀéŕ. one two three four]';
 
   @override
   String get boardEmptySearchHint =>
-      '[Ţŕý ƒéŵéŕ ŵöŕðš öŕ þåŕţ öƒ å ŵöŕð, öŕ îñçļûðé çļöšéð þöšţš. one two three fou]';
+      '[Ţŕý ƒéŵéŕ ŵöŕðš öŕ þåŕţ öƒ å ŵöŕð, öŕ îñçļûðé çļöšéð îššûéš. one two three four]';
 
   @override
   String get boardEmptyClaimed => '[Ñö çļåîɱéð ţåšķš one t]';
@@ -8205,15 +8256,15 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Çŕéåţé ţåšķ ƒŕöɱ $count þöšţš…',
-      one: 'Çŕéåţé ţåšķ ƒŕöɱ 1 þöšţ…',
+      other: 'Çŕéåţé ţåšķ ƒŕöɱ $count îššûéš…',
+      one: 'Çŕéåţé ţåšķ ƒŕöɱ 1 îššûé…',
     );
-    return '[$_temp0 one two three]';
+    return '[$_temp0 one two three f]';
   }
 
   @override
   String get boardCreateTaskHint =>
-      '[Ţĥé ðŕåƒţ ţåšķ ĝéţš åñ ÅÎ-ŵŕîţţéñ þŕöɱþţ ţĥåţ ýöû ŕéṽîéŵ ƀéƒöŕé þûƀļîšĥîñĝ. one two three four five]';
+      '[Ţĥé ðŕåƒţ ţåšķ ĝéţš åñ ÅÎ-ŵŕîţţéñ þŕöɱþţ. Îţ îš þûƀļîšĥéð öñçé ţĥé þŕöɱþţ îš ŵŕîţţéñ. one two three four five s]';
 
   @override
   String get boardAddToTask => '[Åðð ţö ţåšķ one]';
@@ -8234,8 +8285,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   }
 
   @override
-  String get boardLoadFailed =>
-      '[Çöûļðñ\'ţ ļöåð Ɓûĝš & îɱþŕöṽéɱéñţš one two thr]';
+  String get boardLoadFailed => '[Çöûļðñ’ţ ļöåð Çöñţŕîƀûţé & ƀûîļð one two th]';
 
   @override
   String get boardEmptyIdeas => '[Ñö îɱþŕöṽéɱéñţš ĥéŕé ýéţ one two]';
@@ -8247,18 +8297,18 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get boardEmptyDone => '[Ñöţĥîñĝ ƒîñîšĥéð ýéţ one two]';
 
   @override
-  String get boardEmptySearch => '[Ñö þöšţš ɱåţçĥ ýöûŕ šéåŕçĥ one two]';
+  String get boardEmptySearch => '[Ñö îššûéš ɱåţçĥ ýöûŕ šéåŕçĥ one two t]';
 
   @override
   String get boardEmptyHint =>
-      '[Çĥåñĝé ţĥé ƒîļţéŕš, öŕ ƀé ţĥé ƒîŕšţ ţö þöšţ. one two three]';
+      '[Çĥåñĝé ţĥé ƒîļţéŕš, öŕ ƀé ţĥé ƒîŕšţ ţö ŕéþöŕţ öñé. one two three f]';
 
   @override
   String get boardEmptyTasks => '[Ñö ţåšķš ûþ ƒöŕ ĝŕåƀš one tw]';
 
   @override
   String get boardEmptyTasksHint =>
-      '[Åðɱîñš þûƀļîšĥ ţåšķš ƒŕöɱ ţĥé ɱöšţ ŵåñţéð þöšţš. Çĥéçķ ƀåçķ šööñ. one two three four f]';
+      '[Åðɱîñš þûƀļîšĥ ţåšķš ƒŕöɱ ţĥé ɱöšţ ŵåñţéð îššûéš. Çĥéçķ ƀåçķ šööñ. one two three four f]';
 
   @override
   String get boardDoneTasks => '[Ƒîñîšĥéð ţåšķš one t]';
@@ -8339,7 +8389,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String boardPostNotFound(int number) {
-    return '[Þöšţ #$number ðöéšñ\'ţ éẋîšţ öŕ îšñ\'ţ þûƀļîç one two thr]';
+    return '[Îššûé #$number ðöéšñ\'ţ éẋîšţ öŕ îšñ\'ţ þûƀļîç one two thr]';
   }
 
   @override
@@ -8348,7 +8398,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   }
 
   @override
-  String get boardBackToBoard => '[Ɓåçķ ţö Ɓûĝš & îɱþŕöṽéɱéñţš one two t]';
+  String get boardBackToBoard => '[Ɓåçķ ţö Çöñţŕîƀûţé & ƀûîļð one two]';
 
   @override
   String get boardAdminActions => '[Åðɱîñ on]';
@@ -8415,14 +8465,14 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String boardMergedFromNote(int number) {
-    return '[#$number ŵåš ɱéŕĝéð îñţö ţĥîš þöšţ. one two t]';
+    return '[#$number ŵåš ɱéŕĝéð îñţö ţĥîš îššûé. one two t]';
   }
 
   @override
-  String get boardPostDeleted => '[Ţĥîš þöšţ ŵåš ðéļéţéð. one two]';
+  String get boardPostDeleted => '[Ţĥîš îššûé ŵåš ðéļéţéð. one two]';
 
   @override
-  String get boardChecking => '[Çĥéçķîñĝ ýöûŕ þöšţ… one tw]';
+  String get boardChecking => '[Çĥéçķîñĝ ýöûŕ îššûé… one two]';
 
   @override
   String get boardWaitingForReview =>
@@ -8508,7 +8558,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String boardScreenshotAlt(int number) {
-    return '[Šçŕééñšĥöţ öƒ þöšţ #$number one tw]';
+    return '[Šçŕééñšĥöţ öƒ îššûé #$number one two]';
   }
 
   @override
@@ -8521,10 +8571,10 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardMergedFrom =>
-      '[Ðûþļîçåţéš ɱéŕĝéð îñţö ţĥîš þöšţ: one two thr]';
+      '[Ðûþļîçåţéš ɱéŕĝéð îñţö ţĥîš îššûé: one two thr]';
 
   @override
-  String get boardSimilarPosts => '[Šîɱîļåŕ þöšţš one t]';
+  String get boardSimilarPosts => '[Šîɱîļåŕ îššûéš one t]';
 
   @override
   String boardScore(int score) {
@@ -8594,6 +8644,55 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get boardEventMerged => '[ɱéŕĝéð å ðûþļîçåţé one tw]';
 
   @override
+  String boardEventMergedInto(String task) {
+    return '[ɱéŕĝéð ţĥîš ţåšķ îñţö $task one two]';
+  }
+
+  @override
+  String boardEventMergedTasks(String tasks) {
+    return '[ɱéŕĝéð $tasks îñţö ţĥîš ţåšķ one two]';
+  }
+
+  @override
+  String get boardEventUnmerged => '[ûñðîð å ɱéŕĝé öƒ ţåšķš one two]';
+
+  @override
+  String get boardEventRewriting =>
+      '[çĥåñĝéð ţĥé îššûéš; ţĥé ţåšķ îš å ðŕåƒţ ûñţîļ ţĥé ÅÎ ĥåš ŕéŵŕîţţéñ ţĥé þŕöɱþţ one two three four five]';
+
+  @override
+  String boardMergeTasksTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ṁéŕĝé $count ţåšķš…',
+      one: 'Ṁéŕĝé 1 ţåšķ…',
+    );
+    return '[$_temp0 one two]';
+  }
+
+  @override
+  String get boardMergeTasksHint =>
+      '[Ţĥé öļðéšţ ţåšķ ķééþš åļļ ţĥé îššûéš åñð ĝéţš å ñéŵ ÅÎ-ŵŕîţţéñ þŕöɱþţ. Ţĥé öţĥéŕ ţåšķš åŕé çåñçéļļéð. Ûñţîļ ţĥé þŕöɱþţ îš ŵŕîţţéñ, ţĥé ţåšķ îš å ðŕåƒţ. one two three four five six seven eight nine]';
+
+  @override
+  String get boardMergeTasksNeedsTwo =>
+      '[Šéļéçţ ţŵö ţåšķš öŕ ɱöŕé ţö ɱéŕĝé ţĥéɱ one two thr]';
+
+  @override
+  String boardTaskMergedNotice(int number) {
+    return '[Ţĥîš ţåšķ ŵåš ɱéŕĝéð îñţö Ţ-$number. one two t]';
+  }
+
+  @override
+  String boardOpenTask(int number) {
+    return '[Öþéñ Ţ-$number one]';
+  }
+
+  @override
+  String get cmdBoardMergeTasks => '[Ṁéŕĝé ţåšķš one]';
+
+  @override
   String get boardUpForGrabs => '[Ûþ ƒöŕ ĝŕåƀš one]';
 
   @override
@@ -8611,10 +8710,10 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count þöšţš',
-      one: '1 þöšţ',
+      other: '$count îššûéš',
+      one: '1 îššûé',
     );
-    return '[$_temp0 one]';
+    return '[$_temp0 one t]';
   }
 
   @override
@@ -8653,23 +8752,23 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardTaskCancelledNotice =>
-      '[Ţĥîš ţåšķ ŵåš çåñçéļļéð. Îţš þöšţš åŕé öþéñ åĝåîñ. one two three f]';
+      '[Ţĥîš ţåšķ ŵåš çåñçéļļéð. Îţš îššûéš åŕé öþéñ åĝåîñ. one two three fo]';
 
   @override
-  String get boardLinkedPosts => '[Ļîñķéð þöšţš one]';
+  String get boardLinkedPosts => '[Ļîñķéð îššûéš one t]';
 
   @override
   String get boardNoLinkedPosts =>
-      '[Ñö þöšţš åŕé ļîñķéð ţö ţĥîš ţåšķ. one two th]';
+      '[Ñö îššûéš åŕé ļîñķéð ţö ţĥîš ţåšķ. one two th]';
 
   @override
   String get boardRemoveFromTask => '[Ŕéɱöṽé ƒŕöɱ ţåšķ one t]';
 
   @override
-  String get boardAddPosts => '[Åðð þöšţš… one]';
+  String get boardAddPosts => '[Åðð îššûéš… one]';
 
   @override
-  String get boardFieldPostNumbers => '[Þöšţ ñûɱƀéŕš one]';
+  String get boardFieldPostNumbers => '[Îššûé ñûɱƀéŕš one t]';
 
   @override
   String get boardHowToBuild => '[Ĥöŵ ţö ƀûîļð îţ one t]';
@@ -8823,7 +8922,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardModeratorEditHint =>
-      '[Ţĥé þöšţ šĥöŵš Éðîţéð ƀý å ɱöðéŕåţöŕ. one two thr]';
+      '[Ţĥé îššûé šĥöŵš Éðîţéð ƀý å ɱöðéŕåţöŕ. one two thre]';
 
   @override
   String get boardFieldReason => '[Ŕéåšöñ one]';
@@ -8837,7 +8936,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardFlagHint =>
-      '[Ƒļåĝĝéð þöšţš åŕé ĥîððéñ ƒöŕ ŕéṽîéŵ åƒţéŕ 3 þéöþļé ƒļåĝ ţĥéɱ. one two three four]';
+      '[Ƒļåĝĝéð îššûéš åŕé ĥîððéñ ƒöŕ ŕéṽîéŵ åƒţéŕ 3 þéöþļé ƒļåĝ ţĥéɱ. one two three four]';
 
   @override
   String get boardFlagAction => '[Ƒļåĝ on]';
@@ -8861,18 +8960,18 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String boardMergeHint(int number) {
-    return '[Ṽöţéš öñ #$number ɱöṽé ţö ţĥé þöšţ ţĥåţ ŕéɱåîñš. one two thre]';
+    return '[Ṽöţéš öñ #$number ɱöṽé ţö ţĥé îššûé ţĥåţ ŕéɱåîñš. one two thre]';
   }
 
   @override
-  String get boardFieldTargetPost => '[Þöšţ ţĥåţ ŕéɱåîñš one tw]';
+  String get boardFieldTargetPost => '[Îššûé ţĥåţ ŕéɱåîñš one tw]';
 
   @override
-  String get boardInvalidPostNumber => '[Éñţéŕ å þöšţ ñûɱƀéŕ one tw]';
+  String get boardInvalidPostNumber => '[Éñţéŕ åñ îššûé ñûɱƀéŕ one two]';
 
   @override
   String get boardMergeSelf =>
-      '[Å þöšţ çåñ\'ţ ƀé ɱéŕĝéð îñţö îţšéļƒ one two th]';
+      '[Åñ îššûé çåñ\'ţ ƀé ɱéŕĝéð îñţö îţšéļƒ one two thr]';
 
   @override
   String get boardFieldKind => '[Ķîñð on]';
@@ -8971,13 +9070,13 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get cmdBoardVote => '[Ṽöţé on]';
 
   @override
-  String get cmdBoardCreatePost => '[Þöšţ ŕéþöŕţ one]';
+  String get cmdBoardCreatePost => '[Ŕéþöŕţ îššûé one]';
 
   @override
-  String get cmdBoardEditPost => '[Éðîţ þöšţ one]';
+  String get cmdBoardEditPost => '[Éðîţ îššûé one]';
 
   @override
-  String get cmdBoardDeletePost => '[Ðéļéţé þöšţ one]';
+  String get cmdBoardDeletePost => '[Ðéļéţé îššûé one]';
 
   @override
   String get cmdBoardRemoveScreenshot => '[Ŕéɱöṽé šçŕééñšĥöţ one tw]';
@@ -9043,7 +9142,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get cmdBoardEditTask => '[Éðîţ ţåšķ one]';
 
   @override
-  String get cmdBoardSetTaskPosts => '[Çĥåñĝé ţĥé ţåšķ\'š þöšţš one two]';
+  String get cmdBoardSetTaskPosts => '[Çĥåñĝé ţĥé ţåšķ\'š îššûéš one two]';
 
   @override
   String get cmdBoardRegeneratePrompt => '[Ŕéĝéñéŕåţé þŕöɱþţ one tw]';
@@ -9077,7 +9176,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get notifyBoardHint =>
-      '[Ŕéþļîéš ţö ýöûŕ þöšţš, šţåţûš çĥåñĝéš åñð ýöûŕ ţåšķ çļåîɱš one two three four]';
+      '[Ŕéþļîéš ţö ýöûŕ îššûéš, šţåţûš çĥåñĝéš åñð ýöûŕ ţåšķ çļåîɱš one two three four]';
 
   @override
   String boardEventPrClosed(String url) {

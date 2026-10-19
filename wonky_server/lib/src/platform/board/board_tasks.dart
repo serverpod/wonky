@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:serverpod/serverpod.dart';
@@ -138,9 +139,9 @@ abstract final class BoardTasks {
     int? taskId,
   }) async {
     final ids = numbers.toSet();
-    if (ids.isEmpty) throw Errors.invalid('Select at least one post.');
+    if (ids.isEmpty) throw Errors.invalid('Select at least one issue.');
     if (ids.length > maxPostsPerTask) {
-      throw Errors.invalid('A task can have at most $maxPostsPerTask posts.');
+      throw Errors.invalid('A task can have at most $maxPostsPerTask issues.');
     }
     final posts = await BoardPost.db.find(
       session,
@@ -149,7 +150,7 @@ abstract final class BoardTasks {
     );
     final found = {for (final p in posts) p.id};
     for (final id in ids) {
-      if (!found.contains(id)) throw Errors.notFound('Post #$id');
+      if (!found.contains(id)) throw Errors.notFound('Issue #$id');
     }
     final otherTaskIds = {
       for (final p in posts)
@@ -291,6 +292,69 @@ abstract final class BoardTasks {
         session,
         updated.copyWith(promptRequestedAt: null, promptNote: promptFailedNote),
         columns: (t) => [t.promptRequestedAt, t.promptNote],
+      );
+    }
+    return updated;
+  }
+
+  /// Asks the AI for a (new) prompt of [task] in the background, or notes
+  /// why it can't (budget used up). Without Gemini the body stays.
+  static Future<BoardTask> _promptFor(Session session, BoardTask task) async {
+    final ai = BoardAi.instance;
+    if (await ai.geminiAvailable(session)) {
+      return _requestPrompt(session, task);
+    }
+    if (!ai.geminiConfigured) return task;
+    return BoardTask.db.updateRow(
+      session,
+      task.copyWith(promptNote: promptBudgetNote),
+      columns: (t) => [t.promptNote],
+    );
+  }
+
+  /// After the issues of [task] changed (added, removed, merged; specs/16
+  /// §9.3): the AI rewrites the prompt for all of them. A published task
+  /// nobody holds goes back to draft until the prompt is written, so nobody
+  /// claims it with the old one; [writePrompt] then publishes it again. Its
+  /// issues stay `planned` meanwhile, so only the added ones become planned
+  /// (and tell their voters) then. Without the AI the prompt stays and the
+  /// issues follow the task's status.
+  static Future<BoardTask> _rewritePrompt(
+    Session session,
+    BoardTask task, {
+    required int adminId,
+  }) async {
+    var updated = await _promptFor(session, task);
+    final now = nowUtc();
+    if (!promptPending(updated, now)) {
+      await syncPosts(session, task.id!, updated.status);
+      return updated;
+    }
+    if (BoardViews.effectiveStatus(updated, now) == BoardTaskStatus.published) {
+      updated = await BoardTask.db.updateRow(
+        session,
+        updated.copyWith(
+          status: BoardTaskStatus.draft,
+          claimedById: null,
+          claimedAt: null,
+          claimExpiresAt: null,
+          claimWarnedAt: null,
+          claimCode: null,
+        ),
+        columns: (t) => [
+          t.status,
+          t.claimedById,
+          t.claimedAt,
+          t.claimExpiresAt,
+          t.claimWarnedAt,
+          t.claimCode,
+        ],
+      );
+      await BoardComments.systemRow(
+        session,
+        taskId: task.id,
+        event: 'rewriting',
+        actorId: adminId,
       );
     }
     return updated;
@@ -454,16 +518,7 @@ abstract final class BoardTasks {
     });
     // The AI writes the prompt in the background (about a minute); the
     // draft is there at once with the blank template.
-    final ai = BoardAi.instance;
-    if (await ai.geminiAvailable(session)) {
-      task = await _requestPrompt(session, task);
-    } else if (ai.geminiConfigured) {
-      task = await BoardTask.db.updateRow(
-        session,
-        task.copyWith(promptNote: promptBudgetNote),
-        columns: (t) => [t.promptNote],
-      );
-    }
+    task = await _promptFor(session, task);
     // A pending suggestion with exactly these posts is now accepted.
     final ids = {for (final p in posts) p.id!};
     for (final s in await BoardBundleSuggestion.db.find(
@@ -528,7 +583,7 @@ abstract final class BoardTasks {
     if (task.status == BoardTaskStatus.done ||
         task.status == BoardTaskStatus.shipped ||
         task.status == BoardTaskStatus.cancelled) {
-      throw Errors.conflict('The posts of this task can no longer change.');
+      throw Errors.conflict('The issues of this task can no longer change.');
     }
     final posts = await _postsFor(session, postNumbers, taskId: task.id);
     final before = await _postsOf(session, task.id!);
@@ -537,6 +592,9 @@ abstract final class BoardTasks {
       for (final p in before)
         if (!ids.contains(p.id)) p,
     ];
+    if (removed.isEmpty && ids.length == before.length) {
+      return BoardViews.task(session, c, task);
+    }
     await session.db.transaction((tx) async {
       for (final p in removed) {
         await BoardPost.db.updateRow(
@@ -558,8 +616,9 @@ abstract final class BoardTasks {
         transaction: tx,
       );
     });
-    await syncPosts(session, task.id!, task.status);
-    for (final p in removed) {
+    // The prompt is rewritten for the new set of issues.
+    final updated = await _rewritePrompt(session, task, adminId: c.id);
+    for (final p in {...removed, ...posts}) {
       await BoardLive.post(session, p.id!);
     }
     await BoardLog.write(
@@ -571,7 +630,253 @@ abstract final class BoardTasks {
       before: {'postIds': before.map((p) => p.id).toList()},
       after: {'postIds': ids.toList()},
     );
-    return changed(session, c, task);
+    return changed(session, c, updated);
+  }
+
+  /// Merges the tasks [numbers] into the oldest one (specs/16 §9.3): it
+  /// takes the issues of all of them and [title], [area] and [size], the
+  /// others are cancelled with a *Merged into T-n* row, and the AI rewrites
+  /// the prompt for all the issues ([_rewritePrompt]). Only tasks nobody
+  /// holds (draft or published) can be merged. [unmerge] reverts it from the
+  /// moderation log.
+  static Future<BoardTaskView> merge(
+    Session session,
+    List<int> numbers,
+    String title,
+    BoardArea area,
+    BoardSize size,
+  ) async {
+    final c = await BoardAccess.requireAdmin(session);
+    final ids = numbers.toSet().toList()..sort();
+    if (ids.length < 2) throw Errors.invalid('Select at least two tasks.');
+    final clean = _title(title);
+    final now = nowUtc();
+    final tasks = [for (final id in ids) await _adminTask(session, c, id)];
+    for (final t in tasks) {
+      if (!_mergeable.contains(BoardViews.effectiveStatus(t, now))) {
+        throw Errors.conflict(
+          'T-${t.id} is not up for grabs: only tasks nobody has claimed can '
+          'be merged.',
+        );
+      }
+    }
+    final postsOf = {
+      for (final t in tasks) t.id!: await _postsOf(session, t.id!),
+    };
+    final total = postsOf.values.fold(0, (n, p) => n + p.length);
+    if (total > maxPostsPerTask) {
+      throw Errors.invalid('A task can have at most $maxPostsPerTask issues.');
+    }
+    final target = tasks.first;
+    final sources = tasks.skip(1).toList();
+    final before = [
+      for (final t in tasks)
+        {
+          'number': t.id,
+          'status': BoardViews.effectiveStatus(t, now).name,
+          'title': t.title,
+          'area': t.area.name,
+          'size': t.size.name,
+          'promptBody': t.promptBody,
+          'postIds': [for (final p in postsOf[t.id]!) p.id],
+        },
+    ];
+    final moved = {
+      for (final s in sources)
+        for (final p in postsOf[s.id]!) p.id!,
+    };
+    await session.db.transaction((tx) async {
+      if (moved.isNotEmpty) {
+        await BoardPost.db.updateWhere(
+          session,
+          columnValues: (t) => [t.taskId(target.id)],
+          where: (t) => t.id.inSet(moved),
+          transaction: tx,
+        );
+      }
+      for (final s in sources) {
+        await BoardTask.db.updateRow(
+          session,
+          s.copyWith(
+            status: BoardTaskStatus.cancelled,
+            promptRequestedAt: null,
+            claimedById: null,
+            claimedAt: null,
+            claimExpiresAt: null,
+            claimWarnedAt: null,
+            claimCode: null,
+          ),
+          columns: (t) => [
+            t.status,
+            t.promptRequestedAt,
+            t.claimedById,
+            t.claimedAt,
+            t.claimExpiresAt,
+            t.claimWarnedAt,
+            t.claimCode,
+          ],
+          transaction: tx,
+        );
+        await BoardComments.systemRow(
+          session,
+          taskId: s.id,
+          event: 'mergedInto',
+          actorId: c.id,
+          body: 'T-${target.id}',
+          transaction: tx,
+        );
+      }
+      await BoardTask.db.updateRow(
+        session,
+        target.copyWith(title: clean, area: area, size: size),
+        columns: (t) => [t.title, t.area, t.size],
+        transaction: tx,
+      );
+      await BoardComments.systemRow(
+        session,
+        taskId: target.id,
+        event: 'mergedTasks',
+        actorId: c.id,
+        body: [for (final s in sources) 'T-${s.id}'].join(', '),
+        transaction: tx,
+      );
+    });
+    final updated = await _rewritePrompt(
+      session,
+      (await BoardTask.db.findById(session, target.id!))!,
+      adminId: c.id,
+    );
+    await BoardLog.write(
+      session,
+      adminId: c.id,
+      action: 'mergeTasks',
+      targetKind: BoardTargetKind.task,
+      targetId: target.id!,
+      before: {'tasks': before},
+      after: {
+        ...snapshot(updated),
+        'sources': [for (final s in sources) s.id],
+      },
+    );
+    for (final s in sources) {
+      await BoardLive.task(session, s.id!);
+    }
+    for (final id in moved) {
+      await BoardLive.post(session, id);
+    }
+    return changed(session, c, updated);
+  }
+
+  static const _mergeable = {BoardTaskStatus.draft, BoardTaskStatus.published};
+
+  /// Reverts the last [merge] into task [number] (its undo): the merged
+  /// tasks get their issues, status, title, area, size and prompt back.
+  /// Issues added to the task after the merge stay with it. A conflict
+  /// when someone claimed the task meanwhile, or a merged task was changed.
+  static Future<BoardTaskView> unmerge(Session session, int number) async {
+    final c = await BoardAccess.requireAdmin(session);
+    final target = await _adminTask(session, c, number);
+    final now = nowUtc();
+    final last = await BoardModerationLog.db.findFirstRow(
+      session,
+      where: (t) =>
+          t.targetKind.equals(BoardTargetKind.task) &
+          t.targetId.equals(number) &
+          t.action.inSet({'mergeTasks', 'unmergeTasks'}),
+      orderBy: (t) => t.id.desc(),
+    );
+    if (last == null || last.action != 'mergeTasks') {
+      throw Errors.conflict('T-$number has no merge to undo.');
+    }
+    if (!_mergeable.contains(BoardViews.effectiveStatus(target, now))) {
+      throw Errors.conflict('T-$number was claimed meanwhile.');
+    }
+    final before = [
+      for (final m in (jsonDecode(last.beforeJson!) as Map)['tasks'] as List)
+        (m as Map).cast<String, Object?>(),
+    ];
+    final tasks = {
+      for (final t in await BoardTask.db.find(
+        session,
+        where: (t) => t.id.inSet(<int>{
+          for (final m in before) m['number']! as int,
+        }),
+      ))
+        t.id!: t,
+    };
+    for (final m in before) {
+      final t = tasks[m['number']];
+      if (t == null) throw Errors.notFound('Task');
+      if (t.id != number && t.status != BoardTaskStatus.cancelled) {
+        throw Errors.conflict('T-${t.id} was changed after the merge.');
+      }
+    }
+    final restored = <int, BoardTaskStatus>{};
+    await session.db.transaction((tx) async {
+      for (final m in before) {
+        final t = tasks[m['number']]!;
+        final status = BoardTaskStatus.values.byName(m['status']! as String);
+        restored[t.id!] = status;
+        final postIds = <int>{for (final p in m['postIds']! as List) p as int};
+        if (postIds.isNotEmpty) {
+          await BoardPost.db.updateWhere(
+            session,
+            columnValues: (p) => [p.taskId(t.id)],
+            where: (p) =>
+                p.id.inSet(postIds) & p.taskId.inSet(tasks.keys.toSet()),
+            transaction: tx,
+          );
+        }
+        await BoardTask.db.updateRow(
+          session,
+          t.copyWith(
+            status: status,
+            title: m['title']! as String,
+            area: BoardArea.values.byName(m['area']! as String),
+            size: BoardSize.values.byName(m['size']! as String),
+            promptBody: m['promptBody']! as String,
+            // The restored prompt wins over a rewrite still running.
+            promptRequestedAt: null,
+            promptNote: null,
+          ),
+          columns: (x) => [
+            x.status,
+            x.title,
+            x.area,
+            x.size,
+            x.promptBody,
+            x.promptRequestedAt,
+            x.promptNote,
+          ],
+          transaction: tx,
+        );
+        await BoardComments.systemRow(
+          session,
+          taskId: t.id,
+          event: 'unmerged',
+          actorId: c.id,
+          transaction: tx,
+        );
+      }
+    });
+    for (final MapEntry(key: id, value: status) in restored.entries) {
+      await syncPosts(session, id, status);
+      await BoardLive.task(session, id);
+    }
+    await BoardLog.write(
+      session,
+      adminId: c.id,
+      action: 'unmergeTasks',
+      targetKind: BoardTargetKind.task,
+      targetId: number,
+      before: snapshot(target),
+      after: {'tasks': before},
+    );
+    return changed(
+      session,
+      c,
+      (await BoardTask.db.findById(session, number))!,
+    );
   }
 
   static Future<BoardTaskView> regeneratePrompt(
@@ -651,7 +956,7 @@ abstract final class BoardTasks {
       throw Errors.conflict('The AI is still writing the prompt.');
     }
     if ((await _postsOf(session, task.id!)).isEmpty) {
-      throw Errors.conflict('The task has no posts.');
+      throw Errors.conflict('The task has no issues.');
     }
     return _setStatus(session, c, task, BoardTaskStatus.published);
   }
@@ -732,7 +1037,9 @@ abstract final class BoardTasks {
         t.claimCode,
       ],
     );
-    await syncPosts(session, task.id!, status);
+    // Only the issues that change status are told: a task published again
+    // after its prompt was rewritten (§9.3) tells the issues added meanwhile.
+    final moved = await syncPosts(session, task.id!, status);
     final event = switch (status) {
       BoardTaskStatus.done => 'done',
       BoardTaskStatus.shipped => 'shipped',
@@ -773,7 +1080,7 @@ abstract final class BoardTasks {
         BoardTaskStatus.done => 'Built',
         _ => 'Shipped',
       };
-      for (final p in await _postsOf(session, task.id!)) {
+      for (final p in moved) {
         await BoardNotify.postStatus(
           session,
           p,

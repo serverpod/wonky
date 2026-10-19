@@ -269,7 +269,7 @@ abstract final class BoardPosts {
       where: (t) => t.screenshotFileId.equals(file.id!),
     );
     if (used > 0) {
-      throw Errors.conflict('This screenshot is already attached to a post.');
+      throw Errors.conflict('This screenshot is already attached to an issue.');
     }
     return file;
   }
@@ -368,7 +368,7 @@ abstract final class BoardPosts {
     final task = await _activeTask(session, post);
     if (!BoardViews.canEdit(c, post, task)) {
       throw Errors.conflict(
-        'Posts can be edited while they are open and not part of a task.',
+        'Issues can be edited while they are open and not part of a task.',
       );
     }
     final cleanTitle = BoardText.title(title);
@@ -409,7 +409,9 @@ abstract final class BoardPosts {
     final post = await _own(session, c, number, allowAdmin: true);
     if (post.deletedAt != null) return;
     if (await _activeTask(session, post) != null) {
-      throw Errors.conflict('Posts that are part of a task cannot be deleted.');
+      throw Errors.conflict(
+        'Issues that are part of a task cannot be deleted.',
+      );
     }
     await BoardPost.db.updateRow(
       session,

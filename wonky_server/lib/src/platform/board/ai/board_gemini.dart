@@ -184,10 +184,10 @@ class BoardGemini {
       ..writeln('Area: ${task.area.name}')
       ..writeln('Size: ${task.size.name}')
       ..writeln()
-      ..writeln('# Posts');
+      ..writeln('# Issues');
     for (final p in posts) {
       final post = StringBuffer()
-        ..writeln('Post #${p.id} (${p.kind.name})')
+        ..writeln('Issue #${p.id} (${p.kind.name})')
         ..writeln('Title: ${p.title}')
         ..writeln()
         ..writeln(_clip(p.body, maxBodyChars));

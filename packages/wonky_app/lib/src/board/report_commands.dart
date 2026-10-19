@@ -89,7 +89,7 @@ List<Command<CommandArgs>> boardReportCommands(ShellServices s) => [
     'shell.board.createPost',
     title: (l) => l.cmdBoardCreatePost,
     icon: LucideIcons.send,
-    category: (l) => l.boardTitle,
+    category: (l) => l.boardReportName,
     palette: false,
     undoable: true,
     undoTarget: UndoTarget.shell,

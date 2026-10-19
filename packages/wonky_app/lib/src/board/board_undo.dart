@@ -73,6 +73,10 @@ enum BoardUndoOp {
   /// `{task, before: [posts], after: [posts]}`.
   setTaskPosts,
 
+  /// `{task, tasks, title, area, size}` ([task] is the oldest of [tasks],
+  /// the one that remains): undo unmerges, redo merges again.
+  mergeTasks,
+
   /// `{task, before, after}`: prompt bodies.
   setPrompt,
 
@@ -271,6 +275,19 @@ class BoardUndoHandler extends UndoHandler<BoardUndoEntry> {
             for (final p in d[side]! as List) p as int,
           ]);
           _hub.changed(task: n('task'));
+        case BoardUndoOp.mergeTasks:
+          final tasks = [for (final t in d['tasks']! as List) t as int];
+          undo
+              ? await _repo.unmergeTasks(n('task'))
+              : await _repo.mergeTasks(
+                  tasks,
+                  d['title']! as String,
+                  BoardArea.values.byName(d['area']! as String),
+                  BoardSize.values.byName(d['size']! as String),
+                );
+          for (final t in tasks) {
+            _hub.changed(task: t);
+          }
         case BoardUndoOp.setPrompt:
           await _repo.setPrompt(n('task'), d[side]! as String);
           _hub.changed(task: n('task'));

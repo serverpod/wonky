@@ -4,13 +4,13 @@
 and *Report a problem* (`shell.help.feedback`) with a public board inside Wonky Work. Users can:
 
 - report bugs and suggest improvements, optionally with an annotated screenshot of the app;
-- vote and comment on posts.
+- vote and comment on issues.
 
 Admins pick what gets built and turn it into **tasks**. A task is one improvement, or several small bugs
 grouped together, and comes with a ready-made prompt for a coding agent. Anyone can **claim** a task for
 48 hours and contribute it as a pull request.
 
-AI sorts every post by kind, area and size, and checks that it is a genuine report and not offensive.
+AI sorts every issue by kind, area and size, and checks that it is a genuine report and not offensive.
 The decisions are made by [Jev](https://typesafe.ai/) and the writing by Gemini, both with internal keys
 separate from the in-app AI (§6).
 
@@ -23,13 +23,13 @@ PR gets an AI review against its task (§13). The integration is built and enabl
 
 - **One obvious place**: a single button in every app, *Bugs & improvements*, opens the report
   dialog. The board is one click away from it.
-- **Votes concentrate**: the report dialog shows similar posts while the user types and offers
-  *Vote for this instead*. Duplicates are merged and their votes move to the remaining post.
+- **Votes concentrate**: the report dialog shows similar issues while the user types and offers
+  *Vote for this instead*. Duplicates are merged and their votes move to the remaining issue.
 - **Public by default**: anyone can read the board, signed in or not. Writing needs an account.
-- **Vetting at submit time**: AI checks each post as it arrives. Clean posts go live at once, and
-  only flagged posts wait for an admin.
+- **Vetting at submit time**: AI checks each issue as it arrives. Clean issues go live at once, and
+  only flagged issues wait for an admin.
 - **Contributing is easy**: a published task holds everything a contributor needs. That is the
-  setup steps (in `CONTRIBUTING.md`, versioned with the code), the prompt, the linked posts and
+  setup steps (in `CONTRIBUTING.md`, versioned with the code), the prompt, the linked issues and
   their screenshots.
 - **Suite rules apply** ([08](08-commands-and-undo.md), [03 §1](03-app-shell-and-navigation.md),
   [02](02-design-system.md)):
@@ -44,7 +44,7 @@ PR gets an AI review against its task (§13). The integration is built and enabl
 |---|----------|----------|
 | B1 | Where the data lives | In Wonky (server tables). No GitHub issues; GitHub only receives PRs (§13) |
 | B2 | Who sees the board | Everyone, including signed-out visitors |
-| B3 | Screenshots | Opt-in. A warning about privacy, then an annotation editor that can cover sensitive areas. Screenshots are **public** with the post, because the person fixing the bug needs them |
+| B3 | Screenshots | Opt-in. A warning about privacy, then an annotation editor that can cover sensitive areas. Screenshots are **public** with the issue, because the person fixing the bug needs them |
 | B4 | Admins | Users whose (verified) account email is in a configured domain (`serverpod.dev`), via Google or email/password sign-in |
 | B5 | Claiming | Only published tasks (selected by admins) can be claimed, for **48 hours** |
 | B6 | Comments | Yes, with simple Markdown formatting |
@@ -68,21 +68,21 @@ PR gets an AI review against its task (§13). The integration is built and enabl
 
 | Term | Meaning |
 |------|---------|
-| **Post** | A bug report or an improvement idea. Numbered `#123` (the row id) |
+| **Issue** | A bug report or an improvement idea. Numbered `#123` (the row id). (Decided 2026-10-19.) Called *issue* everywhere users and contributors read it (UI, notifications, emails, MCP tool descriptions, the task prompts); the code, API, data and ids keep the old name *post* (`BoardPost`, `board_post`, `postNumber`, `shell.board.createPost`, `board.list_posts`, `/improvements/p/:number`), since ids never change ([08 §6](08-commands-and-undo.md)). Comments stay *comments* |
 | **Kind** | `bug` or `idea` (user-visible: *Bug* / *Improvement*) |
-| **Area** | Where the post belongs: `drive`, `write`, `sheets`, `slides`, `suite` (shell, sign-in, settings, cross-app), `server` (performance, sync, email; not visible UI) |
+| **Area** | Where the issue belongs: `drive`, `write`, `sheets`, `slides`, `suite` (shell, sign-in, settings, cross-app), `server` (performance, sync, email; not visible UI) |
 | **Size** | `small` (one focused change, roughly one agent session), `medium` (one feature area, several files and tests), `large` (cross-package work, or a spec change needed first) |
 | **Vote** | Ideas: up (+1) or down (−1). Bugs: up (+1) only — the same ▲ score ▼ control, ▼ disabled |
 | **Score** | The sum of votes. The author's own automatic vote counts |
 | **Task** | A unit of work an admin selected: one idea, one bug, or a **bundle** of related small bugs. Numbered `T-12`. Holds the contributor prompt and the claim |
 | **Claim** | A signed-in user reserving a published task for 48 hours (§8) |
 | **Admin** | A user whose account email domain is in `board.adminEmailDomains` (§9) |
-| **Triage** | The AI pass over a post: kind, area, size, verdict, duplicates (§6) |
-| **Held** | A post or comment hidden from the public until an admin reviews it |
+| **Triage** | The AI pass over an issue: kind, area, size, verdict, duplicates (§6) |
+| **Held** | An issue or comment hidden from the public until an admin reviews it |
 
 ## 3. Lifecycle
 
-### 3.1 Post status (public)
+### 3.1 Issue status (public)
 
 ```
             ┌──────────── declined (admin, with reason)
@@ -92,20 +92,20 @@ open ──► planned ──► done ──► shipped
   └────► duplicate (merged into another post)
 ```
 
-- `open`: live and votable. New posts start here once they pass moderation (§3.2).
-- `planned`: the post belongs to a published task. Votes stay open, and the post links to its task.
+- `open`: live and votable. New issues start here once they pass moderation (§3.2).
+- `planned`: the issue belongs to a published task. Votes stay open, and the issue links to its task.
 - `done`: the task's PR is merged (§8.3).
 - `shipped`: the deploy that contains the merge succeeded (§13.6). Admins can also mark it by
   hand.
-- `declined`: an admin closes the post with a reason ("Out of scope", "Works as intended", "Won't
+- `declined`: an admin closes the issue with a reason ("Out of scope", "Works as intended", "Won't
   fix", or free text). Voting closes; comments stay open.
-- `duplicate`: merged into another post (§7.4). The page redirects to the target post with a note.
+- `duplicate`: merged into another issue (§7.4). The page redirects to the target issue with a note.
 
 ### 3.2 Moderation state (separate from status)
 
-| State | Who sees the post | How it gets there |
+| State | Who sees the issue | How it gets there |
 |-------|-------------------|-------------------|
-| `checking` | Author only ("Checking your post…") | Just submitted, triage running (§6) |
+| `checking` | Author only ("Checking your issue…") | Just submitted, triage running (§6) |
 | `visible` | Everyone | Triage passed; an admin approved it; or no AI is configured |
 | `held` | Author ("Waiting for review") and admins | Triage flagged it, or community flags reached the threshold (§7.5) |
 | `removed` | Admins only; the author sees "Removed by a moderator" with the reason | Admin removal |
@@ -122,23 +122,25 @@ draft ──► published ──► claimed ──► inReview ──► done �
   └──► cancelled ◄──────────────────────────┘ (admin)
 ```
 
-- `draft`: created by an admin from one or more posts. The AI prompt is generated (§10), and the task
+- `draft`: created by an admin from one or more issues. The AI prompt is generated (§10), and the task
   is visible to admins only. (T-11) There is no manual approval: the prompt job publishes the
   task as soon as it has written a prompt the lint (§10.2) does not flag. A task stays a draft
   only while the prompt is written, when the lint held it, or when the AI could not write it
-  (`promptNote` says which); an admin then publishes it by saving the prompt.
-- `published`: open for claims and listed under *Up for grabs*. Its posts become `planned`.
+  (`promptNote` says which); an admin then publishes it by saving the prompt. A published task
+  nobody holds also goes back to `draft` while the AI rewrites its prompt after its issues
+  changed or tasks were merged into it (§9.3).
+- `published`: open for claims and listed under *Up for grabs*. Its issues become `planned`.
 - `claimed`: reserved by one user until `claimExpiresAt`, listed under *Claimed* (with
   `inReview`). On expiry it goes back to `published` (§8.2).
 - `inReview`: a PR passed the gate (§13.4), or an admin linked one. The claim no longer expires
   while the PR is open.
-- `done`, `shipped`: as for posts, and they carry over to all linked posts.
-- `cancelled`: the posts return to `open`.
+- `done`, `shipped`: as for issues, and they carry over to all linked issues.
+- `cancelled`: the issues return to `open`.
 
 ## 4. UI
 
 All UI is in `packages/wonky_app/lib/src/board/`, available in all four apps. Strings are in
-`wonky_app_en.arb`; the user-visible name is **Bugs & improvements** everywhere.
+`wonky_app_en.arb`; the user-visible name is **Bugs & improvements** for the report dialog, the Help menu, Settings › About and the command category, and **Contribute & build** on the board pages themselves (their breadcrumb root and page title, like the home menu entry; decided 2026-10-19).
 
 ### 4.1 Entry points
 
@@ -208,10 +210,10 @@ user saw it.
   *Sign in to post* banner; invoked on a board page (the top bar's *Report a bug* / *Suggest an
   improvement*), it goes to sign-in and back to that page.
 
-#### 4.2.2 Similar posts
+#### 4.2.2 Similar issues
 
 - Debounced 400 ms after the title or body changes (minimum 3 words): `board.similar(text, kind)` returns up to 5
-  visible posts (Postgres full-text search, §6.4).
+  visible issues (Postgres full-text search, §6.4).
 - Each row has *Vote instead*. It casts the vote (bugs: *I hit this too*), closes the dialog after
   a confirmation toast, and keeps the draft in case the user comes back.
 
@@ -234,14 +236,14 @@ user saw it.
 | Route | `router.state.uri.path` | **Ids replaced** by `:id` (UUIDs, numbers), query string dropped |
 | Last error (opt-in checkbox, default on if an error happened in the last 10 min) | the error boundary's last report | Message (4,000 chars max) and the top 30 stack frames. Paths only, no values |
 
-The details are public with the post (`contextJson`) and rendered under *Details* on the post page.
+The details are public with the issue (`contextJson`) and rendered under *Details* on the issue page.
 
 #### 4.2.5 After posting
 
 - The dialog closes with the toast *Posted. Checking it now…*, with the action *View* (opens the
-  post).
-- The post page shows the `checking` state until the triage result arrives (live, §7.6). The
-  result is *Your post is live* or *Waiting for review: a moderator will look at it*.
+  issue).
+- The issue page shows the `checking` state until the triage result arrives (live, §7.6). The
+  result is *Your issue is live* or *Waiting for review: a moderator will look at it*.
 
 **As built (BI-5):** `wonky_app/lib/src/board/report/` (`showBoardReportDialog`,
 `BoardReportDraftStore` under `board.reportDraft.<app>` in the user store, `BoardIncludedDetails`
@@ -251,10 +253,10 @@ the finisher and the upload transport as per-shell seams), `board/screenshot/` (
 `board/report_commands.dart` (`shell.board.report {kind?, includeError?}`, `shell.board.open
 {tab?}`, the aliases `shell.help.reportBug` / `shell.help.feedback`, hidden from the palette).
 *Discard draft?* offers *Keep draft* and *Discard*; `Esc` returns to the dialog. The toast says
-*Posted* when the post is visible at once and *Posted. Waiting for review…* when it is held.
+*Posted* when the issue is visible at once and *Posted. Waiting for review…* when it is held.
 *Vote instead* goes through `shell.board.vote` (undoable) when it is registered. Posting uploads
 the screenshot first, then runs `shell.board.createPost` (`report_commands.dart`; undo deletes the
-post, redo restores it) and tells open board pages through `BoardHub.changed`, so the lists,
+issue, redo restores it) and tells open board pages through `BoardHub.changed`, so the lists,
 counts and the Review tab refresh. `config.json` `board` defaults to true when absent.
 
 **Layout (consistency pass):** the panel has `ShadDialog`'s surface — the theme's
@@ -274,20 +276,20 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
 | `/improvements/bugs` | Board, tab *Bugs* |
 | `/improvements/tasks` | *Up for grabs* (published tasks nobody holds) |
 | `/improvements/claimed` | *Claimed* (claimed and in-review tasks) |
-| `/improvements/done` | Done and shipped (posts and tasks) |
+| `/improvements/done` | Done and shipped (issues and tasks) |
 | `/improvements/review` | Admins only: moderation queue, bundles, drafts (§9.2) |
-| `/improvements/search?q=…` | Search results across all posts (§4.4); also `closed=1`, `kind=bug` or `kind=idea` |
-| `/improvements/p/:number` | Post page |
+| `/improvements/search?q=…` | Search results across all issues (§4.4); also `closed=1`, `kind=bug` or `kind=idea` |
+| `/improvements/p/:number` | Issue page |
 | `/improvements/t/:number` | Task page |
 | `/improvements/contribute` | How to contribute: renders the repo's `CONTRIBUTING.md` summary (§10.3) |
 
 - **Breadcrumb (as built, `BoardBreadcrumb` in `board/pages/board_chrome.dart`)** instead of a
-  back button, on every board page (lists, post, task, contribute, review): the current app's
-  icon (the app logo, 24 px; *Close Bugs & improvements*: back to the last route outside the
-  board, `boardBackTarget`, else home), *Bugs & improvements* (the root: the Improvements list),
+  back button, on every board page (lists, issue, task, contribute, review): the current app's
+  icon (the app logo, 24 px; *Close Contribute & build*: back to the last route outside the
+  board, `boardBackTarget`, else home), *Contribute & build* (the root: the Improvements list),
   the list the page belongs to (*Improvements*, *Bugs*, *Up for grabs*, *Claimed*, *Done*,
-  *Review*, or *Results for “sort”* for a search of all posts), then
-  the task (`T-1 Sorting by name…`) and the post (`#5 The small Markdown editor…`). Chevron
+  *Review*, or *Results for “sort”* for a search of all issues), then
+  the task (`T-1 Sorting by name…`) and the issue (`#5 The small Markdown editor…`). Chevron
   separators (Lucide `chevron-right`, 14 px, `mutedForeground`). Crumbs are `small` medium
   weight: links in `mutedForeground`, the foreground and an underline on hover, the focus ring,
   Enter / Space; link crumbs ellipsize at 220 px. The last crumb is the current page in the
@@ -297,34 +299,34 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   collapse into a *…* button (*Show the full path*) with a menu of them (`board.crumb.more`,
   `board.crumb.menu.<id>`).
 - **Trail rules (`BoardTrail`, `board/pages/board_trail.dart`).** The trail is the board's
-  hierarchy, never the browser history: root › list › task › post at most.
-  - A list opens a post or task under it: root › list › item. A list that cannot hold the item
-    (a post from *Up for grabs* or *Claimed*, a task from *Improvements*, *Bugs* or the search
+  hierarchy, never the browser history: root › list › task › issue at most.
+  - A list opens an issue or task under it: root › list › item. A list that cannot hold the item
+    (an issue from *Up for grabs* or *Claimed*, a task from *Improvements*, *Bugs* or the search
     results) gives the item's own list.
   - *Claimed* is treated like *Up for grabs* (a task list). A task's own list follows its status
     (`BoardTab.ofTask`): *Claimed* while claimed or in review, *Up for grabs* when published (an
     expired claim is published), *Done* when done or shipped.
   - A search belongs to the results view (`BoardTrail.search`; the tabs are never searched): a
-    post opened from search results keeps
+    issue opened from search results keeps
     the search in its URL (`/improvements/p/5?list=search&q=sort`), so the list crumb returns to
     the results; a task opened from them goes under its own list.
-  - A task opens one of its linked posts under itself: root › *Up for grabs* (or the list the task
+  - A task opens one of its linked issues under itself: root › *Up for grabs* (or the list the task
     came from) › T-n › #m.
-  - A post opens a task: the trail truncates to the task (root › list › T-n), never post › task ›
-    post › task; the list stays when it shows tasks (*Up for grabs*, *Claimed*, *Done*, *Review*),
+  - An issue opens a task: the trail truncates to the task (root › list › T-n), never issue › task ›
+    issue › task; the list stays when it shows tasks (*Up for grabs*, *Claimed*, *Done*, *Review*),
     else the task's own list.
-  - A post opens another post (similar posts, merged duplicates, *Duplicate of*, the automatic
-    redirect of a merged duplicate): the new post replaces the current one (siblings, same
+  - An issue opens another issue (similar issues, merged duplicates, *Duplicate of*, the automatic
+    redirect of a merged duplicate): the new issue replaces the current one (siblings, same
     parent).
   - Going to anything already in the trail (a crumb) truncates the trail to it.
   - The trail is in the URL query, so reloads and shared links keep it:
     `/improvements/p/5?list=tasks&task=1`, `/improvements/t/1?list=review`. Without a query (links
-    in emails, notifications, *Copy link*) a post is under its kind's list (*Bugs* or
+    in emails, notifications, *Copy link*) an issue is under its kind's list (*Bugs* or
     *Improvements*; under a `task=`, the task's list, *Up for grabs* while it is unknown), a task
     under its own list (above); the list crumb appears once the item is loaded. Unknown or
     contradictory query values fall back to these defaults.
   - Navigation is `router.go` to the computed location (`boardGo`). Moves at the same depth
-    (switching tabs, post → sibling post, task → task) replace the current history entry, in the
+    (switching tabs, issue → sibling issue, task → task) replace the current history entry, in the
     shell's history and the browser's (`ShellServices.goReplacing`, `Router.neglect`), so the
     history never fills with loops; the shell's Back (`Mod+[`, the browser's back) still walks
     the real history. Starting, changing or clearing a search is not a sibling move: it pushes,
@@ -334,7 +336,7 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   board's actions (`BoardBar`), then the account menu; signed out, `ShellPageFrame.signedOutAction`
   shows *Sign in* (`board.signIn`) in its place. There is no left menu (the board is not a home
   destination). The content is the settings column: `shellPageMaxWidth` (760 px) centered, 24 px
-  gutters (16 px below `shellPageNarrowWidth`, 760 px), 24 px from the top. The post, task and
+  gutters (16 px below `shellPageNarrowWidth`, 760 px), 24 px from the top. The issue, task and
   contribute pages scroll in `ShellPageBody` (shared with Settings); the board page aligns its
   tabs bar, filter bar and list to the same column with `shellPageInset`, so the list's
   scrollbar stays at the window edge.
@@ -354,7 +356,7 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
 - **Header**:
   - the breadcrumb and the *Report a bug* / *Suggest an improvement* / *How to contribute*
     buttons are in the page frame's bar (§4.3);
-  - for signed-out visitors, *Sign in to vote and post*.
+  - for signed-out visitors, *Sign in to vote and report issues*.
 - **Tabs bar** (`BoardTabsBar`), styled like the editors' toolbar strip (`muted` at 60 %, 20 px
   radius, the toolbar height of 40 px): the tabs on the left as toolbar toggles (`ShadToggle`,
   28 px, the active one highlighted, `tab` / `tabBar` semantics) and the search button at the end
@@ -372,31 +374,32 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   - *Review* (admins only, with the held count as the badge).
   The tabs scroll horizontally when they do not fit. *Up for grabs* and *Claimed* follow
   `watchTasks` live: a claim, release, expiry or linked PR moves a task between them. Each has its
-  own empty state (*No tasks up for grabs*; *No claimed tasks*).
+  own empty state (*No tasks up for grabs*; *No claimed tasks*). Admins can select tasks on
+  *Up for grabs* and merge them (§9.3).
 - **Search** (as built, `board/pages/board_search.dart`): a toolbar icon button (Lucide `search`,
   28 px, tooltip *Search*, key `board.search`) at the end of the tabs strip, highlighted like the
   selected tab while a search is active (a toggle in semantics, named *Search: “sort”*). `/` on a
   board list page opens it (not while a text field has the focus). It opens a `ShadPopover`
   anchored to the button (360 px; on windows below 600 px it spans the page's 16 px gutters) with:
-  - the search field (focused; Enter searches; *Search posts*);
+  - the search field (focused; Enter searches; *Search issues*);
   - *Kind*: *All*, *Bugs*, *Improvements*;
   - *Include closed* (done, shipped, declined, duplicates; default off);
   - *Clear* and *Search*. Esc closes the popover; searching with an empty field clears.
 
-  A search always covers all posts, from whichever tab it starts (there is no *Search in*: the
+  A search always covers all issues, from whichever tab it starts (there is no *Search in*: the
   tab-scoped search was dropped), and opens the **results view** `/improvements/search?q=…`
   (`BoardTab.search`, not a tab): the tabs show no selection, a header names it (*Results for
-  “sort”*, also the list crumb), and the rows are posts of both kinds (or the chosen kind) with
+  “sort”*, also the list crumb), and the rows are issues of both kinds (or the chosen kind) with
   the usual filters and sort; the admin selection mode is off there. Without a `q` the results
   view shows *Search the board* with a button that opens the popover. The active search is the
   first chip of the filter row, *Search: “sort”* with ✕ (`board.filter.search`): pressing it
   clears the search (back to *Improvements*). The search lives in the results view's URL (`q`,
   `closed=1`, `kind=bug|idea`; `BoardSearchQuery`), so it can be shared and survives a reload; a
   `q` on a tab's URL (the old tab search) is ignored and the tab shows unfiltered.
-  Empty results: *No posts match your search* with *Try fewer words or part of a word, or include
-  closed posts.* Matching and ranking are in §6.4.
+  Empty results: *No issues match your search* with *Try fewer words or part of a word, or include
+  closed issues.* Matching and ranking are in §6.4.
 - **Filters** (chips): area (multi-select), size, status (default `open` + `planned`) and *Mine*
-  (posts I wrote or voted on).
+  (issues I wrote or voted on).
 - **Sort**:
   - *Top*: score;
   - *Trending* (default): votes in the last 14 days, ties broken by score;
@@ -412,24 +415,24 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   - a status badge (`planned` links to the task);
   - comment count;
   - author display name and age;
-  - a 📷 icon when the post has a screenshot.
+  - a 📷 icon when the issue has a screenshot.
 - Paging: 30 rows, *Load more*. Empty states per tab.
 - Width < 600: rows stack, and the vote control moves to the row's start.
 - **As built (consistency pass):** the filters, below the tabs bar, are the drive's filter bar: outline `sm` buttons with a chevron that open a `WonkyDropdownMenu`, the
   label naming the current value (*Area: Sheets, Write*, *Sort: Trending*), in one horizontally
   scrolling 48 px row (`board.filterBar`). The admin selection bar is the drive's: a
   `secondary` pill that replaces the filter bar in place (*Clear*, *N selected*, *Create task
-  from N*, *Add to task…*), so rows never move. Rows (posts, tasks, review items, a task's
-  linked posts) are `BoardListTile`s, styled like the drive rows and the notification rows: a
+  from N*, *Add to task…*), so rows never move. Rows (issues, tasks, review items, a task's
+  linked issues) are `BoardListTile`s, styled like the drive rows and the notification rows: a
   rounded tile, `accent` on hover, `sidebarAccent` when selected, the focus ring, no dividers;
   titles in `small` medium weight. Loading shows the drive list's `LoadingShimmer`; errors and
   empty tabs are `WonkyEmptyState`s (the offline illustration when offline).
 
-### 4.5 Post page
+### 4.5 Issue page
 
 The breadcrumb (§4.3) ends in `#412 Title` under its list, or under its task when opened from
 one (root › list › T-12 › #412). *Part of task T-12* and the status badge's task link truncate
-the trail to the task; *Similar posts*, merged duplicates and *Duplicate of* replace the post.
+the trail to the task; *Similar issues*, merged duplicates and *Duplicate of* replace the issue.
 
 - **Header**: the vote control (large, ▲ score ▼ for both kinds, as in the rows: on bugs ▼ is
   disabled) at the start; next to it:
@@ -445,8 +448,8 @@ the trail to the task; *Similar posts*, merged duplicates and *Duplicate of* rep
   - *Details* (collapsed): the included details table.
 - **Relations**:
   - *Part of task T-12* (link);
-  - *Duplicates merged into this post: #388, #401*;
-  - *Similar posts* (top 3, from §6.4).
+  - *Duplicates merged into this issue: #388, #401*;
+  - *Similar issues* (top 3, from §6.4).
 - **Comments** (§7.3): a flat list, oldest first, with a composer at the bottom. Signed-out
   visitors see *Sign in to comment*.
 - **Actions menu (⋮)**:
@@ -458,7 +461,7 @@ the trail to the task; *Similar posts*, merged duplicates and *Duplicate of* rep
 
 The breadcrumb (§4.3) ends in `T-12 Title` under the list it came from (*Up for grabs*,
 *Claimed*, *Done*, *Review*), else under its own list (*Claimed* while claimed or in review,
-*Done* once done or shipped, else *Up for grabs*). Linked posts open under the
+*Done* once done or shipped, else *Up for grabs*). Linked issues open under the
 task.
 
 - **Header**:
@@ -467,7 +470,7 @@ task.
   - the buttons *Claim this task* / *Unclaim this task* (Lucide `ban`, also the icon of
     `shell.board.release`; §8); admins also get *Link pull request…*;
   - for the claimant: the **claim code** (`7Q4F-K2M9`) with *Copy*, and the time left.
-- **Linked posts**: one row per post with its score and its screenshots.
+- **Linked issues**: one row per issue with its score and its screenshots.
 - **How to build it** (always shown, not collapsible; the claimant and admins see every step, others see an outline while the task is up for grabs — the setup link, "Give your coding agent the prompt (claim the task to get the prompt)." and "Open a pull request" without instructions — and nothing once someone else claimed it):
   1. A single link, *Set up your development environment* (`board.task.setup`), that opens
      *How to contribute* (`/improvements/contribute`, §10.3) in the same tab, under the board's
@@ -484,13 +487,17 @@ task.
      button.
 - **Pull request** (once linked): the PR link, its state, and the latest task review (§13.5) with
   the per-criterion verdicts.
-- **No discussion.** Tasks have no comments or composer: questions go on the posts the task
+- **No discussion.** Tasks have no comments or composer: questions go on the issues the task
   comes from. The server refuses comments on tasks (§7.3).
 - **Activity** (admins only, under the heading *Activity*): claimed, released, expired, PR
-  linked, done, shipped — one muted line per row with its age (`board.task.event.<uuid>`), *No
+  linked, done, shipped, back to draft for a rewrite, merged into / merged from, unmerged (§9.3)
+  — one muted line per row with its age (`board.task.event.<uuid>`), *No
   activity yet* when there is none. These are the system rows of the task (`board_comment` with
   a `taskId`); `listTaskComments` returns them to admins only (empty for everyone else).
-- **Admins**: *Edit prompt* (§10.2), *Regenerate prompt*, *Add/remove posts*, *Release claim*,
+- **Merged**: a task merged into another (§9.3) shows *This task was merged into T-3.* with
+  *Open T-3* instead of the cancelled notice.
+- **Admins**: *Edit prompt* (§10.2), *Regenerate prompt*, *Add/remove issues* (both rewrite the
+  prompt, §9.3), *Release claim*,
   *Mark done*, *Mark shipped*, *Cancel task*. (T-11) There is no *Publish* button: a draft shows
   the draft notice ("It is published once the AI has written its prompt, or when you save the
   prompt") and, when held or failed, the `promptNote`; saving the prompt of a draft publishes
@@ -502,22 +509,22 @@ task.
   cards' author badges, also the *Admin* badge), status badges `ShadBadge.outline` with a dot in
   the design system's status color (`info`, `warning`, `success`, `destructive`). Status colors
   are always paired with a text label.
-- Notices on posts and tasks (checking, held, removed, declined, merged, draft, prompt pending),
+- Notices on issues and tasks (checking, held, removed, declined, merged, draft, prompt pending),
   the moderation panel and the claim code are `ShadAlert`s like the app's other callouts (the
   icon in the status color; `ShadAlert.destructive` for removals). Code (setup commands, PR
   lines, the prompt, the claim code) uses `WonkyTheme.monoFamily` at 12 px on `muted` with a
   6 px radius, the copy icon at the top end as in Markdown code blocks; copying confirms with
   the shell toast. *Details* and *How to build it* are keyboard-operable disclosures
-  (`BoardDisclosure`). Section headings are `h4`, page titles (post, task) `h3`.
+  (`BoardDisclosure`). Section headings are `h4`, page titles (issue, task) `h3`.
 - Vote control:
   - two buttons with labels ("Upvote, 14 votes", "Remove upvote") and `aria-pressed`; on bugs the
     down button is disabled ("Downvote, unavailable: bugs can only be upvoted", tooltip *Bugs can
     only be upvoted*);
   - keyboard: `+`/`-` on a focused row (`shell.board.vote` with up/down; `-` on a bug removes
     its upvote).
-- The screenshot editor needs a pointer for drawing. Keyboard users can still post without a
+- The screenshot editor needs a pointer for drawing. Keyboard users can still issue without a
   screenshot. The editor's tool buttons, undo and *Done* are keyboard operable.
-- Light and dark are verified with goldens for the dialog, the board row, the post page and the
+- Light and dark are verified with goldens for the dialog, the board row, the issue page and the
   editor (§15).
 
 ## 5. Screenshots
@@ -590,7 +597,7 @@ task.
 
 - New `StoredFileKind.boardScreenshot`:
   - private storage, served through 15-minute signed URLs (`board.getScreenshotUrl(postNumber)`,
-    callable signed out for visible posts);
+    callable signed out for visible issues);
   - not counted toward the 50 MB quota (added to the exempt list in
     [Drive 03](wonky_drive/03-storage-quota.md));
   - PNG or JPEG only, max 5 MB, sniffed with `FileService.sniffImage`.
@@ -602,8 +609,8 @@ task.
   4. `board.createPost(… screenshotFileUuid)` attaches the file.
 
   Unattached screenshot files are deleted by the hourly `cleanupFiles` after 1 day.
-- Removing a screenshot (author or admin) deletes the bytes at once. A removed post's screenshot
-  is deleted with the post's purge (§11).
+- Removing a screenshot (author or admin) deletes the bytes at once. A removed issue's screenshot
+  is deleted with the issue's purge (§11).
 
 ## 6. AI triage ("vetting")
 
@@ -614,7 +621,7 @@ used for what it does best:
 
 | Model | Provider | Used for | Why |
 |-------|----------|----------|-----|
-| **Jev** (`jev-1.13.0`, pinned) | [TypeSafe](https://typesafe.ai/), `POST https://api.typesafe.ai/v1/systemone` | Every **decision**: moderation, kind, area, size, duplicate checks, comment checks, reranking similar posts | A "System One" model: it returns typed answers (Choice, Score, Noul) with calibrated probabilities in about 0.1 s, at $0.042 per million input tokens. It cannot generate text |
+| **Jev** (`jev-1.13.0`, pinned) | [TypeSafe](https://typesafe.ai/), `POST https://api.typesafe.ai/v1/systemone` | Every **decision**: moderation, kind, area, size, duplicate checks, comment checks, reranking similar issues | A "System One" model: it returns typed answers (Choice, Score, Noul) with calibrated probabilities in about 0.1 s, at $0.042 per million input tokens. It cannot generate text |
 | **Gemini** (`gemini-3.1-pro-preview` and `gemini-3.8-flash` by default; the 2.5 models return 404 for new keys) | Google, through `dartantic_ai` | Everything that **writes**: suggested titles and summaries, bundle suggestions, task prompts, PR reviews (§13.5) | Generation and long context (whole diffs) |
 
 ### 6.1 Board AI components (`platform/board/ai/`)
@@ -645,10 +652,10 @@ used for what it does best:
   existing `FakeAiModelClient` for Gemini. Both are installed via `BoardAi.override` in tests.
 - **No keys**: without `internalJevApiKey` the board runs unchecked (§6.3). Without
   `internalGeminiApiKey`:
-  - posts get no suggested title or summary;
+  - issues get no suggested title or summary;
   - task prompts start from a fixed template that admins fill in;
   - bundle suggestions and PR reviews are off.
-- **Privacy**: both providers process post text, which is public anyway.
+- **Privacy**: both providers process issue text, which is public anyway.
   - TypeSafe does not train on requests.
   - The Gemini key must be a **paid-tier** key: Google may use free-tier API data to improve its
     products.
@@ -657,9 +664,9 @@ used for what it does best:
 
 ### 6.2 What Jev decides
 
-One Jev request per post, built in `BoardTriageQuestions`. All questions go in one request: Jev
+One Jev request per issue, built in `BoardTriageQuestions`. All questions go in one request: Jev
 evaluates them in parallel against the same state. Measured on the evaluation set (the `live-ai` run
-prints p50 and p95): p50 265 ms, p95 443 ms, about 1.8k input tokens per post.
+prints p50 and p95): p50 265 ms, p95 443 ms, about 1.8k input tokens per issue.
 
 **State** (JSON, only what the questions need; Jev loses accuracy with irrelevant detail):
 
@@ -705,7 +712,7 @@ confidence-gated routing: three bands per decision. Config keys: `securityHold` 
 notes for 1.13):
 
 - *Literal reading*: every question states its exact condition and boundary cases.
-- *Adversarial content*: posts that argue for their own classification. The bands send unsure
+- *Adversarial content*: issues that argue for their own classification. The bands send unsure
   cases to admins; the conservative `security` threshold; community flags.
 - *Choice option order bias*: the evaluation set also runs with reversed option order.
 - *No generation*: titles and summaries come from Gemini.
@@ -717,35 +724,35 @@ flattened screenshot) to catch readable emails, names or document text the autho
 ### 6.3 Pipeline
 
 1. `createPost` calls Jev **inline** with a 3 s timeout, because the typical answer takes about
-   0.1 s. The post is stored directly as `visible` or `held`, and the author sees the result
+   0.1 s. The issue is stored directly as `visible` or `held`, and the author sees the result
    immediately.
-   - If the inline call times out or fails, the post is stored as `checking`, and
+   - If the inline call times out or fails, the issue is stored as `checking`, and
      `BoardFutureCall.triage(postId)` (`callWithDelay(Duration.zero)`) takes over.
 2. Outcomes:
 
    | Result | Effect |
    |--------|--------|
-   | All moderation scores below *Hold* | `moderation: visible`, `status: open`. Labels set as above, with `aiLabels: true`. Scores in the *Review* band put the post in the admin *Check* list |
+   | All moderation scores below *Hold* | `moderation: visible`, `status: open`. Labels set as above, with `aiLabels: true`. Scores in the *Review* band put the issue in the admin *Check* list |
    | Any score in *Hold* | `moderation: held`; the scores are stored for the review queue (`triageJson`, admins only). The author sees *Waiting for review* |
-   | No Jev key, or the daily Jev budget spent | `visible`, `triageState: unchecked`. Admins see an *Unchecked* list, and the sweep re-triages unchecked posts when Jev is available again |
-   | Error or timeout in the background path | Retried at 1, 5 and 30 min. After the third failure: `visible` + `unchecked` (`board.publishWhenTriageFails: true`, the default); set it to false to hold such posts instead |
+   | No Jev key, or the daily Jev budget spent | `visible`, `triageState: unchecked`. Admins see an *Unchecked* list, and the sweep re-triages unchecked issues when Jev is available again |
+   | Error or timeout in the background path | Retried at 1, 5 and 30 min. After the third failure: `visible` + `unchecked` (`board.publishWhenTriageFails: true`, the default); set it to false to hold such issues instead |
 
-3. **Kind correction**: the author's choice is kept in `reportedKind`, and the post shows *Moved
+3. **Kind correction**: the author's choice is kept in `reportedKind`, and the issue shows *Moved
    to Improvements*.
-4. **Writing pass (Gemini fast model, asynchronous, only for visible posts)**:
+4. **Writing pass (Gemini fast model, asynchronous, only for visible issues)**:
    `suggest_title_and_summary` writes `suggestedTitle` (only when it differs meaningfully; admins
    apply it, it is never applied automatically) and `summary` (≤ 200 chars, used in prompts,
    bundles and reviews). Without Gemini, `summary` is the first 200 chars of the body.
-5. **Edits** by the author re-run Jev inline. A visible post stays visible unless a score reaches
+5. **Edits** by the author re-run Jev inline. A visible issue stays visible unless a score reaches
    *Hold*.
    - **Stale results**: a triage result is stored under a row lock and only into the AI-owned
      columns (moderation, reason, `needsCheck`, labels unless confirmed, duplicate hint,
-     `triageState`, `triageJson`), and only when the post is not deleted, its moderation is
+     `triageState`, `triageJson`), and only when the issue is not deleted, its moderation is
      unchanged (an admin's decision during the AI call wins) and, unless it is still
      `checking`, its title and body are unchanged (an edit runs its own triage). The background
-     path's fallbacks (no Jev, final failure) only apply while the post is still `checking`.
+     path's fallbacks (no Jev, final failure) only apply while the issue is still `checking`.
 6. **Comments**: one Jev request with only the moderation Nouls (`offensive`, `spam`,
-   `personal_data`, `security`), inline at post time with the same bands. A comment that reaches
+   `personal_data`, `security`), inline at issue time with the same bands. A comment that reaches
    *Hold* is stored `held`, and the author sees it with *Hidden pending review*.
    - With a Jev key but today's budget spent, or when the check fails or times out, the comment
      is stored `visible` with `needsCheck: true` and the reason *Not checked yet.*: it is listed
@@ -755,7 +762,7 @@ flattened screenshot) to catch readable emails, names or document text the autho
    - Comment edits are checked again and stored conditionally (not moderated or deleted while
      the check ran, else `conflict`); a new verdict replaces an earlier *Not checked yet.*
 
-### 6.4 Similar posts and duplicates
+### 6.4 Similar issues and duplicates
 
 - The search document `setweight(to_tsvector('english', title), 'A') ||
   setweight(to_tsvector('english', body), 'B')` is an expression with a GIN index
@@ -763,7 +770,7 @@ flattened screenshot) to catch readable emails, names or document text the autho
   the extension exists). Serverpod models cannot declare expression indexes and `definition.sql`
   must stay the generated one, so `SearchIndexes` creates them at server start (CQ-25, 13 §3);
   `similar()` and `list(query)` repeat the expression exactly (`BoardSearch.document`).
-- **Board search** (`list(query)`, as built in `BoardSearch`): a post matches when any of these
+- **Board search** (`list(query)`, as built in `BoardSearch`): an issue matches when any of these
   holds (OR):
   - **full-text, word prefixes**: the query's words (runs of letters and digits, lowercased,
     one-letter words dropped, at most 16) AND-joined, each word of 3+ characters as a prefix
@@ -773,14 +780,14 @@ flattened screenshot) to catch readable emails, names or document text the autho
     valid;
   - **title substring**: `p.title ILIKE @slike` with `%text%` (whitespace collapsed; `\`, `%`
     and `_` escaped): *ort* finds *Sorting*;
-  - **post number**: `12` or `#12` matches post #12.
+  - **issue number**: `12` or `#12` matches issue #12.
 
   All user text is a query parameter, never spliced into SQL. **Ranking**: the number match, then
   `ts_rank_cd` (title words before body words), then title substring hits, then the list's sort
   (*Trending*, *Top*, *New*, *Most discussed*). The other filters (kind, statuses, area, size,
   *Mine*, visibility) still apply.
 - `similar(text, kind)` uses the same words OR-joined as prefixes (`paste:* | cells:*` through
-  `to_tsquery`), `ts_rank_cd`, and only `visible` posts in `open`/`planned`/`done`. It returns up
+  `to_tsquery`), `ts_rank_cd`, and only `visible` issues in `open`/`planned`/`done`. It returns up
   to 5.
 - **Jev rerank** (when configured): full-text search returns the top 10 candidates, and one Jev
   request with a `same_<n>` Noul per candidate ("Do `draft` and `candidate` describe the same
@@ -789,15 +796,15 @@ flattened screenshot) to catch readable emails, names or document text the autho
   full-text ranking is used as is.
 - `pg_trgm` is optional (only the title substring index needs it). P2: embeddings, if full-text search turns out too weak.
 
-## 7. Posts, votes and comments
+## 7. Issues, votes and comments
 
 ### 7.1 Who can do what
 
 | Action | Signed out | Signed in | Author | Admin |
 |--------|:---:|:---:|:---:|:---:|
-| Read visible posts, comments, tasks, screenshots | ✓ | ✓ | ✓ | ✓ |
-| Create post, vote, comment, flag | | ✓ | ✓ | ✓ |
-| Edit own post (while `open`, not in a task); delete own post (soft) | | | ✓ | |
+| Read visible issues, comments, tasks, screenshots | ✓ | ✓ | ✓ | ✓ |
+| Report an issue, vote, comment, flag | | ✓ | ✓ | ✓ |
+| Edit own issue (while `open`, not in a task); delete own issue (soft) | | | ✓ | |
 | Edit or delete own comment | | | ✓ | |
 | Remove screenshot | | | ✓ | ✓ |
 | Moderate, set labels, merge, select, manage tasks, block users | | | | ✓ |
@@ -813,9 +820,9 @@ Users blocked from the board (§9.2) can read but not write. Their writing endpo
 - `board.vote(postNumber, value)`, where `value` ∈ {−1, 0, +1} and 0 removes the vote. It is
   idempotent and returns the new score and the caller's vote.
 - The author's +1 is added on creation and can be removed like any vote.
-- `score` and `voteCount` are denormalized on the post and updated in the same transaction.
+- `score` and `voteCount` are denormalized on the issue and updated in the same transaction.
   `trendingScore` is computed in the query (votes with `createdAt` in the last 14 days).
-- Votes are allowed while the post is `open` or `planned` and close with `done`, `declined` and
+- Votes are allowed while the issue is `open` or `planned` and close with `done`, `declined` and
   `duplicate`.
 - Undo: `shell.board.vote` records the previous value; undo sets it back.
 
@@ -825,7 +832,7 @@ Users blocked from the board (§9.2) can read but not write. Their writing endpo
 does not fit: its `itemId` is a required drive-item FK, and its access checks are drive roles.
 
 - The comments are flat, oldest first, with no resolve, assignment or anchors.
-- Comments are on posts only. Tasks have no discussion (§4.6): `addComment` with a `taskNumber`
+- Comments are on issues only. Tasks have no discussion (§4.6): `addComment` with a `taskNumber`
   answers `invalidArgument` (the parameter stays for older clients), for admins too. A task's
   `board_comment` rows are the system activity rows the server writes itself (claimed,
   released, expired, PR linked, done, shipped …), and `listTaskComments` returns them to admins
@@ -847,7 +854,7 @@ of `packages/wonky_app/lib/src/comments/`:
   (resolve, reactions, copy link, @mentions) are off unless the implementation enables them; a
   thread without mentions replies and edits in a `MarkdownComposer`.
 
-**Markdown.** Today comments are stored as Markdown but shown as raw text, and post bodies need a
+**Markdown.** Today comments are stored as Markdown but shown as raw text, and issue bodies need a
 renderer.
 
 - **Renderer.** `AssistantMarkdown` (`assistant/assistant_markdown.dart`) generalizes into
@@ -884,7 +891,7 @@ renderer.
   - **Markdown in, Markdown out.** The composer keeps its `TextEditingController` API: the
     controller's text is the Markdown. `MarkdownDocumentCodec` reads it into a document and
     writes it back: paragraphs (their lines stay lines, like the renderer's `hardBreaks`),
-    headings 1–6 (drawn at most at h3 size, like posts), bullet and numbered items with levels
+    headings 1–6 (drawn at most at h3 size, like issues), bullet and numbered items with levels
     (nested items at the parent's content column: 2 spaces under `- `, 3 under `1. `), task
     items (`- [ ]`, `- [x]`, for prompts' acceptance criteria), quotes, rules, and inline bold,
     italic, strikethrough, code and links through `wonky_rich_text`'s inline reader and writer
@@ -996,7 +1003,7 @@ voters. The move is recorded (`movedVoteIds`) and reverted.
 
 ### 7.5 Community flags
 
-- *Flag* on a post or comment, with a reason: offensive, spam, personal data, security, other.
+- *Flag* on an issue or comment, with a reason: offensive, spam, personal data, security, other.
   One flag per user per target.
 - When **3 distinct users** flag a visible target (`board.flagsToHold`), it becomes `held`
   automatically and goes to the review queue. Admins can see the flags on any target.
@@ -1010,7 +1017,7 @@ ClusterBus channels ([07](07-collaboration.md) mechanism):
 
 | Method | Use |
 |--------|-----|
-| `board.watchPost(number) → Stream<BoardPostEvent>` | The post page, including the author's `checking` → `visible`/`held` transition |
+| `board.watchPost(number) → Stream<BoardPostEvent>` | The issue page, including the author's `checking` → `visible`/`held` transition |
 | `board.watchTasks() → Stream<BoardTaskEvent>` | The *Up for grabs* and *Claimed* tabs and the tab counts |
 
 The board list itself is not live: it refreshes on focus and on *Load more*.
@@ -1059,8 +1066,8 @@ The board list itself is not live: it refreshes on focus and on *Load more*.
 
 - Linking normally happens through the gate (§13.4). `board.linkPullRequest(taskNumber, url)`
   is the admin fallback. The URL must match `https://github.com/<board.repository>/pull/<n>`. The
-  task becomes `inReview`, and the URL is shown on the task and its posts.
-- Merging the PR sets the task and its posts to `done` (§13.6; `board.markDone` is the admin
+  task becomes `inReview`, and the URL is shown on the task and its issues.
+- Merging the PR sets the task and its issues to `done` (§13.6; `board.markDone` is the admin
   fallback). Voters get a `boardStatus` notification (*Something you voted for was built*).
 - A successful deploy containing the merge sets `shipped` (§13.6; `board.markShipped` is the
   admin fallback) and notifies voters again (*Now live on wonky.work*).
@@ -1097,20 +1104,20 @@ wonky:
 
 **Review tab** (`/improvements/review`), with these sections:
 
-1. **Held**: flagged posts and comments, oldest first. Each shows the AI flags and reason, the
-   community flags, and the author (with their other posts). The AI flags are the moderation
+1. **Held**: flagged issues and comments, oldest first. Each shows the AI flags and reason, the
+   community flags, and the author (with their other issues). The AI flags are the moderation
    scores at or above their *Review* band, best first (*AI scores: spam 0.91 · not_actionable
    0.62*), from `BoardPostView.reviewScores` (admins only; the server applies the current
    thresholds to the stored triage). Actions:
    - *Approve* (visible);
    - *Remove* (with a reason: offensive, spam, personal data, security, other, plus optional
-     text shown to the author). The reason starts at the one the post was held for: the highest
+     text shown to the author). The reason starts at the one the issue was held for: the highest
      review score (`spam`, `offensive`, `personal_data`, `security`), else the hold reason, else
      the most common community flag, else *Other*;
-   - *Edit and approve*: the admin edits out personal data, for example. The post shows
+   - *Edit and approve*: the admin edits out personal data, for example. The issue shows
      *Edited by a moderator*.
-2. **Check**: visible posts and comments with a moderation score in the *Review* band (§6.2),
-   with *Looks fine* or *Hold*. **Unchecked**: posts that skipped triage.
+2. **Check**: visible issues and comments with a moderation score in the *Review* band (§6.2),
+   with *Looks fine* or *Hold*. **Unchecked**: issues that skipped triage.
 3. **Possible duplicates**: AI hints with confidence ≥ 0.8. Actions: *Merge* or *Not a
    duplicate*.
 4. **Suggested bundles** (§9.3).
@@ -1119,18 +1126,18 @@ wonky:
    stack frame, with counts and the last seen time. Action: *Create bug from this* opens the
    report dialog with the error prefilled as the admin.
 
-**On any post or comment** (⋮ menu), admins can:
+**On any issue or comment** (⋮ menu), admins can:
 
 - *Set kind / area / size*: confirms the AI labels, and the *AI* marker disappears;
 - *Apply suggested title*;
 - *Remove* / *Restore*, and *Remove screenshot*;
 - *Decline…*, *Merge into…*;
-- *Select for building* (§9.3);
+- *Select for building*, *Add to task…* (§9.3);
 - *Block user from the board…*.
 
 **Blocking.** A `board_user_block` row (user, reason, admin, `until?`). Blocked users can read
 but not write. Their held content stays held, and nothing else of theirs is hidden automatically.
-*Remove all posts by this user* is a separate, confirmed action.
+*Remove all issues by this user* is a separate, confirmed action.
 
 **Audit log.** Every admin action writes a `board_moderation_log` row (admin, action, target,
 before/after JSON, reason). It is visible to admins on each target (*History*).
@@ -1150,45 +1157,87 @@ endpoint call:
 
 ### 9.3 Selecting and bundling
 
-- **Select one post**: *Select for building* on a post creates a draft task (title from the
-  post, area and size from the labels) and generates the prompt (§10). The selection is the
+- **Select one issue**: *Select for building* on an issue creates a draft task (title from the
+  issue, area and size from the labels) and generates the prompt (§10). The selection is the
   approval (T-11): the task is published in the background once its prompt is written, also
   when the admin has left the page.
-- **Manual bundle**: on the board, admins get checkboxes on rows. With several posts selected,
-  the action bar offers *Create task from 4 posts…* (title, area, size), and the draft task
-  links all of them. *Add to task…* adds selected posts to an existing draft or published
-  task.
+- **Manual bundle**: on the board, admins get checkboxes on rows. With several issues selected,
+  the action bar offers *Create task from 4 issues…* (title, area, size), and the draft task
+  links all of them. *Add to task…* adds selected issues to an existing draft, published or
+  claimed task. The same *Add to task…* is in an issue's ⋮ menu (open issues not in a task,
+  `board.post.menu.addToTask`), and the task page has *Add issues…* and a remove button per
+  linked issue. All of them are `shell.board.admin.setTaskPosts`.
+- **Changing a task's issues rewrites its prompt** (decided 2026-10-19). When `setTaskPosts`
+  adds or removes issues (an unchanged set is a no-op), or tasks are merged (below), the AI
+  writes the prompt again for all the issues (`BoardTasks._rewritePrompt`, the same background
+  pass as §10.1):
+  - a published task nobody holds goes **back to draft** until the prompt is written, so nobody
+    claims it with the old prompt. It leaves *Up for grabs*, gets an activity row (`rewriting`:
+    *changed the issues; the task is a draft until the AI has rewritten the prompt*), and the
+    prompt job publishes it again (or holds it, as for a new task, §10.2). Its issues stay
+    `planned` meanwhile; when it is published again only the issues that change status (the
+    added ones) become `planned` and tell their voters, so nobody hears *Planned* twice;
+  - a draft stays a draft; a claimed or in-review task keeps its status and claim, and its
+    claimant gets the new prompt (a flagged rewrite is not applied, §10.1);
+  - without Gemini the prompt stays as it is and the issues follow the task's status (added
+    issues of a published task become `planned` at once); over the budget, `promptNote` says so.
+  - Undo of *Add to task…* is `setTaskPosts` with the previous issues, so it rewrites again.
+- **Merging tasks** (admins, decided 2026-10-19): on *Up for grabs*, admins get *Select* at the
+  end of a 48 px bar above the list (`board.tasks.select`); rows get checkboxes
+  (`board.task.<n>.select`), and with tasks selected the bar becomes the drive's selection pill
+  (`board.tasks.selectionBar`: *Clear*, *N selected*, *Merge N tasks…*, the last disabled below
+  two tasks with the tooltip *Select two tasks or more to merge them*). *Merge N tasks…*
+  (`shell.board.admin.mergeTasks {taskNumbers, title?, area?, size?}`, Lucide `merge`) opens the
+  task dialog (`dialog.board.task`, titled *Merge N tasks…*, button *Merge*) prefilled from the
+  oldest task, then `board.mergeTasks(numbers, title, area, size)`:
+  - only tasks nobody holds can be merged (draft, or published without a valid claim): anything
+    else is a `conflict`; at most 20 issues in all (`maxPostsPerTask`);
+  - the **oldest task (lowest number) remains**: it takes the issues of the others and the
+    dialog's title, area and size, and gets a `mergedTasks` activity row (*merged T-5, T-7 into
+    this task*);
+  - the others are `cancelled` (claims and pending prompts cleared) with a `mergedInto` row
+    (body `T-3`). `BoardTaskView.mergedInto` (from the latest such row of a cancelled task) makes
+    their task page show *This task was merged into T-3.* with *Open T-3*
+    (`board.task.notice.merged`) instead of the cancelled notice;
+  - the prompt is rewritten as above (so a published result is a draft until it is written);
+  - the client opens the remaining task. Undo (`BoardUndoOp.mergeTasks`) is
+    `board.unmergeTasks(number)`: from the last `mergeTasks` row of the moderation log (its
+    `before` holds each task's status, title, area, size, prompt body and issues) it gives every
+    task its issues, status, labels and prompt back, drops a pending rewrite and adds an
+    `unmerged` row; issues added after the merge stay with the remaining task. It is a
+    `conflict` when the remaining task was claimed meanwhile, a merged task changed, or the last
+    merge was already undone. Redo merges again with the same arguments.
 - **AI-suggested bundles**: *Suggest bundles* in the Review tab (admin-triggered, not
   scheduled) does the following:
-  1. sends the visible `open` posts of size `small`, with their summaries and labels, up to
-     200 posts, to Gemini (`board.ai.geminiModel`) with the tool `propose_bundles`;
-  2. the model returns groups of 2–8 posts that share an area and likely touch the same code,
+  1. sends the visible `open` issues of size `small`, with their summaries and labels, up to
+     200 issues, to Gemini (`board.ai.geminiModel`) with the tool `propose_bundles`;
+  2. the model returns groups of 2–8 issues that share an area and likely touch the same code,
      each with a title and a rationale;
   3. suggestions are stored (`board_bundle_suggestion`) and listed with *Create task*, *Edit*
-     (add or remove posts, rename) or *Dismiss*;
-  4. a post already in a task, or in a dismissed suggestion with the same members, is not
+     (add or remove issues, rename) or *Dismiss*;
+  4. an issue already in a task, or in a dismissed suggestion with the same members, is not
      suggested again.
-- **Publishing**: the task's posts move to `planned` and their voters get a `boardStatus`
+- **Publishing**: the task's issues move to `planned` and their voters get a `boardStatus`
   notification (*Planned: a contributor can now pick this up*).
 
 ## 10. Contributor prompt and the contribution kit
 
 ### 10.1 Prompt generation
 
-When a draft task is created (and on *Regenerate*), Gemini (`board.ai.geminiModel`) writes the
+When a draft task is created, on *Regenerate* and when a task's issues change (§9.3), Gemini (`board.ai.geminiModel`) writes the
 prompt with the tool `write_task_prompt`. Without Gemini, the editor starts from the template with
 empty sections.
 
 Writing takes about a minute, so it never blocks the request: `createTask` stores the draft at once
 with the blank template, sets `promptRequestedAt` and schedules `BoardFutureCall.writePrompt`
 (`regeneratePrompt` does the same and returns at once). The future call writes the body, sets
-`promptGeneratedAt`, clears `promptRequestedAt` and posts `taskChanged` on `board:tasks`, so open
+`promptGeneratedAt`, clears `promptRequestedAt` and issues `taskChanged` on `board:tasks`, so open
 task pages and the prompt editor refresh live. `BoardTaskView.promptPending` is true while a pass
 is scheduled (at most 10 minutes, so a lost call never blocks publishing); the task page and the
 editor show *Writing the prompt with AI… this takes about a minute* with a spinner, and *Publish*
 (and the editor's *Save*, *Regenerate*) stay disabled; `publishTask` answers `conflict` meanwhile.
 (T-11) A written body of a draft is linted (§10.2): when the lint finds nothing the job publishes
-the task right away with `publishTask`'s side effects (posts `planned`, the *Planned* notification,
+the task right away with `publishTask`'s side effects (issues `planned`, the *Planned* notification,
 the `published` activity row; the moderation log names the admin who created the task, with the
 reason "Published when the AI prompt was written."). When it flags something the body is stored,
 the task stays a draft and `promptNote` reads "Held for review: line 5 has "curl …" (and 1 more),
@@ -1201,7 +1250,7 @@ or undoing *Regenerate*) cancels a pending pass: its result is dropped when `pro
 changed. The input:
 
 - the task title, area and size;
-- for each post: kind, title, body, included details, the screenshot URL (a stable redirect,
+- for each issue: kind, title, body, included details, the screenshot URL (a stable redirect,
   `/improvements/p/412/screenshot`), and up to 20 admin and top-voted comments (all as delimited
   untrusted data);
 - the **spec index**: `specs/README.md` tables plus the headings of the area's spec files. The
@@ -1271,7 +1320,7 @@ is opened for a change nobody has seen working. The frame is added when the task
 
 - **Decided (T-11):** there is no mandatory review. The admin's *Select for building* (or
   *Create task*) approves the task, and a written prompt publishes it (§10.1). The defense
-  against prompt injection (§11) — post content flows through AI into a prompt that contributors
+  against prompt injection (§11) — issue content flows through AI into a prompt that contributors
   run in coding agents with repository access — is now the lint below, run by the server
   (`lintTaskPrompt`, `package:wonky_core/board.dart`, shared with the editor): a flagged prompt
   holds its task as a draft until an admin has read it and saved it (*Save* in the editor of a
@@ -1309,7 +1358,7 @@ is opened for a change nobody has seen working. The frame is added when the task
   9. Sign the CLA and follow up (B13): the Serverpod CLA is signed once, on GitHub, on the first
      pull request, by replying to the CLA Assistant bot; then check back once the pull request is
      reviewed and fix what the review points out.
-  10. License (BSD-3-Clause) and security issues: email `security@serverpod.dev`, never a post
+  10. License (BSD-3-Clause) and security issues: email `security@serverpod.dev`, never an issue
       or PR (`SECURITY.md`).
 - **In-app page** `/improvements/contribute`: a short version of steps 1–9 with copy buttons and
   a link to the full file on GitHub. Step 1 (and the task page's *Set up Wonky Work locally*)
@@ -1324,33 +1373,33 @@ is opened for a change nobody has seen working. The frame is added when the task
 - **`.github/pull_request_template.md`** has the `Wonky-Task:` and `Wonky-Claim:` lines, a
   summary, an acceptance-criteria checklist and a test plan.
 - **`SECURITY.md`**: how to report a vulnerability (`security@serverpod.dev`), what to include,
-  and that board posts and PRs are the wrong place.
+  and that board issues and PRs are the wrong place.
 
 ## 11. Security, privacy and abuse
 
 | Risk | Mitigation |
 |------|------------|
-| Security vulnerabilities posted publicly | The dialog says to email `security@serverpod.dev` (`board.securityContact`, B14) instead. Jev's `security` Noul holds at ≥ 0.5 and lists for review at ≥ 0.2, and admins see those posts first. Removed security posts are kept for admins only |
-| Personal data in posts or screenshots | Warning in the dialog and the editor; cover tool; route ids stripped; Jev's `personal_data` check (§6.2); P2 Jev screenshot check (§6.2); authors can remove screenshots, delete posts and edit until the post is in a task |
+| Security vulnerabilities posted publicly | The dialog says to email `security@serverpod.dev` (`board.securityContact`, B14) instead. Jev's `security` Noul holds at ≥ 0.5 and lists for review at ≥ 0.2, and admins see those issues first. Removed security issues are kept for admins only |
+| Personal data in issues or screenshots | Warning in the dialog and the editor; cover tool; route ids stripped; Jev's `personal_data` check (§6.2); P2 Jev screenshot check (§6.2); authors can remove screenshots, delete issues and edit until the issue is in a task |
 | Offensive content, spam | Triage at submit; community flags (3 → held); admin removal; per-user blocks; rate limits (below) |
-| Prompt injection into triage, task prompts or reviews | Jev returns only typed answers (no text that could carry instructions); posts that argue for their own classification are caught by the review band and community flags. Gemini receives post and PR text as delimited untrusted data and answers through a schema. Task prompts need admin review before publishing (§10.2) and are linted; the fixed template frames the AI text. PR reviews are advisory |
+| Prompt injection into triage, task prompts or reviews | Jev returns only typed answers (no text that could carry instructions); issues that argue for their own classification are caught by the review band and community flags. Gemini receives issue and PR text as delimited untrusted data and answers through a schema. Task prompts need admin review before publishing (§10.2) and are linted; the fixed template frames the AI text. PR reviews are advisory |
 | Forged GitHub webhooks, claim takeover through PRs | HMAC-verified webhooks, delivery dedupe, per-claim codes (§13.7) |
 | Vote manipulation | One vote per account; accounts need a verified email; votes from blocked users are excluded from scores (recomputed on block); P2: weight new accounts lower |
 | Claim hoarding | 2 active claims per user; 48 h expiry; admins release; PRs without a valid task auto-close after 7 days |
 | Runaway AI spend | Separate daily token budgets for Jev and Gemini (§6.1), per-PR review limits (§13.5), rate limits below |
-| Admin impersonation | Admin rights come only from the server-side domain check (§9.1). *Admin* badges are rendered from the server's flag on each post or comment, never from the display name |
+| Admin impersonation | Admin rights come only from the server-side domain check (§9.1). *Admin* badges are rendered from the server's flag on each issue or comment, never from the display name |
 | Enumeration of private data | Board endpoints return display names and avatars only, never emails or user ids beyond what `CommentView` already exposes |
 | XSS through Markdown | The renderer builds widgets (no HTML); links are restricted to `http(s)`/`mailto` |
 
 **Rate limits** (`board.*` config, per user, across instances; admins (§9.1) have none, since they
 moderate and post in bulk):
 
-- posts: 5 per hour, 20 per day;
+- issues: 5 per hour, 20 per day;
 - comments: 30 per hour;
 - votes: 300 per hour;
 - flags: 30 per day;
 - similar-post queries (incl. Jev rerank): 60 per minute;
-- edits of posts and comments together (each one is checked by Jev): 30 per hour
+- edits of issues and comments together (each one is checked by Jev): 30 per hour
   (`editsPerHour`).
 
 Signed out, `similar` and `list` with a query are limited per client address
@@ -1361,13 +1410,13 @@ capped at 200 characters (a longer `list` query or `similar` title is cut).
 They are implemented with a generic `RateLimiter` extracted from `McpRateLimiter`
 (`platform/common/rate_limiter.dart`): Redis-backed with a memory fallback. MCP then reuses it.
 
-**Retention**: removed posts and comments are purged after 90 days (as built, by
+**Retention**: removed issues and comments are purged after 90 days (as built, by
 `wonky.boardSweep`, not `wonky.daily`), along with
-their screenshots. Deleted (by author) posts are purged after 30 days. The moderation log is kept
+their screenshots. Deleted (by author) issues are purged after 30 days. The moderation log is kept
 for 1 year.
 
-**Account deletion** ([13 §2](13-security-and-operations.md)) removes the user's posts that are
-not part of a task, their screenshots and their votes. Comments and posts in tasks are anonymized
+**Account deletion** ([13 §2](13-security-and-operations.md)) removes the user's issues that are
+not part of a task, their screenshots and their votes. Comments and issues in tasks are anonymized
 ("Deleted user").
 
 ## 12. Data model
@@ -1603,8 +1652,8 @@ activity rows, admins only; empty for everyone else), `unflag`,
 | Group | Methods |
 |-------|---------|
 | Read | `me()`, `list(BoardListQuery)` → page, `getPost(number)`, `listComments(postNumber, cursor)`, `similar(text, kind)`, `getScreenshotUrl(postNumber)`, `listTasks(filter, cursor)`, `getTask(number)`, `watchPost(number)`, `watchTasks()` |
-| Write | `createScreenshotUpload(…)`, `createPost(BoardPostDraft)`, `editPost(number, title, body)`, `deletePost(number)`, `restorePost(number)` (undo), `removeScreenshot(number)`, `vote(number, value)`, `addComment(uuid, postNumber?, taskNumber?, body)` (posts only: a `taskNumber` is refused), `editComment(uuid, body)`, `deleteComment(uuid)`, `restoreComment(uuid)`, `flag(target, reason, note)`, `claimTask(number)`, `releaseTask(number)` |
-| Admin | `reviewQueue(section, cursor)`, `moderate(target, action, reason?)`, `setLabels(number, kind?, area?, size?)`, `applySuggestedTitle(number)`, `merge(source, target)`, `unmerge(source)`, `decline(number, reason)`, `reopen(number)`, `blockUser(userId, reason, until?)`, `unblockUser(userId)`, `createTask(postNumbers, title, area, size)`, `updateTask(number, …)`, `setTaskPosts(number, postNumbers)`, `regeneratePrompt(number)`, `setPrompt(number, body)`, `publishTask(number)`, `linkPullRequest(number, url)`, `markDone(number)`, `markShipped(number)`, `cancelTask(number)`, `suggestBundles()`, `dismissSuggestion(id)` |
+| Write | `createScreenshotUpload(…)`, `createPost(BoardPostDraft)`, `editPost(number, title, body)`, `deletePost(number)`, `restorePost(number)` (undo), `removeScreenshot(number)`, `vote(number, value)`, `addComment(uuid, postNumber?, taskNumber?, body)` (issues only: a `taskNumber` is refused), `editComment(uuid, body)`, `deleteComment(uuid)`, `restoreComment(uuid)`, `flag(target, reason, note)`, `claimTask(number)`, `releaseTask(number)` |
+| Admin | `reviewQueue(section, cursor)`, `moderate(target, action, reason?)`, `setLabels(number, kind?, area?, size?)`, `applySuggestedTitle(number)`, `merge(source, target)`, `unmerge(source)`, `decline(number, reason)`, `reopen(number)`, `blockUser(userId, reason, until?)`, `unblockUser(userId)`, `createTask(postNumbers, title, area, size)`, `updateTask(number, …)`, `setTaskPosts(number, postNumbers)`, `mergeTasks(numbers, title, area, size)`, `unmergeTasks(number)`, `regeneratePrompt(number)`, `setPrompt(number, body)`, `publishTask(number)`, `linkPullRequest(number, url)`, `markDone(number)`, `markShipped(number)`, `cancelTask(number)`, `suggestBundles()`, `dismissSuggestion(id)` |
 
 **Config** (`wonky: board:`, parsed in `BoardConfig.fromMap`, env overrides `WONKY_BOARD_*`):
 
@@ -1649,8 +1698,8 @@ category `board` (default: in-app + digest email).
 
 | Kind | Sent to | When |
 |------|---------|------|
-| `boardReply` | the post author and earlier commenters | a new comment on the post |
-| `boardStatus` | the author and voters | the post becomes planned, done, shipped, declined or duplicate; the post is held or removed (author only, with the reason) |
+| `boardReply` | the issue author and earlier commenters | a new comment on the issue |
+| `boardStatus` | the author and voters | the issue becomes planned, done, shipped, declined or duplicate; the issue is held or removed (author only, with the reason) |
 | `boardClaim` | the claimant | 6 h warning, expiry, an admin released the claim, the linked PR was closed without merge |
 
 The links point at `/drive/improvements/p/<n>` or `/drive/improvements/t/<n>`. `NotificationService.notify`
@@ -1699,7 +1748,7 @@ Wonky server (GitHub App) ──► check "Wonky task"         pass ─► task 
 | Part | Choice | Why |
 |------|--------|-----|
 | Gate, task lifecycle, shipped detection | **Build**: a GitHub App whose webhooks go to the Wonky server (G4) | Only the Wonky server knows tasks, claims and codes. One place holds the keys. No secrets in Actions, and no `pull_request_target` workflows that could expose them to fork PRs |
-| Task review (does the PR do what the task asks?) | **Build**: one Gemini call in the server (§13.5) | Needs the task's acceptance criteria and posts, which existing review tools don't have. About one tool schema and a prompt on top of the board AI clients (§6.1) |
+| Task review (does the PR do what the task asks?) | **Build**: one Gemini call in the server (§13.5) | Needs the task's acceptance criteria and issues, which existing review tools don't have. About one tool schema and a prompt on top of the board AI clients (§6.1) |
 | General code review (style, bugs, line comments) | **Reuse, optional**: an off-the-shelf reviewer (for example Google's Gemini Code Assist GitHub app, or the Claude Code GitHub Action) can be enabled on the repository independently | Mature, maintained, and not task-specific. Not part of this spec; it neither reads nor writes board data |
 
 ### 13.3 GitHub App
@@ -1765,7 +1814,7 @@ a check re-run:
   *Wonky task* reported for queued merges.
 - **Auto-close (G1)**: the sweep (`wonky.boardSweep`) closes PRs whose gate has failed
   continuously for `board.github.autoCloseDays` (7) days, counted from `gateFirstFailedAt`. It
-  posts a closing comment, and reopening the PR re-runs the gate.
+  issues a closing comment, and reopening the PR re-runs the gate.
 - If the description is edited after success so that the lines no longer match, the check fails
   again. The task stays linked until the PR is closed or an admin unlinks it.
 
@@ -1786,7 +1835,7 @@ a check re-run:
   - security-sensitive paths (`platform/users`, `sharing`, `files`, `mcp`, `board/github`,
     `server.dart`).
 - **Input to Gemini** (`board.ai.geminiModel`, tool `report_review`):
-  - the task's published prompt (with the acceptance criteria) and the post summaries;
+  - the task's published prompt (with the acceptance criteria) and the issue summaries;
   - the PR title and body;
   - the facts;
   - the unified diff without generated and binary files (`wonky_client/**`, `**/generated/**`,
@@ -1833,10 +1882,10 @@ a check re-run:
 
 | GitHub event | Board effect |
 |--------------|--------------|
-| PR merged (linked) | Task and its posts → `done`; `mergeCommitSha` stored; voters get `boardStatus` (*Built: …*) |
+| PR merged (linked) | Task and its issues → `done`; `mergeCommitSha` stored; voters get `boardStatus` (*Built: …*) |
 | PR closed without merge (linked) | Task → `published`; claim and code cleared; the claimant gets `boardClaim` (*Your PR was closed; T-12 is open again*); system activity row |
 | PR reopened | The gate re-runs. The old claim code is invalid, so the contributor claims again if the task is still free |
-| `workflow_run` completed with success, for `board.github.deployWorkflow` (`deploy.yml`) | **Shipped (G7)**: for each `done` task with a merge SHA, the compare API (`merge…deployed head`) shows whether the deploy contains it. If so: task and posts → `shipped`, `shippedAt` and the deploy SHA stored, and voters get `boardStatus` (*Now live on wonky.work*) |
+| `workflow_run` completed with success, for `board.github.deployWorkflow` (`deploy.yml`) | **Shipped (G7)**: for each `done` task with a merge SHA, the compare API (`merge…deployed head`) shows whether the deploy contains it. If so: task and issues → `shipped`, `shippedAt` and the deploy SHA stored, and voters get `boardStatus` (*Now live on wonky.work*) |
 
 - `board.linkPullRequest` and `board.markDone` stay as admin actions, for when the App is down or
   a PR was opened before the integration existed.
@@ -1878,11 +1927,11 @@ tools defined in `packages/wonky_core/lib/mcp/board_tools.dart` and handlers in
 `platform/mcp/board_tool_handlers.dart`:
 
 - `board.list_posts` (with a `query` for search), `board.get_post`, `board.list_tasks`;
-- `board.get_task`, which returns the posts and the claim state, and for the claimant the full
+- `board.get_task`, which returns the issues and the claim state, and for the claimant the full
   prompt (with their claim code in its PR lines), the claim code and the two PR lines, so a
   contributor's agent can claim the task, fetch it by number and fill in the PR description.
   Admins get the prompt with the placeholder; everyone else no `prompt` key (§8.1);
-- `board.create_post` (no screenshot), `board.vote`, `board.comment` (posts only:
+- `board.create_post` (no screenshot), `board.vote`, `board.comment` (issues only:
   `post_number` is required; tasks have no discussion), `board.claim_task`,
   `board.release_task`;
 - admin tools (P1, not built): `board.moderate`, `board.create_task`, `board.set_prompt`,
@@ -1897,22 +1946,22 @@ The tools are read and write in one scope and are not offered to the in-app assi
 |----|----------|
 | `report {kind?}` | – (opens the dialog) |
 | `open {tab?}` | – |
-| `createPost {kind, title, body, contextJson?, appHint?, screenshotFileUuid?}` | ✓ (undo: delete own post, redo restores it) |
+| `createPost {kind, title, body, contextJson?, appHint?, screenshotFileUuid?}` | ✓ (undo: delete own issue, redo restores it) |
 | `editPost` | ✓ |
 | `deletePost` | ✓ |
 | `vote {postNumber, value}` | ✓ |
-| `comment.add` (posts only) / `comment.edit` / `comment.delete` | ✓ |
+| `comment.add` (issues only) / `comment.edit` / `comment.delete` | ✓ |
 | `flag` | ✓ |
 | `claim` / `release` (*Unclaim this task*, Lucide `ban`) | ✓ |
 | `copyClaimCode` | – |
 | `copyPrompt` (fails with *Claim this task to get the prompt.* without one) | – |
 | `removeScreenshot` | – (the bytes are deleted at once; confirmed) |
-| `admin.moderate` / `admin.setLabels` / `admin.editPost` (*Edit and approve*) / `admin.applySuggestedTitle` / `admin.merge` / `admin.unmerge` / `admin.decline` / `admin.reopen` / `admin.block` / `admin.createTask` / `admin.updateTask` / `admin.setTaskPosts` / `admin.regeneratePrompt` / `admin.setPrompt` / `admin.publishTask` / `admin.linkPullRequest` / `admin.markDone` / `admin.markShipped` / `admin.cancelTask` | ✓ (inverse calls, §9.2) |
+| `admin.moderate` / `admin.setLabels` / `admin.editPost` (*Edit and approve*) / `admin.applySuggestedTitle` / `admin.merge` / `admin.unmerge` / `admin.decline` / `admin.reopen` / `admin.block` / `admin.createTask` / `admin.updateTask` / `admin.setTaskPosts` / `admin.mergeTasks` (undo: `unmergeTasks`, §9.3) / `admin.regeneratePrompt` / `admin.setPrompt` / `admin.publishTask` / `admin.linkPullRequest` / `admin.markDone` / `admin.markShipped` / `admin.cancelTask` | ✓ (inverse calls, §9.2) |
 | `admin.suggestBundles` / `admin.dismissSuggestion` / `admin.dismissDuplicate` (*Not a duplicate*) | – (no server inverse) |
 
 **As built (BI-2…BI-6):** all ids above are registered in `board_commands.dart`
 (`boardCommands`) and `report_commands.dart` (`report`, `open`, `createPost`; the report dialog
-posts through `createPost`).
+issues through `createPost`).
 
 All have `requiredRole: viewer`, because the board is not a document. Admin commands are
 registered for everyone but disabled (`enabled: false`) unless `board.me().isAdmin`.
@@ -1934,7 +1983,7 @@ Following [15](15-writing-tests.md):
   `support/board_harness.dart` and `support/fake_board_ai.dart`; the live evaluation set is
   `ai/eval/`, tag `live-ai`). Client tests in `packages/wonky_app/test/board/`
   (`commands/`, `pages/`, `report/`, `screenshot/`), `test/markdown/` and
-  `test/comments/comment_thread_body_test.dart`. Light/dark goldens of the dialog, row, post page
+  `test/comments/comment_thread_body_test.dart`. Light/dark goldens of the dialog, row, issue page
   and editor are not written yet, and J-B1 is a browser walkthrough plus these suites (§17).
 - **Server** (`wonky_server/test/integration/platform/board/`, `test/unit/board/`, `withServerpod`, `FakeJevClient`,
   `FakeAiModelClient` for Gemini, fixed clock):
@@ -1960,27 +2009,27 @@ Following [15](15-writing-tests.md):
   - account deletion.
 - **wonky_app**:
   - command tests (undo/redo) for every `shell.board.*` command;
-  - widget tests for the dialog (similar posts, draft, signed-out redirect), the board list
-    (filters, sort, vote control, keyboard), the post page, the task page (claim states) and the
+  - widget tests for the dialog (similar issues, draft, signed-out redirect), the board list
+    (filters, sort, vote control, keyboard), the issue page, the task page (claim states) and the
     review tab;
   - the screenshot editor (tools, local undo, flattening covers pixels: the covered region of
     the output is uniform);
   - `WonkyMarkdown` profiles and link schemes;
   - `CommentThreadBody` with both action implementations;
-  - goldens light/dark for the dialog, row, post page and editor.
+  - goldens light/dark for the dialog, row, issue page and editor.
 - **Router**: `/improvements*` is reachable signed out; other routes still redirect.
 - **MCP**: tool tests for `board.*`.
 - **Triage evaluation set** (`wonky_server/test/integration/platform/board/ai/eval/`, tag `live-ai`, not in CI):
-  about 200 labeled posts (real-looking bugs and ideas, rude-but-fine, offensive, spam, personal
-  data, security reports, duplicates, adversarial self-classifying posts). Runs against the pinned
+  about 200 labeled issues (real-looking bugs and ideas, rude-but-fine, offensive, spam, personal
+  data, security reports, duplicates, adversarial self-classifying issues). Runs against the pinned
   Jev model, also with reversed Choice option order, and reports precision and recall per
   decision. Used to tune the thresholds and before every model upgrade.
 - **E2E journey J-B1**:
   1. sign in;
   2. open the dialog from the Sheets editor;
   3. add a screenshot and cover an area;
-  4. see a similar post and post anyway;
-  5. the post appears as visible (fake triage);
+  4. see a similar issue and post anyway;
+  5. the issue appears as visible (fake triage);
   6. a second user votes and comments;
   7. an admin (`@serverpod.dev` test account in the `e2eSupport` allowlist) selects it, edits
      and publishes the prompt;
@@ -1998,11 +2047,11 @@ folder). Package BI-1 lands first; then BI-2…BI-6 run in parallel; BI-7…BI-9
 | WP | Scope | Main paths | Depends on |
 |----|-------|-----------|------------|
 | **BI-1 Contract** | Models (§12), migration, `BoardEndpoint` with stub methods, `BoardConfig`, `BoardAdmins`, `config.json` `board` flag, `NotificationKind` values, `StoredFileKind.boardScreenshot`, MCP tool definitions, command ids registered as stubs | `wonky_server/lib/src/platform/board/`, `wonky_core/lib/mcp/board_tools.dart`, `wonky_app/lib/src/board/board_commands.dart` | — |
-| **BI-2 Server core** | Posts, votes, comments, flags, similar search, screenshots, rate limiter extraction, blocks, merge, notifications, retention, account deletion, live channels | `platform/board/`, `platform/common/rate_limiter.dart`, `platform/files/` | BI-1 |
+| **BI-2 Server core** | Issues, votes, comments, flags, similar search, screenshots, rate limiter extraction, blocks, merge, notifications, retention, account deletion, live channels | `platform/board/`, `platform/common/rate_limiter.dart`, `platform/files/` | BI-1 |
 | **BI-3 Board AI** | `JevClient`, `BoardGemini`, usage table and budgets, triage questions and bands, inline + background pipeline, comment checks, Jev rerank, summaries, bundle suggestions, task prompt generation + template, spec index generator, evaluation set | `platform/board/ai/`, `platform/board/triage/`, `platform/board/prompts/`, `tool/spec_index.dart` | BI-1 |
 | **BI-4 Shared UI pieces** | `WonkyMarkdown` (from `AssistantMarkdown`), `MarkdownComposer`, `CommentThreadActions` refactor (document comments unchanged + Markdown rendering), lightbox move from Write, ink move from Slides to `wonky_ui`, screenshot capture helper | `wonky_app/lib/src/{markdown,comments,assistant,mcp_bridge}/`, `wonky_ui/lib/src/ink/`, `wonky_write/.../lightbox`, `wonky_slides/.../present` | — (parallel with BI-1) |
-| **BI-5 Report dialog & editor** | Dialog (§4.2), similar posts, drafts, included details, screenshot editor (§5.2), entry-point replacements (§4.1), alias commands, error card button | `wonky_app/lib/src/board/report/`, `shell/`, `menus/`, `drive/home_sidebar.dart`, `editor/editor_scaffold.dart`, `auth/` | BI-1, BI-4 |
-| **BI-6 Board pages** | Routes + public redirect, server route `/improvements/*` → `/drive/improvements/*`, board list, post page, task page, contribute page, review tab, admin actions, undo for every command | `wonky_app/lib/src/board/pages/`, `routing/router.dart`, `wonky_server/lib/src/web/` | BI-1, BI-4 |
+| **BI-5 Report dialog & editor** | Dialog (§4.2), similar issues, drafts, included details, screenshot editor (§5.2), entry-point replacements (§4.1), alias commands, error card button | `wonky_app/lib/src/board/report/`, `shell/`, `menus/`, `drive/home_sidebar.dart`, `editor/editor_scaffold.dart`, `auth/` | BI-1, BI-4 |
+| **BI-6 Board pages** | Routes + public redirect, server route `/improvements/*` → `/drive/improvements/*`, board list, issue page, task page, contribute page, review tab, admin actions, undo for every command | `wonky_app/lib/src/board/pages/`, `routing/router.dart`, `wonky_server/lib/src/web/` | BI-1, BI-4 |
 | **BI-7 Tasks & claims** | Claim/release/extend, expiry sweep job, PR linking, done/shipped, task notifications | `platform/board/tasks/`, `platform/jobs/`, `server.dart` `_jobs` | BI-2 |
 | **BI-8 Contribution kit** | `CONTRIBUTING.md`, `passwords.example.yaml`, PR template, issue template `config.yml`, `SECURITY.md` (`LICENSE` is already added), (P1) embedded development database | repo root, `.github/`, `wonky_server/config/` | — |
 | **BI-9 MCP, E2E, specs** | `board.*` MCP handlers, J-B1, spec updates listed below, fold-in of feedback (§12) | `platform/mcp/`, `wonky_server/test/e2e/`, `specs/` | BI-2…BI-7 |
@@ -2037,11 +2086,11 @@ a time-shifted test.
 
 Built but not complete, found in the code:
 
-- **Admin: *Remove all posts by this user*** (§9.2) is not built. *Block user* is.
+- **Admin: *Remove all issues by this user*** (§9.2) is not built. *Block user* is.
 - **`board.extendClaim`** (§8.1, P1) is not built; a claim cannot be extended.
 - **Flagging a comment** (§7.5): the endpoint (`flag`, `unflag`) and `shell.board.flag` (`commentUuid`) accept a
-  comment target, but the comment thread UI has no *Flag* action yet. Posts can be flagged from
-  the post page.
+  comment target, but the comment thread UI has no *Flag* action yet. Issues can be flagged from
+  the issue page.
 - **`reviewQueue(section)` has no paging**: it returns a whole section.
 - **`similar()` is not rate-limited for signed-out callers** (§11 limit applies to signed-in
   users only).
@@ -2055,6 +2104,6 @@ Built but not complete, found in the code:
   and covered by widget tests, but not yet checked in the browser (release builds: the first keys
   after a click, IME typing, paste, copy, the spelling menu, the link dialog). A code block's
   language can only be set while typing the fence. The spelling language is the device locale.
-- **Goldens** for the dialog, row, post page and editor, and the fresh-clone dry run of
+- **Goldens** for the dialog, row, issue page and editor, and the fresh-clone dry run of
   `CONTRIBUTING.md`, are not done; the browser walkthrough of J-B1 is tracked in
   [14 §2.1a](14-roadmap.md).

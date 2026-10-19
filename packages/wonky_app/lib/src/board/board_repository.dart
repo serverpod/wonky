@@ -99,6 +99,13 @@ abstract class BoardRepository {
     BoardSize size,
   );
   Future<BoardTaskView> setTaskPosts(int number, List<int> postNumbers);
+  Future<BoardTaskView> mergeTasks(
+    List<int> numbers,
+    String title,
+    BoardArea area,
+    BoardSize size,
+  );
+  Future<BoardTaskView> unmergeTasks(int number);
   Future<BoardTaskView> regeneratePrompt(int number);
   Future<BoardTaskView> setPrompt(int number, String body);
   Future<BoardTaskView> publishTask(int number);
@@ -324,6 +331,18 @@ class ServerBoardRepository implements BoardRepository {
   @override
   Future<BoardTaskView> setTaskPosts(int number, List<int> postNumbers) =>
       api.guard((c) => c.board.setTaskPosts(number, postNumbers));
+
+  @override
+  Future<BoardTaskView> mergeTasks(
+    List<int> numbers,
+    String title,
+    BoardArea area,
+    BoardSize size,
+  ) => api.guard((c) => c.board.mergeTasks(numbers, title, area, size));
+
+  @override
+  Future<BoardTaskView> unmergeTasks(int number) =>
+      api.guard((c) => c.board.unmergeTasks(number));
 
   @override
   Future<BoardTaskView> regeneratePrompt(int number) =>
