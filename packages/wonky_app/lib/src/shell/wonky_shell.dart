@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -166,6 +167,7 @@ class _WonkyShellState extends State<WonkyShell> {
   bool _ready = false;
   final Locale? _locale = forcedLocale();
   StreamSubscription<UndoOutcome>? _undoSub;
+  late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
@@ -183,6 +185,16 @@ class _WonkyShellState extends State<WonkyShell> {
     s.registry.registerAll(widget.config.commands(s));
     s.keymap.onOverridesChanged = s.prefs.setKeymapOverrides;
     HardwareKeyboard.instance.addHandler(_onUnfocusedKey);
+    // A hidden tab or minimized window stops the connectivity heartbeat;
+    // shown again, it checks at once (03 §7).
+    _lifecycle = AppLifecycleListener(
+      onStateChange: (state) =>
+          s.connectivity.setVisible(ConnectivityService.isShown(state)),
+    );
+    final state = SchedulerBinding.instance.lifecycleState;
+    if (state != null) {
+      s.connectivity.setVisible(ConnectivityService.isShown(state));
+    }
     s.crossApp.rememberLastApp(widget.config.app);
     s.auth.onSignedIn = _afterSignIn;
     s.auth.onSigningOut = _beforeSignOut;
@@ -335,6 +347,7 @@ class _WonkyShellState extends State<WonkyShell> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onUnfocusedKey);
+    _lifecycle.dispose();
     _undoSub?.cancel();
     s.auth.removeListener(_onAuth);
     s.router.routerDelegate.removeListener(_onRoute);
