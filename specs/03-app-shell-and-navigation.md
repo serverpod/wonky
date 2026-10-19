@@ -349,6 +349,10 @@ iteration.
 ## 7. Connectivity service
 
 `ConnectivityService` exposes `online` (server reachable via the Serverpod WebSocket,
-heartbeat 15 s), `lastConnectedAt`, `reconnect()`. All sync layers listen to it. Streams
+heartbeat 15 s), `lastConnectedAt`, `reconnect()`. All sync layers listen to it. The
+heartbeat and the offline reconnect attempts pause while the app is hidden (a background
+tab, a minimized window: lifecycle `hidden`, `paused`, `detached`), so open tabs don't ping
+the server all day; shown again, it checks at once. Failed calls still flip `online` while
+hidden. Streams
 (document sessions, presence, drive watch, UI bridge) are re-established on reconnect by a
 `StreamSupervisor` with backoff (1 s → 30 s, jitter).

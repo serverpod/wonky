@@ -3,11 +3,14 @@ import 'dart:math';
 
 import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 
 import '../data/api.dart';
 
 /// Whether the server is reachable (suite 03 §7): heartbeat every 15 s while
-/// online, reconnect with backoff (1 s → 30 s, jitter) while offline.
+/// online, reconnect with backoff (1 s → 30 s, jitter) while offline. Both
+/// pause while the app is hidden (a background tab, a minimized window) and
+/// a check runs as soon as it is shown again ([setVisible]).
 ///
 /// Repositories report failures/successes so the state flips immediately
 /// instead of waiting for the next heartbeat. [forceOffline] is the E2E test
@@ -25,6 +28,7 @@ class ConnectivityService extends ChangeNotifier {
 
   bool _online = true;
   bool _forcedOffline = false;
+  bool _visible = true;
   DateTime? _lastConnectedAt;
   DateTime? _nextAttemptAt;
   int _failures = 0;
@@ -48,6 +52,35 @@ class ConnectivityService extends ChangeNotifier {
     _started = true;
     unawaited(_check());
   }
+
+  /// Whether the app is shown. While hidden no heartbeat or reconnect
+  /// attempt runs (an open background tab would otherwise ping every 15 s
+  /// all day); calls that fail still flip [online]. Shown again, it checks
+  /// at once.
+  void setVisible(bool value) {
+    if (_visible == value) return;
+    _visible = value;
+    if (!_started) return;
+    if (value) {
+      unawaited(_check());
+    } else {
+      _timer?.cancel();
+      _timer = null;
+      _nextAttemptAt = null;
+    }
+  }
+
+  /// Whether the app is shown ([setVisible]).
+  bool get visible => _visible;
+
+  /// Whether [state] shows the app: not for a hidden tab or a minimized,
+  /// paused or detached app. `inactive` (shown, not focused) counts as shown.
+  static bool isShown(AppLifecycleState state) => switch (state) {
+    AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+    AppLifecycleState.hidden ||
+    AppLifecycleState.paused ||
+    AppLifecycleState.detached => false,
+  };
 
   /// Checks now (the "Retry now" button).
   Future<void> reconnect() => _check();
@@ -108,7 +141,7 @@ class ConnectivityService extends ChangeNotifier {
 
   void _schedule() {
     _timer?.cancel();
-    if (!_started) return;
+    if (!_started || !_visible) return;
     final delay = _online ? heartbeat : backoff(_failures);
     _nextAttemptAt = clock.now().add(delay);
     _timer = Timer(delay, () => unawaited(_check()));
