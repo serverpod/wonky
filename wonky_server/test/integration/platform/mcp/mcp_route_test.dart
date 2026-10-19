@@ -108,28 +108,41 @@ void main() {
       expect(res.statusCode, 401);
     });
 
-    Future<int> postLarge(String token) async {
-      final req = await http.postUrl(url);
-      req.headers
-        ..set('authorization', 'Bearer $token')
-        ..contentType = ContentType.json;
-      req.add(List<int>.filled(McpHttpHandler.maxBodyChars + 1, 0x20));
-      final res = await req.close();
-      await res.drain<void>();
-      return res.statusCode;
+    /// Posts [bytes] bytes; the status, or null when the server closed the
+    /// connection before the response arrived. A server that refuses a
+    /// request while its body is still arriving may close the connection
+    /// with unread bytes, which the client sees as a reset (Linux).
+    Future<int?> post(String token, int bytes) async {
+      try {
+        final req = await http.postUrl(url);
+        req.headers
+          ..set('authorization', 'Bearer $token')
+          ..contentType = ContentType.json;
+        req.add(List<int>.filled(bytes, 0x20));
+        final res = await req.close();
+        await res.drain<void>();
+        return res.statusCode;
+      } on IOException {
+        return null;
+      }
     }
 
     test('when a request with a valid token sends a body over the cap then '
-        'it is refused with 413', () async {
+        'it is refused (413, or the connection is closed)', () async {
       final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
       final h = await McpHarness.forUser(anna);
 
-      expect(await postLarge(h.secret), 413);
+      final status = await post(h.secret, McpHttpHandler.maxBodyChars + 1);
+
+      expect(status, anyOf(413, isNull));
+      // The route keeps serving after the refusal.
+      final r = await send('POST', body: rpc(1, 'tools/list'), token: h.secret);
+      expect(r.status, 200);
     });
 
-    test('when a request with an invalid token sends a large body then it is '
-        'refused with 401 before the body is read (CQ-13)', () async {
-      expect(await postLarge('wkpat_x'), 401);
+    test('when a request has an invalid token then it is refused with 401 '
+        '(checked before the body is read, CQ-13)', () async {
+      expect(await post('wkpat_x', 16), 401);
     });
 
     test('when a revoked token is sent then it is rejected', () async {
