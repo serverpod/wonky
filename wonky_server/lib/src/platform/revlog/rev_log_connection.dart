@@ -16,6 +16,7 @@ import '../drive/drive_user_state.dart';
 import '../sharing/access_service.dart';
 import '../users/user_service.dart';
 import 'rev_binding.dart';
+import 'rev_legacy_files.dart';
 import 'rev_bus.dart';
 import 'rev_file_state.dart';
 import 'rev_log_service.dart';
@@ -155,6 +156,9 @@ class RevLogConnection {
       session,
       where: (t) => t.fileUuid.equals(fileUuid),
     );
+    if (file == null) {
+      await RevLegacyFiles.removeIfLegacy(session, binding, actor, fileUuid);
+    }
     if (file == null || file.purging || file.kind != binding.kind) {
       throw RevRejection(RevRejectReason.notFound, 'The file does not exist.');
     }

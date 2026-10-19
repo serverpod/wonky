@@ -7,6 +7,7 @@ import '../common/models.dart';
 import '../common/roles.dart';
 import '../sharing/access_service.dart';
 import 'rev_binding.dart';
+import 'rev_legacy_files.dart';
 import 'rev_log_connection.dart';
 import 'rev_pages.dart';
 import 'rev_views.dart';
@@ -24,6 +25,9 @@ abstract final class RevEndpointSupport {
       session,
       where: (t) => t.fileUuid.equals(fileUuid),
     );
+    if (file == null) {
+      await RevLegacyFiles.removeIfLegacy(session, binding, actor, fileUuid);
+    }
     if (file == null || file.purging || file.kind != binding.kind) {
       throw Errors.notFound('File');
     }
