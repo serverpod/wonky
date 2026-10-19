@@ -45,10 +45,13 @@ abstract final class TaskPromptTemplate {
       ..writeln('## When you are done')
       ..writeln('- Run the checklist in AGENTS.md (analyze, format, tests).')
       ..writeln('- Update the specs if behavior changed.')
+      ..writeln(
+        '- $manualVerificationStep',
+      )
       ..writeln()
       ..writeln(
-        'Open a pull request against `main`. Its description contains these '
-        'two lines:',
+        'Once the user has confirmed, open a pull request against `main`. '
+        'Its description contains these two lines:',
       )
       ..writeln()
       ..writeln('```')
@@ -61,6 +64,16 @@ abstract final class TaskPromptTemplate {
       );
     return b.toString();
   }
+
+  /// The manual review before the pull request (specs/16 §10.1): part of the
+  /// fixed frame, so every task gets it whatever the AI wrote.
+  static const manualVerificationStep =
+      'Before you open the pull request, stop and ask the user to verify the '
+      'feature or the fixed bug by hand: tell them how to try it (which app '
+      'to start, where to go, what to do and what they should see) and wait '
+      'for their answer. If they find a problem, fix it, run the checklist '
+      'again and ask again. Do not open the pull request until they confirm '
+      'that it works.';
 
   /// The acceptance criterion of tasks that change the UI (T-16, specs/16
   /// §10.1). The review bot reads it back ([requiresScreenshot]) and checks
