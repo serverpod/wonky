@@ -180,6 +180,14 @@ Differences from parts 1–7, and decisions made while implementing:
       (`_CreatedRows`) and builds no views. The cell table has `fillfactor = 85`
       (`RevStorage`, ensured at server start and in `withWonkyServerpod`, since models can't
       declare storage parameters), so rewritten cells can be HOT.
+26. **Pre-RevLog files are removed on open.** The migration kept the drive items of older
+    spreadsheets and decks but not their data, so they can't be opened (no `rev_file`).
+    When a connection or a `page`/`ops`/`info` call finds no `rev_file` for a file uuid that
+    names a drive item of the app's kind (by `contentRef`, or by item uuid when it has none)
+    that the caller can see, `RevLegacyFiles.removeIfLegacy` purges that item for everyone
+    (`DriveTrash.purge`: shares, stars, stored files, a `removed` drive event) and the open is
+    rejected as not found. New items are inserted in the same transaction as their
+    `rev_file`, so only leftovers match; items the caller can't see are kept.
 
 
 
