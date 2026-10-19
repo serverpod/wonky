@@ -65,7 +65,7 @@ committed and verified).
    - undo for *Mark all as read*;
    - deep links from emails to the comment thread.
 9. ◐ **Quality**:
-   - CI (CQ-64, specs/01 §2 "CI"): analyze, format, the dependency check (incl. unused dependencies and test imports) and the generated-code check on every PR; tests per package plus the vendored suites; the `--wasm` build of every app with bundle-size budgets (`build.yml`); goldens in a pinned Linux container (`goldens.yml`); nightly `slow`, perf and long property runs (`nightly.yml`) and the Write E2E journeys (`e2e.yml`); weekly macOS builds and a `pub outdated` report. Open: the coverage gate of specs/15 §10, export validation (LibreOffice, epubcheck, poppler), the web E2E runner;
+   - CI (CQ-64, specs/01 §2 "CI"): analyze, format, the dependency check (incl. unused dependencies and test imports) and the generated-code check on every PR; tests per package plus the vendored suites; the `--wasm` build of every app with bundle-size budgets (`build.yml`); goldens in a pinned Linux container (`goldens.yml`); nightly `slow`, perf and long property runs (`nightly.yml`) and the Write E2E journeys on macOS (`e2e.yml`). Open: the coverage gate of specs/15 §10, export validation (LibreOffice, epubcheck, poppler), the web E2E runner;
    - ☑ i18n: wonky_app and wonky_write strings in ARB (`write_en.arb`, `wonky_app_en.arb`), `en_XA` pseudo-locale (`tool/pseudo_locale.dart`, `--dart-define=WONKY_LOCALE=en_XA`); the menubar overflows at 1024 px under en_XA; `ar_XB` (RTL) is not generated yet;
    - ☑ accessibility: labeled icon buttons, `textContrastGuideline` + `labeledTapTargetGuideline` in the screen-level tests (home, settings, Write screen, notifications);
    - ◐ E2E journeys in `wonky_write/integration_test` (macOS; nightly `e2e.yml`): 1, 2, 5, 6 and 8 (MCP drive/write tools; `ui.invoke_command` not yet) pass locally; web needs `flutter drive` + chromedriver; journeys 3, 4, 7, 9, 10 are open;
@@ -114,8 +114,8 @@ committed and verified).
   goldens live in `test_goldens/`, which is not vendored); upstreaming SE-1…SE-9 is open (PATCHES.md).
   `serverpod_offline_sync` is deleted (obsolete since RevLog).
 - **Still missing in CI:** the coverage gate for `*_core` (specs/15 §10), export validation
-  (LibreOffice, epubcheck, poppler), the web E2E runner, Dependabot (a weekly `pub outdated`
-  report runs instead), `wonky_sheets` `en_XA`, `ar_XB`.
+  (LibreOffice, epubcheck, poppler), the web E2E runner, Dependabot or a scheduled `pub outdated`
+  report, `wonky_sheets` `en_XA`, `ar_XB`.
 
 ## Known issues
 
