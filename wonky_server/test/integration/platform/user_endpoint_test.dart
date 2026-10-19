@@ -37,7 +37,7 @@ void main() {
           50,
         );
 
-        expect(page.items.map((i) => i.name), ['Welcome to Wonky Write']);
+        expect(page.items.map((i) => i.name), ['New here? Read me first']);
       },
     );
 
@@ -70,8 +70,8 @@ void main() {
           );
 
           expect(page.items.map((i) => i.name).toList()..sort(), [
+            'New here? Read me first',
             'Welcome to Wonky Sheets',
-            'Welcome to Wonky Write',
           ], reason: 'round $round');
         }
       },

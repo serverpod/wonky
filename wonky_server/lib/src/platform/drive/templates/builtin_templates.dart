@@ -263,39 +263,57 @@ abstract final class BuiltinTemplates {
     BuiltinTemplate(
       key: welcomeDocumentKey,
       kind: DriveItemKind.document,
-      name: 'Welcome to Wonky Write',
-      description: 'A short tour of Wonky Write.',
+      name: 'New here? Read me first',
+      description: 'An introduction to Wonky Work.',
       category: TemplateCategory.personal,
       inGallery: false,
       markdown: '''
-# Welcome to Wonky Write
+# Welcome to Wonky Work
 
-Wonky Write is a **Markdown-first** word processor. Everything you write is
-plain Markdown underneath, so your documents stay portable.
+Welcome to Wonky Work, the free, open-source office suite that's a little different. It's built with Flutter and Serverpod, collectively vibe-coded with AI, and made for people who love to build things.
 
-## Getting started
+Markdown documents, spreadsheets, and slides, but with a twist. Everything works offline first, syncs in real time, and is built with AI in mind. There's even a built-in AI agent and an MCP server, so your favorite coding agent can work with your documents.
 
-- Type `#` and a space to start a heading.
-- Type `-` and a space for a bullet list, or `1.` for a numbered list.
-- Type `- [ ]` for a checklist.
-- Select text and press **Mod+B** for bold or **Mod+I** for *italic*.
+We're still in beta, so expect a few wonky bits. The good news? You can help us fix them.
 
-## Working together
+## Meet the apps
 
-1. Click **Share** to invite people as viewers, commenters or editors.
-2. Select text and press **Mod+Alt+M** to comment.
-3. Switch to *Suggesting* to propose changes that others can accept.
+Currently our apps run on the web only, as we make frequent updates. When things get a bit more stable, we’re bringing them to your desktop computer and your phone, too!
 
-## Make it yours
+### Write
 
-Open **Format › Theme** to change how your document looks. Themes control
-fonts, colors and spacing — the content stays clean Markdown.
+You're using it right now! Write lets you edit and publish Markdown documents, with more features on the way. It's currently the most polished app in the suite.
 
-> Tip: press **Mod+K** to open the command palette and find any action.
+### Sheets
 
-- [ ] Write your first document
-- [ ] Share it with a friend
-- [ ] Try a theme
+Create spreadsheets, crunch numbers, and make graphs. You can even import Excel files. There's already plenty of functionality, but also plenty of room to improve.
+
+### Slides
+
+Make beautiful presentations, including slides with syntax-highlighted code. Perfect for developers who have something to show off.
+
+## Let’s build Wonky together
+
+Here's where things get interesting. Wonky Work isn't just open source. **Anyone can help decide what we build next, and anyone can help build it.**
+
+We've created a process that makes contributing easier than ever:
+
+1. **Found a bug?** Click *Report a bug* and tell us what went wrong.
+2. **Have a great idea?** Click *Suggest an improvement*.
+3. **Vote for what matters.** Visit [Contribute & build](https://wonky.work/drive/improvements) to upvote bugs and feature requests.
+4. **Pick something to build.** Our moderators select tasks and prepare detailed prompts that are ready for AI coding agents.
+5. **Put your unused AI credits to work.** If you have some credits left on your AI plan, grab a task, let your favorite frontier model work on it, and submit a pull request.
+6. **Make Wonky better for everyone.** Our GitHub bot reviews contributions and checks that they work as intended. Once merged, your changes become part of Wonky Work.
+
+The more we build together, the less wonky Wonky gets.
+
+## Now, make something!
+
+This welcome document is just the beginning. Create a new document, spreadsheet, or presentation and give Wonky Work a spin.
+
+And if you like what we're building, help us spread the word!
+
+**Happy wonking!**
 ''',
     ),
     BuiltinTemplate(
