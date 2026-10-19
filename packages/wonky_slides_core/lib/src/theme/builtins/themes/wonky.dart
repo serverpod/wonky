@@ -3,9 +3,7 @@ library;
 
 import 'package:wonky_fonts/wonky_fonts.dart';
 
-import '../../color/color_ref.dart';
 import '../../model/common.dart';
-import '../../model/paint.dart';
 import '../builtin_theme_def.dart';
 import 'common.dart';
 
@@ -13,6 +11,7 @@ import 'common.dart';
 final BuiltInThemeDef wonkyTheme = BuiltInThemeDef(
   key: 'wonky',
   name: 'Wonky',
+  version: 2,
   defaultAppearance: SlideAppearance.light,
   light: const [
     '#FFFFFF',
@@ -43,23 +42,9 @@ final BuiltInThemeDef wonkyTheme = BuiltInThemeDef(
   fonts: fonts(BundledFonts.openSans, 700, BundledFonts.openSans),
   codeLight: 'wonky-light',
   codeDark: 'wonky-dark',
+  // The title layout has no decorations: Blank decks start plain (v2 dropped
+  // v1's accent1 → accent6 gradient blob, T-17).
   decorations: {
-    'title': [
-      const ThemeDecoration(
-        name: 'blob',
-        rect: SuRect(1340, 560, 760, 680),
-        geometry: 'ellipse',
-        fill: GradientFill(
-          kind: 'linear',
-          angle: 135,
-          stops: [
-            GradientStop(0, ThemeColor('accent1')),
-            GradientStop(1, ThemeColor('accent6')),
-          ],
-        ),
-        opacity: 0.2,
-      ),
-    ],
     'comparison': [
       ThemeDecoration(
         name: 'cardLeft',
