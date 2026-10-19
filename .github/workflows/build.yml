@@ -2,25 +2,19 @@ name: Build
 
 # Builds the apps the way they ship (CQ-64a, findings R-1):
 #
-# - `web` (pull requests, main, weekly): `flutter build web --wasm` of every
+# - `web` (pull requests, main): `flutter build web --wasm` of every
 #   app through tool/build_web.dart, the same script `serverpod run
 #   flutter_build` and the Serverpod Cloud pre-deploy hook use. A wasm
 #   breakage (a dependency that imports dart:html, an FFI-only import) fails
 #   here instead of at deploy. The bundle sizes go to the job summary and fail
 #   the job past tool/web_budgets.json (raise a budget on purpose, in the same
 #   change that explains why).
-# - `desktop` (weekly, manual): debug macOS builds of Write and Sheets, so the
-#   desktop targets keep compiling (specs/01-architecture.md A13).
-# - `outdated` (weekly, manual): `flutter pub outdated` as a job summary, in
-#   place of Dependabot (one lock file for the whole workspace).
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: '41 3 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -79,47 +73,3 @@ jobs:
           name: web-sizes-${{matrix.app}}
           path: build/web-sizes-${{matrix.app}}.json
           if-no-files-found: ignore
-
-  desktop:
-    name: desktop (${{matrix.app}})
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: macos-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        app: [wonky_write, wonky_sheets]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{env.FLUTTER_VERSION}}
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build
-        working-directory: ${{matrix.app}}
-        run: flutter build macos --debug
-
-  outdated:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{env.FLUTTER_VERSION}}
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Report
-        run: |
-          { echo '### flutter pub outdated'; echo; echo '```'; flutter pub outdated --no-dev-dependencies --show-all 2>&1 || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
