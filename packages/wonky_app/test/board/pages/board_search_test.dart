@@ -297,10 +297,10 @@ void main() {
         board: seeded(),
       );
 
-      expect(find.text('No posts match your search'), findsOneWidget);
+      expect(find.text('No issues match your search'), findsOneWidget);
       expect(
         find.text(
-          'Try fewer words or part of a word, or include closed posts.',
+          'Try fewer words or part of a word, or include closed issues.',
         ),
         findsOneWidget,
       );

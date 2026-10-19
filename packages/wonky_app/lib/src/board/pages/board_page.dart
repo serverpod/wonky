@@ -240,6 +240,7 @@ class _BoardPageState extends State<BoardPage> {
         services: s,
         statuses: const [BoardTaskStatus.published],
         live: true,
+        selectable: true,
       ),
       BoardTab.claimed => BoardTaskList(
         key: const ValueKey<String>('board.claimed'),

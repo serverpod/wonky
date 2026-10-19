@@ -97,7 +97,7 @@ class NotificationEmails {
             ? '${p['message']}'
             : 'Your Wonky Work storage needs attention',
       NotificationKind.boardReply =>
-        '$who commented on “${p['title'] ?? 'a post'}”',
+        '$who commented on “${p['title'] ?? 'an issue'}”',
       NotificationKind.boardStatus || NotificationKind.boardClaim =>
         p['line'] is String
             ? '${p['line']}'

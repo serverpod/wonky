@@ -701,6 +701,52 @@ void main() {
         expect(task.posts, [post.number]);
         expect(other.taskNumber, isNull);
       });
+
+      test('when adding an issue while the AI writes in the background then '
+          'the task waits as a draft for its new prompt', () async {
+        board.writesPromptLater = true;
+        final other = board.seedPost(title: 'Other');
+
+        await h.invoke('shell.board.admin.setTaskPosts', {
+          'taskNumber': task.number,
+          'add': [other.number],
+        });
+        expect(task.status, BoardTaskStatus.draft);
+        expect(task.promptPending, isTrue);
+
+        board.finishPrompt(task.number, body: '## Goal\nBoth.');
+        expect(task.status, BoardTaskStatus.published);
+      });
+
+      test('when merging another task into it then it keeps both issues, '
+          'the other is cancelled, undo restores both and redo merges '
+          'again', () async {
+        final otherPost = board.seedPost(title: 'Other');
+        final other = board.seedTask(title: 'Other', posts: [otherPost.number]);
+
+        final r = await h.invoke('shell.board.admin.mergeTasks', {
+          'taskNumbers': [other.number, task.number],
+          'title': 'Both',
+          'area': 'write',
+          'size': 'medium',
+        });
+        expect((r.data! as Map)['taskNumber'], task.number);
+        expect(task.posts, [post.number, otherPost.number]);
+        expect((task.title, task.area), ('Both', BoardArea.write));
+        expect(other.status, BoardTaskStatus.cancelled);
+        expect(other.mergedInto, task.number);
+
+        await h.undo();
+        expect(task.posts, [post.number]);
+        expect(task.title, 'Merged cells keep formatting');
+        expect(other.status, BoardTaskStatus.published);
+        expect(other.posts, [otherPost.number]);
+        expect(otherPost.taskNumber, other.number);
+
+        await h.redo();
+        expect(other.status, BoardTaskStatus.cancelled);
+        expect(task.posts, [post.number, otherPost.number]);
+      });
     });
 
     group('and a claimed task', () {

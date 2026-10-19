@@ -3112,6 +3112,76 @@ class _BoardEndpoint {
     });
   }
 
+  _ida.Future<_ia65vc34.BoardTaskView> mergeTasks(
+    _ist.TestSessionBuilder sessionBuilder,
+    List<int> numbers,
+    String title,
+    _i2y7swbd.BoardArea area,
+    _ikq67o57.BoardSize size,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'board',
+            method: 'mergeTasks',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'board',
+          methodName: 'mergeTasks',
+          parameters: _ist.testObjectToJson({
+            'numbers': numbers,
+            'title': title,
+            'area': area,
+            'size': size,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ia65vc34.BoardTaskView>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ia65vc34.BoardTaskView> unmergeTasks(
+    _ist.TestSessionBuilder sessionBuilder,
+    int number,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'board',
+            method: 'unmergeTasks',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'board',
+          methodName: 'unmergeTasks',
+          parameters: _ist.testObjectToJson({'number': number}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ia65vc34.BoardTaskView>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
   _ida.Future<_ia65vc34.BoardTaskView> regeneratePrompt(
     _ist.TestSessionBuilder sessionBuilder,
     int number,

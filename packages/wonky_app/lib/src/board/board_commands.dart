@@ -43,7 +43,7 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
     return hub.isAdmin;
   }
 
-  const post = JsonSchema.integer(minimum: 1, description: 'Post number.');
+  const post = JsonSchema.integer(minimum: 1, description: 'Issue number.');
   const task = JsonSchema.integer(minimum: 1, description: 'Task number.');
   const uuid = JsonSchema.string(format: 'uuid');
 
@@ -65,7 +65,7 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
     undoTarget: UndoTarget.shell,
     args: args,
     palette: palette,
-    category: (l) => l.boardTitle,
+    category: (l) => l.boardReportName,
     enabled: adminOnly ? admin : (undoable ? writer : null),
   );
 
@@ -660,7 +660,7 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
           'title': JsonSchema.string(minLength: 1, maxLength: 120),
           'body': JsonSchema.string(minLength: 1, maxLength: 10000),
           'approve': JsonSchema.boolean(
-            description: 'Also approve a held post (Edit and approve).',
+            description: 'Also approve a held issue (Edit and approve).',
           ),
         },
         required: ['postNumber'],
@@ -762,11 +762,11 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
         properties: {
           'source': JsonSchema.integer(
             minimum: 1,
-            description: 'The duplicate post.',
+            description: 'The duplicate issue.',
           ),
           'target': JsonSchema.integer(
             minimum: 1,
-            description: 'The post that remains.',
+            description: 'The issue that remains.',
           ),
         },
         required: ['source'],
@@ -872,7 +872,7 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
           'userId': JsonSchema.integer(minimum: 1),
           'postNumber': JsonSchema.integer(
             minimum: 1,
-            description: 'Blocks the author of this post.',
+            description: 'Blocks the author of this issue.',
           ),
           'reason': JsonSchema.string(minLength: 1, maxLength: 1000),
         },
@@ -1081,6 +1081,76 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
         );
         hub.changed(task: n);
         return CommandResult.ok({'taskNumber': n, 'postNumbers': after});
+      },
+    ),
+    cmd(
+      'shell.board.admin.mergeTasks',
+      title: (l) => l.cmdBoardMergeTasks,
+      icon: LucideIcons.merge,
+      adminOnly: true,
+      args: JsonSchema.object(
+        properties: {
+          'taskNumbers': const JsonSchema.array(
+            JsonSchema.integer(minimum: 1),
+            minItems: 2,
+          ),
+          'title': const JsonSchema.string(minLength: 1, maxLength: 120),
+          'area': JsonSchema.string(
+            enumValues: [for (final x in BoardArea.values) x.name],
+          ),
+          'size': JsonSchema.string(
+            enumValues: [for (final x in BoardSize.values) x.name],
+          ),
+        },
+        required: const ['taskNumbers'],
+      ),
+      run: (ctx, a) async {
+        final numbers = {
+          for (final x in a.values['taskNumbers']! as List) (x as num).toInt(),
+        }.toList()..sort();
+        var title = a.string('title');
+        var area = switch (a.string('area')) {
+          final String x => BoardArea.values.byName(x),
+          _ => null,
+        };
+        var size = switch (a.string('size')) {
+          final String x => BoardSize.values.byName(x),
+          _ => null,
+        };
+        if (title == null || area == null || size == null) {
+          // Defaults from the oldest task, the one that remains (§9.3).
+          final first = await repo().getTask(numbers.first);
+          final bc = ctx.dialogContext;
+          if (bc == null || !bc.mounted) {
+            title ??= first.title;
+            area ??= first.area;
+            size ??= first.size;
+          } else {
+            final r = await showBoardTaskDialog(
+              bc,
+              mergeCount: numbers.length,
+              title: title ?? first.title,
+              area: area ?? first.area,
+              size: size ?? first.size,
+            );
+            if (r == null) return const CommandResult.cancelled();
+            (title, area, size) = r;
+          }
+        }
+        final t = await repo().mergeTasks(numbers, title, area, size);
+        ctx.record(
+          entry(BoardUndoOp.mergeTasks, {
+            'task': t.number,
+            'tasks': numbers,
+            'title': title,
+            'area': area.name,
+            'size': size.name,
+          }),
+        );
+        for (final n in numbers) {
+          hub.changed(task: n);
+        }
+        return CommandResult.ok({'taskNumber': t.number});
       },
     ),
     cmd(

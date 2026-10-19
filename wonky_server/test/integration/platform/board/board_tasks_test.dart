@@ -814,6 +814,207 @@ void main() {
       );
     });
 
+    group('and a published task whose issues change', () {
+      late BoardTaskView task;
+      late BoardPostView p3;
+      setUp(() async {
+        task = await BoardHarness.publishedTask(endpoints, admin, [p1.number]);
+        p3 = await BoardHarness.post(endpoints, anna);
+        await endpoints.board.vote(bo.endpointSession, p3.number, 1);
+        await endpoints.board.vote(cy.endpointSession, p1.number, 1);
+      });
+
+      test('with Gemini when adding an issue then the task is a draft until '
+          'the prompt is rewritten, and only the added issue is announced '
+          'when it is published again', () async {
+        h.ai.gemini = true;
+
+        final changed = await endpoints.board.setTaskPosts(
+          admin.endpointSession,
+          task.number,
+          [p1.number, p3.number],
+        );
+        final up = await endpoints.board.listTasks(
+          bo.endpointSession,
+          const [BoardTaskStatus.published],
+          null,
+          50,
+        );
+        await BoardTasks.writePrompt(sessionBuilder.build(), task.number);
+        final after = await endpoints.board.getTask(
+          admin.endpointSession,
+          task.number,
+        );
+        final rows = await BoardComment.db.find(
+          sessionBuilder.build(),
+          where: (t) => t.taskId.equals(task.number),
+        );
+
+        expect(changed.status, BoardTaskStatus.draft);
+        expect(changed.promptPending, isTrue);
+        expect(h.scheduled.last.job, BoardJob.prompt);
+        expect(up.items.map((t) => t.number), isNot(contains(task.number)));
+        expect(after.status, BoardTaskStatus.published);
+        expect(after.promptBody, h.ai.prompt);
+        expect(rows.map((r) => r.systemEvent), contains('rewriting'));
+        expect(
+          await notes(bo, NotificationKind.boardStatus),
+          hasLength(1),
+          reason: "the added issue's voter hears it is planned",
+        );
+        expect(
+          await notes(cy, NotificationKind.boardStatus),
+          isEmpty,
+          reason: 'the issue that was already planned is not announced again',
+        );
+        final post = await endpoints.board.getPost(
+          bo.endpointSession,
+          p3.number,
+        );
+        expect(post.status, BoardPostStatus.planned);
+      });
+
+      test('without Gemini when adding an issue then the task stays '
+          'published and the issue is planned', () async {
+        final changed = await endpoints.board.setTaskPosts(
+          admin.endpointSession,
+          task.number,
+          [p1.number, p3.number],
+        );
+        final post = await endpoints.board.getPost(
+          bo.endpointSession,
+          p3.number,
+        );
+
+        expect(changed.status, BoardTaskStatus.published);
+        expect(changed.promptPending, isFalse);
+        expect(post.status, BoardPostStatus.planned);
+      });
+
+      test('with Gemini when a claimed task gets an issue then it stays '
+          'claimed and the prompt is rewritten', () async {
+        await endpoints.board.claimTask(bo.endpointSession, task.number);
+        h.ai.gemini = true;
+
+        final changed = await endpoints.board.setTaskPosts(
+          admin.endpointSession,
+          task.number,
+          [p1.number, p3.number],
+        );
+
+        expect(changed.status, BoardTaskStatus.claimed);
+        expect(changed.promptPending, isTrue);
+      });
+    });
+
+    group('and two published tasks', () {
+      late BoardTaskView first;
+      late BoardTaskView second;
+      setUp(() async {
+        first = await BoardHarness.publishedTask(endpoints, admin, [
+          p1.number,
+        ]);
+        second = await BoardHarness.publishedTask(endpoints, admin, [
+          p2.number,
+        ]);
+      });
+
+      Future<BoardTaskView> merge() => endpoints.board.mergeTasks(
+        admin.endpointSession,
+        [second.number, first.number],
+        'Both fixes',
+        BoardArea.write,
+        BoardSize.medium,
+      );
+
+      test('when merging then the oldest task takes all issues and the new '
+          'labels, and the other is cancelled and points to it', () async {
+        final merged = await merge();
+        final other = await endpoints.board.getTask(
+          bo.endpointSession,
+          second.number,
+        );
+        final post = await endpoints.board.getPost(
+          bo.endpointSession,
+          p2.number,
+        );
+
+        expect(merged.number, first.number);
+        expect(merged.title, 'Both fixes');
+        expect(merged.area, BoardArea.write);
+        expect(merged.size, BoardSize.medium);
+        expect(merged.posts.map((p) => p.number).toSet(), {
+          p1.number,
+          p2.number,
+        });
+        expect(merged.status, BoardTaskStatus.published);
+        expect(other.status, BoardTaskStatus.cancelled);
+        expect(other.mergedInto, first.number);
+        expect(other.posts, isEmpty);
+        expect(post.status, BoardPostStatus.planned);
+        expect(post.task?.number, first.number);
+      });
+
+      test('with Gemini when merging then the task waits as a draft for its '
+          'new prompt', () async {
+        h.ai.gemini = true;
+
+        final merged = await merge();
+
+        expect(merged.status, BoardTaskStatus.draft);
+        expect(merged.promptPending, isTrue);
+        expect(h.scheduled.last.id, first.number);
+      });
+
+      test('when one of them is claimed then merging is refused', () async {
+        await endpoints.board.claimTask(bo.endpointSession, second.number);
+
+        await expectLater(merge(), _code(WonkyErrorCode.conflict));
+      });
+
+      test('when a non-admin merges then it is refused', () async {
+        await expectLater(
+          endpoints.board.mergeTasks(
+            bo.endpointSession,
+            [first.number, second.number],
+            'Both fixes',
+            BoardArea.write,
+            BoardSize.medium,
+          ),
+          throwsA(isA<WonkyException>()),
+        );
+      });
+
+      test('when unmerging then both tasks are back as they were', () async {
+        h.ai.gemini = true;
+        await merge();
+
+        final restored = await endpoints.board.unmergeTasks(
+          admin.endpointSession,
+          first.number,
+        );
+        final other = await endpoints.board.getTask(
+          admin.endpointSession,
+          second.number,
+        );
+
+        expect(restored.status, BoardTaskStatus.published);
+        expect(restored.title, first.title);
+        expect(restored.area, first.area);
+        expect(restored.promptBody, first.promptBody);
+        expect(restored.promptPending, isFalse);
+        expect(restored.posts.map((p) => p.number), [p1.number]);
+        expect(other.status, BoardTaskStatus.published);
+        expect(other.mergedInto, isNull);
+        expect(other.posts.map((p) => p.number), [p2.number]);
+        await expectLater(
+          endpoints.board.unmergeTasks(admin.endpointSession, first.number),
+          _code(WonkyErrorCode.conflict),
+          reason: 'there is no merge left to undo',
+        );
+      });
+    });
+
     group('when suggesting bundles', () {
       bool isOurs(BoardBundleSuggestionView s) =>
           s.posts.map((p) => p.number).toSet().containsAll([

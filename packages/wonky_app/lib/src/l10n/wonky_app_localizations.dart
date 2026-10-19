@@ -4681,7 +4681,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @mcpScopeBoard.
   ///
   /// In en, this message translates to:
-  /// **'Bugs & improvements: read, post, vote, claim tasks'**
+  /// **'Bugs & improvements: read, report issues, vote, claim tasks'**
   String get mcpScopeBoard;
 
   /// No description provided for @tokenCreateHint.
@@ -5416,7 +5416,7 @@ abstract class WonkyAppLocalizations {
   /// **'Bugs & improvements'**
   String get boardReportName;
 
-  /// Home left menu (wrench icon): opens the Bugs & improvements board, where people vote on posts and pick up tasks to build.
+  /// Home left menu (wrench icon): opens the Bugs & improvements board, where people vote on issues and pick up tasks to build.
   ///
   /// In en, this message translates to:
   /// **'Contribute & build'**
@@ -5494,7 +5494,7 @@ abstract class WonkyAppLocalizations {
   /// **'(optional)'**
   String get boardReportOptional;
 
-  /// Validation of the post title.
+  /// Validation of the issue title.
   ///
   /// In en, this message translates to:
   /// **'Use {min} to {max} characters.'**
@@ -5509,10 +5509,10 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardReportSimilarTitle.
   ///
   /// In en, this message translates to:
-  /// **'Similar posts'**
+  /// **'Similar issues'**
   String get boardReportSimilarTitle;
 
-  /// Semantics label of a similar post's score.
+  /// Semantics label of a similar issue's score.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 vote} other{{count} votes}}'**
@@ -5671,13 +5671,13 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardReportAiNotice.
   ///
   /// In en, this message translates to:
-  /// **'Posts are public and checked automatically by AI (Jev, Gemini).'**
+  /// **'Issues are public and checked automatically by AI (Jev, Gemini).'**
   String get boardReportAiNotice;
 
   /// No description provided for @boardReportPublicNotice.
   ///
   /// In en, this message translates to:
-  /// **'Posts are public.'**
+  /// **'Issues are public.'**
   String get boardReportPublicNotice;
 
   /// No description provided for @boardReportSecurityNotice.
@@ -5761,7 +5761,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardReportDiscardBody.
   ///
   /// In en, this message translates to:
-  /// **'Your report hasn’t been posted yet.'**
+  /// **'Your issue hasn’t been posted yet.'**
   String get boardReportDiscardBody;
 
   /// No description provided for @boardReportDiscard.
@@ -5896,10 +5896,10 @@ abstract class WonkyAppLocalizations {
   /// **'Couldn’t prepare the screenshot: {message}'**
   String screenshotEncodeFailed(String message);
 
-  /// Name of the board (specs/16), page title and command category.
+  /// Name of the board pages (specs/16 §4.3): the breadcrumb root and the page title, like the home menu entry boardContributeNav. The report dialog, Help menu and command category keep boardReportName.
   ///
   /// In en, this message translates to:
-  /// **'Bugs & improvements'**
+  /// **'Contribute & build'**
   String get boardTitle;
 
   /// No description provided for @boardBreadcrumb.
@@ -5911,7 +5911,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardClose.
   ///
   /// In en, this message translates to:
-  /// **'Close Bugs & improvements'**
+  /// **'Close Contribute & build'**
   String get boardClose;
 
   /// No description provided for @boardShowPath.
@@ -5941,7 +5941,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardSearch.
   ///
   /// In en, this message translates to:
-  /// **'Search posts'**
+  /// **'Search issues'**
   String get boardSearch;
 
   /// No description provided for @boardSignIn.
@@ -5953,7 +5953,7 @@ abstract class WonkyAppLocalizations {
   /// Banner on the board for signed-out visitors.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to vote and post.'**
+  /// **'Sign in to vote and report issues.'**
   String get boardSignInToVote;
 
   /// No description provided for @boardSignInToComment.
@@ -6052,7 +6052,7 @@ abstract class WonkyAppLocalizations {
   /// **'Search'**
   String get boardSearchResults;
 
-  /// Header and breadcrumb of the board's search results across all posts.
+  /// Header and breadcrumb of the board's search results across all issues.
   ///
   /// In en, this message translates to:
   /// **'Results for “{query}”'**
@@ -6067,13 +6067,13 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardSearchStartHint.
   ///
   /// In en, this message translates to:
-  /// **'Find posts by their words, part of a title or their number.'**
+  /// **'Find issues by their words, part of a title or their number.'**
   String get boardSearchStartHint;
 
   /// No description provided for @boardEmptySearchHint.
   ///
   /// In en, this message translates to:
-  /// **'Try fewer words or part of a word, or include closed posts.'**
+  /// **'Try fewer words or part of a word, or include closed issues.'**
   String get boardEmptySearchHint;
 
   /// No description provided for @boardEmptyClaimed.
@@ -6334,7 +6334,7 @@ abstract class WonkyAppLocalizations {
   /// **'Status'**
   String get boardFilterStatus;
 
-  /// Board filter: posts I wrote or voted on.
+  /// Board filter: issues I wrote or voted on.
   ///
   /// In en, this message translates to:
   /// **'Mine'**
@@ -6367,13 +6367,13 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardCreateTaskFrom.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{Create task from 1 post…} other{Create task from {count} posts…}}'**
+  /// **'{count, plural, =1{Create task from 1 issue…} other{Create task from {count} issues…}}'**
   String boardCreateTaskFrom(int count);
 
   /// No description provided for @boardCreateTaskHint.
   ///
   /// In en, this message translates to:
-  /// **'The draft task gets an AI-written prompt that you review before publishing.'**
+  /// **'The draft task gets an AI-written prompt. It is published once the prompt is written.'**
   String get boardCreateTaskHint;
 
   /// No description provided for @boardAddToTask.
@@ -6400,7 +6400,7 @@ abstract class WonkyAppLocalizations {
   /// **'Load more'**
   String get boardLoadMore;
 
-  /// Under the board list: how many posts are shown.
+  /// Under the board list: how many issues are shown.
   ///
   /// In en, this message translates to:
   /// **'{shown} of {total}'**
@@ -6409,7 +6409,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardLoadFailed.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t load Bugs & improvements'**
+  /// **'Couldn’t load Contribute & build'**
   String get boardLoadFailed;
 
   /// No description provided for @boardEmptyIdeas.
@@ -6433,13 +6433,13 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardEmptySearch.
   ///
   /// In en, this message translates to:
-  /// **'No posts match your search'**
+  /// **'No issues match your search'**
   String get boardEmptySearch;
 
   /// No description provided for @boardEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Change the filters, or be the first to post.'**
+  /// **'Change the filters, or be the first to report one.'**
   String get boardEmptyHint;
 
   /// No description provided for @boardEmptyTasks.
@@ -6451,7 +6451,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardEmptyTasksHint.
   ///
   /// In en, this message translates to:
-  /// **'Admins publish tasks from the most wanted posts. Check back soon.'**
+  /// **'Admins publish tasks from the most wanted issues. Check back soon.'**
   String get boardEmptyTasksHint;
 
   /// No description provided for @boardDoneTasks.
@@ -6571,7 +6571,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardPostNotFound.
   ///
   /// In en, this message translates to:
-  /// **'Post #{number} doesn\'t exist or isn\'t public'**
+  /// **'Issue #{number} doesn\'t exist or isn\'t public'**
   String boardPostNotFound(int number);
 
   /// No description provided for @boardTaskNotFound.
@@ -6583,10 +6583,10 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardBackToBoard.
   ///
   /// In en, this message translates to:
-  /// **'Back to Bugs & improvements'**
+  /// **'Back to Contribute & build'**
   String get boardBackToBoard;
 
-  /// Heading of the admin entries in the post's actions menu.
+  /// Heading of the admin entries in the issue's actions menu.
   ///
   /// In en, this message translates to:
   /// **'Admin'**
@@ -6715,19 +6715,19 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardMergedFromNote.
   ///
   /// In en, this message translates to:
-  /// **'#{number} was merged into this post.'**
+  /// **'#{number} was merged into this issue.'**
   String boardMergedFromNote(int number);
 
   /// No description provided for @boardPostDeleted.
   ///
   /// In en, this message translates to:
-  /// **'This post was deleted.'**
+  /// **'This issue was deleted.'**
   String get boardPostDeleted;
 
   /// No description provided for @boardChecking.
   ///
   /// In en, this message translates to:
-  /// **'Checking your post…'**
+  /// **'Checking your issue…'**
   String get boardChecking;
 
   /// No description provided for @boardWaitingForReview.
@@ -6847,7 +6847,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardScreenshotAlt.
   ///
   /// In en, this message translates to:
-  /// **'Screenshot of post #{number}'**
+  /// **'Screenshot of issue #{number}'**
   String boardScreenshotAlt(int number);
 
   /// No description provided for @boardRelations.
@@ -6865,13 +6865,13 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardMergedFrom.
   ///
   /// In en, this message translates to:
-  /// **'Duplicates merged into this post:'**
+  /// **'Duplicates merged into this issue:'**
   String get boardMergedFrom;
 
   /// No description provided for @boardSimilarPosts.
   ///
   /// In en, this message translates to:
-  /// **'Similar posts'**
+  /// **'Similar issues'**
   String get boardSimilarPosts;
 
   /// No description provided for @boardScore.
@@ -6976,6 +6976,66 @@ abstract class WonkyAppLocalizations {
   /// **'merged a duplicate'**
   String get boardEventMerged;
 
+  /// Task activity (admins): the task was merged into another one. {task} is like T-3.
+  ///
+  /// In en, this message translates to:
+  /// **'merged this task into {task}'**
+  String boardEventMergedInto(String task);
+
+  /// Task activity (admins): other tasks were merged into this one. {tasks} is like 'T-5, T-7'.
+  ///
+  /// In en, this message translates to:
+  /// **'merged {tasks} into this task'**
+  String boardEventMergedTasks(String tasks);
+
+  /// No description provided for @boardEventUnmerged.
+  ///
+  /// In en, this message translates to:
+  /// **'undid a merge of tasks'**
+  String get boardEventUnmerged;
+
+  /// No description provided for @boardEventRewriting.
+  ///
+  /// In en, this message translates to:
+  /// **'changed the issues; the task is a draft until the AI has rewritten the prompt'**
+  String get boardEventRewriting;
+
+  /// Up for grabs selection bar (admins) and the merge dialog's title.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Merge 1 task…} other{Merge {count} tasks…}}'**
+  String boardMergeTasksTitle(int count);
+
+  /// No description provided for @boardMergeTasksHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The oldest task keeps all the issues and gets a new AI-written prompt. The other tasks are cancelled. Until the prompt is written, the task is a draft.'**
+  String get boardMergeTasksHint;
+
+  /// No description provided for @boardMergeTasksNeedsTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'Select two tasks or more to merge them'**
+  String get boardMergeTasksNeedsTwo;
+
+  /// No description provided for @boardTaskMergedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This task was merged into T-{number}.'**
+  String boardTaskMergedNotice(int number);
+
+  /// No description provided for @boardOpenTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Open T-{number}'**
+  String boardOpenTask(int number);
+
+  /// No description provided for @cmdBoardMergeTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge tasks'**
+  String get cmdBoardMergeTasks;
+
   /// No description provided for @boardUpForGrabs.
   ///
   /// In en, this message translates to:
@@ -6997,7 +7057,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardPostCount.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 post} other{{count} posts}}'**
+  /// **'{count, plural, =1{1 issue} other{{count} issues}}'**
   String boardPostCount(int count);
 
   /// No description provided for @boardClaimTask.
@@ -7057,19 +7117,19 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardTaskCancelledNotice.
   ///
   /// In en, this message translates to:
-  /// **'This task was cancelled. Its posts are open again.'**
+  /// **'This task was cancelled. Its issues are open again.'**
   String get boardTaskCancelledNotice;
 
   /// No description provided for @boardLinkedPosts.
   ///
   /// In en, this message translates to:
-  /// **'Linked posts'**
+  /// **'Linked issues'**
   String get boardLinkedPosts;
 
   /// No description provided for @boardNoLinkedPosts.
   ///
   /// In en, this message translates to:
-  /// **'No posts are linked to this task.'**
+  /// **'No issues are linked to this task.'**
   String get boardNoLinkedPosts;
 
   /// No description provided for @boardRemoveFromTask.
@@ -7081,13 +7141,13 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardAddPosts.
   ///
   /// In en, this message translates to:
-  /// **'Add posts…'**
+  /// **'Add issues…'**
   String get boardAddPosts;
 
   /// No description provided for @boardFieldPostNumbers.
   ///
   /// In en, this message translates to:
-  /// **'Post numbers'**
+  /// **'Issue numbers'**
   String get boardFieldPostNumbers;
 
   /// No description provided for @boardHowToBuild.
@@ -7345,7 +7405,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardModeratorEditHint.
   ///
   /// In en, this message translates to:
-  /// **'The post shows Edited by a moderator.'**
+  /// **'The issue shows Edited by a moderator.'**
   String get boardModeratorEditHint;
 
   /// No description provided for @boardFieldReason.
@@ -7369,7 +7429,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardFlagHint.
   ///
   /// In en, this message translates to:
-  /// **'Flagged posts are hidden for review after 3 people flag them.'**
+  /// **'Flagged issues are hidden for review after 3 people flag them.'**
   String get boardFlagHint;
 
   /// No description provided for @boardFlagAction.
@@ -7411,25 +7471,25 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardMergeHint.
   ///
   /// In en, this message translates to:
-  /// **'Votes on #{number} move to the post that remains.'**
+  /// **'Votes on #{number} move to the issue that remains.'**
   String boardMergeHint(int number);
 
   /// No description provided for @boardFieldTargetPost.
   ///
   /// In en, this message translates to:
-  /// **'Post that remains'**
+  /// **'Issue that remains'**
   String get boardFieldTargetPost;
 
   /// No description provided for @boardInvalidPostNumber.
   ///
   /// In en, this message translates to:
-  /// **'Enter a post number'**
+  /// **'Enter an issue number'**
   String get boardInvalidPostNumber;
 
   /// No description provided for @boardMergeSelf.
   ///
   /// In en, this message translates to:
-  /// **'A post can\'t be merged into itself'**
+  /// **'An issue can\'t be merged into itself'**
   String get boardMergeSelf;
 
   /// No description provided for @boardFieldKind.
@@ -7585,19 +7645,19 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @cmdBoardCreatePost.
   ///
   /// In en, this message translates to:
-  /// **'Post report'**
+  /// **'Report issue'**
   String get cmdBoardCreatePost;
 
   /// No description provided for @cmdBoardEditPost.
   ///
   /// In en, this message translates to:
-  /// **'Edit post'**
+  /// **'Edit issue'**
   String get cmdBoardEditPost;
 
   /// No description provided for @cmdBoardDeletePost.
   ///
   /// In en, this message translates to:
-  /// **'Delete post'**
+  /// **'Delete issue'**
   String get cmdBoardDeletePost;
 
   /// No description provided for @cmdBoardRemoveScreenshot.
@@ -7729,7 +7789,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @cmdBoardSetTaskPosts.
   ///
   /// In en, this message translates to:
-  /// **'Change the task\'s posts'**
+  /// **'Change the task\'s issues'**
   String get cmdBoardSetTaskPosts;
 
   /// No description provided for @cmdBoardRegeneratePrompt.
@@ -7795,7 +7855,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @notifyBoardHint.
   ///
   /// In en, this message translates to:
-  /// **'Replies to your posts, status changes and your task claims'**
+  /// **'Replies to your issues, status changes and your task claims'**
   String get notifyBoardHint;
 
   /// No description provided for @boardEventPrClosed.

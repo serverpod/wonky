@@ -254,7 +254,7 @@ abstract final class BoardModerationService {
           await BoardNotify.postStatus(
             session,
             updated,
-            'Your post ${BoardText.quoted(post.title)} is hidden until a '
+            'Your issue ${BoardText.quoted(post.title)} is hidden until a '
             'moderator reviews it.',
             actor: c.actor,
             voters: false,
@@ -274,7 +274,7 @@ abstract final class BoardModerationService {
           await BoardNotify.postStatus(
             session,
             updated,
-            'Your post ${BoardText.quoted(post.title)} was removed by a '
+            'Your issue ${BoardText.quoted(post.title)} was removed by a '
             'moderator${why == null ? '' : ': $why'}.',
             actor: c.actor,
             voters: false,
@@ -282,7 +282,7 @@ abstract final class BoardModerationService {
         }
       case BoardModerationAction.restore:
         if (post.moderation != BoardModeration.removed) {
-          throw Errors.conflict('Only removed posts can be restored.');
+          throw Errors.conflict('Only removed issues can be restored.');
         }
         updated = await BoardPost.db.updateRow(
           session,
@@ -534,18 +534,18 @@ abstract final class BoardModerationService {
   ) async {
     final c = await BoardAccess.requireAdmin(session);
     if (source == target) {
-      throw Errors.invalid('A post cannot be merged into itself.');
+      throw Errors.invalid('An issue cannot be merged into itself.');
     }
     final src = await BoardAccess.post(session, c, source);
     final tgt = await BoardAccess.post(session, c, target);
     if (src.deletedAt != null || tgt.deletedAt != null) {
-      throw Errors.conflict('Deleted posts cannot be merged.');
+      throw Errors.conflict('Deleted issues cannot be merged.');
     }
     if (src.status == BoardPostStatus.duplicate) {
       throw Errors.conflict('#$source is already merged.');
     }
     if (tgt.status == BoardPostStatus.duplicate) {
-      throw Errors.conflict('#$target is merged into another post.');
+      throw Errors.conflict('#$target is merged into another issue.');
     }
     final recipients = await BoardNotify.authorsAndVoters(session, [src]);
     await session.db.transaction((tx) async {
@@ -745,12 +745,12 @@ abstract final class BoardModerationService {
     if (why == null) throw Errors.invalid('Give a reason.');
     if (post.status == BoardPostStatus.duplicate ||
         post.status == BoardPostStatus.declined) {
-      throw Errors.conflict('This post cannot be declined.');
+      throw Errors.conflict('This issue cannot be declined.');
     }
     if (post.taskId != null) {
       final task = await BoardTask.db.findById(session, post.taskId!);
       if (task != null && task.status != BoardTaskStatus.cancelled) {
-        throw Errors.conflict('Remove the post from its task first.');
+        throw Errors.conflict('Remove the issue from its task first.');
       }
     }
     final updated = await BoardPost.db.updateRow(
@@ -782,7 +782,7 @@ abstract final class BoardModerationService {
     final c = await BoardAccess.requireAdmin(session);
     final post = await BoardAccess.post(session, c, number);
     if (post.status != BoardPostStatus.declined) {
-      throw Errors.conflict('Only declined posts can be reopened.');
+      throw Errors.conflict('Only declined issues can be reopened.');
     }
     final updated = await BoardPost.db.updateRow(
       session,

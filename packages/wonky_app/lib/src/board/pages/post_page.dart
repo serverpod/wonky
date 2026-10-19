@@ -301,6 +301,15 @@ class _BoardPostPageState extends State<BoardPostPage> {
             LucideIcons.hammer,
             _selectForBuilding,
           ),
+        if (votingOpen && p.task == null)
+          item(
+            'addToTask',
+            l.boardAddToTaskEllipsis,
+            LucideIcons.listPlus,
+            () => boardInvoke(s, 'shell.board.admin.setTaskPosts', {
+              'add': [n],
+            }, context: context),
+          ),
         if (p.status == BoardPostStatus.declined)
           item(
             'reopen',

@@ -1958,6 +1958,62 @@ class Endpoints extends _is.EndpointDispatch {
                     params['postNumbers'],
                   ),
         ),
+        'mergeTasks': _is.MethodConnector(
+          name: 'mergeTasks',
+          params: {
+            'numbers': _is.ParameterDescription(
+              name: 'numbers',
+              type: _is.getType<List<int>>(),
+              nullable: false,
+            ),
+            'title': _is.ParameterDescription(
+              name: 'title',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'area': _is.ParameterDescription(
+              name: 'area',
+              type: _is.getType<_i2y7swbd.BoardArea>(),
+              nullable: false,
+            ),
+            'size': _is.ParameterDescription(
+              name: 'size',
+              type: _is.getType<_ikq67o57.BoardSize>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['board'] as _itoz815u.BoardEndpoint).mergeTasks(
+                    session,
+                    params['numbers'],
+                    params['title'],
+                    params['area'],
+                    params['size'],
+                  ),
+        ),
+        'unmergeTasks': _is.MethodConnector(
+          name: 'unmergeTasks',
+          params: {
+            'number': _is.ParameterDescription(
+              name: 'number',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['board'] as _itoz815u.BoardEndpoint).unmergeTasks(
+                    session,
+                    params['number'],
+                  ),
+        ),
         'regeneratePrompt': _is.MethodConnector(
           name: 'regeneratePrompt',
           params: {

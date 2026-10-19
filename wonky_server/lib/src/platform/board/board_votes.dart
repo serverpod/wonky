@@ -59,7 +59,7 @@ abstract final class BoardVotes {
       throw Errors.invalid('Bugs can only be up-voted.');
     }
     if (!votable.contains(post.status)) {
-      throw Errors.conflict('Voting is closed for this post.');
+      throw Errors.conflict('Voting is closed for this issue.');
     }
     await BoardRateLimits.check(BoardLimit.votesPerHour, c);
     final changed = await setVote(session, post.id!, c.id, value);

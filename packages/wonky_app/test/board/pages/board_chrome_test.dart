@@ -93,7 +93,7 @@ void main() {
       );
 
       expect(crumbIds(), ['app', 'root', 'list']);
-      expect(crumbText('root'), 'Bugs & improvements');
+      expect(crumbText('root'), 'Contribute & build');
       expect(crumbText('list'), 'Bugs');
       expect(isCurrent('list'), isTrue);
       expect(isCurrent('root'), isFalse);
@@ -292,11 +292,11 @@ void main() {
       final nav = tester.getSemantics(find.bySemanticsLabel('Breadcrumb'));
       expect(nav.getSemanticsData().role, SemanticsRole.navigation);
       final root = tester.getSemantics(
-        find.bySemanticsLabel('Bugs & improvements'),
+        find.bySemanticsLabel('Contribute & build'),
       );
       expect(root.flagsCollection.isLink, isTrue);
       final app = tester.getSemantics(
-        find.bySemanticsLabel('Close Bugs & improvements'),
+        find.bySemanticsLabel('Close Contribute & build'),
       );
       expect(app.flagsCollection.isLink, isTrue);
       final post = tester.getSemantics(

@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shad/shad.dart' show ShadButton;
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_ui/testing.dart';
@@ -267,7 +268,7 @@ void main() {
     );
 
     expect(byKey('board.signedOutBanner'), findsOneWidget);
-    expect(find.text('Sign in to vote and post.'), findsOneWidget);
+    expect(find.text('Sign in to vote and report issues.'), findsOneWidget);
     expect(byKey('board.filter.mine'), findsNothing);
     await tester.tap(byKey('board.vote.1.up'));
     await tester.pumpAndSettle();
@@ -332,6 +333,45 @@ void main() {
     expect(task.status, BoardTaskStatus.draft);
     expect(t().location, '/improvements/t/${task.number}');
     await settleTooltips(tester);
+  });
+
+  testWidgets('Given an admin on Up for grabs when selecting two tasks then '
+      'Merge keeps the oldest with both issues and opens it', (tester) async {
+    final b = seeded()..isAdmin = true;
+    final first = b.seedTask(title: 'Grid fixes', posts: [1]);
+    final second = b.seedTask(title: 'Paste fixes', posts: [4]);
+    current = await pumpBoard(tester, '/improvements/tasks', board: b);
+
+    await tester.tap(byKey('board.tasks.select'));
+    await tester.pumpAndSettle();
+    await tester.tap(byKey('board.task.${second.number}.select'));
+    await tester.pumpAndSettle();
+    final merge = tester.widget<ShadButton>(
+      byKey('board.tasks.selection.merge'),
+    );
+    expect(merge.onPressed, isNull, reason: 'one task cannot be merged');
+
+    await tester.tap(byKey('board.task.${first.number}.select'));
+    await tester.pumpAndSettle();
+    expect(find.text('Merge 2 tasks…'), findsOneWidget);
+    await tester.tap(byKey('board.tasks.selection.merge'));
+    await tester.pumpAndSettle();
+    expect(byKey('dialog.board.task'), findsOneWidget);
+    await tester.tap(byKey('dialog.board.task.ok'));
+    await tester.pumpAndSettle();
+
+    expect(first.posts, [1, 4]);
+    expect(second.status, BoardTaskStatus.cancelled);
+    expect(t().location, '/improvements/t/${first.number}?list=tasks');
+    await settleTooltips(tester);
+  });
+
+  testWidgets('Given a signed-in user on Up for grabs then there is no '
+      'selection mode', (tester) async {
+    final b = seeded()..seedTask(posts: [1]);
+    current = await pumpBoard(tester, '/improvements/tasks', board: b);
+
+    expect(byKey('board.tasks.select'), findsNothing);
   });
 
   testWidgets('Given a narrow window then rows stack with the vote control '

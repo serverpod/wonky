@@ -34,6 +34,8 @@ fields:
   prAuthorLogin: String?
   ### The latest PR review (specs/16 §13.5), JSON.
   reviewJson: String?
+  ### The task this cancelled task was merged into (specs/16 §9.3).
+  mergedInto: int?
   publishedAt: DateTime?
   doneAt: DateTime?
   shippedAt: DateTime?

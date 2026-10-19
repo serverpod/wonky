@@ -209,6 +209,15 @@ abstract final class BoardService {
     int number,
     List<int> postNumbers,
   ) => BoardTasks.setPosts(session, number, postNumbers);
+  static Future<BoardTaskView> mergeTasks(
+    Session session,
+    List<int> numbers,
+    String title,
+    BoardArea area,
+    BoardSize size,
+  ) => BoardTasks.merge(session, numbers, title, area, size);
+  static Future<BoardTaskView> unmergeTasks(Session session, int number) =>
+      BoardTasks.unmerge(session, number);
   static Future<BoardTaskView> regeneratePrompt(
     Session session,
     int number,

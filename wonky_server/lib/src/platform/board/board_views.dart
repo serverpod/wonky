@@ -350,6 +350,22 @@ abstract final class BoardViews {
     ]);
     final config = BoardConfig.current;
     final origin = NotificationService.webOrigin();
+    // A merged task (specs/16 §9.3) is cancelled with a *Merged into T-n*
+    // row; the latest one counts.
+    final cancelled = {
+      for (final t in tasks)
+        if (t.status == BoardTaskStatus.cancelled) t.id!,
+    };
+    final mergedInto = <int, int>{
+      if (cancelled.isNotEmpty)
+        for (final r in await BoardComment.db.find(
+          session,
+          where: (t) =>
+              t.taskId.inSet(cancelled) & t.systemEvent.equals('mergedInto'),
+          orderBy: (t) => t.id,
+        ))
+          r.taskId!: ?int.tryParse(r.body.replaceAll(RegExp(r'\D'), '')),
+    };
     return [
       for (final t in tasks)
         () {
@@ -393,6 +409,7 @@ abstract final class BoardViews {
             prNumber: t.prNumber,
             prAuthorLogin: t.prAuthorLogin,
             reviewJson: t.prNumber == null ? null : reviewByPr[t.prNumber],
+            mergedInto: mergedInto[t.id],
             publishedAt: t.publishedAt,
             doneAt: t.doneAt,
             shippedAt: t.shippedAt,

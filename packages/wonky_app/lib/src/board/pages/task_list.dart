@@ -50,11 +50,16 @@ class BoardTaskList extends StatefulWidget {
     this.horizontalPadding,
     this.emptyTitle,
     this.emptyDescription,
+    this.selectable = false,
   });
 
   final ShellServices services;
   final List<BoardTaskStatus> statuses;
   final bool live;
+
+  /// Admins get the selection mode (*Up for grabs*, specs/16 §9.3): rows
+  /// with checkboxes and *Merge N tasks…*.
+  final bool selectable;
 
   /// Shrink-wrapped (a section above the Done posts); nothing when empty.
   final bool compact;
@@ -81,6 +86,8 @@ class _BoardTaskListState extends State<BoardTaskList> {
   Object? _error;
   SupervisedStream? _watch;
   StreamSubscription<BoardChange>? _changes;
+  bool _selecting = false;
+  final Set<int> _selected = {};
 
   @override
   void initState() {
@@ -117,6 +124,8 @@ class _BoardTaskListState extends State<BoardTaskList> {
       setState(() {
         if (!more) _items.clear();
         _items.addAll(page.items);
+        // A task that left the list (claimed, merged) leaves the selection.
+        _selected.retainAll({for (final t in _items) t.number});
         BoardHub.of(s).noteTasks(page.items);
         _cursor = page.nextCursor;
         _loading = false;
@@ -182,10 +191,21 @@ class _BoardTaskListState extends State<BoardTaskList> {
             : widget.emptyDescription,
       );
     }
-    return ListView(
+    final selectable = widget.selectable && BoardHub.of(s).isAdmin;
+    final list = ListView(
       padding: EdgeInsets.fromLTRB(pad, 0, pad, 24),
       children: [
-        for (final t in _items) BoardTaskRow(services: s, task: t),
+        for (final t in _items)
+          BoardTaskRow(
+            services: s,
+            task: t,
+            selected: selectable && _selecting
+                ? _selected.contains(t.number)
+                : null,
+            onSelected: (v) => setState(
+              () => v ? _selected.add(t.number) : _selected.remove(t.number),
+            ),
+          ),
         if (_cursor != null)
           Padding(
             padding: const EdgeInsets.only(top: 12),
@@ -199,15 +219,122 @@ class _BoardTaskListState extends State<BoardTaskList> {
           ),
       ],
     );
+    if (!selectable) return list;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 48,
+          child: _selecting && _selected.isNotEmpty
+              ? _selectionBar(l, theme, pad)
+              : _toolbar(l, pad),
+        ),
+        Expanded(child: list),
+      ],
+    );
+  }
+
+  void _endSelection() => setState(() {
+    _selected.clear();
+    _selecting = false;
+  });
+
+  /// *Select* at the end of the row, like the filter bar of the issue tabs.
+  Widget _toolbar(WonkyAppLocalizations l, double pad) => Padding(
+    padding: EdgeInsets.symmetric(horizontal: pad + 8),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        ShadButton.ghost(
+          key: const ValueKey<String>('board.tasks.select'),
+          size: ShadButtonSize.sm,
+          leading: Icon(
+            _selecting ? LucideIcons.x : LucideIcons.squareCheck,
+            size: 14,
+          ),
+          onPressed: () => setState(() {
+            _selecting = !_selecting;
+            _selected.clear();
+          }),
+          child: Text(_selecting ? l.boardSelectDone : l.boardSelect),
+        ),
+      ],
+    ),
+  );
+
+  /// The drive's selection bar (as on the issue tabs): *Clear*, the count
+  /// and *Merge N tasks…*, which needs two tasks or more.
+  Widget _selectionBar(
+    WonkyAppLocalizations l,
+    ShadThemeData theme,
+    double pad,
+  ) => Container(
+    key: const ValueKey<String>('board.tasks.selectionBar'),
+    margin: EdgeInsets.fromLTRB(pad, 4, pad, 4),
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    decoration: BoxDecoration(
+      color: theme.colorScheme.secondary,
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          ShadTooltip(
+            builder: (_) => Text(l.actionClear),
+            child: ShadIconButton.ghost(
+              key: const ValueKey<String>('board.tasks.selection.clear'),
+              width: 32,
+              height: 32,
+              iconSize: 16,
+              semanticLabel: l.actionClear,
+              icon: const Icon(LucideIcons.x),
+              onPressed: _endSelection,
+            ),
+          ),
+          Text(l.boardSelected(_selected.length), style: theme.textTheme.small),
+          const SizedBox(width: 12),
+          ShadTooltip(
+            builder: (_) => Text(l.boardMergeTasksNeedsTwo),
+            child: ShadButton.ghost(
+              key: const ValueKey<String>('board.tasks.selection.merge'),
+              size: ShadButtonSize.sm,
+              leading: const Icon(LucideIcons.merge, size: 14),
+              onPressed: _selected.length < 2 ? null : _merge,
+              child: Text(l.boardMergeTasksTitle(_selected.length)),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Future<void> _merge() async {
+    final r = await boardInvoke(s, 'shell.board.admin.mergeTasks', {
+      'taskNumbers': [..._selected],
+    }, context: context);
+    final n = (r?.data as Map?)?['taskNumber'];
+    if (r?.isOk != true || !mounted) return;
+    _endSelection();
+    if (n is int) boardOpenTask(s, n, context: context);
   }
 }
 
-/// One task: `T-12`, title, labels, status and claim state, post count.
+/// One task: `T-12`, title, labels, status and claim state, issue count;
+/// a checkbox in the admin selection mode ([selected] non-null).
 class BoardTaskRow extends StatelessWidget {
-  const BoardTaskRow({super.key, required this.services, required this.task});
+  const BoardTaskRow({
+    super.key,
+    required this.services,
+    required this.task,
+    this.selected,
+    this.onSelected,
+  });
 
   final ShellServices services;
   final BoardTaskView task;
+  final bool? selected;
+  final ValueChanged<bool>? onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -216,42 +343,61 @@ class BoardTaskRow extends StatelessWidget {
     final muted = theme.textTheme.muted.copyWith(fontSize: 12);
     final t = task;
     void open() => boardOpenTask(services, t.number, context: context);
+    final selected = this.selected;
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 6,
+      children: [
+        BoardNumberedTitle(number: 'T-${t.number}', title: t.title),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            ...boardLabelChips(l, area: t.area, size: t.size),
+            BoardStatusBadge(
+              status: t.status,
+              label: l.boardTaskStatusName(t.status),
+            ),
+            Text(boardClaimState(l, t), style: muted),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 3,
+              children: [
+                Icon(
+                  LucideIcons.layers,
+                  size: 14,
+                  color: theme.colorScheme.mutedForeground,
+                ),
+                Text(l.boardPostCount(t.posts.length), style: muted),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
     return BoardListTile(
       key: ValueKey<String>('board.task.${t.number}'),
       semanticLabel: 'T-${t.number} ${t.title}, ${boardClaimState(l, t)}',
+      selected: selected == true,
       onTap: open,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 6,
-        children: [
-          BoardNumberedTitle(number: 'T-${t.number}', title: t.title),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              ...boardLabelChips(l, area: t.area, size: t.size),
-              BoardStatusBadge(
-                status: t.status,
-                label: l.boardTaskStatusName(t.status),
-              ),
-              Text(boardClaimState(l, t), style: muted),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 3,
-                children: [
-                  Icon(
-                    LucideIcons.layers,
-                    size: 14,
-                    color: theme.colorScheme.mutedForeground,
+      child: selected == null
+          ? details
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 12,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: ShadCheckbox(
+                    key: ValueKey<String>('board.task.${t.number}.select'),
+                    value: selected,
+                    onChanged: onSelected,
                   ),
-                  Text(l.boardPostCount(t.posts.length), style: muted),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
+                ),
+                Expanded(child: details),
+              ],
+            ),
     );
   }
 }
