@@ -4152,47 +4152,60 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
       'It runs the server and the apps. The same command updates an installed CLI to this version. Add Dart\'s install directory to your PATH if serverpod is not found.';
 
   @override
-  String get boardContribStep3Title => 'Fork and clone the repository';
+  String get boardContribStep3Title => 'Fork the repository';
 
   @override
   String get boardContribStep3 =>
-      'Fork the repository on GitHub, then clone your fork and get the packages.';
+      'Create your own copy of the repository on GitHub. You push your changes to your fork and open the pull request from there.';
 
   @override
-  String get boardContribStep4Title => 'Configure the server';
+  String get boardContribForkLink => 'Fork on GitHub';
+
+  @override
+  String get boardContribStep4Title => 'Clone the repository';
 
   @override
   String get boardContribStep4 =>
-      'Create your passwords file in wonky_server and replace the CHANGE_ME values. AI keys are optional.';
+      'Clone your fork to your machine (replace <you> with your GitHub username) and get the packages.';
 
   @override
-  String get boardContribStep5Title => 'Start the server';
+  String get boardContribStep5Title => 'Configure the server';
 
   @override
   String get boardContribStep5 =>
-      'Run it in wonky_server: it starts the development database, applies the migrations and hot reloads. Start an app from its UI or let your agent do it through the serverpod MCP server (.mcp.json is in the repository). Sign up with any email; in development the code is in the server log.';
+      'Create your passwords file in wonky_server and replace the CHANGE_ME values. AI keys are optional.';
 
   @override
-  String get boardContribStep6Title => 'Pick a task';
+  String get boardContribStep6Title => 'Start the server';
 
   @override
   String get boardContribStep6 =>
-      'Claim a task under Up for grabs, paste its prompt into your agent and review the result.';
+      'Run it in wonky_server: it starts the development database, applies the migrations and hot reloads. Start an app from its UI or let your agent do it through the serverpod MCP server (.mcp.json is in the repository). Sign up with any email; in development the code is in the server log.';
 
   @override
-  String get boardContribStep7Title => 'Open a pull request';
+  String get boardContribStep7Title => 'Pick a task';
 
   @override
   String get boardContribStep7 =>
+      'Claim a task under Up for grabs, paste its prompt into your agent and review the result.';
+
+  @override
+  String get boardContribStep8Title => 'Open a pull request';
+
+  @override
+  String get boardContribStep8 =>
       'One task per pull request. The description contains the Wonky-Task and Wonky-Claim lines from the task page. Pull requests without a valid task are closed after 7 days.';
+
+  @override
+  String get boardContribStep9Title => 'Sign the CLA and follow up';
+
+  @override
+  String get boardContribStep9 =>
+      'If you haven\'t signed the Serverpod contributor license agreement (CLA) yet, sign it on GitHub: the CLA Assistant bot asks for it on your pull request, and you reply with the line below. You sign it once. Then check back once your pull request has been reviewed, and fix any issues the review points out.';
 
   @override
   String get boardContribLicense =>
       'Contributions are accepted under the repository\'s BSD-3-Clause license.';
-
-  @override
-  String get boardContribCla =>
-      'Contributions need the Serverpod CLA. You sign it once, on your first pull request: the CLA Assistant bot asks for it.';
 
   @override
   String boardContribSecurity(String email) {
@@ -8739,48 +8752,60 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
       '[Îţ ŕûñš ţĥé šéŕṽéŕ åñð ţĥé åþþš. Ţĥé šåɱé çöɱɱåñð ûþðåţéš åñ îñšţåļļéð ÇĻÎ ţö ţĥîš ṽéŕšîöñ. Åðð Ðåŕţ\'š îñšţåļļ ðîŕéçţöŕý ţö ýöûŕ ÞÅŢĤ îƒ šéŕṽéŕþöð îš ñöţ ƒöûñð. one two three four five six seven eight nine te]';
 
   @override
-  String get boardContribStep3Title =>
-      '[Ƒöŕķ åñð çļöñé ţĥé ŕéþöšîţöŕý one two t]';
+  String get boardContribStep3Title => '[Ƒöŕķ ţĥé ŕéþöšîţöŕý one tw]';
 
   @override
   String get boardContribStep3 =>
-      '[Ƒöŕķ ţĥé ŕéþöšîţöŕý öñ ĜîţĤûƀ, ţĥéñ çļöñé ýöûŕ ƒöŕķ åñð ĝéţ ţĥé þåçķåĝéš. one two three four fiv]';
+      '[Çŕéåţé ýöûŕ öŵñ çöþý öƒ ţĥé ŕéþöšîţöŕý öñ ĜîţĤûƀ. Ýöû þûšĥ ýöûŕ çĥåñĝéš ţö ýöûŕ ƒöŕķ åñð öþéñ ţĥé þûļļ ŕéǫûéšţ ƒŕöɱ ţĥéŕé. one two three four five six seven e]';
 
   @override
-  String get boardContribStep4Title => '[Çöñƒîĝûŕé ţĥé šéŕṽéŕ one two]';
+  String get boardContribForkLink => '[Ƒöŕķ öñ ĜîţĤûƀ one t]';
+
+  @override
+  String get boardContribStep4Title => '[Çļöñé ţĥé ŕéþöšîţöŕý one two]';
 
   @override
   String get boardContribStep4 =>
-      '[Çŕéåţé ýöûŕ þåššŵöŕðš ƒîļé îñ ŵöñķý_šéŕṽéŕ åñð ŕéþļåçé ţĥé ÇĤÅÑĜÉ_ṀÉ ṽåļûéš. ÅÎ ķéýš åŕé öþţîöñåļ. one two three four five six se]';
+      '[Çļöñé ýöûŕ ƒöŕķ ţö ýöûŕ ɱåçĥîñé (ŕéþļåçé <ýöû> ŵîţĥ ýöûŕ ĜîţĤûƀ ûšéŕñåɱé) åñð ĝéţ ţĥé þåçķåĝéš. one two three four five six]';
 
   @override
-  String get boardContribStep5Title => '[Šţåŕţ ţĥé šéŕṽéŕ one t]';
+  String get boardContribStep5Title => '[Çöñƒîĝûŕé ţĥé šéŕṽéŕ one two]';
 
   @override
   String get boardContribStep5 =>
-      '[Ŕûñ îţ îñ ŵöñķý_šéŕṽéŕ: îţ šţåŕţš ţĥé ðéṽéļöþɱéñţ ðåţåƀåšé, åþþļîéš ţĥé ɱîĝŕåţîöñš åñð ĥöţ ŕéļöåðš. Šţåŕţ åñ åþþ ƒŕöɱ îţš ÛÎ öŕ ļéţ ýöûŕ åĝéñţ ðö îţ ţĥŕöûĝĥ ţĥé šéŕṽéŕþöð ṀÇÞ šéŕṽéŕ (.ɱçþ.ĵšöñ îš îñ ţĥé ŕéþöšîţöŕý). Šîĝñ ûþ ŵîţĥ åñý éɱåîļ; îñ ðéṽéļöþɱéñţ ţĥé çöðé îš îñ ţĥé šéŕṽéŕ ļöĝ. one two three four five six seven eight nine ten one two three four five six seven]';
+      '[Çŕéåţé ýöûŕ þåššŵöŕðš ƒîļé îñ ŵöñķý_šéŕṽéŕ åñð ŕéþļåçé ţĥé ÇĤÅÑĜÉ_ṀÉ ṽåļûéš. ÅÎ ķéýš åŕé öþţîöñåļ. one two three four five six se]';
 
   @override
-  String get boardContribStep6Title => '[Þîçķ å ţåšķ one]';
+  String get boardContribStep6Title => '[Šţåŕţ ţĥé šéŕṽéŕ one t]';
 
   @override
   String get boardContribStep6 =>
-      '[Çļåîɱ å ţåšķ ûñðéŕ Ûþ ƒöŕ ĝŕåƀš, þåšţé îţš þŕöɱþţ îñţö ýöûŕ åĝéñţ åñð ŕéṽîéŵ ţĥé ŕéšûļţ. one two three four five si]';
+      '[Ŕûñ îţ îñ ŵöñķý_šéŕṽéŕ: îţ šţåŕţš ţĥé ðéṽéļöþɱéñţ ðåţåƀåšé, åþþļîéš ţĥé ɱîĝŕåţîöñš åñð ĥöţ ŕéļöåðš. Šţåŕţ åñ åþþ ƒŕöɱ îţš ÛÎ öŕ ļéţ ýöûŕ åĝéñţ ðö îţ ţĥŕöûĝĥ ţĥé šéŕṽéŕþöð ṀÇÞ šéŕṽéŕ (.ɱçþ.ĵšöñ îš îñ ţĥé ŕéþöšîţöŕý). Šîĝñ ûþ ŵîţĥ åñý éɱåîļ; îñ ðéṽéļöþɱéñţ ţĥé çöðé îš îñ ţĥé šéŕṽéŕ ļöĝ. one two three four five six seven eight nine ten one two three four five six seven]';
 
   @override
-  String get boardContribStep7Title => '[Öþéñ å þûļļ ŕéǫûéšţ one tw]';
+  String get boardContribStep7Title => '[Þîçķ å ţåšķ one]';
 
   @override
   String get boardContribStep7 =>
+      '[Çļåîɱ å ţåšķ ûñðéŕ Ûþ ƒöŕ ĝŕåƀš, þåšţé îţš þŕöɱþţ îñţö ýöûŕ åĝéñţ åñð ŕéṽîéŵ ţĥé ŕéšûļţ. one two three four five si]';
+
+  @override
+  String get boardContribStep8Title => '[Öþéñ å þûļļ ŕéǫûéšţ one tw]';
+
+  @override
+  String get boardContribStep8 =>
       '[Öñé ţåšķ þéŕ þûļļ ŕéǫûéšţ. Ţĥé ðéšçŕîþţîöñ çöñţåîñš ţĥé Ŵöñķý-Ţåšķ åñð Ŵöñķý-Çļåîɱ ļîñéš ƒŕöɱ ţĥé ţåšķ þåĝé. Þûļļ ŕéǫûéšţš ŵîţĥöûţ å ṽåļîð ţåšķ åŕé çļöšéð åƒţéŕ 7 ðåýš. one two three four five six seven eight nine ten o]';
+
+  @override
+  String get boardContribStep9Title => '[Šîĝñ ţĥé ÇĻÅ åñð ƒöļļöŵ ûþ one two]';
+
+  @override
+  String get boardContribStep9 =>
+      '[Îƒ ýöû ĥåṽéñ\'ţ šîĝñéð ţĥé Šéŕṽéŕþöð çöñţŕîƀûţöŕ ļîçéñšé åĝŕééɱéñţ (ÇĻÅ) ýéţ, šîĝñ îţ öñ ĜîţĤûƀ: ţĥé ÇĻÅ Åššîšţåñţ ƀöţ åšķš ƒöŕ îţ öñ ýöûŕ þûļļ ŕéǫûéšţ, åñð ýöû ŕéþļý ŵîţĥ ţĥé ļîñé ƀéļöŵ. Ýöû šîĝñ îţ öñçé. Ţĥéñ çĥéçķ ƀåçķ öñçé ýöûŕ þûļļ ŕéǫûéšţ ĥåš ƀééñ ŕéṽîéŵéð, åñð ƒîẋ åñý îššûéš ţĥé ŕéṽîéŵ þöîñţš öûţ. one two three four five six seven eight nine ten one two three four five six seven eight]';
 
   @override
   String get boardContribLicense =>
       '[Çöñţŕîƀûţîöñš åŕé åççéþţéð ûñðéŕ ţĥé ŕéþöšîţöŕý\'š ƁŠÐ-3-Çļåûšé ļîçéñšé. one two three four five]';
-
-  @override
-  String get boardContribCla =>
-      '[Çöñţŕîƀûţîöñš ñééð ţĥé Šéŕṽéŕþöð ÇĻÅ. Ýöû šîĝñ îţ öñçé, öñ ýöûŕ ƒîŕšţ þûļļ ŕéǫûéšţ: ţĥé ÇĻÅ Åššîšţåñţ ƀöţ åšķš ƒöŕ îţ. one two three four five six seven e]';
 
   @override
   String boardContribSecurity(String email) {

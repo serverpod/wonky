@@ -7225,74 +7225,98 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardContribStep3Title.
   ///
   /// In en, this message translates to:
-  /// **'Fork and clone the repository'**
+  /// **'Fork the repository'**
   String get boardContribStep3Title;
 
   /// No description provided for @boardContribStep3.
   ///
   /// In en, this message translates to:
-  /// **'Fork the repository on GitHub, then clone your fork and get the packages.'**
+  /// **'Create your own copy of the repository on GitHub. You push your changes to your fork and open the pull request from there.'**
   String get boardContribStep3;
+
+  /// No description provided for @boardContribForkLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Fork on GitHub'**
+  String get boardContribForkLink;
 
   /// No description provided for @boardContribStep4Title.
   ///
   /// In en, this message translates to:
-  /// **'Configure the server'**
+  /// **'Clone the repository'**
   String get boardContribStep4Title;
 
   /// No description provided for @boardContribStep4.
   ///
   /// In en, this message translates to:
-  /// **'Create your passwords file in wonky_server and replace the CHANGE_ME values. AI keys are optional.'**
+  /// **'Clone your fork to your machine (replace <you> with your GitHub username) and get the packages.'**
   String get boardContribStep4;
 
   /// No description provided for @boardContribStep5Title.
   ///
   /// In en, this message translates to:
-  /// **'Start the server'**
+  /// **'Configure the server'**
   String get boardContribStep5Title;
 
   /// No description provided for @boardContribStep5.
   ///
   /// In en, this message translates to:
-  /// **'Run it in wonky_server: it starts the development database, applies the migrations and hot reloads. Start an app from its UI or let your agent do it through the serverpod MCP server (.mcp.json is in the repository). Sign up with any email; in development the code is in the server log.'**
+  /// **'Create your passwords file in wonky_server and replace the CHANGE_ME values. AI keys are optional.'**
   String get boardContribStep5;
 
   /// No description provided for @boardContribStep6Title.
   ///
   /// In en, this message translates to:
-  /// **'Pick a task'**
+  /// **'Start the server'**
   String get boardContribStep6Title;
 
   /// No description provided for @boardContribStep6.
   ///
   /// In en, this message translates to:
-  /// **'Claim a task under Up for grabs, paste its prompt into your agent and review the result.'**
+  /// **'Run it in wonky_server: it starts the development database, applies the migrations and hot reloads. Start an app from its UI or let your agent do it through the serverpod MCP server (.mcp.json is in the repository). Sign up with any email; in development the code is in the server log.'**
   String get boardContribStep6;
 
   /// No description provided for @boardContribStep7Title.
   ///
   /// In en, this message translates to:
-  /// **'Open a pull request'**
+  /// **'Pick a task'**
   String get boardContribStep7Title;
 
   /// No description provided for @boardContribStep7.
   ///
   /// In en, this message translates to:
-  /// **'One task per pull request. The description contains the Wonky-Task and Wonky-Claim lines from the task page. Pull requests without a valid task are closed after 7 days.'**
+  /// **'Claim a task under Up for grabs, paste its prompt into your agent and review the result.'**
   String get boardContribStep7;
+
+  /// No description provided for @boardContribStep8Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a pull request'**
+  String get boardContribStep8Title;
+
+  /// No description provided for @boardContribStep8.
+  ///
+  /// In en, this message translates to:
+  /// **'One task per pull request. The description contains the Wonky-Task and Wonky-Claim lines from the task page. Pull requests without a valid task are closed after 7 days.'**
+  String get boardContribStep8;
+
+  /// No description provided for @boardContribStep9Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign the CLA and follow up'**
+  String get boardContribStep9Title;
+
+  /// No description provided for @boardContribStep9.
+  ///
+  /// In en, this message translates to:
+  /// **'If you haven\'t signed the Serverpod contributor license agreement (CLA) yet, sign it on GitHub: the CLA Assistant bot asks for it on your pull request, and you reply with the line below. You sign it once. Then check back once your pull request has been reviewed, and fix any issues the review points out.'**
+  String get boardContribStep9;
 
   /// No description provided for @boardContribLicense.
   ///
   /// In en, this message translates to:
   /// **'Contributions are accepted under the repository\'s BSD-3-Clause license.'**
   String get boardContribLicense;
-
-  /// No description provided for @boardContribCla.
-  ///
-  /// In en, this message translates to:
-  /// **'Contributions need the Serverpod CLA. You sign it once, on your first pull request: the CLA Assistant bot asks for it.'**
-  String get boardContribCla;
 
   /// No description provided for @boardContribSecurity.
   ///

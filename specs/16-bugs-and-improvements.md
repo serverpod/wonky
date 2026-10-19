@@ -1295,25 +1295,29 @@ is opened for a change nobody has seen working. The frame is added when the task
      agent (Claude Code recommended, any agent that reads `AGENTS.md` works).
   2. Install or update the Serverpod CLI to the beta Wonky Work uses:
      `dart install serverpod_cli <VERSION>` (the version of the CI workflow).
-  3. Fork the repository, clone the fork and run `flutter pub get`.
-  4. In `wonky_server`, create `config/passwords.yaml` from `passwords.example.yaml` (development
+  3. Fork the repository on GitHub (the in-app step links to `https://github.com/<repo>/fork`).
+  4. Clone the fork and run `flutter pub get`.
+  5. In `wonky_server`, create `config/passwords.yaml` from `passwords.example.yaml` (development
      defaults only; AI keys are optional).
-  5. Run `serverpod start` in `wonky_server` (it also starts the development database) and start
+  6. Run `serverpod start` in `wonky_server` (it also starts the development database) and start
      an app from its UI. Point the agent at the
      `serverpod` MCP server (`.mcp.json` is already in the repo).
-  6. Pick a task, paste its prompt into the agent, and review the result.
-  7. PR rules (§13.1): one task per PR, the `Wonky-Task:` and `Wonky-Claim:` lines, the
+  7. Pick a task, paste its prompt into the agent, and review the result.
+  8. PR rules (§13.1): one task per PR, the `Wonky-Task:` and `Wonky-Claim:` lines, the
      checks *Wonky task* and *Wonky task review*, and auto-close after 7 days without a valid
      task.
-  8. License and CLA (B13): BSD-3-Clause; the Serverpod CLA is signed once, on the first pull
-     request, by replying to the CLA Assistant bot.
-  9. Security issues: email `security@serverpod.dev`, never a post or PR (`SECURITY.md`).
-- **In-app page** `/improvements/contribute`: a short version of steps 1–7 with copy buttons and
+  9. Sign the CLA and follow up (B13): the Serverpod CLA is signed once, on GitHub, on the first
+     pull request, by replying to the CLA Assistant bot; then check back once the pull request is
+     reviewed and fix what the review points out.
+  10. License (BSD-3-Clause) and security issues: email `security@serverpod.dev`, never a post
+      or PR (`SECURITY.md`).
+- **In-app page** `/improvements/contribute`: a short version of steps 1–9 with copy buttons and
   a link to the full file on GitHub. Step 1 (and the task page's *Set up Wonky Work locally*)
   starts with *Install Flutter, Dart and the Serverpod CLI: Serverpod installation guide*, a link
   through the external-link confirmation; the commands are `boardSetupCommands` (no Docker step);
-  under the license line, the CLA line (signed once, on the first pull request). The text is part of the app's strings, not fetched, because
-  the board must work offline from GitHub.
+  step 9 has the CLA reply line (`boardClaSignLine`) to copy; under the steps, the license and
+  security lines. The text is part of the app's strings, not fetched, because the board must work
+  offline from GitHub.
 - **`.github/ISSUE_TEMPLATE/config.yml`** adds a contact link *Report bugs and suggest
   improvements in Wonky Work* (`https://wonky.work/improvements`) and sets
   `blank_issues_enabled: false`. The existing `bug_report.yml` stays for self-hosters.

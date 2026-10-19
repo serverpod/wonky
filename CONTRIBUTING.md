@@ -43,9 +43,14 @@ This installs the CLI, or updates an existing install to the latest beta, which 
 needs (the version is `VERSION` in `.github/workflows/tests.yml`). `dart install` puts the
 executable in Dart's install directory; add it to your `PATH` if `serverpod` is not found.
 
-## 3. Get the code
+## 3. Fork the repository
 
-Fork [serverpod/wonky](https://github.com/serverpod/wonky) on GitHub, then:
+Fork [serverpod/wonky](https://github.com/serverpod/wonky) on GitHub (**Fork** at the top of the
+page). The fork is your own copy: you push your changes to it and open the pull request from it.
+
+## 4. Clone the repository
+
+Clone your fork (replace `<you>` with your GitHub username) and get the packages:
 
 ```bash
 git clone https://github.com/<you>/wonky.git
@@ -53,7 +58,7 @@ cd wonky
 flutter pub get
 ```
 
-## 4. Configure the server
+## 5. Configure the server
 
 ```bash
 cd wonky_server
@@ -64,7 +69,7 @@ Replace the `CHANGE_ME` values with random
 strings (for example `openssl rand -base64 24`). AI keys are optional: without them, the in-app
 assistant asks each user for their own key, and the board skips its AI checks.
 
-## 5. Run Wonky Work
+## 6. Run Wonky Work
 
 ```bash
 serverpod start
@@ -78,7 +83,7 @@ or on their own dev ports when started from `serverpod start`.
 
 Sign up with any email: in development the verification code is printed in the server log.
 
-## 6. Build the task
+## 7. Build the task
 
 1. On the task page, press **Claim this task**. Note your claim code (for example `7Q4F-K2M9`).
 2. Create a branch in your fork.
@@ -91,7 +96,7 @@ Sign up with any email: in development the verification code is printed in the s
 You can **release** a claim at any time if you can't finish. Two active claims per person at a
 time.
 
-## 7. Open the pull request
+## 8. Open the pull request
 
 Open it against `main`. The description must contain exactly one of each line:
 
@@ -108,6 +113,15 @@ Add a short summary of how each acceptance criterion is met (the PR template has
 - The check **Wonky task review** posts an AI review against the acceptance criteria. It is
   advisory; maintainers make the call.
 - The normal CI (analyze, format, tests) must pass.
+
+## 9. Sign the CLA and follow up
+
+If you haven't signed the Serverpod Contributor License Agreement (CLA) yet, sign it on GitHub:
+the CLA Assistant bot comments on your pull request, and you reply with the line from
+[License and CLA](#license-and-cla). You sign it once.
+
+Then check back once your pull request has been reviewed: fix the issues the review points out
+and push to the same branch, which updates the pull request.
 
 ## License and CLA
 
