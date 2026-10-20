@@ -76,6 +76,8 @@ class BoardCommentActions extends CommentThreadActions {
     required this.services,
     required this.postNumber,
     this.open = true,
+    this.excluded,
+    this.onSelect,
   });
 
   final ShellServices services;
@@ -83,6 +85,13 @@ class BoardCommentActions extends CommentThreadActions {
 
   /// Whether new comments are accepted (not on removed or deleted posts).
   final bool open;
+
+  /// Admins choosing the comments for a task prompt (specs/16 §9.3): the
+  /// uuids left out (unchecked). Null: no checkboxes.
+  final Set<String>? excluded;
+
+  /// A comment was checked (true) or unchecked.
+  final void Function(String uuid, bool selected)? onSelect;
 
   BoardHub get _hub => BoardHub.of(services);
 
@@ -127,6 +136,22 @@ class BoardCommentActions extends CommentThreadActions {
 
   @override
   String? replyHint(WonkyAppLocalizations l) => l.boardCommentHint;
+
+  // Only visible comments people wrote can go into a prompt.
+  @override
+  bool? selected(ThreadComment c) {
+    final ex = excluded;
+    if (ex == null || c.systemText != null) return null;
+    if (_view(c)?.moderation != BoardModeration.visible) return null;
+    return !ex.contains(c.id);
+  }
+
+  @override
+  void select(ThreadComment c, bool selected) => onSelect?.call(c.id, selected);
+
+  @override
+  String selectLabel(WonkyAppLocalizations l, ThreadComment c) =>
+      l.boardCommentInPrompt(c.authorName ?? l.someone);
 
   @override
   Future<void> reply(String body, {List<int> mentions = const []}) =>

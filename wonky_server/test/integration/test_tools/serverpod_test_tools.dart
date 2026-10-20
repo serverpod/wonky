@@ -3004,8 +3004,9 @@ class _BoardEndpoint {
     List<int> postNumbers,
     String title,
     _i2y7swbd.BoardArea area,
-    _ikq67o57.BoardSize size,
-  ) async {
+    _ikq67o57.BoardSize size, {
+    List<_is.UuidValue>? excludedComments,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
@@ -3022,6 +3023,7 @@ class _BoardEndpoint {
             'title': title,
             'area': area,
             'size': size,
+            'excludedComments': excludedComments,
           }),
           serializationManager: _serializationManager,
         );

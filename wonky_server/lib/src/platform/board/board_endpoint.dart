@@ -228,13 +228,23 @@ class BoardEndpoint extends Endpoint {
       BoardService.unblockUser(session, userId);
 
   /// Creates a draft task from posts and generates its prompt.
+  /// [excludedComments] are comments of the posts the admin left out of the
+  /// prompt's context (specs/16 §9.3).
   Future<BoardTaskView> createTask(
     Session session,
     List<int> postNumbers,
     String title,
     BoardArea area,
-    BoardSize size,
-  ) => BoardService.createTask(session, postNumbers, title, area, size);
+    BoardSize size, {
+    List<UuidValue>? excludedComments,
+  }) => BoardService.createTask(
+    session,
+    postNumbers,
+    title,
+    area,
+    size,
+    excludedComments: excludedComments ?? const [],
+  );
 
   Future<BoardTaskView> updateTask(
     Session session,

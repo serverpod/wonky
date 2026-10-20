@@ -241,24 +241,56 @@ abstract final class BoardTasks {
     return _postsOf(session, taskId);
   }
 
+  /// The comments of [posts] the prompt's context includes: visible
+  /// comments people wrote, without the ones the admin left out
+  /// ([BoardTask.promptExcludedCommentIds], specs/16 §9.3), at most
+  /// [maxCommentsPerPost] per post.
   static Future<Map<int, List<BoardComment>>> _commentsFor(
     Session session,
-    List<BoardPost> posts,
-  ) async {
+    List<BoardPost> posts, {
+    List<int>? excluded,
+  }) async {
+    final skip = {...?excluded};
     final result = <int, List<BoardComment>>{};
     for (final p in posts) {
       result[p.id!] = await BoardComment.db.find(
         session,
-        where: (t) =>
-            t.postId.equals(p.id!) &
-            t.moderation.equals(BoardModeration.visible) &
-            t.deletedAt.equals(null) &
-            t.systemEvent.equals(null),
+        where: (t) {
+          var w =
+              t.postId.equals(p.id!) &
+              t.moderation.equals(BoardModeration.visible) &
+              t.deletedAt.equals(null) &
+              t.systemEvent.equals(null);
+          if (skip.isNotEmpty) w = w & t.id.notInSet(skip);
+          return w;
+        },
         orderBy: (t) => t.id,
         limit: maxCommentsPerPost,
       );
     }
     return result;
+  }
+
+  /// The ids of the comments [uuids] of [posts]; comments of other posts
+  /// are an `invalidArgument`.
+  static Future<List<int>> _commentIds(
+    Session session,
+    List<BoardPost> posts,
+    List<UuidValue> uuids,
+  ) async {
+    if (uuids.isEmpty) return const [];
+    final postIds = {for (final p in posts) p.id!};
+    final rows = await BoardComment.db.find(
+      session,
+      where: (t) => t.uuid.inSet(uuids.toSet()),
+    );
+    if (rows.length != uuids.toSet().length ||
+        rows.any((c) => !postIds.contains(c.postId))) {
+      throw Errors.invalid(
+        'Only comments of the selected issues can be left out.',
+      );
+    }
+    return [for (final c in rows) c.id!]..sort();
   }
 
   /// How long a scheduled prompt may take before the task stops showing
@@ -381,7 +413,11 @@ abstract final class BoardTasks {
           session,
           task: task,
           posts: posts,
-          comments: await _commentsFor(session, posts),
+          comments: await _commentsFor(
+            session,
+            posts,
+            excluded: task.promptExcludedCommentIds,
+          ),
           webOrigin: NotificationService.webOrigin(),
         );
         body = text.trim().isEmpty ? null : text.trim();
@@ -488,11 +524,13 @@ abstract final class BoardTasks {
     List<int> postNumbers,
     String title,
     BoardArea area,
-    BoardSize size,
-  ) async {
+    BoardSize size, {
+    List<UuidValue> excludedComments = const [],
+  }) async {
     final c = await BoardAccess.requireAdmin(session);
     final clean = _title(title);
     final posts = await _postsFor(session, postNumbers);
+    final excluded = await _commentIds(session, posts, excludedComments);
     final now = nowUtc();
     var task = await session.db.transaction((tx) async {
       final task = await BoardTask.db.insertRow(
@@ -503,6 +541,7 @@ abstract final class BoardTasks {
           size: size,
           status: BoardTaskStatus.draft,
           promptBody: TaskPromptTemplate.blankBody,
+          promptExcludedCommentIds: excluded.isEmpty ? null : excluded,
           createdById: c.id,
           createdAt: now,
         ),
@@ -539,7 +578,11 @@ abstract final class BoardTasks {
       action: 'createTask',
       targetKind: BoardTargetKind.task,
       targetId: task.id!,
-      after: {...snapshot(task), 'postIds': ids.toList()},
+      after: {
+        ...snapshot(task),
+        'postIds': ids.toList(),
+        if (excluded.isNotEmpty) 'excludedCommentIds': excluded,
+      },
     );
     for (final p in posts) {
       await BoardLive.post(session, p.id!);
@@ -726,10 +769,20 @@ abstract final class BoardTasks {
           transaction: tx,
         );
       }
+      // The comments left out of each task's prompt stay out (the ids of
+      // comments whose issues leave again on unmerge no longer match).
+      final excluded = {
+        for (final t in tasks) ...?t.promptExcludedCommentIds,
+      }.toList()..sort();
       await BoardTask.db.updateRow(
         session,
-        target.copyWith(title: clean, area: area, size: size),
-        columns: (t) => [t.title, t.area, t.size],
+        target.copyWith(
+          title: clean,
+          area: area,
+          size: size,
+          promptExcludedCommentIds: excluded.isEmpty ? null : excluded,
+        ),
+        columns: (t) => [t.title, t.area, t.size, t.promptExcludedCommentIds],
         transaction: tx,
       );
       await BoardComments.systemRow(

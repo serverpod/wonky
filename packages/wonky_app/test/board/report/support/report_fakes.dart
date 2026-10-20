@@ -31,6 +31,9 @@ class FakeReportBoard extends UnfakedBoardRepository {
     claimHours: 48,
   );
 
+  /// The bodies `getPost` answers, by number.
+  final Map<int, String> postBodies = {};
+
   /// What `similar` answers.
   List<BoardSimilarPost> similarPosts = const [];
 
@@ -102,8 +105,12 @@ class FakeReportBoard extends UnfakedBoardRepository {
   }
 
   @override
-  Future<BoardPostView> getPost(int number) async =>
-      postView(number: number).copyWith(myVote: 0);
+  Future<BoardPostView> getPost(int number) async {
+    return postView(
+      number: number,
+      body: postBodies[number] ?? '',
+    ).copyWith(myVote: 0);
+  }
 
   @override
   Future<BoardVoteResult> vote(int number, int value) async {
@@ -167,11 +174,12 @@ BoardSimilarPost similarPost(
   BoardPostKind kind = BoardPostKind.bug,
   int score = 14,
   int myVote = 0,
+  BoardPostStatus status = BoardPostStatus.open,
 }) => BoardSimilarPost(
   number: number,
   kind: kind,
   title: title,
-  status: BoardPostStatus.open,
+  status: status,
   score: score,
   myVote: myVote,
 );

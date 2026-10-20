@@ -28,7 +28,10 @@ abstract class BoardMe
     required this.repository,
     required this.securityContact,
     required this.claimHours,
-  });
+    int? maxActiveClaims,
+    this.claimBlockedUntil,
+    this.claimBlockedReason,
+  }) : maxActiveClaims = maxActiveClaims ?? 3;
 
   factory BoardMe({
     required bool signedIn,
@@ -42,6 +45,9 @@ abstract class BoardMe
     required String repository,
     required String securityContact,
     required int claimHours,
+    int? maxActiveClaims,
+    DateTime? claimBlockedUntil,
+    String? claimBlockedReason,
   }) = _BoardMeImpl;
 
   factory BoardMe.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -59,6 +65,13 @@ abstract class BoardMe
       repository: jsonSerialization['repository'] as String,
       securityContact: jsonSerialization['securityContact'] as String,
       claimHours: jsonSerialization['claimHours'] as int,
+      maxActiveClaims: jsonSerialization['maxActiveClaims'] as int?,
+      claimBlockedUntil: jsonSerialization['claimBlockedUntil'] == null
+          ? null
+          : _isc.DateTimeJsonExtension.fromJson(
+              jsonSerialization['claimBlockedUntil'],
+            ),
+      claimBlockedReason: jsonSerialization['claimBlockedReason'] as String?,
     );
   }
 
@@ -85,6 +98,14 @@ abstract class BoardMe
 
   int claimHours;
 
+  /// Claims the caller may hold at a time (`maxActiveClaimsPerUser`).
+  int maxActiveClaims;
+
+  /// Set while the caller may not claim tasks (specs/16 §8.4).
+  DateTime? claimBlockedUntil;
+
+  String? claimBlockedReason;
+
   /// Returns a shallow copy of this [BoardMe]
   /// with some or all fields replaced by the given arguments.
   @_isc.useResult
@@ -100,6 +121,9 @@ abstract class BoardMe
     String? repository,
     String? securityContact,
     int? claimHours,
+    int? maxActiveClaims,
+    DateTime? claimBlockedUntil = const _isc.$UndefinedDateTime(),
+    String? claimBlockedReason,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -116,6 +140,10 @@ abstract class BoardMe
       'repository': repository,
       'securityContact': securityContact,
       'claimHours': claimHours,
+      'maxActiveClaims': maxActiveClaims,
+      if (claimBlockedUntil != null)
+        'claimBlockedUntil': claimBlockedUntil?.toJson(),
+      if (claimBlockedReason != null) 'claimBlockedReason': claimBlockedReason,
     };
   }
 
@@ -134,6 +162,10 @@ abstract class BoardMe
       'repository': repository,
       'securityContact': securityContact,
       'claimHours': claimHours,
+      'maxActiveClaims': maxActiveClaims,
+      if (claimBlockedUntil != null)
+        'claimBlockedUntil': claimBlockedUntil?.toJson(),
+      if (claimBlockedReason != null) 'claimBlockedReason': claimBlockedReason,
     };
   }
 
@@ -158,6 +190,9 @@ class _BoardMeImpl extends BoardMe {
     required String repository,
     required String securityContact,
     required int claimHours,
+    int? maxActiveClaims,
+    DateTime? claimBlockedUntil,
+    String? claimBlockedReason,
   }) : super._(
          signedIn: signedIn,
          userId: userId,
@@ -170,6 +205,9 @@ class _BoardMeImpl extends BoardMe {
          repository: repository,
          securityContact: securityContact,
          claimHours: claimHours,
+         maxActiveClaims: maxActiveClaims,
+         claimBlockedUntil: claimBlockedUntil,
+         claimBlockedReason: claimBlockedReason,
        );
 
   /// Returns a shallow copy of this [BoardMe]
@@ -188,6 +226,9 @@ class _BoardMeImpl extends BoardMe {
     String? repository,
     String? securityContact,
     int? claimHours,
+    int? maxActiveClaims,
+    DateTime? claimBlockedUntil = const _isc.$UndefinedDateTime(),
+    Object? claimBlockedReason = _Undefined,
   }) {
     return BoardMe(
       signedIn: signedIn ?? this.signedIn,
@@ -203,6 +244,13 @@ class _BoardMeImpl extends BoardMe {
       repository: repository ?? this.repository,
       securityContact: securityContact ?? this.securityContact,
       claimHours: claimHours ?? this.claimHours,
+      maxActiveClaims: maxActiveClaims ?? this.maxActiveClaims,
+      claimBlockedUntil: claimBlockedUntil is _isc.UndefinedSentinel
+          ? this.claimBlockedUntil
+          : claimBlockedUntil,
+      claimBlockedReason: claimBlockedReason is String?
+          ? claimBlockedReason
+          : this.claimBlockedReason,
     );
   }
 }

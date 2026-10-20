@@ -46,7 +46,7 @@ PR gets an AI review against its task (§13). The integration is built and enabl
 | B2 | Who sees the board | Everyone, including signed-out visitors |
 | B3 | Screenshots | Opt-in. A warning about privacy, then an annotation editor that can cover sensitive areas. Screenshots are **public** with the issue, because the person fixing the bug needs them |
 | B4 | Admins | Users whose (verified) account email is in a configured domain (`serverpod.dev`), via Google or email/password sign-in |
-| B5 | Claiming | Only published tasks (selected by admins) can be claimed, for **48 hours** |
+| B5 | Claiming | Only published tasks (selected by admins) can be claimed, for **48 hours**. (T-10) At most **3** claims at a time; 3 expired claims, or 2 issues removed by a moderator, block claiming for **2 weeks** (§8.4) |
 | B6 | Comments | Yes, with simple Markdown formatting |
 | B7 | Board location | A shared page in `wonky_app`, local to the current app (like Settings) |
 | B8 | Task prompts | Written by AI and editable by admins; a written prompt publishes its task unless the lint holds it (T-11, §10.2) |
@@ -173,7 +173,7 @@ user saw it.
 │ (•) Report a bug     ( ) Suggest an improvement                        │
 │                                                                        │
 │ Title  [ Pasting into a merged cell loses the formatting            ]  │
-│ ┌ Similar posts ──────────────────────────────────────────────────┐   │
+│ ┌ Similar issues ─────────────────────────────────────────────────┐   │
 │ │ #412 Paste into merged cells drops styles   ▲ 14   [Vote instead] │   │
 │ │ #388 Merged cells: paste behaves oddly       ▲ 3    [Vote instead] │   │
 │ └──────────────────────────────────────────────────────────────────┘   │
@@ -213,9 +213,20 @@ user saw it.
 #### 4.2.2 Similar issues
 
 - Debounced 400 ms after the title or body changes (minimum 3 words): `board.similar(text, kind)` returns up to 5
-  visible issues (Postgres full-text search, §6.4).
+  visible issues (Postgres full-text search, §6.4). (T-10) Only issues one can still vote for:
+  `open` and `planned`. Done and shipped issues are built, so they are not suggested (the client
+  drops them too, for older servers).
 - Each row has *Vote instead*. It casts the vote (bugs: *I hit this too*), closes the dialog after
   a confirmation toast, and keeps the draft in case the user comes back.
+- (T-10) The row's `#412 Title` is a link (underlined on hover, the focus ring, Enter / Space;
+  *Show #412 Title* for screen readers; key `dialog.board.report.similar.<n>.open`) that opens
+  the issue's details in a dialog over the report dialog (`showBoardSimilarPostDialog`, key
+  `dialog.board.similarPost`, max 640 px): the number and title, the kind, area and size chips,
+  the status badge and the votes, the author line and the Markdown body (`board.getPost`;
+  *Couldn't load this issue.* when it fails), scrolling at most 60 % of the window. Its actions
+  are *Close* (and Esc, back to the report with the draft as it was) and *Vote instead* (*Voted*
+  when already voted), which closes it and votes like the row's button. The single-window rule
+  holds: the issue page is not opened from there.
 
 #### 4.2.3 Screenshot
 
@@ -276,7 +287,7 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
 | `/improvements/bugs` | Board, tab *Bugs* |
 | `/improvements/tasks` | *Up for grabs* (published tasks nobody holds) |
 | `/improvements/claimed` | *Claimed* (claimed and in-review tasks) |
-| `/improvements/done` | Done and shipped (issues and tasks) |
+| `/improvements/done` | Done and shipped issues (bugs and improvements; T-10: finished tasks are not listed) |
 | `/improvements/review` | Admins only: moderation queue, bundles, drafts (§9.2) |
 | `/improvements/search?q=…` | Search results across all issues (§4.4); also `closed=1`, `kind=bug` or `kind=idea` |
 | `/improvements/p/:number` | Issue page |
@@ -301,11 +312,12 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
 - **Trail rules (`BoardTrail`, `board/pages/board_trail.dart`).** The trail is the board's
   hierarchy, never the browser history: root › list › task › issue at most.
   - A list opens an issue or task under it: root › list › item. A list that cannot hold the item
-    (an issue from *Up for grabs* or *Claimed*, a task from *Improvements*, *Bugs* or the search
-    results) gives the item's own list.
+    (an issue from *Up for grabs* or *Claimed*, a task from *Improvements*, *Bugs*, *Done* or the
+    search results) gives the item's own list.
   - *Claimed* is treated like *Up for grabs* (a task list). A task's own list follows its status
     (`BoardTab.ofTask`): *Claimed* while claimed or in review, *Up for grabs* when published (an
-    expired claim is published), *Done* when done or shipped.
+    expired claim is published), *Done* when done or shipped (T-10: *Done* lists no tasks, but a
+    finished task's crumb still names it, the archive it belongs to).
   - A search belongs to the results view (`BoardTrail.search`; the tabs are never searched): a
     issue opened from search results keeps
     the search in its URL (`/improvements/p/5?list=search&q=sort`), so the list crumb returns to
@@ -313,7 +325,7 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   - A task opens one of its linked issues under itself: root › *Up for grabs* (or the list the task
     came from) › T-n › #m.
   - An issue opens a task: the trail truncates to the task (root › list › T-n), never issue › task ›
-    issue › task; the list stays when it shows tasks (*Up for grabs*, *Claimed*, *Done*, *Review*),
+    issue › task; the list stays when it shows tasks (*Up for grabs*, *Claimed*, *Review*),
     else the task's own list.
   - An issue opens another issue (similar issues, merged duplicates, *Duplicate of*, the automatic
     redirect of a merged duplicate): the new issue replaces the current one (siblings, same
@@ -350,6 +362,15 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   overflows at 360 px.
 - Shared links use the current app's base (`/sheets/improvements/p/412`). The server's
   `/improvements/*` path redirects to `/drive/improvements/*` for links in emails and PRs.
+- **Markdown version (T-10).** `/improvements/p/412.md` on the server (not under an app base) is
+  the issue as Markdown, `text/markdown` with `Cache-Control: no-cache`
+  (`ImprovementsRedirectRoute`, `BoardMarkdown`): `# #412 Title`, a list of facts (kind, status,
+  *Duplicate of* / *Declined*, area and size with *(AI)* while unconfirmed, votes, reporter and
+  day, the task, merged duplicates, the page link and the screenshot link), the body, *Included
+  details* (pretty JSON) and *Comments (n)* oldest first (`### Name on 2026-10-19`, *(admin)*
+  for admins). Only public content, as a signed-out visitor sees it: a missing, deleted,
+  checking, held or removed issue answers 404, and only visible comments people wrote are listed.
+  Task prompts link the issues there (§10.1), so a coding agent reads them without the web app.
 
 ### 4.4 Board page
 
@@ -370,7 +391,8 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   - *Bugs* (count of open and planned bugs);
   - *Up for grabs* (published tasks without a valid claim);
   - *Claimed* (claimed and in-review tasks; in review = a PR is linked);
-  - *Done* (no count: it is the archive);
+  - *Done* (no count: it is the archive of finished bugs and improvements, done and shipped;
+    T-10: finished tasks are not listed there, their issues are);
   - *Review* (admins only, with the held count as the badge).
   The tabs scroll horizontally when they do not fit. *Up for grabs* and *Claimed* follow
   `watchTasks` live: a claim, release, expiry or linked PR moves a task between them. Each has its
@@ -452,15 +474,34 @@ the trail to the task; *Similar issues*, merged duplicates and *Duplicate of* re
   - *Similar issues* (top 3, from §6.4).
 - **Comments** (§7.3): a flat list, oldest first, with a composer at the bottom. Signed-out
   visitors see *Sign in to comment*.
+- **Admin toolbar (T-10)**, admins only, under the header (`board.post.adminBar`): one row of
+  `sm` buttons with icons (keys `board.post.bar.<id>`) and the ⋮ actions menu at its end (for
+  admins ⋮ leaves the title row; everyone else keeps it there). The buttons are the common
+  actions, most important first — *Approve* (primary, while held or being checked), *Select
+  for building* (primary otherwise; while the issue is visible, `open` or `planned` and not in
+  a task), *Add to task…*, *Labels…* (`shell.board.admin.setLabels`), *Merge into…* (*Unmerge*
+  for a duplicate), *Decline…* (*Reopen* when declined). When the row is too narrow, buttons
+  move into ⋮ (above its own entries, `board.post.menu.<id>`), the least important first, as in
+  the editors' toolbars (`ToolbarOverflowLayout` of `wonky_ui`; ⋮ is pinned and never moves).
+- **Comments for the prompt (T-10):** while *Select for building* is offered, every visible
+  comment people wrote has a checkbox before its author (`board.comment.<uuid>.select`, all
+  checked; screen readers: *Include the comment by Ada in the task prompt*), with the hint
+  *Checked comments go into the task prompt when you select this issue for building.* under the
+  *Comments* heading. The admin reads the comments in full on the page and unchecks the ones the
+  prompt should not see; *Select for building* sends them as `excludedComments` (§9.3), and the
+  task dialog then asks only for the title and labels. The checkboxes come from the shared
+  thread widget (`CommentThreadActions.selected` / `select` / `selectLabel`, off for document
+  comments).
 - **Actions menu (⋮)**:
   - author: *Edit* (while `open` and not in a task), *Delete*;
   - everyone signed in: *Copy link*, *Flag* (§7.5);
-  - admins: the moderation and selection actions (§9.2).
+  - admins: the less common moderation actions (§9.2): *Apply suggested title*, *Edit* / *Edit
+    and approve*, *Hold*, *Looks fine*, *Remove…* / *Restore*, *Block user…*.
 
 ### 4.6 Task page
 
 The breadcrumb (§4.3) ends in `T-12 Title` under the list it came from (*Up for grabs*,
-*Claimed*, *Done*, *Review*), else under its own list (*Claimed* while claimed or in review,
+*Claimed*, *Review*), else under its own list (*Claimed* while claimed or in review,
 *Done* once done or shipped, else *Up for grabs*). Linked issues open under the
 task.
 
@@ -469,6 +510,10 @@ task.
   - status, and the claim state (*Claimed by Ada · 31 h left*, or *Up for grabs*);
   - the buttons *Claim this task* / *Unclaim this task* (Lucide `ban`, also the icon of
     `shell.board.release`; §8); admins also get *Link pull request…*;
+  - (T-10) while the caller may not claim (§8.4; `BoardMe.claimBlockedUntil`), *Claim this
+    task* is disabled and a warning notice under the buttons gives the server's reason
+    (`board.task.notice.claimBlocked`: *You can't claim tasks until November 2, 2026: 3 of your
+    claims expired without a pull request or an unclaim.*);
   - for the claimant: the **claim code** (`7Q4F-K2M9`) with *Copy*, and the time left.
 - **Linked issues**: one row per issue with its score and its screenshots.
 - **How to build it** (always shown, not collapsible; the claimant and admins see every step, others see an outline while the task is up for grabs — the setup link, "Give your coding agent the prompt (claim the task to get the prompt)." and "Open a pull request" without instructions — and nothing once someone else claimed it):
@@ -787,8 +832,9 @@ flattened screenshot) to catch readable emails, names or document text the autho
   (*Trending*, *Top*, *New*, *Most discussed*). The other filters (kind, statuses, area, size,
   *Mine*, visibility) still apply.
 - `similar(text, kind)` uses the same words OR-joined as prefixes (`paste:* | cells:*` through
-  `to_tsquery`), `ts_rank_cd`, and only `visible` issues in `open`/`planned`/`done`. It returns up
-  to 5.
+  `to_tsquery`), `ts_rank_cd`, and only `visible` issues in `open`/`planned` (T-10: built issues
+  are not suggested in the report dialog; the triage's duplicate candidates still include
+  `done`). It returns up to 5.
 - **Jev rerank** (when configured): full-text search returns the top 10 candidates, and one Jev
   request with a `same_<n>` Noul per candidate ("Do `draft` and `candidate` describe the same
   problem or request?") reorders them. Only candidates with p ≥ 0.3 are shown, at most 5. This is
@@ -808,7 +854,7 @@ flattened screenshot) to catch readable emails, names or document text the autho
 | Edit or delete own comment | | | ✓ | |
 | Remove screenshot | | | ✓ | ✓ |
 | Moderate, set labels, merge, select, manage tasks, block users | | | | ✓ |
-| Claim a published task | | ✓ (max 2 active claims, not blocked) | ✓ | ✓ |
+| Claim a published task | | ✓ (max 3 active claims, not blocked, not claim-blocked §8.4) | ✓ | ✓ |
 
 Users blocked from the board (§9.2) can read but not write. Their writing endpoints answer
 `forbidden` with *You can't post on Bugs & improvements*.
@@ -1028,8 +1074,10 @@ The board list itself is not live: it refreshes on focus and on *Load more*.
 
 - `board.claimTask(taskNumber)`:
   - only for `published` tasks;
-  - fails with `conflict` when the task is already claimed, and with `limitExceeded` when the
-    caller already has `board.maxActiveClaimsPerUser` (2) active claims;
+  - fails with `conflict` when the task is already claimed, with `limitExceeded` when the
+    caller already has `board.maxActiveClaimsPerUser` (3, T-10) active claims (valid `claimed`
+    ones: a task in review no longer counts), and with `forbidden` and the reason while the
+    caller is claim-blocked (§8.4);
   - sets `claimedById`, `claimedAt` and `claimExpiresAt = now + board.claimHours` (48), and
     generates a new **claim code** (§13.7). The code is returned only to the claimant (task
     page, `board.getTask`, MCP `board.get_task`) and goes into the PR description (§13.1).
@@ -1072,6 +1120,32 @@ The board list itself is not live: it refreshes on focus and on *Load more*.
 - A successful deploy containing the merge sets `shipped` (§13.6; `board.markShipped` is the
   admin fallback) and notifies voters again (*Now live on wonky.work*).
 
+### 8.4 Claim blocks (T-10)
+
+Claiming is blocked for `board.claimBlockDays` (14) days, for non-admins, after either:
+
+- `board.expiredClaimsToBlock` (3) **expired claims**: claims that ran out without a linked pull
+  request and without an unclaim (the `expired` activity rows with the claimant as actor, written
+  by the sweep, by a claim that finds the claim expired, and by an unclaim after the deadline).
+  A release in time is not counted; neither is a release by an admin;
+- `board.invalidPostsToBlock` (2) **issues removed by a moderator** (`moderation: removed`, its
+  `removedAt`): spam, offensive, personal data and the like. Declined issues are valid reports
+  and do not count; neither do issues the author deleted.
+
+The block is computed from the record on every claim and `board.me()` (`BoardTaskClaims.
+claimBlock`), not stored: events in time order count per kind, the event that reaches the
+threshold starts a block of 14 days from its time, and the count of that kind starts again. So
+restoring a removed issue (the undo of *Remove*) lifts the block it caused, and a later
+threshold extends a running block. A value of 0 turns that rule off.
+
+- `board.claimTask` answers `forbidden` with the reason, e.g. *You can't claim tasks until
+  November 2, 2026: 3 of your claims expired without a pull request or an unclaim.* or *… a
+  moderator removed 2 of your issues.*;
+- `BoardMe.claimBlockedUntil` and `claimBlockedReason` (and `maxActiveClaims`) tell the client:
+  the task page disables *Claim this task* and shows the reason (§4.6);
+- the block only concerns claiming: reporting, voting and commenting are unaffected (a board
+  block, §9.2, is separate).
+
 ## 9. Admins and moderation
 
 ### 9.1 Who is an admin
@@ -1095,7 +1169,8 @@ wonky:
   re-verification, or if `validateGoogleAccountDetails` is overridden.
 - Admin status is never stored. Removing the domain from the config removes admin rights at the
   next request.
-- `board.me()` returns `{signedIn, isAdmin, blocked, activeClaims, githubLogin?}` for the client.
+- `board.me()` returns `{signedIn, isAdmin, blocked, activeClaims, maxActiveClaims,
+  claimBlockedUntil?, claimBlockedReason?, githubLogin?}` for the client.
   It is used to show admin UI only; every admin endpoint checks again on the server.
 - Serverpod scopes are not used: they are tied to the auth session and would need a sync job
   when the config changes.
@@ -1163,9 +1238,23 @@ endpoint call:
   when the admin has left the page.
 - **Manual bundle**: on the board, admins get checkboxes on rows. With several issues selected,
   the action bar offers *Create task from 4 issues…* (title, area, size), and the draft task
-  links all of them. *Add to task…* adds selected issues to an existing draft, published or
-  claimed task. The same *Add to task…* is in an issue's ⋮ menu (open issues not in a task,
-  `board.post.menu.addToTask`), and the task page has *Add issues…* and a remove button per
+  links all of them. **Comments for the prompt (T-10):** on the issue page the admin checks the
+  comments right in the thread (§4.5), and *Select for building* passes the unchecked ones. Where
+  the comments are not on screen (*Create task from N issues…* on the board, a suggestion's
+  *Edit*), the task dialog lists the visible comments people wrote on the issues, grouped under
+  `#412 Title`, one checkbox each
+  (`Name: the first 140 characters`, plain text), all checked, in a scrolling box of at most
+  240 px (`ChecklistFieldSpec` of `WonkyDialogSpec`, so MCP can tick them too: type
+  `checklist`; keys `dialog.board.task.comments` and `dialog.board.task.comments.<uuid>`). The
+  unchecked ones go to `createTask(…, excludedComments: [uuid])` and are stored on the task
+  (`promptExcludedCommentIds`); every prompt the AI writes for the task (§10.1, *Regenerate*,
+  rewrites) leaves them out, while the other comments, also later ones, are included. Merged
+  tasks keep each task's left-out comments. `shell.board.admin.createTask` takes
+  `excludedComments` (uuids) too (given, even empty, the dialog lists no comments) and redo
+  keeps them; a uuid of another issue's comment is an `invalidArgument`. *Add to task…* adds
+  selected issues to an existing draft, published or claimed task. The same *Add to task…* is
+  in an issue's admin toolbar (open issues not in a task, `board.post.bar.addToTask`, §4.5),
+  and the task page has *Add issues…* and a remove button per
   linked issue. All of them are `shell.board.admin.setTaskPosts`.
 - **Changing a task's issues rewrites its prompt** (decided 2026-10-19). When `setTaskPosts`
   adds or removes issues (an unchanged set is a no-op), or tasks are merged (below), the AI
@@ -1251,8 +1340,9 @@ changed. The input:
 
 - the task title, area and size;
 - for each issue: kind, title, body, included details, the screenshot URL (a stable redirect,
-  `/improvements/p/412/screenshot`), and up to 20 admin and top-voted comments (all as delimited
-  untrusted data);
+  `/improvements/p/412/screenshot`), and up to 20 visible comments, oldest first, without the
+  ones the admin left out when creating the task (T-10, §9.3; all as delimited untrusted
+  data);
 - the **spec index**: `specs/README.md` tables plus the headings of the area's spec files. The
   server reads them from a generated snapshot (`wonky_server/lib/src/platform/board/ai/spec_index.g.dart`,
   written by `dart run tool/spec_index.dart`; a test fails when it is stale) so it doesn't need a
@@ -1282,7 +1372,7 @@ light and dark, the checklist after changes).
 <AI-written body: goal, acceptance criteria, specs to read, likely code, out of scope, tests>
 
 ## Reports this task comes from
-- #412 Paste into merged cells drops styles — https://wonky.work/improvements/p/412 (14 votes)
+- #412 Paste into merged cells drops styles — https://wonky.work/improvements/p/412.md (14 votes)
   …
 
 ## When you are done
@@ -1303,6 +1393,10 @@ Wonky-Claim: 7Q4F-K2M9
 
 and a short summary of how each acceptance criterion is met.
 ```
+
+(T-10) The links of *Reports this task comes from* are the issues' Markdown versions
+(`/improvements/p/412.md`, §4.3: body, details and comments), which a coding agent can read
+directly; the page link is in that file.
 
 The "When you are done" part is built in code (`TaskPromptTemplate.wrap`, with the two lines in
 a ```` ``` ```` block). For the claimant the server builds it with their actual claim code
@@ -1385,7 +1479,7 @@ is opened for a change nobody has seen working. The frame is added when the task
 | Prompt injection into triage, task prompts or reviews | Jev returns only typed answers (no text that could carry instructions); issues that argue for their own classification are caught by the review band and community flags. Gemini receives issue and PR text as delimited untrusted data and answers through a schema. Task prompts need admin review before publishing (§10.2) and are linted; the fixed template frames the AI text. PR reviews are advisory |
 | Forged GitHub webhooks, claim takeover through PRs | HMAC-verified webhooks, delivery dedupe, per-claim codes (§13.7) |
 | Vote manipulation | One vote per account; accounts need a verified email; votes from blocked users are excluded from scores (recomputed on block); P2: weight new accounts lower |
-| Claim hoarding | 2 active claims per user; 48 h expiry; admins release; PRs without a valid task auto-close after 7 days |
+| Claim hoarding | 3 active claims per user; 48 h expiry; 3 expired claims or 2 removed issues block claiming for 2 weeks (§8.4); admins release; PRs without a valid task auto-close after 7 days |
 | Runaway AI spend | Separate daily token budgets for Jev and Gemini (§6.1), per-PR review limits (§13.5), rate limits below |
 | Admin impersonation | Admin rights come only from the server-side domain check (§9.1). *Admin* badges are rendered from the server's flag on each issue or comment, never from the display name |
 | Enumeration of private data | Board endpoints return display names and avatars only, never emails or user ids beyond what `CommentView` already exposes |
@@ -1508,6 +1602,7 @@ fields:
   promptGeneratedAt: DateTime?
   promptRequestedAt: DateTime?         # an AI pass is scheduled (§10.1)
   promptNote: String?                  # why the last AI pass left the body (admins)
+  promptExcludedCommentIds: List<int>?  # comments left out of the prompt (T-10, §9.3)
   promptEditedById: int?
   promptEditedAt: DateTime?
   createdById: int
@@ -1653,7 +1748,7 @@ activity rows, admins only; empty for everyone else), `unflag`,
 |-------|---------|
 | Read | `me()`, `list(BoardListQuery)` → page, `getPost(number)`, `listComments(postNumber, cursor)`, `similar(text, kind)`, `getScreenshotUrl(postNumber)`, `listTasks(filter, cursor)`, `getTask(number)`, `watchPost(number)`, `watchTasks()` |
 | Write | `createScreenshotUpload(…)`, `createPost(BoardPostDraft)`, `editPost(number, title, body)`, `deletePost(number)`, `restorePost(number)` (undo), `removeScreenshot(number)`, `vote(number, value)`, `addComment(uuid, postNumber?, taskNumber?, body)` (issues only: a `taskNumber` is refused), `editComment(uuid, body)`, `deleteComment(uuid)`, `restoreComment(uuid)`, `flag(target, reason, note)`, `claimTask(number)`, `releaseTask(number)` |
-| Admin | `reviewQueue(section, cursor)`, `moderate(target, action, reason?)`, `setLabels(number, kind?, area?, size?)`, `applySuggestedTitle(number)`, `merge(source, target)`, `unmerge(source)`, `decline(number, reason)`, `reopen(number)`, `blockUser(userId, reason, until?)`, `unblockUser(userId)`, `createTask(postNumbers, title, area, size)`, `updateTask(number, …)`, `setTaskPosts(number, postNumbers)`, `mergeTasks(numbers, title, area, size)`, `unmergeTasks(number)`, `regeneratePrompt(number)`, `setPrompt(number, body)`, `publishTask(number)`, `linkPullRequest(number, url)`, `markDone(number)`, `markShipped(number)`, `cancelTask(number)`, `suggestBundles()`, `dismissSuggestion(id)` |
+| Admin | `reviewQueue(section, cursor)`, `moderate(target, action, reason?)`, `setLabels(number, kind?, area?, size?)`, `applySuggestedTitle(number)`, `merge(source, target)`, `unmerge(source)`, `decline(number, reason)`, `reopen(number)`, `blockUser(userId, reason, until?)`, `unblockUser(userId)`, `createTask(postNumbers, title, area, size, {excludedComments})`, `updateTask(number, …)`, `setTaskPosts(number, postNumbers)`, `mergeTasks(numbers, title, area, size)`, `unmergeTasks(number)`, `regeneratePrompt(number)`, `setPrompt(number, body)`, `publishTask(number)`, `linkPullRequest(number, url)`, `markDone(number)`, `markShipped(number)`, `cancelTask(number)`, `suggestBundles()`, `dismissSuggestion(id)` |
 
 **Config** (`wonky: board:`, parsed in `BoardConfig.fromMap`, env overrides `WONKY_BOARD_*`):
 
@@ -1667,7 +1762,10 @@ wonky:
     securityContact: security@serverpod.dev
     claimHours: 48
     claimWarnHours: 6
-    maxActiveClaimsPerUser: 2
+    maxActiveClaimsPerUser: 3
+    expiredClaimsToBlock: 3            # §8.4 (T-10); 0 turns the rule off
+    invalidPostsToBlock: 2
+    claimBlockDays: 14
     flagsToHold: 3
     publishWhenTriageFails: true
     limits: {postsPerHour: 5, postsPerDay: 20, commentsPerHour: 30, votesPerHour: 300,
@@ -1957,6 +2055,7 @@ The tools are read and write in one scope and are not offered to the in-app assi
 | `copyPrompt` (fails with *Claim this task to get the prompt.* without one) | – |
 | `removeScreenshot` | – (the bytes are deleted at once; confirmed) |
 | `admin.moderate` / `admin.setLabels` / `admin.editPost` (*Edit and approve*) / `admin.applySuggestedTitle` / `admin.merge` / `admin.unmerge` / `admin.decline` / `admin.reopen` / `admin.block` / `admin.createTask` / `admin.updateTask` / `admin.setTaskPosts` / `admin.mergeTasks` (undo: `unmergeTasks`, §9.3) / `admin.regeneratePrompt` / `admin.setPrompt` / `admin.publishTask` / `admin.linkPullRequest` / `admin.markDone` / `admin.markShipped` / `admin.cancelTask` | ✓ (inverse calls, §9.2) |
+| `admin.createTask {postNumbers, title?, area?, size?, excludedComments?}` (T-10: the dialog's unchecked comments, §9.3) | ✓ (undo cancels, redo creates it again with the same comments left out) |
 | `admin.suggestBundles` / `admin.dismissSuggestion` / `admin.dismissDuplicate` (*Not a duplicate*) | – (no server inverse) |
 
 **As built (BI-2…BI-6):** all ids above are registered in `board_commands.dart`

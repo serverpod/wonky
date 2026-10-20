@@ -1207,6 +1207,7 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<List<_ivbgicm7.BoardSize>>,
           _isc.getType<Map<String, double>>,
           _isc.getType<Map<String, double>?>,
+          _isc.getType<List<int>?>,
           _isc.getType<List<_ifz7dmuf.BoardTaskView>>,
           _isc.getType<List<_i4xrxro7.CommentView>>,
           _isc.getType<List<_i6y7tspy.UserSummary>>,
@@ -1247,11 +1248,12 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<List<_i325i6jq.BoardTaskStatus>>,
           _isc.getType<List<_i3y77bov.BoardReviewItem>>,
           _isc.getType<List<int>>,
+          _isc.getType<List<_isc.UuidValue>>,
+          _isc.getType<List<_isc.UuidValue>?>,
           _isc.getType<List<_i94c7q23.BoardBundleSuggestionView>>,
           _isc.getType<List<_i2c85fb0.CommentThreadView>>,
           _isc.getType<List<int>?>,
           _isc.getType<List<_iatsgjjq.DriveItemView>>,
-          _isc.getType<List<_isc.UuidValue>>,
           _isc.getType<List<_i1pzk6fp.TemplateView>>,
           _isc.getType<List<_itempttd.ActivityEventView>>,
           _isc.getType<List<_i4i1hokq.FileUrlView>>,
@@ -3545,6 +3547,12 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<List<int>?>()) {
+      return (data != null
+              ? (data as List).map((e) => deserialize<int>(e)).toList()
+              : null)
+          as T;
+    }
     if (t == List<_ifz7dmuf.BoardTaskView>) {
       return (data as List)
               .map((e) => deserialize<_ifz7dmuf.BoardTaskView>(e))
@@ -3797,6 +3805,18 @@ class Protocol extends _isc.SerializationManager
     if (t == List<int>) {
       return (data as List).map((e) => deserialize<int>(e)).toList() as T;
     }
+    if (t == List<_isc.UuidValue>) {
+      return (data as List).map((e) => deserialize<_isc.UuidValue>(e)).toList()
+          as T;
+    }
+    if (t == _isc.getType<List<_isc.UuidValue>?>()) {
+      return (data != null
+              ? (data as List)
+                    .map((e) => deserialize<_isc.UuidValue>(e))
+                    .toList()
+              : null)
+          as T;
+    }
     if (t == List<_i94c7q23.BoardBundleSuggestionView>) {
       return (data as List)
               .map((e) => deserialize<_i94c7q23.BoardBundleSuggestionView>(e))
@@ -3819,10 +3839,6 @@ class Protocol extends _isc.SerializationManager
       return (data as List)
               .map((e) => deserialize<_iatsgjjq.DriveItemView>(e))
               .toList()
-          as T;
-    }
-    if (t == List<_isc.UuidValue>) {
-      return (data as List).map((e) => deserialize<_isc.UuidValue>(e)).toList()
           as T;
     }
     if (t == List<_i1pzk6fp.TemplateView>) {

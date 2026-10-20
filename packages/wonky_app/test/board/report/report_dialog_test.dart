@@ -522,6 +522,77 @@ void main() {
       expect(saved![BoardReportField.title], 'Paste merged cells fails');
       await settle(tester);
     });
+
+    Future<void> typeTitle(WidgetTester tester) async {
+      await enterField(
+        tester,
+        field(BoardReportField.title),
+        'Paste merged cells fails',
+      );
+      await tester.pump(const Duration(milliseconds: 401));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('when a similar issue is done or shipped then it is not '
+        'suggested', (tester) async {
+      board.similarPosts = [
+        similarPost(412, 'Paste into merged cells'),
+        similarPost(413, 'Paste fixed', status: BoardPostStatus.done),
+        similarPost(414, 'Paste shipped', status: BoardPostStatus.shipped),
+        similarPost(415, 'Paste planned', status: BoardPostStatus.planned),
+      ];
+      await openReport(tester);
+      await typeTitle(tester);
+
+      expect(key('${BoardSimilarPostsPanel.keyPrefix}.412'), findsOneWidget);
+      expect(key('${BoardSimilarPostsPanel.keyPrefix}.415'), findsOneWidget);
+      expect(key('${BoardSimilarPostsPanel.keyPrefix}.413'), findsNothing);
+      expect(key('${BoardSimilarPostsPanel.keyPrefix}.414'), findsNothing);
+      await settle(tester);
+    });
+
+    for (final b in Brightness.values) {
+      testWidgets('when opening a similar issue in ${b.name} then a popup '
+          'shows its details and Close returns to the report', (tester) async {
+        board.similarPosts = [similarPost(412, 'Paste into merged cells')];
+        board.postBodies[412] = 'The **bold** is lost after pasting.';
+        await openReport(tester, brightness: b);
+        await typeTitle(tester);
+
+        await tester.tap(key('${BoardSimilarPostsPanel.keyPrefix}.412.open'));
+        await tester.pumpAndSettle();
+
+        expect(key('dialog.board.similarPost'), findsOneWidget);
+        expect(key('dialog.board.similarPost.body'), findsOneWidget);
+        expect(find.textContaining('is lost after pasting'), findsOneWidget);
+        expect(find.text('Open'), findsOneWidget, reason: 'the status');
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(key('dialog.board.similarPost.close'));
+        await tester.pumpAndSettle();
+        expect(key('dialog.board.similarPost'), findsNothing);
+        expect(key(BoardReportKeys.dialog), findsOneWidget);
+        expect(board.votes, isEmpty);
+        await settle(tester);
+      });
+    }
+
+    testWidgets('when voting from the popup then it votes instead and both '
+        'dialogs close', (tester) async {
+      board.similarPosts = [similarPost(412, 'Paste into merged cells')];
+      await openReport(tester);
+      await typeTitle(tester);
+
+      await tester.tap(key('${BoardSimilarPostsPanel.keyPrefix}.412.open'));
+      await tester.pumpAndSettle();
+      await tester.tap(key('dialog.board.similarPost.vote'));
+      await tester.pumpAndSettle();
+
+      expect(board.log, contains('vote 412 1'));
+      expect(key('dialog.board.similarPost'), findsNothing);
+      expect(key(BoardReportKeys.dialog), findsNothing);
+      await settle(tester);
+    });
   });
 
   group('Given a draft', () {

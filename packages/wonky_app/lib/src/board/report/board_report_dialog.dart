@@ -331,6 +331,18 @@ class BoardReportDialogState extends State<BoardReportDialog>
 
   // ---- Vote instead ----
 
+  /// The details of similar post [p] in a dialog over this one; its *Vote
+  /// instead* votes as the row's button does.
+  Future<void> showSimilar(BoardSimilarPost p) async {
+    final vote = await showBoardSimilarPostDialog(
+      context,
+      repository: s.repositories.board,
+      post: p,
+      canVote: _voting == null && !_posting,
+    );
+    if (vote == true && mounted) await voteInstead(p);
+  }
+
   Future<void> voteInstead(BoardSimilarPost p) async {
     if (_voting != null || _posting) return;
     final l = WonkyAppLocalizations.of(context);
@@ -776,6 +788,7 @@ class BoardReportDialogState extends State<BoardReportDialog>
                   posts: _similar.results,
                   voting: _voting,
                   onVote: voteInstead,
+                  onOpen: showSimilar,
                 ),
               ),
       ),

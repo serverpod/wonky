@@ -164,6 +164,14 @@ abstract class CommentThreadActions {
 
   /// The placeholder of the reply box (null: the default).
   String? replyHint(WonkyAppLocalizations l) => null;
+
+  /// Whether [c] has a checkbox before its author, and whether it is
+  /// checked; null shows none (the board's comments for a task prompt,
+  /// specs/16 §9.3). [select] changes it, [selectLabel] names it for
+  /// screen readers.
+  bool? selected(ThreadComment c) => null;
+  void select(ThreadComment c, bool selected) {}
+  String selectLabel(WonkyAppLocalizations l, ThreadComment c) => '';
 }
 
 /// Document comments (Write, Sheets, Slides): the `shell.comments.*`

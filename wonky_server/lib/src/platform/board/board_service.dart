@@ -1,8 +1,10 @@
 import 'package:serverpod/serverpod.dart';
 
 import '../common/models.dart';
+import '../notifications/notification_service.dart';
 import 'board_comments.dart';
 import 'board_live_streams.dart';
+import 'board_markdown.dart';
 import 'board_moderation.dart';
 import 'board_posts.dart';
 import 'board_search.dart';
@@ -48,6 +50,14 @@ abstract final class BoardService {
   }) => BoardPosts.similar(session, title: title, body: body, kind: kind);
   static Future<String?> getScreenshotUrl(Session session, int number) =>
       BoardPosts.getScreenshotUrl(session, number);
+
+  /// Issue #[number] as Markdown (public content only), or null.
+  static Future<String?> postMarkdown(Session session, int number) =>
+      BoardMarkdown.post(
+        session,
+        number,
+        webOrigin: NotificationService.webOrigin(),
+      );
   static Future<BoardTaskPage> listTasks(
     Session session,
     List<BoardTaskStatus> statuses,
@@ -195,8 +205,16 @@ abstract final class BoardService {
     List<int> postNumbers,
     String title,
     BoardArea area,
-    BoardSize size,
-  ) => BoardTasks.create(session, postNumbers, title, area, size);
+    BoardSize size, {
+    List<UuidValue> excludedComments = const [],
+  }) => BoardTasks.create(
+    session,
+    postNumbers,
+    title,
+    area,
+    size,
+    excludedComments: excludedComments,
+  );
   static Future<BoardTaskView> updateTask(
     Session session,
     int number,

@@ -2,6 +2,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shad/shad.dart' show ShadCheckbox;
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_ui/testing.dart';
@@ -269,17 +270,13 @@ void main() {
     expect(find.textContaining('spam 0.62'), findsOneWidget);
     expect(byKey('board.post.flags'), findsOneWidget);
     expect(find.text('Possible duplicate of #1'), findsOneWidget);
+    // The common actions are a toolbar, the rest stays in ⋮ (§4.5).
+    expect(byKey('board.post.adminBar'), findsOneWidget);
+    for (final k in ['select', 'addToTask', 'labels', 'merge', 'decline']) {
+      expect(byKey('board.post.bar.$k'), findsOneWidget, reason: k);
+    }
     await openMenu(tester);
-    for (final k in [
-      'labels',
-      'applyTitle',
-      'hold',
-      'remove',
-      'decline',
-      'merge',
-      'select',
-      'block',
-    ]) {
+    for (final k in ['applyTitle', 'hold', 'remove', 'block']) {
       expect(byKey('board.post.menu.$k'), findsOneWidget, reason: k);
     }
     await tester.tap(byKey('board.post.menu.hold'));
@@ -352,4 +349,244 @@ void main() {
       await settleTooltips(tester);
     });
   }
+
+  group('Given a post with comments', () {
+    late FakeBoardRepository b;
+    late List<FakeBoardComment> comments;
+    setUp(() {
+      b = FakeBoardRepository(isAdmin: true);
+      final p = b.seedPost(title: 'Paste into merged cells drops styles');
+      comments = [
+        b.seedComment(postNumber: p.number, body: 'It loses **italic** too.'),
+        b.seedComment(postNumber: p.number, body: 'Off topic: nice theme.'),
+        b.seedComment(postNumber: p.number, body: 'Only in Chrome.'),
+        b.seedComment(
+          postNumber: p.number,
+          body: 'Held for review',
+          moderation: BoardModeration.held,
+        ),
+      ];
+    });
+
+    String box(FakeBoardComment c) => 'board.comment.${c.uuid.uuid}.select';
+
+    Future<void> open(
+      WidgetTester tester, {
+      Brightness brightness = Brightness.light,
+    }) async {
+      current = await pumpBoard(
+        tester,
+        '/improvements/p/1',
+        board: b,
+        brightness: brightness,
+      );
+    }
+
+    for (final brightness in Brightness.values) {
+      testWidgets('when an admin opens it in ${brightness.name} then the '
+          'visible comments have checkboxes, all checked, and the toolbar '
+          'offers Select for building', (tester) async {
+        final semantics = tester.ensureSemantics();
+        await open(tester, brightness: brightness);
+
+        expect(byKey('board.post.bar.select'), findsOneWidget);
+        expect(byKey('board.post.comments.promptHint'), findsOneWidget);
+        for (final c in comments.take(3)) {
+          expect(
+            tester.widget<ShadCheckbox>(byKey(box(c))).value,
+            isTrue,
+            reason: c.body,
+          );
+        }
+        expect(byKey(box(comments[3])), findsNothing, reason: 'held');
+        expect(
+          find.bySemanticsLabel(
+            'Include the comment by Bob Stone in the task prompt',
+          ),
+          findsNWidgets(3),
+        );
+        expect(tester.takeException(), isNull);
+        semantics.dispose();
+        await settleTooltips(tester);
+      });
+    }
+
+    testWidgets('when an admin unchecks a comment and selects the post for '
+        'building then the task leaves it out, and the dialog lists no '
+        'comments', (tester) async {
+      await open(tester);
+
+      await tester.tap(byKey(box(comments[1])));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<ShadCheckbox>(byKey(box(comments[1]))).value,
+        isFalse,
+      );
+      await tester.tap(byKey('board.post.bar.select'));
+      await tester.pumpAndSettle();
+      expect(byKey('dialog.board.task'), findsOneWidget);
+      expect(byKey('dialog.board.task.comments'), findsNothing);
+      await tester.tap(byKey('dialog.board.task.ok'));
+      await tester.pumpAndSettle();
+
+      final task = b.tasks.values.single;
+      expect(b.excludedComments[task.number], [comments[1].uuid]);
+      expect(t().location, '/improvements/t/${task.number}');
+      await settleTooltips(tester);
+    });
+
+    testWidgets('when every comment stays checked then none is left out', (
+      tester,
+    ) async {
+      await open(tester);
+
+      await tester.tap(byKey('board.post.bar.select'));
+      await tester.pumpAndSettle();
+      await tester.tap(byKey('dialog.board.task.ok'));
+      await tester.pumpAndSettle();
+
+      expect(b.excludedComments, isEmpty);
+      expect(b.tasks, hasLength(1));
+      await settleTooltips(tester);
+    });
+
+    testWidgets('when the post is already in a task then there are no '
+        'checkboxes and no Select for building', (tester) async {
+      b.seedTask(posts: [1], status: BoardTaskStatus.published);
+      await open(tester);
+
+      expect(byKey('board.post.adminBar'), findsOneWidget);
+      expect(byKey('board.post.bar.select'), findsNothing);
+      expect(byKey(box(comments[0])), findsNothing);
+      expect(byKey('board.post.comments.promptHint'), findsNothing);
+      await settleTooltips(tester);
+    });
+
+    for (final brightness in Brightness.values) {
+      testWidgets('when an admin opens it in ${brightness.name} then ⋮ ends '
+          'the toolbar row, not the title row', (tester) async {
+        await open(tester, brightness: brightness);
+
+        final bar = byKey('board.post.adminBar');
+        expect(
+          find.descendant(of: bar, matching: byKey('board.post.menu')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: byKey('board.post.header'),
+            matching: byKey('board.post.menu'),
+          ),
+          findsNothing,
+        );
+        final menu = tester.getRect(byKey('board.post.menu'));
+        final select = tester.getRect(byKey('board.post.bar.select'));
+        final decline = tester.getRect(byKey('board.post.bar.decline'));
+        expect(menu.center.dy, closeTo(select.center.dy, 1), reason: 'one row');
+        expect(menu.left, greaterThan(decline.right), reason: 'at the end');
+        await settleTooltips(tester);
+      });
+    }
+
+    testWidgets('when the window is narrow then the buttons that do not fit '
+        'move into ⋮, least important first, and still work', (tester) async {
+      current = await pumpBoard(
+        tester,
+        '/improvements/p/1',
+        board: b,
+        size: const Size(420, 800),
+      );
+
+      // Select for building stays; Decline and Merge go first.
+      expect(byKey('board.post.bar.select'), findsOneWidget);
+      expect(
+        tester.getRect(byKey('board.post.bar.select')).right,
+        lessThanOrEqualTo(420),
+      );
+      expect(byKey('board.post.bar.decline').hitTestable(), findsNothing);
+      expect(byKey('board.post.bar.merge').hitTestable(), findsNothing);
+      expect(tester.takeException(), isNull);
+
+      await openMenu(tester);
+      expect(byKey('board.post.menu.decline'), findsOneWidget);
+      expect(byKey('board.post.menu.merge'), findsOneWidget);
+      expect(byKey('board.post.menu.select'), findsNothing);
+      expect(byKey('board.post.menu.hold'), findsOneWidget, reason: 'its own');
+      await tester.tap(byKey('board.post.menu.decline'));
+      await tester.pumpAndSettle();
+      expect(byKey('dialog.board.decline'), findsOneWidget);
+      await settleTooltips(tester);
+    });
+
+    // The test font is far wider than the app's, so which buttons fit at a
+    // given width differs from the browser: check the split, not the count.
+    testWidgets('then each common action is either a button in the row or '
+        'an entry of ⋮, never both, and the most important stay in the row', (
+      tester,
+    ) async {
+      await open(tester);
+      const order = ['select', 'addToTask', 'labels', 'merge', 'decline'];
+      final inRow = [
+        for (final k in order)
+          if (byKey('board.post.bar.$k').hitTestable().evaluate().isNotEmpty) k,
+      ];
+      await openMenu(tester);
+
+      expect(inRow, contains('select'));
+      expect(inRow, order.take(inRow.length), reason: 'least important go');
+      for (final k in order) {
+        expect(
+          byKey('board.post.menu.$k'),
+          inRow.contains(k) ? findsNothing : findsOneWidget,
+          reason: k,
+        );
+      }
+      expect(byKey('board.post.menu.hold'), findsOneWidget);
+      await settleTooltips(tester);
+    });
+
+    testWidgets('when someone who is not an admin opens it then there is no '
+        'toolbar and no checkboxes', (tester) async {
+      b.isAdmin = false;
+      await open(tester);
+
+      expect(byKey('board.post.adminBar'), findsNothing);
+      expect(byKey(box(comments[0])), findsNothing);
+      await settleTooltips(tester);
+    });
+  });
+
+  testWidgets('Given the board list when an admin creates a task from '
+      'selected posts then the task dialog lists their comments to choose '
+      'from', (tester) async {
+    final b = FakeBoardRepository(isAdmin: true);
+    b.seedPost(title: 'Paste into merged cells drops styles');
+    b.seedPost(title: 'Paste loses borders');
+    final off = b.seedComment(postNumber: 1, body: 'Off topic: nice theme.');
+    b.seedComment(postNumber: 2, body: 'Same with borders.');
+    current = await pumpBoard(tester, '/improvements', board: b);
+
+    await tester.tap(byKey('board.select'));
+    await tester.pumpAndSettle();
+    await tester.tap(byKey('board.row.1.select'));
+    await tester.tap(byKey('board.row.2.select'));
+    await tester.pumpAndSettle();
+    await tester.tap(byKey('board.selection.createTask'));
+    await tester.pumpAndSettle();
+    expect(byKey('dialog.board.task.comments'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: byKey('dialog.board.task.comments'),
+        matching: find.text('Bob Stone: Same with borders.'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(byKey('dialog.board.task.comments.${off.uuid.uuid}'));
+    await tester.pumpAndSettle();
+    await tester.tap(byKey('dialog.board.task.ok'));
+    await tester.pumpAndSettle();
+
+    expect(b.excludedComments[b.tasks.values.single.number], [off.uuid]);
+    await settleTooltips(tester);
+  });
 }

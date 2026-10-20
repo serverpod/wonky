@@ -19,7 +19,8 @@ void main() {
 
       expect(prompt, startsWith('# Wonky task T-12: Keep styles'));
       expect(prompt, contains('## Goal\nKeep styles.'));
-      expect(prompt, contains('https://wonky.work/improvements/p/412'));
+      // The issues are linked as Markdown, which agents read directly.
+      expect(prompt, contains('https://wonky.work/improvements/p/412.md '));
       expect(
         prompt,
         endsWith(

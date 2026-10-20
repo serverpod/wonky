@@ -229,6 +229,17 @@ abstract final class BoardText {
     return b;
   }
 
+  static const _months = [
+    'January', 'February', 'March', 'April', 'May', 'June', 'July', //
+    'August', 'September', 'October', 'November', 'December',
+  ];
+
+  /// [at] as a day in UTC: `November 2, 2026`.
+  static String day(DateTime at) {
+    final d = at.toUtc();
+    return '${_months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
   /// Plain text of Markdown [markdown], at most [max] characters.
   static String plain(String markdown, {int max = 200}) {
     var t = markdown

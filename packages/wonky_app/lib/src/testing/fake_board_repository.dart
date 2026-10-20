@@ -160,6 +160,14 @@ class FakeBoardRepository implements BoardRepository {
   bool isAdmin;
   bool blocked = false;
 
+  /// Set: the caller may not claim tasks until then (specs/16 §8.4), with
+  /// [claimBlockedReason] as the error.
+  DateTime? claimBlockedUntil;
+  String claimBlockedReason = "You can't claim tasks for now.";
+
+  /// The comments left out of the prompt of each created task, by task.
+  final Map<int, List<UuidValue>> excludedComments = {};
+
   /// When set, every call throws it (offline, server errors).
   Object? failWith;
 
@@ -662,6 +670,11 @@ class FakeBoardRepository implements BoardRepository {
       repository: 'serverpod/wonky',
       securityContact: 'security@serverpod.dev',
       claimHours: 48,
+      maxActiveClaims: 3,
+      claimBlockedUntil: id == null ? null : claimBlockedUntil,
+      claimBlockedReason: id == null || claimBlockedUntil == null
+          ? null
+          : claimBlockedReason,
     );
   }
 
@@ -815,6 +828,8 @@ class FakeBoardRepository implements BoardRepository {
         if (p.moderation == BoardModeration.visible &&
             p.deletedAt == null &&
             (kind == null || p.kind == kind) &&
+            (p.status == BoardPostStatus.open ||
+                p.status == BoardPostStatus.planned) &&
             words.any((w) => p.title.toLowerCase().contains(w)))
           BoardSimilarPost(
             number: p.number,
@@ -1085,8 +1100,11 @@ class FakeBoardRepository implements BoardRepository {
     final active = tasks.values
         .where((x) => x.claimedById == userId && _claimValid(x))
         .length;
-    if (active >= 2) {
-      throw _err(WonkyErrorCode.limitExceeded, 'You have 2 active claims.');
+    if (claimBlockedUntil != null) {
+      throw _err(WonkyErrorCode.forbidden, claimBlockedReason);
+    }
+    if (active >= 3) {
+      throw _err(WonkyErrorCode.limitExceeded, 'You have 3 active claims.');
     }
     t
       ..status = BoardTaskStatus.claimed
@@ -1383,8 +1401,9 @@ class FakeBoardRepository implements BoardRepository {
     List<int> postNumbers,
     String title,
     BoardArea area,
-    BoardSize size,
-  ) async {
+    BoardSize size, {
+    List<UuidValue> excludedComments = const [],
+  }) async {
     _log('createTask ${postNumbers.join(',')}');
     _admin();
     final t = seedTask(
@@ -1396,6 +1415,9 @@ class FakeBoardRepository implements BoardRepository {
       posts: postNumbers,
     );
     t.promptPending = writesPromptLater;
+    if (excludedComments.isNotEmpty) {
+      this.excludedComments[t.number] = [...excludedComments];
+    }
     return _taskView(t);
   }
 

@@ -247,6 +247,10 @@ class _BoardTaskPageState extends State<BoardTaskPage> {
     final admin = hub.isAdmin;
     final signedIn = s.auth.isSignedIn;
     final claimable = t.status == BoardTaskStatus.published;
+    // Expired claims or removed issues block claiming for a while (§8.4).
+    final blockedReason = signedIn && claimable && !admin
+        ? hub.me.value?.claimBlockedReason
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 10,
@@ -312,7 +316,7 @@ class _BoardTaskPageState extends State<BoardTaskPage> {
               ShadButton(
                 key: const ValueKey<String>('board.task.claim'),
                 leading: const Icon(LucideIcons.hand, size: 16),
-                enabled: hub.canWrite,
+                enabled: hub.canWrite && blockedReason == null,
                 onPressed: () => _invoke('shell.board.claim'),
                 child: Text(l.boardClaimTask),
               ),
@@ -356,6 +360,13 @@ class _BoardTaskPageState extends State<BoardTaskPage> {
             ],
           ],
         ),
+        if (blockedReason != null)
+          BoardNotice(
+            key: const ValueKey<String>('board.task.notice.claimBlocked'),
+            icon: LucideIcons.clock,
+            text: blockedReason,
+            tone: theme.colorScheme.warning,
+          ),
       ],
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:serverpod/serverpod.dart';
@@ -28,6 +29,8 @@ void main() {
                 ? 'https://storage.example.test/s/412.png?sig=1'
                 : null;
           },
+          markdown: (session, n) async =>
+              n == 14 ? '# #14 Improvements to the board\n' : null,
         );
         final app = RelicApp()
           ..get('/improvements', (req) => route.handleCall(_NoSession(), req))
@@ -97,6 +100,31 @@ void main() {
 
         expect(r.statusCode, HttpStatus.notFound);
       });
+
+      test('when GET a post with .md then it answers its Markdown', () async {
+        final request = await client.get(
+          'localhost',
+          server.port,
+          '/improvements/p/14.md',
+        );
+        request.followRedirects = false;
+        final r = await request.close();
+        final body = await r.transform(utf8.decoder).join();
+
+        expect(r.statusCode, HttpStatus.ok);
+        expect(r.headers.contentType?.mimeType, 'text/markdown');
+        expect(r.headers.value(HttpHeaders.cacheControlHeader), 'no-cache');
+        expect(body, '# #14 Improvements to the board\n');
+      });
+
+      test(
+        'when the post is not public then the .md link answers 404',
+        () async {
+          final r = await get('/improvements/p/7.md');
+
+          expect(r.statusCode, HttpStatus.notFound);
+        },
+      );
     },
   );
 

@@ -24,9 +24,12 @@ void main() {
         const BoardTrail(list: BoardTab.tasks, task: 1, post: 5),
       );
       expect(
-        parse('/improvements/t/2?list=done'),
-        const BoardTrail(list: BoardTab.done, task: 2),
+        parse('/improvements/t/2?list=claimed'),
+        const BoardTrail(list: BoardTab.claimed, task: 2),
       );
+      // Done lists finished issues only (specs/16 §4.4): a task under it
+      // falls back to its own list.
+      expect(parse('/improvements/t/2?list=done'), const BoardTrail(task: 2));
       expect(BoardTrail.parse(Uri.parse('/recent')), isNull);
       expect(BoardTrail.parse(Uri.parse('/improvements/p/x')), isNull);
     });

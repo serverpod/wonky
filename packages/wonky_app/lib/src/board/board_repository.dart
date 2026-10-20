@@ -86,12 +86,16 @@ abstract class BoardRepository {
   Future<BoardPostView> reopen(int number);
   Future<void> blockUser(int userId, String reason, {DateTime? until});
   Future<void> unblockUser(int userId);
+
+  /// [excludedComments]: comments of the posts left out of the prompt's
+  /// context (specs/16 §9.3).
   Future<BoardTaskView> createTask(
     List<int> postNumbers,
     String title,
     BoardArea area,
-    BoardSize size,
-  );
+    BoardSize size, {
+    List<UuidValue> excludedComments = const [],
+  });
   Future<BoardTaskView> updateTask(
     int number,
     String title,
@@ -317,8 +321,17 @@ class ServerBoardRepository implements BoardRepository {
     List<int> postNumbers,
     String title,
     BoardArea area,
-    BoardSize size,
-  ) => api.guard((c) => c.board.createTask(postNumbers, title, area, size));
+    BoardSize size, {
+    List<UuidValue> excludedComments = const [],
+  }) => api.guard(
+    (c) => c.board.createTask(
+      postNumbers,
+      title,
+      area,
+      size,
+      excludedComments: excludedComments.isEmpty ? null : excludedComments,
+    ),
+  );
 
   @override
   Future<BoardTaskView> updateTask(
