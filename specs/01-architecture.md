@@ -34,8 +34,9 @@ table records where each original folder went:
 | `specs/` | These specs; app specs in `specs/wonky_write/` and `specs/wonky_sheets/` | — |
 
 Root `pubspec.yaml` is a pub workspace listing every package below (it started as
-`wonky_client`, `wonky_server`, `wonky_flutter`). `.mcp.json` (git-ignored, per machine) points
-the `serverpod` MCP at `wonky_server`.
+`wonky_client`, `wonky_server`, `wonky_flutter`). The agent configuration is committed (see the
+tree below): the `serverpod` MCP points at `wonky_server`, next to the `dart` MCP and the
+Flutter/Serverpod skills.
 
 **CI** (`.github/workflows`; all workflows pin Flutter 3.47.5, the workspace lock file needs
 Flutter ≥ 3.47.0) covers every workspace member, whose list is derived from the root
@@ -72,7 +73,11 @@ Flutter ≥ 3.47.0) covers every workspace member, whose list is derived from th
 wonky/
 ├── pubspec.yaml                         # root Dart pub workspace listing every package below (+ server overrides, §2.3)
 ├── pubspec_overrides.yaml               # Flutter-only path overrides of vendored packages (§2.3)
-├── .mcp.json                            # serverpod MCP → wonky_server; dart MCP
+├── .mcp.json                            # Claude Code MCP: serverpod MCP → wonky_server; dart MCP
+├── .claude/skills/                      # Flutter/Serverpod skills for Claude Code
+├── .agents/                             # the same skills (Codex, Antigravity) + Antigravity plugin with both MCP servers
+├── .codex/config.toml                   # Codex MCP: serverpod + dart
+├── .cursor/                             # Cursor: the same skills + mcp.json
 ├── AGENTS.md                            # agent instructions (project summary, MCP usage, checklist)
 ├── specs/                               # suite-level specs (this folder)
 │   ├── wonky_drive/                     #   Drive app specs (v2)

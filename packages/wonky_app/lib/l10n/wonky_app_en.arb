@@ -2851,7 +2851,7 @@
   "boardContribStep4Title": "Clone the repository",
   "boardContribStep4": "Clone your fork to your machine (replace <you> with your GitHub username) and get the packages.",
   "boardContribStep5Title": "Configure the server",
-  "boardContribStep5": "Create your passwords file in wonky_server and replace the CHANGE_ME values. AI keys are optional.",
+  "boardContribStep5": "Create your passwords file in wonky_server. Its development values work as they are; AI keys are optional.",
   "boardContribStep6Title": "Start the server",
   "boardContribStep6": "Run it in wonky_server: it starts the development database, applies the migrations and hot reloads. Start an app from its UI or let your agent do it through the serverpod MCP server (.mcp.json is in the repository). Sign up with any email; in development the code is in the server log.",
   "boardContribStep7Title": "Pick a task",

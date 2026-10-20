@@ -7357,7 +7357,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardContribStep5.
   ///
   /// In en, this message translates to:
-  /// **'Create your passwords file in wonky_server and replace the CHANGE_ME values. AI keys are optional.'**
+  /// **'Create your passwords file in wonky_server. Its development values work as they are; AI keys are optional.'**
   String get boardContribStep5;
 
   /// No description provided for @boardContribStep6Title.
