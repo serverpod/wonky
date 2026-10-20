@@ -559,6 +559,17 @@ class _GridAreaState extends State<GridArea> with TickerProviderStateMixin {
 
   void _onDown(PointerDownEvent e) {
     _stopFling();
+    // The read-only mobile layout (suite 02 §6.1, T-1) has no cell
+    // selection: every pointer (also a mouse in a narrow window) pans the
+    // grid like a finger, and taps and long presses do nothing.
+    final readOnlyView = c.readOnlyView;
+    _touch.longPressEnabled = !readOnlyView;
+    if (readOnlyView) {
+      if (e.kind == PointerDeviceKind.touch || e.buttons == kPrimaryButton) {
+        _touch.down(e);
+      }
+      return;
+    }
     if (e.kind == PointerDeviceKind.touch) {
       _touch.down(e);
       return;
@@ -618,10 +629,13 @@ class _GridAreaState extends State<GridArea> with TickerProviderStateMixin {
 
   late final GridTouchTracker _touch = GridTouchTracker(
     onTap: (down, up) {
+      if (c.readOnlyView) return;
       _press(down, touch: true);
       _release();
     },
-    onLongPress: (down) => _press(down, touch: true),
+    onLongPress: (down) {
+      if (!c.readOnlyView) _press(down, touch: true);
+    },
     onDragMove: _dragTo,
     onDragEnd: (_) => _release(),
     onDragCancel: _cancelDrag,

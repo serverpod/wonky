@@ -30,7 +30,8 @@ enum GridTouchPhase {
 /// selects (as a click), one finger scrolls with momentum, a long press
 /// then drag runs the grid's pointer drag (range selection, fill, move,
 /// resize), two fingers pinch-zoom. Mouse, stylus and trackpad input don't
-/// come here.
+/// come here, except in the read-only mobile layout (T-1), where every
+/// pointer pans and taps and long presses do nothing.
 ///
 /// The grid is one raw `Listener` (no gesture arena), so this tracks the
 /// pointers itself.
@@ -81,6 +82,10 @@ class GridTouchTracker {
 
   final Duration longPressTimeout;
 
+  /// Whether a long press starts the grid's drag. Off in the read-only
+  /// mobile layout (T-1): there a held finger that moves still pans.
+  bool longPressEnabled = true;
+
   GridTouchPhase _phase = GridTouchPhase.none;
   GridTouchPhase get phase => _phase;
 
@@ -104,7 +109,9 @@ class GridTouchTracker {
         _velocity = VelocityTracker.withKind(e.kind)
           ..addPosition(e.timeStamp, e.position);
         _longPress?.cancel();
-        _longPress = Timer(longPressTimeout, _onLongPressTimer);
+        _longPress = longPressEnabled
+            ? Timer(longPressTimeout, _onLongPressTimer)
+            : null;
       case 2:
         _longPress?.cancel();
         if (_phase == GridTouchPhase.drag) onDragCancel();

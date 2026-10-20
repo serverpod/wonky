@@ -1,6 +1,7 @@
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test_robots/flutter_test_robots.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:wonky_app/spellcheck.dart' show SpellDictionaries;
 import 'package:wonky_write/features/editor/applier/delta_applier.dart';
@@ -222,6 +223,30 @@ void main() {
       h.undo(h.changes.single);
       expect(h.plainText, 'recieve and recieve\n');
       await _settle(tester);
+    });
+
+    testWidgets('when a block with misspellings is merged away then the editor '
+        'keeps rendering (#21)', (tester) async {
+      // Removing a flagged block cleared its underlines from the document
+      // listener, before super_editor's layout had seen the removal: the
+      // layout restyled its stale view model and threw "No such position in
+      // document" / a null check, and stopped updating.
+      final (h, spell) = await _pump(tester, Delta()..insert('Good\nborwn\n'));
+      expect(_flagged(spell), ['borwn']);
+      final second = h.controller.document.last.id;
+
+      await tester.placeCaretInParagraph(second, 0);
+      await tester.pressBackspace();
+      await _settle(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(h.plainText, 'Goodborwn\n');
+      expect(h.controller.document.getNodeById(second), isNull);
+      await tester.pressBackspace();
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(h.plainText, 'Gooborwn\n');
+      expect(find.text('Gooborwn', findRichText: true), findsOneWidget);
     });
 
     testWidgets('when turning spellcheck off then the underlines go away', (

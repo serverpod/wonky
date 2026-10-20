@@ -225,6 +225,25 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
   }
 
   Widget _body(BuildContext context, DriveItemView item) {
+    final body = _phaseBody(context, item);
+    if (!WonkyLayout.isMobile(context)) return body;
+    // The read-only mobile layout: a 1 px `border` line between the title
+    // row and the page, which otherwise blend (like Sheets, suite 02 §6.1,
+    // T-1).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          key: const ValueKey<String>('write.mobile.separator'),
+          height: 1,
+          child: ColoredBox(color: ShadTheme.of(context).colorScheme.border),
+        ),
+        Expanded(child: body),
+      ],
+    );
+  }
+
+  Widget _phaseBody(BuildContext context, DriveItemView item) {
     return ValueListenableBuilder<WriteSessionPhase>(
       valueListenable: session.phase,
       builder: (context, phase, _) {

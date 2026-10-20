@@ -663,8 +663,9 @@ export* = default layout (`write.prefs.setDefaultLayout {layout}`, key `pageless
 page setup saved by *Page setup › Set as default* with *Reset* (`write.prefs.resetPageSetup`),
 default export format (`write.prefs.setExportFormat {format}`: md, html, pdf, docx, odt, txt);
 *Spelling* = *Ignore words in UPPERCASE* (`write.spell.toggleIgnoreUppercase`) and the personal
-dictionary (remove = `write.prefs.removeDictionaryWord {word}`). New documents don't apply the
-default layout/page setup yet and exports don't preselect the default format (TODO.md).
+dictionary (remove = `write.prefs.removeDictionaryWord {word}`). The default layout is Pageless
+when unset and new documents apply it (T-1, 04 §29.2); they don't apply the saved default page
+setup yet and exports don't preselect the default format (TODO.md).
 
 ## 14. Empty, loading and error states
 
@@ -714,7 +715,7 @@ Switching modes is instant; announcements via `SemanticsService` ("Suggesting mo
 | Document surface | page cards: `page` color, radius 2, light: shadow `0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08)`; dark: 1 px `border` token, no shadow | full width |
 | Page size | page setup (mm/in → logical px at 96 dpi) × zoom | n/a |
 | Gap between pages | 16 px × zoom (min 8) | n/a |
-| Canvas padding | 24 px top, 48 px bottom, horizontal centering; if viewport narrower than page: horizontal scroll unless *Fit width* | content column centered, 48 px top padding |
+| Canvas padding | 24 px top, 48 px below the last page (the scroll extent always reaches it, also when the last page isn't full, 04 §29.3), horizontal centering; if viewport narrower than page: horizontal scroll unless *Fit width* | content column centered, 48 px top padding, 96 px below the last block (theme `pagelessPadding`) |
 | Content width | page width − margins | `min(theme pageless max width, viewport − 96)` |
 | Header/footer | painted in margins: theme `pageChrome` text style (default: 10 pt, `muted` equivalent of theme text), tokens expanded; double-click → Page setup › Header & footer | none |
 | Page number indicator | on scroll, a floating pill "Page 3 of 7" near the scrollbar thumb for 1 s | none |
@@ -732,7 +733,7 @@ Breakpoints = shad `ShadBreakpoints` (sm 640, md 768, lg 1024, xl 1280, 2xl 1536
 | lg–xl | full | prio ≥ 5 overflow | comment margin beside the page or overlaying the canvas's right edge | docked (squeezes canvas; Pages mode auto *Fit width* if the page no longer fits and user zoom was 100 %) |
 | md–lg | star/move move into a ⋮ menu; avatars max 2 | prio ≥ 3 overflow; mode switcher icon-only | comment margin overlays the right edge | docked min width or overlay if canvas < 480 px |
 | sm–md | title truncates; Share becomes icon button | prio ≥ 2 overflow | Pages rendered at fit-width zoom (indicator shows effective %); margin overlays (hidden below 600 px canvas) | overlay from the right over a scrim (380 px) |
-| < sm (≥ 360) | app icon, title, ⋮, Share icon | Undo/Redo, style, B, I, link, list, ⋯ | Pageless-like padding 16 px (Pages still drawn as scaled cards); no margin | full-width overlay |
+| < sm (≥ 360) | the read-only mobile layout (suite 02 §6.1): app icon, read-only title, sync status, *View only*, account menu, then a 1 px `border` line (`write.mobile.separator`, T-1) | none | always Pageless (T-1; the page setup is unchanged), 16 px beside, above and below the text, no text selection; no margin | none |
 
 The word count bar (§11), when on, is the same at every width.
 

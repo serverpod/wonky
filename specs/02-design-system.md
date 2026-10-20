@@ -300,12 +300,20 @@ tests). There is no mobile editing; v2 apps are the same Flutter web builds.
   the frame the layout starts in, and `false` when it ends; the apps fold it into their view
   mode, so no edit command is enabled whatever the role and View › Mode › Editing is off. It is
   layout, not a change of the document: nothing is undoable or remembered, and widening the
-  window restores the mode the user had. Write: Viewing, no comment margin, and (T-12) 16 px
-  beside the text (`WriteDocumentScreen.mobileTextPadding` as `WonkyEditor.compactPadding`)
-  instead of the page margins — the page fills the width — or the pageless padding; the page
-  setup itself is unchanged. Sheets: the grid and sheet tabs (no formula bar or filter-view
-  bar), with (T-12) a 1 px line in the theme's `border` color between the title row and the
-  grid (`sheets.mobile.separator`). Slides: Slides 04 §16.1 and the presenter mode of
+  window restores the mode the user had. Write: Viewing, no comment margin, (T-1) always
+  Pageless (`WriteDocumentController.setReadOnlyView` sets the view's layout; the page setup
+  itself is unchanged), (T-12, T-1) 16 px beside, above and below the text
+  (`WriteDocumentScreen.mobileTextPadding` as `WonkyEditor.compactPadding`) instead of the
+  pageless padding, (T-1) a 1 px line in the theme's `border` color between the title row and
+  the page (`write.mobile.separator`), and (T-1) no text selection: the selections the user
+  makes are collapsed (`selectionGuard`, `WriteEditorController.selectable`), which a
+  read-only document doesn't show, so taps and swipes only scroll. Sheets: the grid and sheet
+  tabs (no formula bar or filter-view bar), with (T-12) a 1 px line in the theme's `border`
+  color between the title row and the grid (`sheets.mobile.separator`); (T-1) no cell
+  selection (every pointer pans the grid, taps and long presses do nothing, the selection
+  isn't painted) and a touch tab bar: 48 px tall with 42 px tabs in 15 px text, the all-sheets
+  menu (40 px) and the tabs only — no add button, tab menus (▾ or right-click), scroll arrows,
+  Explore or selection stats. Slides: Slides 04 §16.1 and the presenter mode of
   Slides 10 §1.6.
 - **Presenter bar** (`WonkyPresenterBar`, `wonky_ui`): the 52 px top bar of the mobile presenter
   mode — close (*Exit presenter mode*), title with "3 of 12", *Previous slide* / *Next slide*

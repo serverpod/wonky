@@ -308,7 +308,7 @@ class WriteDocumentController extends DocumentController {
 
   void _applyPageGeometry() {
     final setup = pageSetup;
-    view.layout = setup.layout == PageLayoutMode.pages
+    view.layout = setup.layout == PageLayoutMode.pages && !_mobileView
         ? LayoutMode.pages
         : LayoutMode.pageless;
     final i = item;
@@ -612,9 +612,20 @@ class WriteDocumentController extends DocumentController {
   @override
   void focusEditor() => editor.focusNode.requestFocus();
 
-  /// The mobile layout shows the document in Viewing (suite 02 §6.1).
+  /// The mobile layout shows the document in Viewing, always Pageless and
+  /// without text selection (suite 02 §6.1, T-1). It is layout, not a change
+  /// of the document: the page setup is unchanged and widening the window
+  /// restores it.
   @override
-  void setReadOnlyView(bool readOnly) => session.setReadOnlyView(readOnly);
+  void setReadOnlyView(bool readOnly) {
+    session.setReadOnlyView(readOnly);
+    editor.selectable = !readOnly;
+    if (readOnly == _mobileView) return;
+    _mobileView = readOnly;
+    _applyPageGeometry();
+  }
+
+  bool _mobileView = false;
 
   /// Scrolls [offset] into view.
   void reveal(int offset) => revealOffset?.call(offset);

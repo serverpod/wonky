@@ -1,8 +1,10 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_sheets/features/sheet_editor/sheet_editor_screen.dart';
 import 'package:wonky_sheets/features/sheet_editor/sheets_document_controller.dart';
+import 'package:wonky_sheets/features/tab_bar/sheet_tab_bar.dart';
 import 'package:shad/shad.dart' show ShadTheme;
 import 'package:wonky_ui/wonky_ui.dart'
     show DocumentTitleField, WonkyMenubar, WonkyToolbar;
@@ -191,5 +193,146 @@ void main() {
         await tester.pump(const Duration(seconds: 2));
       });
     }
+
+    /// The center of cell [row], [col] on screen (row header 48 px, column
+    /// header 24 px, rows 21 px, columns 100 px at 100 %).
+    Offset cellAt(WidgetTester tester, int row, int col) =>
+        tester.getTopLeft(key('sheets.grid')) +
+        Offset(48 + col * 100 + 50, 24 + row * 21 + 10);
+
+    Future<void> drag(
+      WidgetTester tester,
+      Offset from,
+      Offset by, {
+      PointerDeviceKind kind = PointerDeviceKind.touch,
+      Duration hold = Duration.zero,
+    }) async {
+      final g = await tester.startGesture(from, kind: kind);
+      if (hold > Duration.zero) await tester.pump(hold);
+      for (var i = 0; i < 10; i++) {
+        await g.moveBy(by / 10);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await g.up();
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    testWidgets('when tapping or long-pressing cells then nothing is '
+        'selected, and swiping (also after a long press, or with a mouse) '
+        'pans the grid (T-1)', (tester) async {
+      await pumpScreen(tester, size: const Size(390, 844));
+      final ed = doc().editor!;
+      final before = ed.selection.describe();
+
+      await tester.tapAt(cellAt(tester, 3, 1), kind: PointerDeviceKind.touch);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(ed.selection.describe(), before);
+
+      final press = await tester.startGesture(
+        cellAt(tester, 2, 1),
+        kind: PointerDeviceKind.touch,
+      );
+      await tester.pump(const Duration(milliseconds: 700));
+      await press.up();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(ed.selection.describe(), before);
+
+      await drag(tester, cellAt(tester, 20, 1), const Offset(0, -200));
+      final y = ed.scroll.y;
+      expect(y, greaterThan(150));
+      expect(ed.selection.describe(), before);
+
+      // A held finger that then moves pans instead of selecting a range.
+      await drag(
+        tester,
+        cellAt(tester, 10, 1),
+        const Offset(0, -100),
+        hold: const Duration(milliseconds: 700),
+      );
+      expect(ed.scroll.y, greaterThan(y + 50));
+      expect(ed.selection.describe(), before);
+
+      // A mouse in a narrow window pans too.
+      final y2 = ed.scroll.y;
+      await drag(
+        tester,
+        cellAt(tester, 10, 1),
+        const Offset(0, -100),
+        kind: PointerDeviceKind.mouse,
+      );
+      expect(ed.scroll.y, greaterThan(y2 + 50));
+      expect(ed.selection.describe(), before);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    testWidgets('when the window is wide then a tap selects the cell (the '
+        'desktop is unchanged)', (tester) async {
+      await pumpScreen(tester);
+      final ed = doc().editor!;
+      await tester.tapAt(cellAt(tester, 3, 1), kind: PointerDeviceKind.touch);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(ed.selection.describe(), 'B4');
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    for (final dark in [false, true]) {
+      testWidgets('when it shows in ${dark ? 'dark' : 'light'} then the sheet '
+          'tabs are taller and the bar shows the all-sheets menu and the tabs '
+          'only (T-1)', (tester) async {
+        await pumpScreen(tester, size: const Size(390, 844), dark: dark);
+        final sheetId = doc().editor!.activeSheetId;
+
+        expect(
+          tester.getSize(key('sheets.tabBar')).height,
+          SheetTabBar.mobileHeight,
+        );
+        final tab = find.descendant(
+          of: key('sheets.tab.$sheetId'),
+          matching: find.byType(Container),
+        );
+        expect(
+          tester.getSize(tab.first).height,
+          greaterThanOrEqualTo(SheetTabBar.mobileTabHeight),
+        );
+        expect(key('sheets.tab.all'), findsOneWidget);
+        expect(key('sheets.tab.$sheetId'), findsOneWidget);
+        for (final hidden in [
+          'sheets.tab.add',
+          'sheets.tab.scrollLeft',
+          'sheets.tab.scrollRight',
+          'sheets.tab.explore',
+          'sheets.tab.menu.$sheetId',
+        ]) {
+          expect(key(hidden), findsNothing, reason: hidden);
+        }
+        final theme = ShadTheme.of(tester.element(key('sheets.tabBar')));
+        expect(theme.brightness, dark ? Brightness.dark : Brightness.light);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 2));
+      });
+    }
+
+    testWidgets('when the window is wide then the tab bar keeps its height '
+        'and every control (the desktop is unchanged)', (tester) async {
+      await pumpScreen(tester);
+      final sheetId = doc().editor!.activeSheetId;
+      expect(tester.getSize(key('sheets.tabBar')).height, 36);
+      for (final shown in [
+        'sheets.tab.add',
+        'sheets.tab.all',
+        'sheets.tab.scrollLeft',
+        'sheets.tab.scrollRight',
+        'sheets.tab.explore',
+        'sheets.tab.menu.$sheetId',
+      ]) {
+        expect(key(shown), findsOneWidget, reason: shown);
+      }
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+    });
   });
 }

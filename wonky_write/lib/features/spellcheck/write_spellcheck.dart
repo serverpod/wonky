@@ -180,15 +180,26 @@ class WriteSpellcheck extends ChangeNotifier {
 
   void _onDocumentChange(DocumentChangeLog log) {
     if (_engine == null) return;
+    final removed = <String>[];
     for (final change in log.changes) {
       if (change is NodeRemovedEvent) {
         _dirty.remove(change.nodeId);
-        if (_errors.remove(change.nodeId) != null) {
-          styler.clearErrorsForNode(change.nodeId);
-        }
+        if (_errors.remove(change.nodeId) != null) removed.add(change.nodeId);
       } else if (change is NodeDocumentChange) {
         _dirty.add(change.nodeId);
       }
+    }
+    if (removed.isNotEmpty) {
+      // Not now: this listener may run before super_editor's layout has seen
+      // the removal, and a style phase marked dirty then makes the layout
+      // restyle its stale view model, which still has the removed block. It
+      // throws ("No such position in document") and stops updating (#21).
+      scheduleMicrotask(() {
+        if (_disposed) return;
+        for (final id in removed) {
+          styler.clearErrorsForNode(id);
+        }
+      });
     }
     _schedule();
   }

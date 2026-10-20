@@ -19,8 +19,17 @@ import '../toolbar/command_ui.dart';
 
 /// The sheet tab bar (04 §6): add, all sheets, tabs (rename inline, color
 /// strip, menu, drag to reorder), scroll arrows and the selection stats.
+///
+/// In the read-only mobile layout (suite 02 §6.1, T-1) the bar and its tabs
+/// are taller (touch targets) and show the all-sheets menu and the tabs only:
+/// no add button, tab menus, scroll arrows (the strip scrolls with a
+/// swipe), Explore or selection stats (there is no cell selection).
 class SheetTabBar extends StatefulWidget {
   const SheetTabBar({super.key, required this.controller});
+
+  /// Height of the bar and of a tab (desktop: 36 and 30).
+  static const double mobileHeight = 48;
+  static const double mobileTabHeight = 42;
 
   final SheetEditorController controller;
 
@@ -58,6 +67,7 @@ class _SheetTabBarState extends State<SheetTabBar> {
     final cs = theme.colorScheme;
     final ui = CommandUi(context, c.services);
     final l = ui.l;
+    final mobile = WonkyLayout.isMobile(context);
     return ListenableBuilder(
       listenable: Listenable.merge([c, c.renamingSheet, c.services.registry]),
       builder: (context, _) {
@@ -65,7 +75,7 @@ class _SheetTabBarState extends State<SheetTabBar> {
         final hidden = c.model.sheets.where((s) => s.record!.hidden).length;
         return Container(
           key: const ValueKey<String>('sheets.tabBar'),
-          height: 36,
+          height: mobile ? SheetTabBar.mobileHeight : 36,
           decoration: BoxDecoration(
             color: cs.muted.withValues(alpha: 0.5),
             border: Border(top: BorderSide(color: cs.border)),
@@ -73,20 +83,24 @@ class _SheetTabBarState extends State<SheetTabBar> {
           child: Row(
             children: [
               const SizedBox(width: 4),
-              ShadTooltip(
-                builder: (_) => Text(l.cmdSheetAdd),
-                child: ShadIconButton.ghost(
-                  key: const ValueKey<String>('sheets.tab.add'),
-                  width: 30,
-                  height: 30,
-                  iconSize: 16,
-                  icon: const Icon(LucideIcons.plus),
-                  semanticLabel: l.cmdSheetAdd,
-                  enabled: ui.state('sheets.sheet.add').enabled,
-                  onPressed: () =>
-                      ui.run('sheets.sheet.add', const {}, InvocationSource.ui),
+              if (!mobile)
+                ShadTooltip(
+                  builder: (_) => Text(l.cmdSheetAdd),
+                  child: ShadIconButton.ghost(
+                    key: const ValueKey<String>('sheets.tab.add'),
+                    width: 30,
+                    height: 30,
+                    iconSize: 16,
+                    icon: const Icon(LucideIcons.plus),
+                    semanticLabel: l.cmdSheetAdd,
+                    enabled: ui.state('sheets.sheet.add').enabled,
+                    onPressed: () => ui.run(
+                      'sheets.sheet.add',
+                      const {},
+                      InvocationSource.ui,
+                    ),
+                  ),
                 ),
-              ),
               WonkyDropdownMenu(
                 entries: () => [
                   for (final s in c.model.sheets)
@@ -109,13 +123,13 @@ class _SheetTabBarState extends State<SheetTabBar> {
                   builder: (_) => Text(l.tabAllSheets),
                   child: ShadIconButton.ghost(
                     key: const ValueKey<String>('sheets.tab.all'),
-                    width: 30,
-                    height: 30,
+                    width: mobile ? 40 : 30,
+                    height: mobile ? 40 : 30,
                     iconSize: 16,
                     icon: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        const Icon(LucideIcons.menu, size: 16),
+                        Icon(LucideIcons.menu, size: mobile ? 20 : 16),
                         if (hidden > 0)
                           Positioned(
                             right: -6,
@@ -165,6 +179,7 @@ class _SheetTabBarState extends State<SheetTabBar> {
                             controller: c,
                             sheet: sheets[i],
                             ui: ui,
+                            mobile: mobile,
                             onDragStart: () =>
                                 setState(() => _dragging = sheets[i].id),
                             onDragUpdate: (globalX) =>
@@ -179,29 +194,33 @@ class _SheetTabBarState extends State<SheetTabBar> {
                   ),
                 ),
               ),
-              ShadIconButton.ghost(
-                key: const ValueKey<String>('sheets.tab.scrollLeft'),
-                width: 24,
-                height: 30,
-                iconSize: 14,
-                icon: const Icon(LucideIcons.chevronLeft),
-                semanticLabel: l.tabScrollLeft,
-                onPressed: () => _scrollBy(-120),
-              ),
-              ShadIconButton.ghost(
-                key: const ValueKey<String>('sheets.tab.scrollRight'),
-                width: 24,
-                height: 30,
-                iconSize: 14,
-                icon: const Icon(LucideIcons.chevronRight),
-                semanticLabel: l.tabScrollRight,
-                onPressed: () => _scrollBy(120),
-              ),
-              const SizedBox(width: 8),
+              if (!mobile) ...[
+                ShadIconButton.ghost(
+                  key: const ValueKey<String>('sheets.tab.scrollLeft'),
+                  width: 24,
+                  height: 30,
+                  iconSize: 14,
+                  icon: const Icon(LucideIcons.chevronLeft),
+                  semanticLabel: l.tabScrollLeft,
+                  onPressed: () => _scrollBy(-120),
+                ),
+                ShadIconButton.ghost(
+                  key: const ValueKey<String>('sheets.tab.scrollRight'),
+                  width: 24,
+                  height: 30,
+                  iconSize: 14,
+                  icon: const Icon(LucideIcons.chevronRight),
+                  semanticLabel: l.tabScrollRight,
+                  onPressed: () => _scrollBy(120),
+                ),
+                const SizedBox(width: 8),
+              ],
               RowLoadingStatus(controller: c),
-              ExploreButton(controller: c),
-              const SizedBox(width: 4),
-              SelectionStatsButton(controller: c),
+              if (!mobile) ...[
+                ExploreButton(controller: c),
+                const SizedBox(width: 4),
+                SelectionStatsButton(controller: c),
+              ],
               const SizedBox(width: 8),
             ],
           ),
@@ -264,6 +283,7 @@ class _SheetTab extends StatefulWidget {
     required this.controller,
     required this.sheet,
     required this.ui,
+    required this.mobile,
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
@@ -272,6 +292,9 @@ class _SheetTab extends StatefulWidget {
   final SheetEditorController controller;
   final SheetModel sheet;
   final CommandUi ui;
+
+  /// The read-only mobile layout: taller, larger text, no tab menu.
+  final bool mobile;
   final VoidCallback onDragStart;
   final ValueChanged<double> onDragUpdate;
   final VoidCallback onDragEnd;
@@ -438,6 +461,7 @@ class _SheetTabState extends State<_SheetTab> {
                     widget.sheet.name,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.small.copyWith(
+                      fontSize: widget.mobile ? 15 : null,
                       fontWeight: active ? FontWeight.w600 : FontWeight.normal,
                       color: active ? cs.foreground : cs.mutedForeground,
                     ),
@@ -447,9 +471,12 @@ class _SheetTabState extends State<_SheetTab> {
             ),
           );
     final tab = Container(
-      height: 30,
+      height: widget.mobile ? SheetTabBar.mobileTabHeight : 30,
       margin: const EdgeInsets.only(right: 2, top: 3),
-      padding: const EdgeInsets.only(left: 10, right: 2),
+      padding: EdgeInsets.only(
+        left: widget.mobile ? 14 : 10,
+        right: widget.mobile ? 14 : 2,
+      ),
       decoration: BoxDecoration(
         color: active ? cs.background : cs.muted,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(6)),
@@ -483,22 +510,23 @@ class _SheetTabState extends State<_SheetTab> {
               ],
               label,
               SheetTabPresence(controller: c, sheetId: widget.sheet.id),
-              WonkyDropdownMenu(
-                controller: _menu,
-                entries: _entries,
-                builder: (context, menu) => ShadIconButton.ghost(
-                  key: ValueKey<String>('sheets.tab.menu.${widget.sheet.id}'),
-                  width: 22,
-                  height: 22,
-                  iconSize: 12,
-                  icon: Icon(
-                    LucideIcons.chevronDown,
-                    color: cs.mutedForeground,
+              if (!widget.mobile)
+                WonkyDropdownMenu(
+                  controller: _menu,
+                  entries: _entries,
+                  builder: (context, menu) => ShadIconButton.ghost(
+                    key: ValueKey<String>('sheets.tab.menu.${widget.sheet.id}'),
+                    width: 22,
+                    height: 22,
+                    iconSize: 12,
+                    icon: Icon(
+                      LucideIcons.chevronDown,
+                      color: cs.mutedForeground,
+                    ),
+                    semanticLabel: widget.ui.l.tabMenu(widget.sheet.name),
+                    onPressed: menu.toggle,
                   ),
-                  semanticLabel: widget.ui.l.tabMenu(widget.sheet.name),
-                  onPressed: menu.toggle,
                 ),
-              ),
             ],
           ),
           if (color != null)
@@ -513,7 +541,7 @@ class _SheetTabState extends State<_SheetTab> {
     );
     return Listener(
       onPointerDown: (e) {
-        if (e.buttons == kSecondaryMouseButton) _menu.show();
+        if (e.buttons == kSecondaryMouseButton && !widget.mobile) _menu.show();
       },
       child: GestureDetector(
         key: (context.findAncestorStateOfType<_SheetTabBarState>())?.keyFor(
@@ -528,9 +556,12 @@ class _SheetTabState extends State<_SheetTab> {
             );
           }
         },
-        onDoubleTap: () {
-          if (c.canEdit) c.renamingSheet.value = widget.sheet.id;
-        },
+        // Mobile: no rename (read-only), and a tap activates at once.
+        onDoubleTap: widget.mobile
+            ? null
+            : () {
+                if (c.canEdit) c.renamingSheet.value = widget.sheet.id;
+              },
         onHorizontalDragStart: c.canEdit && !renaming
             ? (_) {
                 _dragged = true;

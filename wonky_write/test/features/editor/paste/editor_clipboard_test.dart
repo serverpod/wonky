@@ -1,6 +1,7 @@
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wonky_write/features/editor/commands/write_editor_commands.dart';
+import 'package:wonky_write/features/editor/controller/editor_types.dart';
 import 'package:wonky_write/features/editor/paste/clipboard_codec.dart';
 import 'package:wonky_write/features/editor/paste/editor_clipboard.dart';
 import 'package:wonky_write/features/editor/paste/system_clipboard.dart';
@@ -184,4 +185,76 @@ void main() {
       expect(h.plainText, '# a\nb\n');
     },
   );
+
+  group('Given text with consecutive line breaks (#21)', () {
+    /// Redoes [change] like the redo handler: applies it again.
+    void redo(LocalDeltaChange change) => h.controller.applyLocal(
+      change.delta,
+      label: 'Redo',
+      source: LocalChangeSource.undo,
+      selectionAfter: change.selectionAfter,
+    );
+
+    for (final (name, content) in [
+      ('plain text', const ClipboardContent(plainText: 'one\n\n\ntwo')),
+      (
+        'HTML',
+        const ClipboardContent(
+          plainText: 'one\n\n\ntwo',
+          html: '<div>one</div><div><br></div><div><br></div><div>two</div>',
+        ),
+      ),
+    ]) {
+      test('when pasting $name then each break is a paragraph, deleting '
+          'them restores the text and paste and deletes undo and redo', () {
+        setUpWith(Delta()..insert('abc\n'));
+        h.select(3);
+
+        expect(clipboard.pasteContent(content), isTrue);
+        final pasted = h.plainText;
+        expect(pasted, startsWith('abcone\n\n\ntwo\n'));
+        expect(h.changes.single.label, 'Paste');
+
+        // Backspace over "two" and the three breaks.
+        for (var i = 0; i < 6; i += 1) {
+          h.backspace();
+        }
+        expect(h.plainText, startsWith('abcone\n'));
+        expect(h.plainText, isNot(contains('two')));
+        expect(h.controller.document.first.id, isNotNull);
+
+        // Undo every step, the paste last; then redo them all.
+        final steps = List.of(h.changes);
+        for (final change in steps.reversed) {
+          h.undo(change);
+        }
+        expect(h.plainText, 'abc\n');
+        for (final change in steps) {
+          redo(change);
+        }
+        expect(h.plainText, startsWith('abcone\n'));
+        expect(h.plainText, isNot(contains('two')));
+      });
+    }
+
+    test('when pasting HTML with line breaks (br) then they are soft breaks '
+        'that backspace removes one at a time', () {
+      setUpWith(Delta()..insert('\n'));
+      h.select(0);
+      clipboard.pasteContent(
+        const ClipboardContent(
+          plainText: 'one\n\n\ntwo',
+          html: '<p>one<br><br><br>two</p>',
+        ),
+      );
+      expect(h.plainText, 'one   two\n');
+      for (var i = 0; i < 4; i += 1) {
+        h.backspace();
+      }
+      expect(h.plainText, 'one  \n');
+      h.backspace();
+      h.backspace();
+      expect(h.plainText, 'one\n');
+    });
+  });
 }

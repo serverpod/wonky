@@ -57,6 +57,7 @@ class WriteEditorController extends ChangeNotifier {
       requestHandlers: [
         ...wonkyRequestHandlers(
           mode: () => _mode,
+          selectable: () => _selectable,
           documentLength: () => mirror.length,
           onMaxLengthReached: () =>
               _events.add(const EditorNotice(EditorNoticeKind.documentFull)),
@@ -449,6 +450,21 @@ class WriteEditorController extends ChangeNotifier {
   EditorMode _mode;
 
   /// Editing, Suggesting or Viewing (Write 04 §31).
+  bool _selectable = true;
+
+  /// Whether the user can select text (taps, drags, long presses). Off in
+  /// the read-only mobile layout (suite 02 §6.1, T-1); a layout setting, not
+  /// a change of the document. Turning it off clears the selection.
+  bool get selectable => _selectable;
+  set selectable(bool value) {
+    if (value == _selectable) return;
+    _selectable = value;
+    if (!value && composer.selection != null) {
+      editor.execute([const ClearSelectionRequest()]);
+    }
+    notifyListeners();
+  }
+
   EditorMode get mode => _mode;
   set mode(EditorMode value) {
     if (value == _mode) return;

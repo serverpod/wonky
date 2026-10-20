@@ -213,9 +213,10 @@ class WritePageSettings extends StatelessWidget {
       builder: (context, _) {
         final l = writeL10n(context);
         final d = s.prefs.writeDefaults;
-        final layout = d[WriteSettingsKeys.pageless] == true
-            ? 'pageless'
-            : 'pages';
+        // Pageless unless the user chose Pages (T-1).
+        final layout = d[WriteSettingsKeys.pageless] == false
+            ? 'pages'
+            : 'pageless';
         final format = d[WriteSettingsKeys.exportFormat] as String? ?? 'md';
         final hasPageSetup = d[WriteSettingsKeys.pageSetup] != null;
         String layoutLabel(String v) =>

@@ -149,6 +149,11 @@ menus at the pointer, `RangeInput` picking while focused (also the pivot source 
 skeleton layer, automatic text color by fill contrast, sort undo/redo keeping the selection.
 Phase 4: `RangeInput` in the filter views panel, side panel restore precedence (02 §4
 `LocalViewState`), row display order for sorted filter views (03 §2.3, 07 §4.4).
+Mobile (suite 02 §6.1, T-12, T-1; `test/features/sheet_editor/sheet_editor_screen_test.dart`):
+the read-only layout has no cell selection (every pointer pans the grid, taps and long presses
+do nothing, the selection isn't painted; 03 §5) and a touch tab bar (48 px, 42 px tabs, only
+the all-sheets menu and the tabs; 04 §6). The panning was checked in tests only, not on a
+phone.
 Known gaps of the editor: no tile cache (direct painting; median 12.6–16 ms, p95 20–25 ms per
 frame at 1M cells in the debug test VM on a loaded machine — decided by a release profile), bundled cell fonts (families other than the UI fonts fall
 back), named-range dropdown in the name box, remote-edit toasts beyond "row deleted".

@@ -454,6 +454,17 @@ abstract final class UserService {
     return BuiltinThemeIds.wonkyDefault;
   }
 
+  /// Whether the user's new documents are Pageless (Write settings › Page &
+  /// export › Default layout, `writeDefaults.pageless`; Write 05 §13.3).
+  /// Pageless unless the user chose Pages (T-1).
+  static Future<bool> defaultPageless(Session session, int userId) async {
+    final prefs = await UserPreferences.db.findFirstRow(
+      session,
+      where: (t) => t.userId.equals(userId),
+    );
+    return decodeObject(prefs?.writeDefaults)['pageless'] != false;
+  }
+
   // --------------------------------------------------------------- search
 
   /// The users related to `@me`: the owners of and grantees on the items

@@ -1608,7 +1608,12 @@ takes < 100 ms on a 100-page document.
   document for the session (in-memory). The word being typed (caret inside or at its end) is
   checked once the caret leaves it.
 - **Rendering**: `SpellingAndGrammarStyler` style phase with `spellingErrorAttribution` (red
-  wavy underline in the `destructive` token). Presentation-only (§2.5).
+  wavy underline in the `destructive` token). Presentation-only (§2.5). When a flagged block is
+  removed (Backspace merging pasted empty paragraphs, a delete), its underlines are cleared in
+  a microtask, not from the document listener: that listener can run before `super_editor`'s
+  layout has seen the removal, and a style phase marked dirty then restyles the stale view
+  model, which still has the removed block. The layout threw ("No such position in document")
+  and stopped updating, so the pasted line breaks stayed visible and couldn't be deleted (#21).
 - **Interactions**:
   - Right-click a flagged word: the context-menu top section shows up to 5 suggestions
     (`write.spell.replace {nodeId, range, word}`, one undo step), *Ignore*
@@ -1649,8 +1654,13 @@ fixes it in one undo step.
   layout).
 
 ### 29.2 Layout modes
-`pageSetup.layout`: `pages` (default for new documents, overridable in Settings › Write) or
-`pageless`. Set with `write.doc.setLayout {layout}` (View › Page layout ▸; also in Page setup).
+`pageSetup.layout`: `pageless` (default for new documents, T-1; overridable in Settings ›
+Write › Page & export › Default layout) or `pages`. The server applies the default when it
+creates a document (blank, built-in templates, the welcome document *New here? Read me first*,
+Markdown and templates without a page setup; `DriveService.newDocumentPageSetup`: the locale
+defaults of 07 §6.1 with the user's layout, `writeDefaults.pageless`, Pageless unless it is
+`false`). Copies, imports and user templates keep their own page setup. Phones always show
+Pageless (suite 02 §6.1), whatever the setting. Set with `write.doc.setLayout {layout}` (View › Page layout ▸; also in Page setup).
 This is a meta change, undoable (`write.meta`). The page setup model is owned by
 [07-import-export-print.md](07-import-export-print.md).
 
@@ -1698,6 +1708,12 @@ Pages are **computed, never stored**. Manual page breaks are not supported (01 �
    stylesheet is memoized so the presenter is not recreated on every keystroke.
    `PageChromeLayerBuilder` paints the page cards, headers, footers and page numbers in the
    underlay, at offsets computed by the controller.
+   The page cards are painted under the document, so the phase also gives the last block
+   bottom padding (`tailPadding`): the rest of the last page below it plus the 48 px bottom
+   canvas padding (05 §16). The document's scroll extent then reaches the last page's bottom
+   edge, also when that page isn't full (#1). It is component padding, outside the measured
+   box, so it never feeds back into the measure; the document padding would not do, since
+   `super_editor` rebuilds its layout only when a component's view model changes.
 4. **Oversized blocks (v1, P0)**: the page boundary inside the block is drawn as a **seam**.
    The two page cards touch, there is a dashed separator line in the margin areas, and the
    page number label sits in the gutter. Content is never hidden. **P1**:

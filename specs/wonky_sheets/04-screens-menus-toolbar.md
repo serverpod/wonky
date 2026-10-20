@@ -527,6 +527,13 @@ Specified in [03 §9](03-grid-and-editing.md#9-formula-bar). Hidden via View ›
 All sheet commands are one undo step (delete restores the sheet with all rows, cells and rules by
 re-inserting the same ids).
 
+**Mobile (T-1).** In the read-only mobile layout (suite 02 §6.1) the bar is 48 px tall
+(`SheetTabBar.mobileHeight`) with 42 px tabs (`mobileTabHeight`) in 15 px text, and shows the
+**≡** all-sheets menu (40 px) and the tabs only: no **+**, no tab menu (▾ or right-click), no
+scroll arrows (the strip scrolls with a swipe), no Explore and no selection stats (there is no
+cell selection, 03 §5). A tap activates a tab at once (no double-tap rename). The desktop bar is
+unchanged.
+
 ---
 
 ## 7. Selection statistics and Explore

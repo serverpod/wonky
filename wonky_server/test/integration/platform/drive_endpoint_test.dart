@@ -2,10 +2,12 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:clock/clock.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
+import 'package:wonky_write_core/wonky_write_core.dart' show PageSetup;
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/drive/drive_trash.dart';
 import 'package:wonky_server/src/platform/drive/templates/builtin_templates.dart';
@@ -103,6 +105,67 @@ void main() {
         expect(await _names(endpoints, anna), ['Offline']);
       },
     );
+
+    group('when creating documents (T-1)', () {
+      Future<Map<String, dynamic>> pageSetupOf(DriveItemView doc) async {
+        final session = sessionBuilder.build();
+        final item = await DriveItem.db.findFirstRow(
+          session,
+          where: (t) => t.uuid.equals(doc.uuid),
+        );
+        final row = await Document.db.findFirstRow(
+          session,
+          where: (t) => t.itemId.equals(item!.id),
+        );
+        return (jsonDecode(row!.pageSetupJson) as Map).cast<String, dynamic>();
+      }
+
+      test('then a blank document is Pageless with the default page '
+          'setup', () async {
+        final doc = await TestDrive.document(endpoints, anna);
+
+        final setup = await pageSetupOf(doc);
+        expect(setup['layout'], 'pageless');
+        expect(
+          PageSetup.fromJson(setup),
+          PageSetup.fromJson(
+            PageSetup.defaultsFor('en').toJson()..['layout'] = 'pageless',
+          ),
+        );
+      });
+
+      test('then documents from a built-in template or Markdown are '
+          'Pageless', () async {
+        final template = BuiltinTemplates.byKey('write.meeting-notes');
+        final fromTemplate = await endpoints.drive.createDocument(
+          anna.endpointSession,
+          null,
+          'Notes',
+          template.uuid,
+          null,
+        );
+        final fromMarkdown = await TestDrive.document(
+          endpoints,
+          anna,
+          markdown: '# Hi',
+        );
+
+        expect((await pageSetupOf(fromTemplate))['layout'], 'pageless');
+        expect((await pageSetupOf(fromMarkdown))['layout'], 'pageless');
+      });
+
+      test('then a user who chose Pages as the default layout gets '
+          'Pages', () async {
+        await endpoints.user.updatePreferences(
+          anna.endpointSession,
+          UserPreferencesPatch(writeDefaults: jsonEncode({'pageless': false})),
+        );
+
+        final doc = await TestDrive.document(endpoints, anna);
+
+        expect((await pageSetupOf(doc))['layout'], 'pages');
+      });
+    });
 
     test(
       'when creating from a built-in template then its content is used',

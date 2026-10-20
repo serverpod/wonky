@@ -116,6 +116,8 @@ class SelectionLayer extends GridLayer {
     final c = ctx.controller;
     final sel = ctx.selection;
     if (sel.sheetId != ctx.sheetId) return;
+    // The read-only mobile layout has no cell selection (suite 02 §6.1, T-1).
+    if (c.readOnlyView) return;
     final tokens = ctx.tokens;
     final fill = Paint()..color = tokens.selectionFill;
     final border = Paint()
@@ -381,7 +383,9 @@ class HeaderLayer extends GridLayer {
       bold: bold,
       align: TextAlign.center,
     );
-    final sameSheet = sel.sheetId == ctx.sheetId;
+    // No selected headers in the read-only mobile layout (T-1).
+    final sameSheet =
+        sel.sheetId == ctx.sheetId && !ctx.controller.readOnlyView;
 
     // Column headers.
     for (final pane in g.panes) {
