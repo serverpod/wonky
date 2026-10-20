@@ -43,7 +43,7 @@ never reach clients). The assistant acts on documents through the **same tool la
   | Fast | `fastModel` | `low` |
   Defaults per provider (`AiModels`, the only place with model ids; `ai.models.<provider>`
   overrides them): Anthropic `claude-opus-5-5` / `claude-haiku-5-5`, OpenAI `gpt-5` /
-  `gpt-5-mini`, Gemini `gemini-2.5-pro` / `gemini-2.5-flash`. Inline completions use the fast
+  `gpt-5-mini`, Gemini `gemini-3.1-pro-preview` / `gemini-3.8-flash` (the 2.5 models return 404 for new keys). Inline completions use the fast
   model. Effort is sent to OpenAI as `reasoning_effort`; dartantic has no effort option for
   Anthropic and Gemini, which use their model defaults. No `temperature`/`top_p`.
 - **Streaming** for every request; `maxTokens` 64000 (chat), 32000 (inline/proofread),

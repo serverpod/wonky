@@ -35,7 +35,7 @@ class AiProviderModels {
 ///     models:                       # optional; defaults in AiModels
 ///       anthropic: {model: claude-opus-5-5, fastModel: claude-haiku-5-5}
 ///       openai: {model: gpt-5, fastModel: gpt-5-mini}
-///       gemini: {model: gemini-2.5-pro, fastModel: gemini-2.5-flash}
+///       gemini: {model: gemini-3.1-pro-preview, fastModel: gemini-3.8-flash}
 ///     dailyTokenBudget: 2000000     # per user, all models
 ///     maxConcurrentRequests: 2      # per user
 ///     requestTimeoutMinutes: 10
