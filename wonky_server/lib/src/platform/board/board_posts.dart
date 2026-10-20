@@ -12,6 +12,7 @@ import 'board_common.dart';
 import 'board_config.dart';
 import 'board_pipeline.dart';
 import 'board_search.dart';
+import 'board_task_claims.dart';
 import 'board_views.dart';
 
 /// Posts (specs/16 §4, §5.3, §6.4, §7): reading, the list and search,
@@ -38,6 +39,7 @@ abstract final class BoardPosts {
         repository: config.repository,
         securityContact: config.securityContact,
         claimHours: config.claimHours,
+        maxActiveClaims: config.maxActiveClaimsPerUser,
       );
     }
     final claims = await BoardTask.db.find(
@@ -52,6 +54,9 @@ abstract final class BoardPosts {
       session,
       where: (t) => t.userId.equals(c.id),
     );
+    final block = c.isAdmin
+        ? null
+        : await BoardTaskClaims.claimBlock(session, c.id);
     return BoardMe(
       signedIn: true,
       userId: c.id,
@@ -64,6 +69,9 @@ abstract final class BoardPosts {
       repository: config.repository,
       securityContact: config.securityContact,
       claimHours: config.claimHours,
+      maxActiveClaims: config.maxActiveClaimsPerUser,
+      claimBlockedUntil: block?.until,
+      claimBlockedReason: block?.message,
     );
   }
 
@@ -129,6 +137,9 @@ abstract final class BoardPosts {
       text,
       kind: kind,
       limit: 10,
+      // Only issues one can still vote for: done and shipped ones are
+      // built (specs/16 §4.2.2).
+      statuses: const [BoardPostStatus.open, BoardPostStatus.planned],
     );
     final ai = BoardAi.instance;
     if (posts.isNotEmpty && c.signedIn && await ai.jevAvailable(session)) {

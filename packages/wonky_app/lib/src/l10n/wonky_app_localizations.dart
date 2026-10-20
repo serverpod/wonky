@@ -5518,6 +5518,42 @@ abstract class WonkyAppLocalizations {
   /// **'{count, plural, =1{1 vote} other{{count} votes}}'**
   String boardReportSimilarVotes(int count);
 
+  /// Screen-reader label of a similar issue's title in the report dialog: it opens the issue's details.
+  ///
+  /// In en, this message translates to:
+  /// **'Show #{number} {title}'**
+  String boardSimilarShow(int number, String title);
+
+  /// No description provided for @boardSimilarLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this issue. Try again later.'**
+  String get boardSimilarLoadFailed;
+
+  /// No description provided for @boardTaskCommentsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments for the prompt'**
+  String get boardTaskCommentsLabel;
+
+  /// No description provided for @boardTaskCommentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI reads the checked comments when it writes the prompt.'**
+  String get boardTaskCommentsHint;
+
+  /// No description provided for @boardCommentsPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked comments go into the task prompt when you select this issue for building.'**
+  String get boardCommentsPromptHint;
+
+  /// Screen-reader label of an admin's checkbox on an issue comment.
+  ///
+  /// In en, this message translates to:
+  /// **'Include the comment by {name} in the task prompt'**
+  String boardCommentInPrompt(String name);
+
   /// No description provided for @boardReportVoteInstead.
   ///
   /// In en, this message translates to:
@@ -6454,12 +6490,6 @@ abstract class WonkyAppLocalizations {
   /// **'Admins publish tasks from the most wanted issues. Check back soon.'**
   String get boardEmptyTasksHint;
 
-  /// No description provided for @boardDoneTasks.
-  ///
-  /// In en, this message translates to:
-  /// **'Finished tasks'**
-  String get boardDoneTasks;
-
   /// Semantics label of the up-vote button.
   ///
   /// In en, this message translates to:
@@ -6687,6 +6717,12 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Merge into…'**
   String get boardMergeEllipsis;
+
+  /// No description provided for @boardLabelsEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels…'**
+  String get boardLabelsEllipsis;
 
   /// No description provided for @boardBlockEllipsis.
   ///

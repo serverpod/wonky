@@ -24,10 +24,10 @@ enum BoardTab {
   bool get hasPosts => this != BoardTab.tasks && this != BoardTab.claimed;
 
   /// Whether the list shows tasks (a task opened from it stays under it).
+  /// *Done* lists finished issues only (specs/16 §4.4).
   bool get hasTasks =>
       this == BoardTab.tasks ||
       this == BoardTab.claimed ||
-      this == BoardTab.done ||
       this == BoardTab.review;
 
   static BoardTab? byName(String? name) {

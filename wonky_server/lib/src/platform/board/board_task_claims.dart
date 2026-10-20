@@ -12,6 +12,34 @@ import 'board_views.dart';
 
 import 'board_tasks.dart';
 
+/// Why a user may not claim tasks for a while (specs/16 §8.4).
+enum BoardClaimBlockReason { expired, invalid }
+
+/// A claim block: no claims until [until], after [count] events of
+/// [reason].
+class BoardClaimBlock {
+  const BoardClaimBlock({
+    required this.until,
+    required this.reason,
+    required this.count,
+  });
+
+  final DateTime until;
+  final BoardClaimBlockReason reason;
+  final int count;
+
+  /// The explanation shown to the user (the claim error, `BoardMe`).
+  String get message {
+    final why = switch (reason) {
+      BoardClaimBlockReason.expired =>
+        '$count of your claims expired without a pull request or an unclaim',
+      BoardClaimBlockReason.invalid =>
+        'a moderator removed $count of your issues',
+    };
+    return "You can't claim tasks until ${BoardText.day(until)}: $why.";
+  }
+}
+
 /// Claims of board tasks (specs/16 §13.7): claim with a code, release,
 /// expiry and the expiry warning.
 abstract final class BoardTaskClaims {
@@ -37,6 +65,10 @@ abstract final class BoardTaskClaims {
       }
       if (status != BoardTaskStatus.published) {
         throw Errors.conflict('Only published tasks can be claimed.');
+      }
+      if (!c.isAdmin) {
+        final block = await claimBlock(session, c.id, now: now);
+        if (block != null) throw Errors.forbidden(block.message);
       }
       final active = await BoardTask.db.count(
         session,
@@ -250,6 +282,57 @@ abstract final class BoardTaskClaims {
       await _expire(session, t, notify: true);
     }
     return tasks.length;
+  }
+
+  /// Whether user [userId] may not claim tasks at [now] (specs/16 §8.4),
+  /// computed from the record, so an undone removal lifts its block: every
+  /// `expiredClaimsToBlock` expired claims, or `invalidPostsToBlock` issues
+  /// removed by a moderator, block for `claimBlockDays` from the last of
+  /// them. Each block starts the count of its kind again.
+  static Future<BoardClaimBlock?> claimBlock(
+    Session session,
+    int userId, {
+    DateTime? now,
+  }) async {
+    final config = BoardConfig.current;
+    final expired = await BoardComment.db.find(
+      session,
+      where: (t) =>
+          t.authorId.equals(userId) &
+          t.taskId.notEquals(null) &
+          t.systemEvent.equals('expired'),
+    );
+    final invalid = await BoardPost.db.find(
+      session,
+      where: (t) =>
+          t.authorId.equals(userId) &
+          t.moderation.equals(BoardModeration.removed) &
+          t.removedAt.notEquals(null),
+    );
+    final events = <(DateTime, BoardClaimBlockReason)>[
+      for (final c in expired) (c.createdAt, BoardClaimBlockReason.expired),
+      for (final p in invalid) (p.removedAt!, BoardClaimBlockReason.invalid),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
+    final counts = {for (final r in BoardClaimBlockReason.values) r: 0};
+    BoardClaimBlock? block;
+    for (final (at, reason) in events) {
+      final n = counts[reason]! + 1;
+      final limit = switch (reason) {
+        BoardClaimBlockReason.expired => config.expiredClaimsToBlock,
+        BoardClaimBlockReason.invalid => config.invalidPostsToBlock,
+      };
+      if (limit <= 0 || n < limit) {
+        counts[reason] = n;
+        continue;
+      }
+      counts[reason] = 0;
+      final until = at.add(config.claimBlockDuration);
+      if (block == null || until.isAfter(block.until)) {
+        block = BoardClaimBlock(until: until, reason: reason, count: limit);
+      }
+    }
+    if (block == null || !block.until.isAfter(now ?? nowUtc())) return null;
+    return block;
   }
 
   /// Sweep: one reminder per claim with `claimWarnHours` or less left.

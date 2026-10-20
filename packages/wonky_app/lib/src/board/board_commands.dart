@@ -27,6 +27,35 @@ String boardTaskUrl(ShellServices s, int number) =>
 String boardPrLines(int task, String code) =>
     'Wonky-Task: T-$task\nWonky-Claim: $code';
 
+/// The comments of the issues [numbers] the *Create task* dialog offers for
+/// the prompt's context (specs/16 §9.3): the visible ones people wrote, the
+/// ones the prompt can include. [first] is issue `numbers.first`, already
+/// read. A failing read offers none.
+Future<List<BoardTaskComment>> _taskComments(
+  BoardRepository repo,
+  List<int> numbers,
+  BoardPostView first,
+) async {
+  final out = <BoardTaskComment>[];
+  for (final n in numbers) {
+    try {
+      final post = n == first.number ? first : await repo.getPost(n);
+      for (final c in await repo.listComments(n)) {
+        if (c.deleted ||
+            c.systemEvent != null ||
+            c.moderation != BoardModeration.visible ||
+            c.body.trim().isEmpty) {
+          continue;
+        }
+        out.add((postNumber: n, postTitle: post.title, comment: c));
+      }
+    } on Object {
+      continue;
+    }
+  }
+  return out;
+}
+
 /// `shell.board.*` (specs/16 §14) apart from `report` / `open`, which come
 /// with the report dialog. Every state change is undoable on the shell
 /// stack through [BoardUndoHandler] (the server inverse); admin commands are
@@ -921,12 +950,18 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
           'size': JsonSchema.string(
             enumValues: [for (final x in BoardSize.values) x.name],
           ),
+          // Comments (uuids) left out of the prompt's context (§9.3).
+          'excludedComments': const JsonSchema.array(JsonSchema.string()),
         },
         required: const ['postNumbers'],
       ),
       run: (ctx, a) async {
         final numbers = [
           for (final x in a.values['postNumbers']! as List) (x as num).toInt(),
+        ];
+        var excluded = [
+          for (final x in a.values['excludedComments'] as List? ?? const [])
+            UuidValue.withValidation('$x'),
         ];
         var title = a.string('title');
         var area = switch (a.string('area')) {
@@ -946,18 +981,36 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
             area ??= first.area ?? BoardArea.suite;
             size ??= first.size ?? BoardSize.small;
           } else {
+            // The issue page passes the comments its admin unchecked: the
+            // dialog then lists none.
+            final comments = a.values.containsKey('excludedComments')
+                ? const <BoardTaskComment>[]
+                : await _taskComments(repo(), numbers, first);
+            if (!bc.mounted) return const CommandResult.cancelled();
             final r = await showBoardTaskDialog(
               bc,
               count: numbers.length,
               title: title ?? first.title,
               area: area ?? first.area ?? BoardArea.suite,
               size: size ?? first.size ?? BoardSize.small,
+              comments: comments,
             );
             if (r == null) return const CommandResult.cancelled();
-            (title, area, size) = r;
+            (:title, :area, :size) = (
+              title: r.title,
+              area: r.area,
+              size: r.size,
+            );
+            if (comments.isNotEmpty) excluded = r.excludedComments;
           }
         }
-        final t = await repo().createTask(numbers, title, area, size);
+        final t = await repo().createTask(
+          numbers,
+          title,
+          area,
+          size,
+          excludedComments: excluded,
+        );
         ctx.record(
           entry(BoardUndoOp.createTask, {
             'task': t.number,
@@ -965,6 +1018,8 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
             'title': title,
             'area': area.name,
             'size': size.name,
+            if (excluded.isNotEmpty)
+              'excluded': [for (final u in excluded) u.uuid],
           }),
         );
         hub.changed(task: t.number);
@@ -1011,7 +1066,7 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
             size: t.size,
           );
           if (r == null) return const CommandResult.cancelled();
-          (title, area, size) = r;
+          (:title, :area, :size, excludedComments: _) = r;
         }
         title ??= t.title;
         area ??= t.area;
@@ -1134,7 +1189,7 @@ List<Command<CommandArgs>> boardCommands(ShellServices s) {
               size: size ?? first.size,
             );
             if (r == null) return const CommandResult.cancelled();
-            (title, area, size) = r;
+            (:title, :area, :size, excludedComments: _) = r;
           }
         }
         final t = await repo().mergeTasks(numbers, title, area, size);

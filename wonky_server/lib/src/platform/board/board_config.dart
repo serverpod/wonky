@@ -19,7 +19,10 @@ class BoardConfig {
     this.securityContact = 'security@serverpod.dev',
     this.claimHours = 48,
     this.claimWarnHours = 6,
-    this.maxActiveClaimsPerUser = 2,
+    this.maxActiveClaimsPerUser = 3,
+    this.expiredClaimsToBlock = 3,
+    this.invalidPostsToBlock = 2,
+    this.claimBlockDays = 14,
     this.flagsToHold = 3,
     this.publishWhenTriageFails = true,
     this.limits = const BoardLimits(),
@@ -44,6 +47,15 @@ class BoardConfig {
   final int claimWarnHours;
   final int maxActiveClaimsPerUser;
 
+  /// Expired claims (neither delivered nor unclaimed in time) that block
+  /// the claimant from claiming for [claimBlockDays] (specs/16 §8.4).
+  final int expiredClaimsToBlock;
+
+  /// Issues removed by a moderator (invalid) that block their author from
+  /// claiming for [claimBlockDays] (specs/16 §8.4).
+  final int invalidPostsToBlock;
+  final int claimBlockDays;
+
   /// Distinct users' flags that hold a visible post or comment.
   final int flagsToHold;
 
@@ -55,6 +67,7 @@ class BoardConfig {
   final BoardGithubConfig github;
 
   Duration get claimDuration => Duration(hours: claimHours);
+  Duration get claimBlockDuration => Duration(days: claimBlockDays);
 
   static BoardConfig? _current;
 
@@ -100,7 +113,10 @@ class BoardConfig {
       securityContact: r.s('securityContact', 'security@serverpod.dev'),
       claimHours: r.i('claimHours', 48),
       claimWarnHours: r.i('claimWarnHours', 6),
-      maxActiveClaimsPerUser: r.i('maxActiveClaimsPerUser', 2),
+      maxActiveClaimsPerUser: r.i('maxActiveClaimsPerUser', 3),
+      expiredClaimsToBlock: r.i('expiredClaimsToBlock', 3),
+      invalidPostsToBlock: r.i('invalidPostsToBlock', 2),
+      claimBlockDays: r.i('claimBlockDays', 14),
       flagsToHold: r.i('flagsToHold', 3),
       publishWhenTriageFails: r.b('publishWhenTriageFails', true),
       limits: BoardLimits(

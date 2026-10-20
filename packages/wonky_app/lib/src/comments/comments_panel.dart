@@ -1005,12 +1005,24 @@ class _CommentThreadBodyState extends State<CommentThreadBody> {
     final resolved = a.resolved;
     final copyLink = a.copyLink;
     final react = a.react;
+    final selected = cm.deleted ? null : a.selected(cm);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
+            if (selected != null) ...[
+              Semantics(
+                label: a.selectLabel(l, cm),
+                child: ShadCheckbox(
+                  key: ValueKey<String>('$p.comment.${cm.id}.select'),
+                  value: selected,
+                  onChanged: (v) => a.select(cm, v),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
             WonkyAvatar(
               name: cm.authorName ?? '?',
               color: cm.authorColor == null

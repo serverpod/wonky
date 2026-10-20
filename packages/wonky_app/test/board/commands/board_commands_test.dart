@@ -579,6 +579,24 @@ void main() {
       expect(redone.posts, [post.number]);
     });
 
+    test('when creating a task without some comments then the task leaves '
+        'them out, also after redo', () async {
+      final c = board.seedComment(postNumber: post.number, body: 'Off topic');
+      final r = await h.invoke('shell.board.admin.createTask', {
+        'postNumbers': [post.number],
+        'title': 'Merged cells',
+        'area': 'sheets',
+        'size': 'small',
+        'excludedComments': [c.uuid.uuid],
+      });
+      final n = (r.data! as Map)['taskNumber'] as int;
+      expect(board.excludedComments[n], [c.uuid]);
+
+      await h.undo();
+      await h.redo();
+      expect(board.excludedComments[board.tasks.values.last.number], [c.uuid]);
+    });
+
     test('when creating a task headless without labels then the first '
         "post's title and labels are used", () async {
       final r = await h.invoke('shell.board.admin.createTask', {

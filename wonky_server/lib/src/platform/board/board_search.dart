@@ -109,6 +109,11 @@ abstract final class BoardSearch {
     BoardPostKind? kind,
     int limit = 10,
     int? excludeId,
+    List<BoardPostStatus> statuses = const [
+      BoardPostStatus.open,
+      BoardPostStatus.planned,
+      BoardPostStatus.done,
+    ],
   }) async {
     final ids = await similarIds(
       session,
@@ -116,6 +121,7 @@ abstract final class BoardSearch {
       kind: kind,
       limit: limit,
       excludeId: excludeId,
+      statuses: statuses,
     );
     return byIds(session, ids);
   }

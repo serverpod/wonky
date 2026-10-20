@@ -57,6 +57,10 @@ class _BoardPostPageState extends State<BoardPostPage> {
   BoardTrail get _trail =>
       (widget.trail ?? BoardTrail(post: n)).resolve(hub, postKind: _post?.kind);
   List<BoardCommentView> _comments = const [];
+
+  /// Comments an admin unchecked: left out of the task prompt when the
+  /// issue is selected for building (specs/16 §9.3).
+  final Set<String> _excluded = {};
   List<BoardSimilarPost> _similar = const [];
   String? _screenshotUrl;
   Object? _error;
@@ -194,8 +198,6 @@ class _BoardPostPageState extends State<BoardPostPage> {
       destructive: destructive,
       onSelected: onSelected,
     );
-    final votingOpen =
-        p.status == BoardPostStatus.open || p.status == BoardPostStatus.planned;
     return [
       if (p.isMine && p.canEdit && !p.deleted)
         item(
@@ -230,15 +232,11 @@ class _BoardPostPageState extends State<BoardPostPage> {
           LucideIcons.flag,
           () => _invoke('shell.board.flag'),
         ),
+      // The common admin actions are in the toolbar ([_adminBar]); the
+      // rest stays here.
       if (admin) ...[
         const WonkyMenuSeparator(),
         WonkyMenuLabel(l.boardAdminActions),
-        item(
-          'labels',
-          l.cmdBoardSetLabels,
-          LucideIcons.tags,
-          () => _invoke('shell.board.admin.setLabels'),
-        ),
         if (p.suggestedTitle != null)
           item(
             'applyTitle',
@@ -257,14 +255,6 @@ class _BoardPostPageState extends State<BoardPostPage> {
             'approve': p.moderation != BoardModeration.visible,
           }),
         ),
-        if (p.moderation != BoardModeration.visible &&
-            p.moderation != BoardModeration.removed)
-          item(
-            'approve',
-            l.boardActionApprove,
-            LucideIcons.check,
-            () => _moderate('approve'),
-          ),
         if (p.moderation == BoardModeration.visible)
           item(
             'hold',
@@ -294,50 +284,6 @@ class _BoardPostPageState extends State<BoardPostPage> {
             () => _moderate('remove'),
             destructive: true,
           ),
-        if (votingOpen && p.task == null)
-          item(
-            'select',
-            l.boardSelectForBuilding,
-            LucideIcons.hammer,
-            _selectForBuilding,
-          ),
-        if (votingOpen && p.task == null)
-          item(
-            'addToTask',
-            l.boardAddToTaskEllipsis,
-            LucideIcons.listPlus,
-            () => boardInvoke(s, 'shell.board.admin.setTaskPosts', {
-              'add': [n],
-            }, context: context),
-          ),
-        if (p.status == BoardPostStatus.declined)
-          item(
-            'reopen',
-            l.cmdBoardReopen,
-            LucideIcons.rotateCcw,
-            () => _invoke('shell.board.admin.reopen'),
-          )
-        else if (votingOpen)
-          item(
-            'decline',
-            l.boardDeclineEllipsis,
-            LucideIcons.ban,
-            () => _invoke('shell.board.admin.decline'),
-          ),
-        if (p.status == BoardPostStatus.duplicate)
-          item(
-            'unmerge',
-            l.cmdBoardUnmerge,
-            LucideIcons.split,
-            () => _invoke('shell.board.admin.unmerge'),
-          )
-        else
-          item(
-            'merge',
-            l.boardMergeEllipsis,
-            LucideIcons.merge,
-            () => _invoke('shell.board.admin.merge', {'source': n}),
-          ),
         if (p.author != null && !p.author!.isAdmin)
           item(
             'block',
@@ -355,9 +301,182 @@ class _BoardPostPageState extends State<BoardPostPage> {
     {'postNumber': n, 'action': action},
   );
 
+  /// Whether admins can select this issue for building, so its comments get
+  /// checkboxes for the task prompt (specs/16 §9.3).
+  bool _buildable(BoardPostView p) =>
+      hub.isAdmin &&
+      p.task == null &&
+      !p.deleted &&
+      p.moderation == BoardModeration.visible &&
+      (p.status == BoardPostStatus.open || p.status == BoardPostStatus.planned);
+
+  /// The buttons of the admins' toolbar that the window has no room for:
+  /// their indices in [_adminActions] (reported by the layout).
+  Set<int> _barHidden = const {};
+
+  /// The common admin actions (specs/16 §4.5), most important first in
+  /// [_AdminAction.priority]: they are toolbar buttons until the row is
+  /// too narrow, then entries of the ⋮ menu.
+  List<_AdminAction> _adminActions(WonkyAppLocalizations l, BoardPostView p) {
+    final votingOpen =
+        p.status == BoardPostStatus.open || p.status == BoardPostStatus.planned;
+    final held =
+        p.moderation != BoardModeration.visible &&
+        p.moderation != BoardModeration.removed;
+    return [
+      if (held)
+        _AdminAction(
+          'approve',
+          l.boardActionApprove,
+          LucideIcons.check,
+          () => _moderate('approve'),
+          primary: true,
+          priority: 0,
+        ),
+      if (_buildable(p)) ...[
+        _AdminAction(
+          'select',
+          l.boardSelectForBuilding,
+          LucideIcons.hammer,
+          _selectForBuilding,
+          primary: !held,
+          priority: 0,
+        ),
+        _AdminAction(
+          'addToTask',
+          l.boardAddToTaskEllipsis,
+          LucideIcons.listPlus,
+          () => boardInvoke(s, 'shell.board.admin.setTaskPosts', {
+            'add': [n],
+          }, context: context),
+          priority: 1,
+        ),
+      ],
+      _AdminAction(
+        'labels',
+        l.boardLabelsEllipsis,
+        LucideIcons.tags,
+        () => _invoke('shell.board.admin.setLabels'),
+        priority: 2,
+      ),
+      if (p.status == BoardPostStatus.duplicate)
+        _AdminAction(
+          'unmerge',
+          l.cmdBoardUnmerge,
+          LucideIcons.split,
+          () => _invoke('shell.board.admin.unmerge'),
+          priority: 3,
+        )
+      else
+        _AdminAction(
+          'merge',
+          l.boardMergeEllipsis,
+          LucideIcons.merge,
+          () => _invoke('shell.board.admin.merge', {'source': n}),
+          priority: 3,
+        ),
+      if (p.status == BoardPostStatus.declined)
+        _AdminAction(
+          'reopen',
+          l.cmdBoardReopen,
+          LucideIcons.rotateCcw,
+          () => _invoke('shell.board.admin.reopen'),
+          priority: 4,
+        )
+      else if (votingOpen)
+        _AdminAction(
+          'decline',
+          l.boardDeclineEllipsis,
+          LucideIcons.ban,
+          () => _invoke('shell.board.admin.decline'),
+          priority: 4,
+        ),
+    ];
+  }
+
+  /// The ⋮ button with [_menu]: in the title row for everyone but admins,
+  /// at the end of the admins' toolbar for them.
+  Widget _moreButton(
+    WonkyAppLocalizations l,
+    BoardPostView p, {
+    List<WonkyMenuEntry> Function()? before,
+  }) => WonkyDropdownMenu(
+    anchor: const ShadAnchor(
+      childAlignment: AlignmentDirectional.bottomEnd,
+      overlayAlignment: AlignmentDirectional.topEnd,
+    ),
+    entries: () {
+      final first = before?.call() ?? const <WonkyMenuEntry>[];
+      return [
+        ...first,
+        if (first.isNotEmpty) const WonkyMenuSeparator(),
+        ..._menu(l, p),
+      ];
+    },
+    builder: (context, ctl) => ShadIconButton.ghost(
+      key: const ValueKey<String>('board.post.menu'),
+      semanticLabel: l.moreActions,
+      icon: const Icon(LucideIcons.ellipsisVertical),
+      onPressed: ctl.toggle,
+    ),
+  );
+
+  /// The admins' toolbar under the header (specs/16 §4.5): the common
+  /// admin actions as buttons (keys `board.post.bar.<id>`) and ⋮ at their
+  /// end, on one row. Buttons that don't fit move into ⋮, least important
+  /// first (`ToolbarOverflowLayout`, as in the editors' toolbars), as
+  /// `board.post.menu.<id>` above the menu's own entries.
+  Widget _adminBar(WonkyAppLocalizations l, BoardPostView p) {
+    final actions = _adminActions(l, p);
+    final hidden = _barHidden;
+    return Semantics(
+      container: true,
+      label: l.boardAdminActions,
+      child: ToolbarOverflowLayout(
+        key: const ValueKey<String>('board.post.adminBar'),
+        spacing: 8,
+        onHiddenChanged: (h) {
+          if (mounted) setState(() => _barHidden = h);
+        },
+        children: [
+          for (final (i, a) in actions.indexed)
+            ToolbarOverflowChild(
+              slot: ToolbarSlot.item,
+              priority: a.priority,
+              index: i,
+              child: ExcludeFocus(
+                excluding: hidden.contains(i),
+                child: a.button(),
+              ),
+            ),
+          ToolbarOverflowChild(
+            slot: ToolbarSlot.item,
+            index: actions.length,
+            pinned: true,
+            child: _moreButton(
+              l,
+              p,
+              before: () => [
+                for (final (i, a) in actions.indexed)
+                  if (_barHidden.contains(i)) a.menuItem(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _selectForBuilding() async {
+    // The comments unchecked on this page stay out of the prompt; the task
+    // dialog then asks only for the title and labels.
+    final shown = {for (final c in _comments) c.uuid.uuid};
     final r = await boardInvoke(s, 'shell.board.admin.createTask', {
       'postNumbers': [n],
+      'excludedComments': [
+        for (final u in _excluded)
+          if (shown.contains(u)) u,
+      ],
     }, context: context);
     final t = (r?.data as Map?)?['taskNumber'];
     if (t is int && mounted) boardOpenTask(s, t, context: context);
@@ -696,19 +815,8 @@ class _BoardPostPageState extends State<BoardPostPage> {
                             ),
                           ),
                         ),
-                        WonkyDropdownMenu(
-                          anchor: const ShadAnchor(
-                            childAlignment: AlignmentDirectional.bottomEnd,
-                            overlayAlignment: AlignmentDirectional.topEnd,
-                          ),
-                          entries: () => _menu(l, p),
-                          builder: (context, ctl) => ShadIconButton.ghost(
-                            key: const ValueKey<String>('board.post.menu'),
-                            semanticLabel: l.moreActions,
-                            icon: const Icon(LucideIcons.ellipsisVertical),
-                            onPressed: ctl.toggle,
-                          ),
-                        ),
+                        // Admins have ⋮ at the end of their toolbar.
+                        if (!hub.isAdmin) _moreButton(l, p),
                       ],
                     ),
                     Wrap(
@@ -746,7 +854,7 @@ class _BoardPostPageState extends State<BoardPostPage> {
               ),
             ],
           ),
-          if (hub.isAdmin) _adminPanel(l, theme, p),
+          if (hub.isAdmin) ...[_adminBar(l, p), _adminPanel(l, theme, p)],
           WonkyMarkdown(
             p.body,
             key: const ValueKey<String>('board.post.body'),
@@ -827,6 +935,18 @@ class _BoardPostPageState extends State<BoardPostPage> {
             ],
           ],
           BoardSectionTitle(l.boardCommentsTitle(p.commentCount)),
+          if (_buildable(p) &&
+              _comments.any(
+                (c) =>
+                    c.systemEvent == null &&
+                    !c.deleted &&
+                    c.moderation == BoardModeration.visible,
+              ))
+            Text(
+              l.boardCommentsPromptHint,
+              key: const ValueKey<String>('board.post.comments.promptHint'),
+              style: theme.textTheme.muted,
+            ),
           CommentThreadBody.custom(
             key: ValueKey<String>('board.post.comments.$n'),
             services: s,
@@ -834,6 +954,10 @@ class _BoardPostPageState extends State<BoardPostPage> {
               services: s,
               postNumber: n,
               open: commentsOpen,
+              excluded: _buildable(p) ? _excluded : null,
+              onSelect: (uuid, selected) => setState(
+                () => selected ? _excluded.remove(uuid) : _excluded.add(uuid),
+              ),
             ),
             comments: boardThreadComments(l, _comments),
           ),
@@ -880,5 +1004,55 @@ class _BoardPostPageState extends State<BoardPostPage> {
         ),
       ),
     ),
+  );
+}
+
+/// One of the common admin actions of the issue page: a toolbar button,
+/// or a ⋮ entry when the row has no room for it (specs/16 §4.5).
+class _AdminAction {
+  const _AdminAction(
+    this.id,
+    this.label,
+    this.icon,
+    this.onPressed, {
+    this.primary = false,
+    this.priority = 0,
+  });
+
+  final String id;
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool primary;
+
+  /// Lower is more important: higher numbers move into ⋮ first.
+  final int priority;
+
+  Widget button() {
+    final key = ValueKey<String>('board.post.bar.$id');
+    final leading = Icon(icon, size: 16);
+    final child = Text(label);
+    return primary
+        ? ShadButton(
+            key: key,
+            size: ShadButtonSize.sm,
+            leading: leading,
+            onPressed: onPressed,
+            child: child,
+          )
+        : ShadButton.outline(
+            key: key,
+            size: ShadButtonSize.sm,
+            leading: leading,
+            onPressed: onPressed,
+            child: child,
+          );
+  }
+
+  WonkyMenuItem menuItem() => WonkyMenuItem(
+    key: ValueKey<String>('board.post.menu.$id'),
+    label: label,
+    icon: icon,
+    onSelected: onPressed,
   );
 }

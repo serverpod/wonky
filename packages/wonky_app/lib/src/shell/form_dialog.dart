@@ -140,6 +140,37 @@ class CheckboxFieldSpec extends DialogFieldSpec {
   final bool initial;
 }
 
+/// An item of a [ChecklistFieldSpec]: its [value], [label] and the
+/// [group] it is listed under (a heading over the items that share it).
+class ChecklistItem {
+  const ChecklistItem({required this.value, required this.label, this.group});
+
+  final String value;
+  final String label;
+  final String? group;
+}
+
+/// A list of checkboxes in a scrolling box (at most [maxHeight] high); the
+/// value is the list of checked item values. Keys:
+/// `<dialogKey>.<id>.<value>` per item.
+class ChecklistFieldSpec extends DialogFieldSpec {
+  const ChecklistFieldSpec({
+    required super.id,
+    required super.label,
+    required this.items,
+    this.description,
+    this.initial,
+    this.maxHeight = 240,
+  });
+
+  final List<ChecklistItem> items;
+  final String? description;
+
+  /// The values checked at first; null checks every item.
+  final Set<String>? initial;
+  final double maxHeight;
+}
+
 class SelectFieldSpec extends DialogFieldSpec {
   const SelectFieldSpec({
     required super.id,
@@ -212,6 +243,11 @@ class DialogResult {
 
   String text(String id) => '${values[id] ?? ''}';
   bool flag(String id) => values[id] == true;
+
+  /// The checked values of a [ChecklistFieldSpec].
+  List<String> checked(String id) => [
+    for (final v in values[id] as List? ?? const []) '$v',
+  ];
 }
 
 /// Shows [spec]; resolves with the pressed button and field values (null
@@ -257,6 +293,11 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
           _text[f.id] = c;
         case CheckboxFieldSpec():
           _values[f.id] = f.initial;
+        case ChecklistFieldSpec():
+          _values[f.id] = <String>{
+            for (final i in f.items)
+              if (f.initial?.contains(i.value) ?? true) i.value,
+          };
         case SelectFieldSpec():
           _values[f.id] = f.initial;
       }
@@ -281,9 +322,21 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
   }
 
   Map<String, Object?> get _all => {
-    ..._values,
+    for (final e in _values.entries)
+      // Checklists: the checked values in the items' order.
+      e.key: e.value is Set<String> ? _checkedOf(e.key) : e.value,
     for (final e in _text.entries) e.key: e.value.text,
   };
+
+  List<String> _checkedOf(String id) {
+    final f = widget.spec.fields.firstWhere((f) => f.id == id);
+    final set = _values[id]! as Set<String>;
+    return [
+      if (f is ChecklistFieldSpec)
+        for (final i in f.items)
+          if (set.contains(i.value)) i.value,
+    ];
+  }
 
   bool _validate() {
     var ok = true;
@@ -322,9 +375,17 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
           'type': switch (f) {
             TextFieldSpec() => 'text',
             CheckboxFieldSpec() => 'checkbox',
+            ChecklistFieldSpec() => 'checklist',
             SelectFieldSpec() => 'select',
           },
           'value': _all[f.id],
+          if (f is ChecklistFieldSpec) ...{
+            'options': [for (final i in f.items) i.value],
+            'optionLabels': {
+              for (final i in f.items)
+                i.value: i.group == null ? i.label : '${i.group}: ${i.label}',
+            },
+          },
           if (f is SelectFieldSpec) 'options': f.options.keys.toList(),
           // (v2) What each option says (Slides' Go to slide lists slides
           // by id; agents need the labels).
@@ -346,6 +407,12 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
       case CheckboxFieldSpec():
         if (value is! bool) return false;
         setState(() => _values[id] = value);
+      case ChecklistFieldSpec():
+        final known = {for (final i in f.items) i.value};
+        if (value is! List || value.any((v) => !known.contains('$v'))) {
+          return false;
+        }
+        setState(() => _values[id] = <String>{for (final v in value) '$v'});
       case SelectFieldSpec():
         if (!f.options.containsKey(value)) return false;
         setState(() => _values[id] = value);
@@ -361,6 +428,74 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
     if (b == null) return false;
     _press(b);
     return true;
+  }
+
+  Widget _checklist(ChecklistFieldSpec f, ShadThemeData theme, String? key) {
+    final cs = theme.colorScheme;
+    final checked = _values[f.id]! as Set<String>;
+    final rows = <Widget>[];
+    String? group;
+    for (final i in f.items) {
+      if (i.group != null && i.group != group) {
+        group = i.group;
+        rows.add(
+          Padding(
+            padding: EdgeInsets.only(top: rows.isEmpty ? 0 : 8, bottom: 2),
+            child: Text(
+              group!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.small.copyWith(color: cs.mutedForeground),
+            ),
+          ),
+        );
+      }
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: ShadCheckbox(
+            key: key == null
+                ? null
+                : ValueKey<String>('$key.${f.id}.${i.value}'),
+            value: checked.contains(i.value),
+            onChanged: (v) => setState(() {
+              v ? checked.add(i.value) : checked.remove(i.value);
+            }),
+            label: Text(i.label, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(f.label, style: theme.textTheme.small),
+        if (f.description != null) ...[
+          const SizedBox(height: 2),
+          Text(f.description!, style: theme.textTheme.muted),
+        ],
+        const SizedBox(height: 6),
+        DecoratedBox(
+          key: key == null ? null : ValueKey<String>('$key.${f.id}'),
+          decoration: BoxDecoration(
+            border: Border.all(color: cs.border),
+            borderRadius: theme.radius,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: f.maxHeight),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: rows,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -428,6 +563,8 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
               label: Text(f.label),
             ),
           );
+        case ChecklistFieldSpec():
+          fields.add(_checklist(f, theme, key));
         case SelectFieldSpec():
           fields.add(
             Column(

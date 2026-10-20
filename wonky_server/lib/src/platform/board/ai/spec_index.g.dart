@@ -284,6 +284,7 @@ const specIndexSuite =
     '      ### 8.1 Claim\n'
     '      ### 8.2 Expiry\n'
     '      ### 8.3 Linking a PR and finishing\n'
+    '      ### 8.4 Claim blocks (T-10)\n'
     '    ## 9. Admins and moderation\n'
     '      ### 9.1 Who is an admin\n'
     '      ### 9.2 Admin tools\n'

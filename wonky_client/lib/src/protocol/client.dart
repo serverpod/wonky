@@ -1183,12 +1183,15 @@ class EndpointBoard extends _isc.EndpointRef {
   );
 
   /// Creates a draft task from posts and generates its prompt.
+  /// [excludedComments] are comments of the posts the admin left out of the
+  /// prompt's context (specs/16 §9.3).
   _ida.Future<_icqm1m07.BoardTaskView> createTask(
     List<int> postNumbers,
     String title,
     _ix53eas0.BoardArea area,
-    _iky4nxq3.BoardSize size,
-  ) => caller.callServerEndpoint<_icqm1m07.BoardTaskView>(
+    _iky4nxq3.BoardSize size, {
+    List<_isc.UuidValue>? excludedComments,
+  }) => caller.callServerEndpoint<_icqm1m07.BoardTaskView>(
     'board',
     'createTask',
     {
@@ -1196,6 +1199,7 @@ class EndpointBoard extends _isc.EndpointRef {
       'title': title,
       'area': area,
       'size': size,
+      'excludedComments': excludedComments,
     },
   );
 

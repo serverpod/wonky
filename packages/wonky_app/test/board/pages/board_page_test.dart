@@ -134,6 +134,37 @@ void main() {
     await settleTooltips(tester);
   });
 
+  for (final b in Brightness.values) {
+    testWidgets('Given done and shipped tasks in ${b.name} then the Done tab '
+        'lists only the finished issues', (tester) async {
+      final board = seeded();
+      final done = board.seedTask(
+        title: 'Finished work',
+        posts: [2],
+        status: BoardTaskStatus.done,
+      );
+      final shipped = board.seedTask(
+        title: 'Shipped work',
+        posts: [4],
+        status: BoardTaskStatus.shipped,
+      );
+      current = await pumpBoard(
+        tester,
+        '/improvements/done',
+        board: board,
+        brightness: b,
+      );
+
+      expect(row(5), findsOneWidget);
+      expect(byKey('board.task.${done.number}'), findsNothing);
+      expect(byKey('board.task.${shipped.number}'), findsNothing);
+      expect(byKey('board.doneTasks'), findsNothing);
+      expect(find.text('Finished work'), findsNothing);
+      expect(board.calls.where((c) => c.startsWith('listTasks')), isEmpty);
+      await settleTooltips(tester);
+    });
+  }
+
   testWidgets('Given the board when filtering by area then only that area '
       'is listed', (tester) async {
     current = await pumpBoard(tester, '/improvements', board: seeded());

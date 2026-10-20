@@ -1882,6 +1882,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<_ikq67o57.BoardSize>(),
               nullable: false,
             ),
+            'excludedComments': _is.ParameterDescription(
+              name: 'excludedComments',
+              type: _is.getType<List<_is.UuidValue>?>(),
+              nullable: true,
+            ),
           },
           call:
               (
@@ -1894,6 +1899,7 @@ class Endpoints extends _is.EndpointDispatch {
                     params['title'],
                     params['area'],
                     params['size'],
+                    excludedComments: params['excludedComments'],
                   ),
         ),
         'updateTask': _is.MethodConnector(

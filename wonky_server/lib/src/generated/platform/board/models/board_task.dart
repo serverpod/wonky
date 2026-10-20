@@ -12,6 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'package:serverpod/serverpod.dart' as _is;
+import 'package:wonky_server/src/generated/protocol.dart' as _il4umwa0;
 import '../../../platform/board/models/board_area.dart' as _iknrpzcb;
 import '../../../platform/board/models/board_size.dart' as _ibr3u4cf;
 import '../../../platform/board/models/board_task_status.dart' as _isr33h3v;
@@ -30,6 +31,7 @@ abstract class BoardTask
     this.promptGeneratedAt,
     this.promptRequestedAt,
     this.promptNote,
+    this.promptExcludedCommentIds,
     this.promptEditedById,
     this.promptEditedAt,
     required this.createdById,
@@ -59,6 +61,7 @@ abstract class BoardTask
     DateTime? promptGeneratedAt,
     DateTime? promptRequestedAt,
     String? promptNote,
+    List<int>? promptExcludedCommentIds,
     int? promptEditedById,
     DateTime? promptEditedAt,
     required int createdById,
@@ -99,6 +102,12 @@ abstract class BoardTask
               jsonSerialization['promptRequestedAt'],
             ),
       promptNote: jsonSerialization['promptNote'] as String?,
+      promptExcludedCommentIds:
+          jsonSerialization['promptExcludedCommentIds'] == null
+          ? null
+          : _il4umwa0.Protocol().deserialize<List<int>>(
+              jsonSerialization['promptExcludedCommentIds'],
+            ),
       promptEditedById: jsonSerialization['promptEditedById'] as int?,
       promptEditedAt: jsonSerialization['promptEditedAt'] == null
           ? null
@@ -171,6 +180,10 @@ abstract class BoardTask
   /// up, provider error); shown to admins.
   String? promptNote;
 
+  /// Comments of the task's issues the admin left out of the prompt's
+  /// context (specs/16 §9.3); every other visible comment is included.
+  List<int>? promptExcludedCommentIds;
+
   int? promptEditedById;
 
   DateTime? promptEditedAt;
@@ -222,6 +235,7 @@ abstract class BoardTask
     DateTime? promptGeneratedAt = const _is.$UndefinedDateTime(),
     DateTime? promptRequestedAt = const _is.$UndefinedDateTime(),
     String? promptNote,
+    List<int>? promptExcludedCommentIds = const _is.$UndefinedList<int>(),
     int? promptEditedById,
     DateTime? promptEditedAt = const _is.$UndefinedDateTime(),
     int? createdById,
@@ -255,6 +269,8 @@ abstract class BoardTask
       if (promptRequestedAt != null)
         'promptRequestedAt': promptRequestedAt?.toJson(),
       if (promptNote != null) 'promptNote': promptNote,
+      if (promptExcludedCommentIds != null)
+        'promptExcludedCommentIds': promptExcludedCommentIds?.toJson(),
       if (promptEditedById != null) 'promptEditedById': promptEditedById,
       if (promptEditedAt != null) 'promptEditedAt': promptEditedAt?.toJson(),
       'createdById': createdById,
@@ -290,6 +306,8 @@ abstract class BoardTask
       if (promptRequestedAt != null)
         'promptRequestedAt': promptRequestedAt?.toJson(),
       if (promptNote != null) 'promptNote': promptNote,
+      if (promptExcludedCommentIds != null)
+        'promptExcludedCommentIds': promptExcludedCommentIds?.toJson(),
       if (promptEditedById != null) 'promptEditedById': promptEditedById,
       if (promptEditedAt != null) 'promptEditedAt': promptEditedAt?.toJson(),
       'createdById': createdById,
@@ -351,6 +369,7 @@ class _BoardTaskImpl extends BoardTask {
     DateTime? promptGeneratedAt,
     DateTime? promptRequestedAt,
     String? promptNote,
+    List<int>? promptExcludedCommentIds,
     int? promptEditedById,
     DateTime? promptEditedAt,
     required int createdById,
@@ -378,6 +397,7 @@ class _BoardTaskImpl extends BoardTask {
          promptGeneratedAt: promptGeneratedAt,
          promptRequestedAt: promptRequestedAt,
          promptNote: promptNote,
+         promptExcludedCommentIds: promptExcludedCommentIds,
          promptEditedById: promptEditedById,
          promptEditedAt: promptEditedAt,
          createdById: createdById,
@@ -411,6 +431,7 @@ class _BoardTaskImpl extends BoardTask {
     DateTime? promptGeneratedAt = const _is.$UndefinedDateTime(),
     DateTime? promptRequestedAt = const _is.$UndefinedDateTime(),
     Object? promptNote = _Undefined,
+    List<int>? promptExcludedCommentIds = const _is.$UndefinedList<int>(),
     Object? promptEditedById = _Undefined,
     DateTime? promptEditedAt = const _is.$UndefinedDateTime(),
     int? createdById,
@@ -443,6 +464,10 @@ class _BoardTaskImpl extends BoardTask {
           ? this.promptRequestedAt
           : promptRequestedAt,
       promptNote: promptNote is String? ? promptNote : this.promptNote,
+      promptExcludedCommentIds:
+          promptExcludedCommentIds is _is.UndefinedSentinel
+          ? this.promptExcludedCommentIds?.map((e0) => e0).toList()
+          : promptExcludedCommentIds,
       promptEditedById: promptEditedById is int?
           ? promptEditedById
           : this.promptEditedById,
@@ -534,6 +559,13 @@ class BoardTaskUpdateTable extends _is.UpdateTable<BoardTaskTable> {
 
   _is.ColumnValue<String, String> promptNote(String? value) => _is.ColumnValue(
     table.promptNote,
+    value,
+  );
+
+  _is.ColumnValue<List<int>, List<int>> promptExcludedCommentIds(
+    List<int>? value,
+  ) => _is.ColumnValue(
+    table.promptExcludedCommentIds,
     value,
   );
 
@@ -673,6 +705,10 @@ class BoardTaskTable extends _is.Table<int?> {
       'promptNote',
       this,
     );
+    promptExcludedCommentIds = _is.ColumnSerializable<List<int>>(
+      'promptExcludedCommentIds',
+      this,
+    );
     promptEditedById = _is.ColumnInt(
       'promptEditedById',
       this,
@@ -766,6 +802,10 @@ class BoardTaskTable extends _is.Table<int?> {
   /// up, provider error); shown to admins.
   late final _is.ColumnString promptNote;
 
+  /// Comments of the task's issues the admin left out of the prompt's
+  /// context (specs/16 §9.3); every other visible comment is included.
+  late final _is.ColumnSerializable<List<int>> promptExcludedCommentIds;
+
   late final _is.ColumnInt promptEditedById;
 
   late final _is.ColumnDateTime promptEditedAt;
@@ -812,6 +852,7 @@ class BoardTaskTable extends _is.Table<int?> {
     promptGeneratedAt,
     promptRequestedAt,
     promptNote,
+    promptExcludedCommentIds,
     promptEditedById,
     promptEditedAt,
     createdById,

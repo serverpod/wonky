@@ -799,9 +799,7 @@ class _BoardPostListState extends State<BoardPostList> {
               ? _selectionBar(l, theme, inset)
               : _filters(l, inset),
         ),
-        Expanded(
-          child: _done ? _DoneLayout(services: s, posts: list) : list,
-        ),
+        Expanded(child: list),
       ],
     );
   }
@@ -845,37 +843,6 @@ class _SearchChip extends StatelessWidget {
 
 bool _sameSet<T>(Set<T> a, Set<T> b) =>
     a.length == b.length && a.containsAll(b);
-
-/// The Done tab: finished tasks above the done and shipped posts.
-class _DoneLayout extends StatelessWidget {
-  const _DoneLayout({required this.services, required this.posts});
-
-  final ShellServices services;
-  final Widget posts;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = WonkyAppLocalizations.of(context);
-    final inset = shellPageInset(MediaQuery.sizeOf(context).width);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 220),
-          child: BoardTaskList(
-            key: const ValueKey<String>('board.doneTasks'),
-            services: services,
-            statuses: const [BoardTaskStatus.done, BoardTaskStatus.shipped],
-            compact: true,
-            title: l.boardDoneTasks,
-            horizontalPadding: math.max(0, inset - 8),
-          ),
-        ),
-        Expanded(child: posts),
-      ],
-    );
-  }
-}
 
 /// One post in the board list (specs/16 §4.4): the vote control, title,
 /// labels, status, comment count, author and age, screenshot icon. `+` /

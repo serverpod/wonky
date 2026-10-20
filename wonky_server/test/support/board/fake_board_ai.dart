@@ -45,6 +45,9 @@ class FakeBoardAi implements BoardAi {
   /// errors).
   Object? promptError;
 
+  /// The comments the last [writeTaskPrompt] was given, by post id.
+  Map<int, List<BoardComment>>? promptComments;
+
   List<BoardBundleProposal> Function(List<BoardPost> posts)? onBundles;
 
   final calls = <String>[];
@@ -148,6 +151,7 @@ class FakeBoardAi implements BoardAi {
     required Uri webOrigin,
   }) async {
     calls.add('prompt');
+    promptComments = comments;
     final error = promptError;
     if (error != null) throw error;
     return prompt;

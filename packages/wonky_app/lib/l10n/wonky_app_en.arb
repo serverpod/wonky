@@ -2052,6 +2052,31 @@
       }
     }
   },
+  "boardSimilarShow": "Show #{number} {title}",
+  "@boardSimilarShow": {
+    "description": "Screen-reader label of a similar issue's title in the report dialog: it opens the issue's details.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "boardSimilarLoadFailed": "Couldn't load this issue. Try again later.",
+  "boardTaskCommentsLabel": "Comments for the prompt",
+  "boardTaskCommentsHint": "The AI reads the checked comments when it writes the prompt.",
+  "boardCommentsPromptHint": "Checked comments go into the task prompt when you select this issue for building.",
+  "boardCommentInPrompt": "Include the comment by {name} in the task prompt",
+  "@boardCommentInPrompt": {
+    "description": "Screen-reader label of an admin's checkbox on an issue comment.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "boardReportVoteInstead": "Vote instead",
   "boardReportVoted": "Voted",
   "boardReportVotedFor": "Voted for #{number}",
@@ -2388,7 +2413,6 @@
   "boardEmptyHint": "Change the filters, or be the first to report one.",
   "boardEmptyTasks": "No tasks up for grabs",
   "boardEmptyTasksHint": "Admins publish tasks from the most wanted issues. Check back soon.",
-  "boardDoneTasks": "Finished tasks",
   "boardUpvoteLabel": "Upvote, {score} votes",
   "@boardUpvoteLabel": {
     "description": "Semantics label of the up-vote button.",
@@ -2496,6 +2520,7 @@
   "boardSelectForBuilding": "Select for building",
   "boardDeclineEllipsis": "Decline…",
   "boardMergeEllipsis": "Merge into…",
+  "boardLabelsEllipsis": "Labels…",
   "boardBlockEllipsis": "Block user from the board…",
   "boardEditEllipsis": "Edit…",
   "boardDismiss": "Dismiss",

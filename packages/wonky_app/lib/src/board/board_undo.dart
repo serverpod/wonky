@@ -258,6 +258,10 @@ class BoardUndoHandler extends UndoHandler<BoardUndoEntry> {
             d['title']! as String,
             BoardArea.values.byName(d['area']! as String),
             BoardSize.values.byName(d['size']! as String),
+            excludedComments: [
+              for (final u in d['excluded'] as List? ?? const [])
+                UuidValue.withValidation(u as String),
+            ],
           );
           _hub.changed(task: t.number);
           return e.withData({'task': t.number});

@@ -1536,6 +1536,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<_ivbgicm7.BoardSize>>,
           _is.getType<Map<String, double>>,
           _is.getType<Map<String, double>?>,
+          _is.getType<List<int>?>,
           _is.getType<List<_ifz7dmuf.BoardTaskView>>,
           _is.getType<List<_i4xrxro7.CommentView>>,
           _is.getType<List<_i6y7tspy.UserSummary>>,
@@ -1575,11 +1576,12 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<_iv1j9wri.BoardSimilarPost>>,
           _is.getType<List<_ihypagkt.BoardTaskStatus>>,
           _is.getType<List<_id1usvpt.BoardReviewItem>>,
+          _is.getType<List<_is.UuidValue>>,
+          _is.getType<List<_is.UuidValue>?>,
           _is.getType<List<_i8qikgvy.BoardBundleSuggestionView>>,
           _is.getType<List<_ixzwh8hc.CommentThreadView>>,
           _is.getType<List<int>?>,
           _is.getType<List<_ily3pmy5.DriveItemView>>,
-          _is.getType<List<_is.UuidValue>>,
           _is.getType<List<_ibinmr4r.TemplateView>>,
           _is.getType<List<_iiw0494r.ActivityEventView>>,
           _is.getType<List<_i28n3m1r.FileUrlView>>,
@@ -3740,6 +3742,12 @@ class Protocol extends _is.DatabaseSerializationManager
           columnType: _isp.ColumnType.text,
           isNullable: true,
           dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'promptExcludedCommentIds',
+          columnType: _isp.ColumnType.json,
+          isNullable: true,
+          dartType: 'List<int>?',
         ),
         _isp.ColumnDefinition(
           name: 'promptEditedById',
@@ -16651,6 +16659,12 @@ class Protocol extends _is.DatabaseSerializationManager
               : null)
           as T;
     }
+    if (t == _is.getType<List<int>?>()) {
+      return (data != null
+              ? (data as List).map((e) => deserialize<int>(e)).toList()
+              : null)
+          as T;
+    }
     if (t == List<_ifz7dmuf.BoardTaskView>) {
       return (data as List)
               .map((e) => deserialize<_ifz7dmuf.BoardTaskView>(e))
@@ -16900,6 +16914,18 @@ class Protocol extends _is.DatabaseSerializationManager
               .toList()
           as T;
     }
+    if (t == List<_is.UuidValue>) {
+      return (data as List).map((e) => deserialize<_is.UuidValue>(e)).toList()
+          as T;
+    }
+    if (t == _is.getType<List<_is.UuidValue>?>()) {
+      return (data != null
+              ? (data as List)
+                    .map((e) => deserialize<_is.UuidValue>(e))
+                    .toList()
+              : null)
+          as T;
+    }
     if (t == List<_i8qikgvy.BoardBundleSuggestionView>) {
       return (data as List)
               .map((e) => deserialize<_i8qikgvy.BoardBundleSuggestionView>(e))
@@ -16922,10 +16948,6 @@ class Protocol extends _is.DatabaseSerializationManager
       return (data as List)
               .map((e) => deserialize<_ily3pmy5.DriveItemView>(e))
               .toList()
-          as T;
-    }
-    if (t == List<_is.UuidValue>) {
-      return (data as List).map((e) => deserialize<_is.UuidValue>(e)).toList()
           as T;
     }
     if (t == List<_ibinmr4r.TemplateView>) {

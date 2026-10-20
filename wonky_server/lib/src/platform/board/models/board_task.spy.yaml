@@ -16,6 +16,9 @@ fields:
   ### Why the last AI writing pass left the prompt as it was (budget used
   ### up, provider error); shown to admins.
   promptNote: String?
+  ### Comments of the task's issues the admin left out of the prompt's
+  ### context (specs/16 §9.3); every other visible comment is included.
+  promptExcludedCommentIds: List<int>?
   promptEditedById: int?
   promptEditedAt: DateTime?
   createdById: int

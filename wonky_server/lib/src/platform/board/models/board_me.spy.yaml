@@ -13,3 +13,8 @@ fields:
   repository: String
   securityContact: String
   claimHours: int
+  ### Claims the caller may hold at a time (`maxActiveClaimsPerUser`).
+  maxActiveClaims: int, default=3
+  ### Set while the caller may not claim tasks (specs/16 §8.4).
+  claimBlockedUntil: DateTime?
+  claimBlockedReason: String?

@@ -428,15 +428,45 @@ Future<(BoardPostKind, BoardArea?, BoardSize?)?> showBoardLabelsDialog(
   );
 }
 
+/// A comment the *Create task* dialog offers for the prompt's context: on
+/// issue [postNumber] ([postTitle]).
+typedef BoardTaskComment = ({
+  int postNumber,
+  String postTitle,
+  BoardCommentView comment,
+});
+
+/// What *Create task* / *Edit task* / *Merge tasks* answered: the title,
+/// labels and, when creating, the comments left out of the prompt.
+typedef BoardTaskDialogResult = ({
+  String title,
+  BoardArea area,
+  BoardSize size,
+  List<UuidValue> excludedComments,
+});
+
+/// The checklist line of [c]: `Anna Berg: first words of the comment…`.
+String boardCommentLine(BoardCommentView c, WonkyAppLocalizations l) {
+  final text = c.body
+      .replaceAll(RegExp(r'[*_`~>#\[\]]'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  final clipped = text.length <= 140 ? text : '${text.substring(0, 139)}…';
+  return '${c.author?.displayName ?? l.boardDeletedUser}: $clipped';
+}
+
 /// *Create task from N issues…* ([count] set), *Merge N tasks…*
-/// ([mergeCount] set) or *Edit task*.
-Future<(String, BoardArea, BoardSize)?> showBoardTaskDialog(
+/// ([mergeCount] set) or *Edit task*. When creating, [comments] are the
+/// issues' comments, one checkbox each (checked: in the prompt's context,
+/// specs/16 §9.3).
+Future<BoardTaskDialogResult?> showBoardTaskDialog(
   BuildContext context, {
   int? count,
   int? mergeCount,
   required String title,
   required BoardArea area,
   required BoardSize size,
+  List<BoardTaskComment> comments = const [],
 }) async {
   final l = WonkyAppLocalizations.of(context);
   final r = await showWonkyFormDialog(
@@ -453,6 +483,7 @@ Future<(String, BoardArea, BoardSize)?> showBoardTaskDialog(
         _ => null,
       },
       dialogKey: 'dialog.board.task',
+      width: comments.isEmpty ? 420 : 520,
       fields: [
         TextFieldSpec(
           id: 'title',
@@ -476,6 +507,20 @@ Future<(String, BoardArea, BoardSize)?> showBoardTaskDialog(
           },
           initial: size.name,
         ),
+        if (comments.isNotEmpty)
+          ChecklistFieldSpec(
+            id: 'comments',
+            label: l.boardTaskCommentsLabel,
+            description: l.boardTaskCommentsHint,
+            items: [
+              for (final c in comments)
+                ChecklistItem(
+                  value: c.comment.uuid.uuid,
+                  label: boardCommentLine(c.comment, l),
+                  group: '#${c.postNumber} ${c.postTitle}',
+                ),
+            ],
+          ),
       ],
       buttons: [
         DialogButtonSpec(id: 'cancel', label: l.actionCancel),
@@ -492,10 +537,15 @@ Future<(String, BoardArea, BoardSize)?> showBoardTaskDialog(
     ),
   );
   if (r?.buttonId != 'ok') return null;
+  final kept = r!.checked('comments').toSet();
   return (
-    r!.text('title').trim(),
-    BoardArea.values.byName(r.text('area')),
-    BoardSize.values.byName(r.text('size')),
+    title: r.text('title').trim(),
+    area: BoardArea.values.byName(r.text('area')),
+    size: BoardSize.values.byName(r.text('size')),
+    excludedComments: [
+      for (final c in comments)
+        if (!kept.contains(c.comment.uuid.uuid)) c.comment.uuid,
+    ],
   );
 }
 

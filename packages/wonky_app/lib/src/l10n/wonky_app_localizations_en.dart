@@ -3131,6 +3131,31 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   }
 
   @override
+  String boardSimilarShow(int number, String title) {
+    return 'Show #$number $title';
+  }
+
+  @override
+  String get boardSimilarLoadFailed =>
+      'Couldn\'t load this issue. Try again later.';
+
+  @override
+  String get boardTaskCommentsLabel => 'Comments for the prompt';
+
+  @override
+  String get boardTaskCommentsHint =>
+      'The AI reads the checked comments when it writes the prompt.';
+
+  @override
+  String get boardCommentsPromptHint =>
+      'Checked comments go into the task prompt when you select this issue for building.';
+
+  @override
+  String boardCommentInPrompt(String name) {
+    return 'Include the comment by $name in the task prompt';
+  }
+
+  @override
   String get boardReportVoteInstead => 'Vote instead';
 
   @override
@@ -3669,9 +3694,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
       'Admins publish tasks from the most wanted issues. Check back soon.';
 
   @override
-  String get boardDoneTasks => 'Finished tasks';
-
-  @override
   String boardUpvoteLabel(int score) {
     return 'Upvote, $score votes';
   }
@@ -3807,6 +3829,9 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardMergeEllipsis => 'Merge into…';
+
+  @override
+  String get boardLabelsEllipsis => 'Labels…';
 
   @override
   String get boardBlockEllipsis => 'Block user from the board…';
@@ -7767,6 +7792,31 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   }
 
   @override
+  String boardSimilarShow(int number, String title) {
+    return '[Šĥöŵ #$number $title on]';
+  }
+
+  @override
+  String get boardSimilarLoadFailed =>
+      '[Çöûļðñ\'ţ ļöåð ţĥîš îššûé. Ţŕý åĝåîñ ļåţéŕ. one two three]';
+
+  @override
+  String get boardTaskCommentsLabel => '[Çöɱɱéñţš ƒöŕ ţĥé þŕöɱþţ one two]';
+
+  @override
+  String get boardTaskCommentsHint =>
+      '[Ţĥé ÅÎ ŕéåðš ţĥé çĥéçķéð çöɱɱéñţš ŵĥéñ îţ ŵŕîţéš ţĥé þŕöɱþţ. one two three four]';
+
+  @override
+  String get boardCommentsPromptHint =>
+      '[Çĥéçķéð çöɱɱéñţš ĝö îñţö ţĥé ţåšķ þŕöɱþţ ŵĥéñ ýöû šéļéçţ ţĥîš îššûé ƒöŕ ƀûîļðîñĝ. one two three four five]';
+
+  @override
+  String boardCommentInPrompt(String name) {
+    return '[Îñçļûðé ţĥé çöɱɱéñţ ƀý $name îñ ţĥé ţåšķ þŕöɱþţ one two thre]';
+  }
+
+  @override
   String get boardReportVoteInstead => '[Ṽöţé îñšţéåð one]';
 
   @override
@@ -8311,9 +8361,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
       '[Åðɱîñš þûƀļîšĥ ţåšķš ƒŕöɱ ţĥé ɱöšţ ŵåñţéð îššûéš. Çĥéçķ ƀåçķ šööñ. one two three four f]';
 
   @override
-  String get boardDoneTasks => '[Ƒîñîšĥéð ţåšķš one t]';
-
-  @override
   String boardUpvoteLabel(int score) {
     return '[Ûþṽöţé, $score ṽöţéš one t]';
   }
@@ -8450,6 +8497,9 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardMergeEllipsis => '[Ṁéŕĝé îñţö… one]';
+
+  @override
+  String get boardLabelsEllipsis => '[Ļåƀéļš… one]';
 
   @override
   String get boardBlockEllipsis => '[Ɓļöçķ ûšéŕ ƒŕöɱ ţĥé ƀöåŕð… one two]';

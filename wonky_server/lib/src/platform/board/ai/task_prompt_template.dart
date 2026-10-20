@@ -34,7 +34,9 @@ abstract final class TaskPromptTemplate {
       ..writeln()
       ..writeln('## Reports this task comes from');
     for (final p in posts) {
-      final link = webOrigin.replace(path: '/improvements/p/${p.id}');
+      // The issue as Markdown (body, details, comments): an agent reads it
+      // without the web app (specs/16 §10.1).
+      final link = webOrigin.replace(path: '/improvements/p/${p.id}.md');
       b.writeln(
         '- #${p.id} ${p.title} — $link '
         '(${p.score} ${p.score == 1 ? 'vote' : 'votes'})',
