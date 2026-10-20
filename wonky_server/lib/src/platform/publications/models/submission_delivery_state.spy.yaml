@@ -1,0 +1,8 @@
+### State of the last submit's webhook delivery (specs/18 §7.2).
+enum: SubmissionDeliveryState
+serialized: byName
+values:
+  ### Not accepted yet; the outbox retries.
+  - pending
+  ### Every retry failed.
+  - failed

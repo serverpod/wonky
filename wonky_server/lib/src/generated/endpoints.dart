@@ -72,6 +72,10 @@ import 'package:wonky_server/src/generated/platform/mcp/ui_bridge/ui_bridge_mess
     as _is78z0de;
 import 'package:wonky_server/src/generated/platform/presence/presence_update.dart'
     as _ipd65of1;
+import 'package:wonky_server/src/generated/platform/publications/models/publication_input.dart'
+    as _iy7hmxv3;
+import 'package:wonky_server/src/generated/platform/publications/models/submission_values.dart'
+    as _iwukrrmj;
 import 'package:wonky_server/src/generated/platform/revlog/messages/rev_client_message.dart'
     as _iv4mnr49;
 import 'package:wonky_server/src/generated/platform/revlog/models/rev_page_request.dart'
@@ -116,6 +120,8 @@ import '../platform/mcp/ui_bridge/ui_bridge_endpoint.dart' as _ipb16bxt;
 import '../platform/meta/meta_endpoint.dart' as _isistrmv;
 import '../platform/notifications/notification_endpoint.dart' as _ia40tpv4;
 import '../platform/presence/presence_endpoint.dart' as _iv7snmpw;
+import '../platform/publications/publication_endpoint.dart' as _igj7692v;
+import '../platform/publications/submission_endpoint.dart' as _i7uk3p1b;
 import '../platform/sharing/sharing_endpoint.dart' as _itz30x9e;
 import '../platform/users/access_token_endpoint.dart' as _iusd4uiv;
 import '../platform/users/google_idp_endpoint.dart' as _i3henulz;
@@ -227,6 +233,18 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'presence',
+          null,
+        ),
+      'publication': _igj7692v.PublicationEndpoint()
+        ..initialize(
+          server,
+          'publication',
+          null,
+        ),
+      'submission': _i7uk3p1b.SubmissionEndpoint()
+        ..initialize(
+          server,
+          'submission',
           null,
         ),
       'sharing': _itz30x9e.SharingEndpoint()
@@ -3974,6 +3992,410 @@ class Endpoints extends _is.EndpointDispatch {
                 params['itemUuid'],
                 streamParams['updates']!.cast<_ipd65of1.PresenceUpdate>(),
               ),
+        ),
+      },
+    );
+    connectors['publication'] = _is.EndpointConnector(
+      name: 'publication',
+      endpoint: endpoints['publication']!,
+      methodConnectors: {
+        'resolve': _is.MethodConnector(
+          name: 'resolve',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .resolve(
+                        session,
+                        params['publicId'],
+                      ),
+        ),
+        'startSubmission': _is.MethodConnector(
+          name: 'startSubmission',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'ref': _is.ParameterDescription(
+              name: 'ref',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'agreed': _is.ParameterDescription(
+              name: 'agreed',
+              type: _is.getType<bool>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .startSubmission(
+                        session,
+                        params['publicId'],
+                        params['ref'],
+                        params['agreed'],
+                      ),
+        ),
+        'list': _is.MethodConnector(
+          name: 'list',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .list(session),
+        ),
+        'create': _is.MethodConnector(
+          name: 'create',
+          params: {
+            'input': _is.ParameterDescription(
+              name: 'input',
+              type: _is.getType<_iy7hmxv3.PublicationInput>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .create(
+                        session,
+                        params['input'],
+                      ),
+        ),
+        'update': _is.MethodConnector(
+          name: 'update',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'input': _is.ParameterDescription(
+              name: 'input',
+              type: _is.getType<_iy7hmxv3.PublicationInput>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .update(
+                        session,
+                        params['publicId'],
+                        params['input'],
+                      ),
+        ),
+        'delete': _is.MethodConnector(
+          name: 'delete',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .delete(
+                        session,
+                        params['publicId'],
+                      ),
+        ),
+        'verify': _is.MethodConnector(
+          name: 'verify',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .verify(
+                        session,
+                        params['publicId'],
+                      ),
+        ),
+        'rotateSecret': _is.MethodConnector(
+          name: 'rotateSecret',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .rotateSecret(
+                        session,
+                        params['publicId'],
+                      ),
+        ),
+        'createApiKey': _is.MethodConnector(
+          name: 'createApiKey',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .createApiKey(
+                        session,
+                        params['publicId'],
+                      ),
+        ),
+        'setModerators': _is.MethodConnector(
+          name: 'setModerators',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'emails': _is.ParameterDescription(
+              name: 'emails',
+              type: _is.getType<List<String>>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .setModerators(
+                        session,
+                        params['publicId'],
+                        params['emails'],
+                      ),
+        ),
+        'deliveries': _is.MethodConnector(
+          name: 'deliveries',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .deliveries(
+                        session,
+                        params['publicId'],
+                      ),
+        ),
+        'resend': _is.MethodConnector(
+          name: 'resend',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'webhookId': _is.ParameterDescription(
+              name: 'webhookId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .resend(
+                        session,
+                        params['publicId'],
+                        params['webhookId'],
+                      ),
+        ),
+        'sendTest': _is.MethodConnector(
+          name: 'sendTest',
+          params: {
+            'publicId': _is.ParameterDescription(
+              name: 'publicId',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publication'] as _igj7692v.PublicationEndpoint)
+                      .sendTest(
+                        session,
+                        params['publicId'],
+                      ),
+        ),
+      },
+    );
+    connectors['submission'] = _is.EndpointConnector(
+      name: 'submission',
+      endpoint: endpoints['submission']!,
+      methodConnectors: {
+        'get': _is.MethodConnector(
+          name: 'get',
+          params: {
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['submission'] as _i7uk3p1b.SubmissionEndpoint).get(
+                    session,
+                    params['itemUuid'],
+                  ),
+        ),
+        'submit': _is.MethodConnector(
+          name: 'submit',
+          params: {
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'values': _is.ParameterDescription(
+              name: 'values',
+              type: _is.getType<_iwukrrmj.SubmissionValues>(),
+              nullable: false,
+            ),
+            'agreed': _is.ParameterDescription(
+              name: 'agreed',
+              type: _is.getType<bool>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['submission'] as _i7uk3p1b.SubmissionEndpoint)
+                      .submit(
+                        session,
+                        params['itemUuid'],
+                        params['values'],
+                        params['agreed'],
+                      ),
+        ),
+        'withdraw': _is.MethodConnector(
+          name: 'withdraw',
+          params: {
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['submission'] as _i7uk3p1b.SubmissionEndpoint)
+                      .withdraw(
+                        session,
+                        params['itemUuid'],
+                      ),
+        ),
+        'disconnect': _is.MethodConnector(
+          name: 'disconnect',
+          params: {
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['submission'] as _i7uk3p1b.SubmissionEndpoint)
+                      .disconnect(
+                        session,
+                        params['itemUuid'],
+                      ),
+        ),
+        'reconnect': _is.MethodConnector(
+          name: 'reconnect',
+          params: {
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['submission'] as _i7uk3p1b.SubmissionEndpoint)
+                      .reconnect(
+                        session,
+                        params['itemUuid'],
+                      ),
         ),
       },
     );

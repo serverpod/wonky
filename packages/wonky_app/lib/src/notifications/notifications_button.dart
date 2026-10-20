@@ -461,6 +461,25 @@ String notificationText(WonkyAppLocalizations l, NotificationView n) {
       final String m when m.isNotEmpty => m,
       _ => l.notifBoardUpdate('${_payload(n)['title'] ?? ''}'),
     },
+    NotificationKind.submission => _submissionText(l, n, what),
+  };
+}
+
+/// (M14) A publication's update on a story (specs/18 §5.3).
+String _submissionText(
+  WonkyAppLocalizations l,
+  NotificationView n,
+  String what,
+) {
+  final p = _payload(n);
+  final pub = '${p['publication'] ?? l.someone}';
+  return switch ((p['event'], p['status'])) {
+    ('deliveryFailed', _) => l.notifSubmissionFailed(pub, what),
+    ('status', 'changesRequested') => l.notifSubmissionChanges(pub, what),
+    ('status', 'declined') => l.notifSubmissionDeclined(pub, what),
+    ('status', 'published') => l.notifSubmissionPublished(pub, what),
+    ('status', 'inReview') => l.notifSubmissionInReview(pub, what),
+    _ => l.notifSubmissionMessage(pub, what),
   };
 }
 
@@ -496,6 +515,7 @@ IconData _kindIcon(NotificationKind k) => switch (k) {
   NotificationKind.boardReply => LucideIcons.messageSquareReply,
   NotificationKind.boardStatus => LucideIcons.bug,
   NotificationKind.boardClaim => LucideIcons.hand,
+  NotificationKind.submission => LucideIcons.newspaper,
 };
 
 /// One notification row: avatar with the kind icon, text, excerpt, time and

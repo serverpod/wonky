@@ -27,6 +27,7 @@ const workSettingsSectionIds = <String>[
   'ai',
   'ai-providers',
   'developer',
+  'publications',
   'about',
 ];
 

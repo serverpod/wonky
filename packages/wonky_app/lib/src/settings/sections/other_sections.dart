@@ -106,7 +106,8 @@ class NotificationsSection extends StatelessWidget {
                         ? p.notificationSettings['shares']
                         : null))
                 as String? ??
-            'inApp';
+            // Stories for publications email by default (specs/18 §5.3).
+            (k == 'submissions' ? 'email' : 'inApp');
         Widget choice(String k) => ShadSelect<String>(
           key: ValueKey<String>('settings.notifications.$k'),
           initialValue: v(k),
@@ -140,6 +141,11 @@ class NotificationsSection extends StatelessWidget {
               label: l.notifyBoard,
               description: l.notifyBoardHint,
               control: choice('board'),
+            ),
+            SettingsRow(
+              label: l.notifySubmissions,
+              description: l.notifySubmissionsHint,
+              control: choice('submissions'),
             ),
             SettingsRow(
               label: l.notifyDigest,

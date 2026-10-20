@@ -10,9 +10,11 @@ import '../../write/ot/document_cache.dart';
 import '../activity/activity_service.dart';
 import '../common/actor.dart';
 import '../common/errors.dart';
+import '../common/guarded.dart';
 import '../common/models.dart';
 import '../common/time.dart';
 import '../files/file_service.dart';
+import '../publications/submission_service.dart';
 import '../sharing/access_service.dart';
 import '../sharing/acl_events.dart';
 import '../storage/storage_service.dart';
@@ -63,6 +65,12 @@ abstract final class DriveTrash {
       await ActivityService.log(session, item.id!, actor, ActivityType.trashed);
       final updated = (await DriveItem.db.findById(session, item.id!))!;
       await AclEvents.changed(session, updated, kind: DriveChangeKind.trashed);
+      // Open submissions are withdrawn (specs/18 §4.5).
+      await runGuarded<void>(
+        session,
+        'publications.onTrashed',
+        () => SubmissionService.onTrashed(session, nodes),
+      );
     }
   }
 
@@ -128,6 +136,14 @@ abstract final class DriveTrash {
         ActivityType.restored,
       );
       await AclEvents.changed(session, updated, kind: DriveChangeKind.restored);
+      await runGuarded<void>(
+        session,
+        'publications.onRestored',
+        () => SubmissionService.onRestored(session, [
+          for (final n in nodes)
+            if (ids.contains(n.id)) n,
+        ]),
+      );
     }
   }
 

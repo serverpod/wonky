@@ -28,6 +28,7 @@ abstract class DriveItemPermission
     required this.grantedById,
     required this.grantedAt,
     this.expiresAt,
+    this.viaPublicationId,
   });
 
   factory DriveItemPermission({
@@ -40,6 +41,7 @@ abstract class DriveItemPermission
     required int grantedById,
     required DateTime grantedAt,
     DateTime? expiresAt,
+    int? viaPublicationId,
   }) = _DriveItemPermissionImpl;
 
   factory DriveItemPermission.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -59,6 +61,7 @@ abstract class DriveItemPermission
       expiresAt: jsonSerialization['expiresAt'] == null
           ? null
           : _is.DateTimeJsonExtension.fromJson(jsonSerialization['expiresAt']),
+      viaPublicationId: jsonSerialization['viaPublicationId'] as int?,
     );
   }
 
@@ -87,6 +90,9 @@ abstract class DriveItemPermission
 
   DateTime? expiresAt;
 
+  /// (M14) Moderator grant of a submission (specs/18 §5.1); removed with it.
+  int? viaPublicationId;
+
   @override
   _is.Table<int?> get table => t;
 
@@ -103,6 +109,7 @@ abstract class DriveItemPermission
     int? grantedById,
     DateTime? grantedAt,
     DateTime? expiresAt = const _is.$UndefinedDateTime(),
+    int? viaPublicationId,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -117,6 +124,7 @@ abstract class DriveItemPermission
       'grantedById': grantedById,
       'grantedAt': grantedAt.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
+      if (viaPublicationId != null) 'viaPublicationId': viaPublicationId,
     };
   }
 
@@ -133,6 +141,7 @@ abstract class DriveItemPermission
       'grantedById': grantedById,
       'grantedAt': grantedAt.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
+      if (viaPublicationId != null) 'viaPublicationId': viaPublicationId,
     };
   }
 
@@ -177,6 +186,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
     required int grantedById,
     required DateTime grantedAt,
     DateTime? expiresAt,
+    int? viaPublicationId,
   }) : super._(
          id: id,
          itemId: itemId,
@@ -187,6 +197,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
          grantedById: grantedById,
          grantedAt: grantedAt,
          expiresAt: expiresAt,
+         viaPublicationId: viaPublicationId,
        );
 
   /// Returns a shallow copy of this [DriveItemPermission]
@@ -203,6 +214,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
     int? grantedById,
     DateTime? grantedAt,
     DateTime? expiresAt = const _is.$UndefinedDateTime(),
+    Object? viaPublicationId = _Undefined,
   }) {
     return DriveItemPermission(
       id: id is int? ? id : this.id,
@@ -218,6 +230,9 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
       expiresAt: expiresAt is _is.UndefinedSentinel
           ? this.expiresAt
           : expiresAt,
+      viaPublicationId: viaPublicationId is int?
+          ? viaPublicationId
+          : this.viaPublicationId,
     );
   }
 }
@@ -270,6 +285,11 @@ class DriveItemPermissionUpdateTable
         table.expiresAt,
         value,
       );
+
+  _is.ColumnValue<int, int> viaPublicationId(int? value) => _is.ColumnValue(
+    table.viaPublicationId,
+    value,
+  );
 }
 
 class DriveItemPermissionTable extends _is.Table<int?> {
@@ -309,6 +329,10 @@ class DriveItemPermissionTable extends _is.Table<int?> {
       'expiresAt',
       this,
     );
+    viaPublicationId = _is.ColumnInt(
+      'viaPublicationId',
+      this,
+    );
   }
 
   late final DriveItemPermissionUpdateTable updateTable;
@@ -331,6 +355,9 @@ class DriveItemPermissionTable extends _is.Table<int?> {
 
   late final _is.ColumnDateTime expiresAt;
 
+  /// (M14) Moderator grant of a submission (specs/18 §5.1); removed with it.
+  late final _is.ColumnInt viaPublicationId;
+
   @override
   List<_is.Column> get columns => [
     id,
@@ -342,6 +369,7 @@ class DriveItemPermissionTable extends _is.Table<int?> {
     grantedById,
     grantedAt,
     expiresAt,
+    viaPublicationId,
   ];
 }
 

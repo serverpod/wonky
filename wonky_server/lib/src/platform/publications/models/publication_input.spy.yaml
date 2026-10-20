@@ -1,0 +1,10 @@
+### Create or update a publication (specs/18 §8.1).
+class: PublicationInput
+fields:
+  name: String
+  siteUrl: String
+  webhookUrl: String
+  templateItemUuid: UuidValue?
+  termsUrl: String?
+  fields: PublicationFields
+  enabled: bool

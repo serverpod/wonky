@@ -96,6 +96,7 @@ fields:
   threadId: int, relation(parent=comment_thread, onDelete=Cascade)
   authorId: int
   authorKind: ActorKind
+  publicationId: int?               # (M14) set on a publication's messages (authorKind: system), 18 §5.2
   body: String                      # Markdown (inline subset: bold, italic, code, links, mentions)
   mentions: List<int>
   reactions: String                 # JSON {emoji: [userId]}
@@ -171,6 +172,7 @@ fields:
   kind: NotificationKind   # mention, reply, assigned, shared, accessRequest, suggestion, scriptFailure,
                            #   (v2) storage (quota warnings and the one-time v2 notice, Drive 03 §9);
                            #   (M12) boardReply, boardStatus, boardClaim (16 §12);
+                           #   (M14) submission (18 §5.3);
                            #   Slides adds kinds only through Slides 09
   itemId: int?
   payload: String          # JSON
@@ -191,7 +193,9 @@ fields:
   wrote or voted on was planned, built, shipped, declined or merged, or my post was held or
   removed, `boardClaim` claim warnings, expiry and release or PR-closed notices; default
   in-app + digest email; links `/drive/improvements/p/<n>` and `/t/<n>`,
-  [16 §12](16-bugs-and-improvements.md)) — plus
+  [16 §12](16-bugs-and-improvements.md)), (M14) `submissions` (status changes and messages from a
+  publication on documents I can edit; default in-app + immediate email,
+  [18 §5.3](18-publications-and-submissions.md)) — plus
   `digest: bool` (default true). `off` creates no notification.
 - Email: **mentions and assignments** set to email are sent right away (a `FutureCall` without
   delay, `NotificationEmailFutureCall`); everything else set to email goes into the **digest

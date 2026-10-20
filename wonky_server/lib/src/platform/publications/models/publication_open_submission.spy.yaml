@@ -1,0 +1,7 @@
+### A story the caller can continue (specs/18 §3).
+class: PublicationOpenSubmission
+fields:
+  itemUuid: UuidValue
+  name: String
+  status: SubmissionStatus
+  updatedAt: DateTime

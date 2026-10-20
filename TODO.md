@@ -136,6 +136,17 @@ committed and verified).
 - PDF exports (client and server) cover Latin, Greek and Cyrillic with the bundled TTFs; CJK, Arabic and emoji fall back to placeholders until the fallback fonts are added.
 - WYSIWYG Markdown composer (`wonky_rich_editor`, specs/16 §7.3): ☐ a code block's language can only be set when typing the fence; ☐ browser check of IME typing (the first keys after a click, fixed in the widget, see §7.3), paste, copy as Markdown, the spelling menu and the link dialog in the release builds; ☐ the composer's spelling language is the device locale (no per-field language).
 
+## Publications & submissions (M14) — open items
+
+Spec: `specs/18-publications-and-submissions.md` §13; guide: `docs/blog-integration.md`.
+
+- [ ] Light/dark goldens of the consent dialog, submit dialog, status chip and Settings ›
+      Publications.
+- [ ] E2E journey J-P1 (link → sign up → write → submit → changes requested → resubmit →
+      published) against a fake blog receiver, and a walkthrough against the live server.
+- [ ] Moderators who sign up later get access only with the next submit or status change; grant
+      at sign-up instead.
+
 ## RevLog sync — open items
 
 Sheets and Slides sync through RevLog (`specs/17-revlog-sync.md`); the CRDT engine, the sync

@@ -1,0 +1,20 @@
+### What a contributor sees of a publication (specs/18 §3, §9.1).
+class: PublicationCard
+fields:
+  publicId: String
+  name: String
+  ### The verified site host, or the webhook host when unverified.
+  shownHost: String
+  verified: bool
+  siteHost: String
+  webhookHost: String
+  termsUrl: String?
+  fields: PublicationFields
+  ownerName: String
+  enabled: bool
+  ### The caller must agree first (never asked or what was agreed changed).
+  consentNeeded: bool
+  ### The publication doesn't take stories from the caller.
+  blocked: bool
+  ### The caller's drafts and stories with changes requested.
+  openSubmissions: List<PublicationOpenSubmission>

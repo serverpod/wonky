@@ -35,7 +35,11 @@ enum NotificationKind implements _is.SerializableModel {
   boardStatus,
 
   /// My claim: warning, expiry, released, PR closed.
-  boardClaim;
+  boardClaim,
+
+  /// (M14) A publication changed the status of a story I can edit or sent
+  /// a message; a submission could not be delivered (specs/18 §5.3).
+  submission;
 
   static NotificationKind fromJson(String name) {
     switch (name) {
@@ -65,6 +69,8 @@ enum NotificationKind implements _is.SerializableModel {
         return NotificationKind.boardStatus;
       case 'boardClaim':
         return NotificationKind.boardClaim;
+      case 'submission':
+        return NotificationKind.submission;
       default:
         throw ArgumentError(
           'Value "$name" cannot be converted to "NotificationKind"',

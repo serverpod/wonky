@@ -141,7 +141,7 @@ any), the current selection, the user's role on the document, the `UndoService`,
 | Area | Undoable | Not undoable (by design) |
 |------|----------|--------------------------|
 | Write content | All text/structure/format edits, paste, find-replace-all, AI insertions | — |
-| Write metadata | Title rename, theme assignment, theme edits, page setup, document language | Sharing changes |
+| Write metadata | Title rename, theme assignment, theme edits, page setup, document language, (M14) disconnecting a submission | Sharing changes, (M14) submitting and withdrawing a submission (sent outside Wonky; 18 §4.4) |
 | Sheets content | Cell values, formulas, formats, row/col ops, sheet ops, merges, CF/DV rules, filters, sorts, charts, pivots, named ranges, protected ranges | — |
 | Sheets settings | Spreadsheet settings (locale, recalc, iterative calc), sheet properties (name, color, gridlines, frozen panes) | — |
 | Slides content (v2) | Slides, groups, elements, text, styles, builds, transitions, themes/masters/layouts, code states, chart links (update/unlink), notes — through `slides.rows` | — |

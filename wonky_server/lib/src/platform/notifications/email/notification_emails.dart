@@ -102,6 +102,9 @@ class NotificationEmails {
         p['line'] is String
             ? '${p['line']}'
             : 'Update on “${p['title'] ?? 'Bugs & improvements'}”',
+      NotificationKind.submission =>
+        '${p['publication'] ?? 'A publication'} · $what: '
+            '${p['excerpt'] ?? 'your story was updated'}',
     };
   }
 

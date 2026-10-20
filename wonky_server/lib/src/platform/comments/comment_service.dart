@@ -6,10 +6,12 @@ import 'package:wonky_core/wonky_core.dart' show Role;
 import '../activity/activity_service.dart';
 import '../common/actor.dart';
 import '../common/errors.dart';
+import '../common/guarded.dart';
 import '../common/json.dart';
 import '../common/models.dart';
 import '../common/time.dart';
 import '../notifications/notification_service.dart';
+import '../publications/submission_service.dart';
 import '../sharing/access_service.dart';
 import '../users/user_service.dart';
 import '../cluster/cluster_bus.dart';
@@ -128,6 +130,20 @@ abstract final class CommentService {
       for (final t in threads) ...[t.createdById, t.resolvedById, t.assigneeId],
       for (final c in comments) ...[c.authorId, ...c.mentions],
     ]);
+    // (M14) A publication's messages show its name (specs/18 §5.2).
+    final publicationIds = {
+      for (final c in comments)
+        if (c.publicationId != null) c.publicationId!,
+    };
+    final publications = publicationIds.isEmpty
+        ? const <int, String>{}
+        : {
+            for (final p in await Publication.db.find(
+              session,
+              where: (t) => t.id.inSet(publicationIds),
+            ))
+              p.id!: p.name,
+          };
     return [
       for (final t in threads)
         CommentThreadView(
@@ -163,6 +179,9 @@ abstract final class CommentService {
                 editedAt: c.editedAt,
                 deleted: c.deletedAt != null,
                 systemEvent: c.systemEvent,
+                authorLabel: c.publicationId == null
+                    ? null
+                    : publications[c.publicationId] ?? 'Publication',
               ),
           ],
         ),
@@ -390,6 +409,18 @@ abstract final class CommentService {
       actor,
       ActivityType.commented,
       summary: {'thread': threadUuid.uuid, 'reply': true},
+    );
+    // Replies to a publication's messages go to the blog (specs/18 §5.2).
+    await runGuarded<void>(
+      session,
+      'publications.onReply',
+      () => SubmissionService.onReply(
+        session,
+        thread,
+        actor,
+        body: clean,
+        commentUuid: commentUuid,
+      ),
     );
     final participants = {
       thread.createdById,

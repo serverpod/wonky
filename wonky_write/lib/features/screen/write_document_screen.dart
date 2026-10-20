@@ -36,6 +36,7 @@ import 'command_invoke.dart';
 import 'document_menus.dart';
 import 'selection_toolbar.dart';
 import 'write_document_controller.dart';
+import '../publish/submission_title_actions.dart';
 import 'write_toolbar.dart';
 
 /// Creates the document session of the screen (tests inject fakes).
@@ -149,6 +150,7 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
 
   void _onPhase() {
     if (session.phase.value != WriteSessionPhase.ready) return;
+    doc.submission.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final heading = widget.heading;
@@ -191,6 +193,10 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
       belowToolbar: _modeLine,
       // The comments toggle is in the toolbar, next to the mode switcher.
       commentsButton: false,
+      // A story for a publication: status chip and Submit (specs/18 §4.1).
+      titleActions: (context) => [
+        SubmissionTitleActions(services: s, doc: doc),
+      ],
       // Rail order: Assistant, Outline, Find (then the shell's History).
       panels: [
         if (s.assistant?.available ?? false) writeAssistantPanelSpec(ai),

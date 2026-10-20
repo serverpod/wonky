@@ -25,6 +25,8 @@ import '../spellcheck/shell_spelling.dart';
 import '../storage/storage_controller.dart';
 import '../undo/undo_service.dart';
 import '../board/board_repository.dart';
+import '../publications/publication_repository.dart';
+import 'fake_publication_repository.dart';
 import 'fake_cross_app.dart';
 import 'fake_repositories.dart';
 
@@ -106,6 +108,7 @@ class CommandTestHarness {
     MetaRepository? meta,
     ActivityRepository? activity,
     BoardRepository? board,
+    PublicationRepository? publications,
     LocalStore? store,
     UuidV7Generator? ids,
     StorageController? storage,
@@ -140,6 +143,7 @@ class CommandTestHarness {
         meta: meta ?? UnfakedMetaRepository(),
         activity: activity,
         board: board,
+        publications: publications ?? FakePublicationRepository(),
       ),
       urls: urls,
       crossApp: crossApp ?? FakeCrossApp(urls),

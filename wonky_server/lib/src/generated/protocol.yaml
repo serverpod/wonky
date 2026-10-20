@@ -162,6 +162,26 @@ notification:
   - watch:
 presence:
   - join:
+publication:
+  - resolve:
+  - startSubmission:
+  - list:
+  - create:
+  - update:
+  - delete:
+  - verify:
+  - rotateSecret:
+  - createApiKey:
+  - setModerators:
+  - deliveries:
+  - resend:
+  - sendTest:
+submission:
+  - get:
+  - submit:
+  - withdraw:
+  - disconnect:
+  - reconnect:
 sharing:
   - getSharing:
   - share:

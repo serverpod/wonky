@@ -1,0 +1,12 @@
+### A webhook delivery in the owner's *Deliveries* list (specs/18 §8.1).
+class: PublicationDeliveryView
+fields:
+  webhookId: String
+  type: String
+  createdAt: DateTime
+  attempts: int
+  lastStatus: int?
+  lastError: String?
+  deliveredAt: DateTime?
+  failedAt: DateTime?
+  nextAttemptAt: DateTime?

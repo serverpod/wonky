@@ -20,3 +20,6 @@ values:
   - boardStatus
   ### My claim: warning, expiry, released, PR closed.
   - boardClaim
+  ### (M14) A publication changed the status of a story I can edit or sent
+  ### a message; a submission could not be delivered (specs/18 §5.3).
+  - submission

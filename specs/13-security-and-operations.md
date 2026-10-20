@@ -26,6 +26,7 @@
 | (M12) Prompt injection into triage, task prompts and PR reviews | Jev returns typed answers only; Gemini gets post and PR text as delimited untrusted data and answers through schemas; task prompts need admin review and sit in a fixed template; PR reviews are advisory and the server never runs PR code (16 §10.2, §13.5) |
 | (M12) Forged GitHub webhooks, claim takeover | HMAC-SHA256 check (`githubWebhookSecret`), delivery dedupe, per-claim codes compared in constant time (16 §13.3, §13.7) |
 | (M12) Runaway AI spend on the board | Separate daily token budgets for Jev and Gemini, per-PR review limits, per-user rate limits (16 §6.1, §11, §13.5) |
+| (M14) Publications: forged contributor links, SSRF through webhook URLs, forged or replayed deliveries, stolen API keys, moderator overreach, submission spam | Links carry only a public publication id and the consent dialog names the verified site host (or the webhook host); outbound calls through the SSRF-safe client; Standard Webhooks signatures with timestamp window and ids; hashed, scoped, rotatable API keys with rate limits; moderators get Commenter only, removed with the submission; per-user limits and blocks ([18 §11](18-publications-and-submissions.md)) |
 | Session token theft via XSS (web) | Cookie auth: tokens in an httpOnly, `secure`, `SameSite=lax` cookie shared by both apps; `allowedOrigins` restricts credentialed cross-origin calls (01 §2.5) |
 
 ## 2. Privacy
@@ -47,6 +48,9 @@
   deck's ops (cell values before and after, authors) are kept 30 days, then pruned by
   `revlog.pruneOps`; a slim row (revision, client op id, author, time) stays 365 days for
   idempotent resends. Purging a file deletes its ops.
+- (M14) Submissions send a document's text, images, fields and the submitter's display name to
+  the publication the user chose, after a consent dialog; publication signing secrets are stored
+  unencrypted because they must sign ([18 §11](18-publications-and-submissions.md)).
 - Export of all user data (*Settings › Account › Download your data*: zip of documents as
   Markdown, spreadsheets as XLSX, comments as JSON) — P1.
 

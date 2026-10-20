@@ -4608,6 +4608,422 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String boardReviewedSha(String sha) {
     return 'Reviewed at $sha';
   }
+
+  @override
+  String get settingsPublications => 'Publications';
+
+  @override
+  String get pubSectionHint =>
+      'Let people write for your blog in Wonky Write and send stories to your review queue with one button.';
+
+  @override
+  String get pubNew => 'New publication';
+
+  @override
+  String get pubNewHint =>
+      'Wonky sends submitted stories to your webhook. You get the signing secret once, after you create the publication.';
+
+  @override
+  String pubEdit(String name) {
+    return 'Edit “$name”';
+  }
+
+  @override
+  String get pubEditButton => 'Edit…';
+
+  @override
+  String get pubGuide => 'Developer guide';
+
+  @override
+  String get pubEmpty => 'You have no publications yet.';
+
+  @override
+  String get pubName => 'Name';
+
+  @override
+  String get pubSiteUrl => 'Site URL';
+
+  @override
+  String get pubWebhookUrl => 'Webhook URL';
+
+  @override
+  String get pubTermsUrl => 'Contributor terms URL (optional)';
+
+  @override
+  String get pubTemplate => 'Template document (optional)';
+
+  @override
+  String get pubTemplateHint =>
+      'Paste a link to one of your Wonky Write documents';
+
+  @override
+  String get pubTemplateInvalid => 'Paste the link of a Wonky Write document.';
+
+  @override
+  String get pubRequired => 'Required.';
+
+  @override
+  String get pubHttpsOnly => 'Use an https:// address.';
+
+  @override
+  String get pubFieldSummary => 'Summary';
+
+  @override
+  String get pubFieldTags => 'Tags';
+
+  @override
+  String get pubAllowedTags => 'Allowed tags (optional)';
+
+  @override
+  String get pubAllowedTagsHint => 'Comma separated; empty allows any tag';
+
+  @override
+  String get pubFieldCover => 'Cover image';
+
+  @override
+  String get pubFieldBio => 'Author bio';
+
+  @override
+  String get pubFieldNote => 'Note to the moderators';
+
+  @override
+  String get pubFieldOff => 'Not asked';
+
+  @override
+  String get pubFieldOptional => 'Optional';
+
+  @override
+  String get pubFieldRequired => 'Required';
+
+  @override
+  String get pubEnabled => 'Accept new stories';
+
+  @override
+  String pubHostVerified(String host) {
+    return '$host ✓';
+  }
+
+  @override
+  String pubHostUnverified(String host) {
+    return '$host (not verified)';
+  }
+
+  @override
+  String get pubDisabled => 'Not accepting stories';
+
+  @override
+  String pubOpenCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stories in review',
+      one: '1 story in review',
+      zero: 'No stories in review',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get pubManage => 'Manage';
+
+  @override
+  String get pubHide => 'Hide';
+
+  @override
+  String get pubContributorLink =>
+      'Contributor link (put it behind “Write for us”)';
+
+  @override
+  String get pubId => 'Publication id';
+
+  @override
+  String get pubCopy => 'Copy';
+
+  @override
+  String get pubCopied => 'Copied';
+
+  @override
+  String get pubDelete => 'Delete';
+
+  @override
+  String get pubModerators => 'Moderators';
+
+  @override
+  String get pubModeratorsHint =>
+      'Moderators get comment access to stories when they are submitted. Enter the email addresses of their Wonky accounts, one per line.';
+
+  @override
+  String get pubModeratorEmails => 'Email addresses';
+
+  @override
+  String pubModeratorsButton(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count moderators…',
+      one: '1 moderator…',
+      zero: 'Add moderators…',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get pubVerification => 'Verification';
+
+  @override
+  String pubVerifyHint(String host) {
+    return 'Serve this at https://$host/.well-known/wonky-publications.json, then verify. Until then contributors see your webhook\'s host and a warning.';
+  }
+
+  @override
+  String pubVerifiedAt(String host, String date) {
+    return '$host verified $date';
+  }
+
+  @override
+  String get pubVerify => 'Verify';
+
+  @override
+  String pubVerified(String host) {
+    return '$host is verified';
+  }
+
+  @override
+  String get pubVerifyFailed => 'Not verified';
+
+  @override
+  String get pubCredentials => 'Signing secret and API key';
+
+  @override
+  String get pubSecretHint =>
+      'Webhooks are signed with the signing secret. Your server calls the publication API with the API key.';
+
+  @override
+  String pubRotationActive(String date) {
+    return 'The previous signing secret still signs until $date.';
+  }
+
+  @override
+  String get pubRotateSecret => 'Rotate signing secret';
+
+  @override
+  String get pubRotateSecretBody =>
+      'You get a new secret. For 24 hours, webhooks carry signatures of the old and the new secret.';
+
+  @override
+  String get pubRotate => 'Rotate';
+
+  @override
+  String get pubCreateApiKey => 'Create API key';
+
+  @override
+  String get pubRotateApiKey => 'Rotate API key';
+
+  @override
+  String pubRotateApiKeyLast4(String last4) {
+    return 'Rotate API key (…$last4)';
+  }
+
+  @override
+  String get pubRotateApiKeyBody => 'The current key stops working at once.';
+
+  @override
+  String get pubApiKey => 'API key';
+
+  @override
+  String get pubSigningSecret => 'Signing secret';
+
+  @override
+  String pubSecretOnce(String what) {
+    return 'Copy the $what now. It isn\'t shown again.';
+  }
+
+  @override
+  String get pubSecretSaved => 'I\'ve stored it';
+
+  @override
+  String get pubDeliveries => 'Deliveries';
+
+  @override
+  String get pubSendTest => 'Send test';
+
+  @override
+  String get pubTestOk => 'Your webhook accepted the test.';
+
+  @override
+  String get pubTestFailed => 'Your webhook didn\'t accept the test';
+
+  @override
+  String get pubNoDeliveries => 'No webhooks sent yet.';
+
+  @override
+  String pubDelivered(int status_code) {
+    return 'Delivered (HTTP $status_code)';
+  }
+
+  @override
+  String pubDeliveryFailed(String error) {
+    return 'Failed: $error';
+  }
+
+  @override
+  String get pubDeliveryQueued => 'Queued';
+
+  @override
+  String pubDeliveryRetrying(String error, String date) {
+    return '$error · next try $date';
+  }
+
+  @override
+  String get pubResend => 'Resend';
+
+  @override
+  String pubDeleteTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get pubDeleteBody =>
+      'Contributors\' documents stay in their drives, but they can\'t submit them anymore, and moderators lose access. Your blog gets no webhook about it.';
+
+  @override
+  String get notifySubmissions => 'Stories for publications';
+
+  @override
+  String get notifySubmissionsHint =>
+      'Status changes and messages from blogs you write for';
+
+  @override
+  String notifSubmissionChanges(String publication, String what) {
+    return '$publication asked for changes to “$what”';
+  }
+
+  @override
+  String notifSubmissionDeclined(String publication, String what) {
+    return '$publication declined “$what”';
+  }
+
+  @override
+  String notifSubmissionPublished(String publication, String what) {
+    return '$publication published “$what”';
+  }
+
+  @override
+  String notifSubmissionInReview(String publication, String what) {
+    return '$publication is reviewing “$what”';
+  }
+
+  @override
+  String notifSubmissionMessage(String publication, String what) {
+    return '$publication sent a message about “$what”';
+  }
+
+  @override
+  String notifSubmissionFailed(String publication, String what) {
+    return '$publication couldn\'t receive “$what”';
+  }
+
+  @override
+  String shareModerator(String publication) {
+    return 'Moderator · $publication';
+  }
+
+  @override
+  String activitySubmitted(String who, String publication) {
+    return '$who submitted it to $publication';
+  }
+
+  @override
+  String activitySubmissionWithdrawn(String who, String publication) {
+    return '$who withdrew it from $publication';
+  }
+
+  @override
+  String activitySubmissionDisconnected(String who, String publication) {
+    return '$who disconnected it from $publication';
+  }
+
+  @override
+  String activitySubmissionReconnected(String who, String publication) {
+    return '$who connected it to $publication again';
+  }
+
+  @override
+  String activitySubmissionStatus(String publication, String status) {
+    return '$publication: $status';
+  }
+
+  @override
+  String get submissionStatusDraft => 'Draft';
+
+  @override
+  String get submissionStatusInReview => 'In review';
+
+  @override
+  String get submissionStatusChangesRequested => 'Changes requested';
+
+  @override
+  String get submissionStatusDeclined => 'Declined';
+
+  @override
+  String get submissionStatusPublished => 'Published';
+
+  @override
+  String get submissionStatusWithdrawn => 'Withdrawn';
+
+  @override
+  String pubStartTitle(String name) {
+    return 'Write for $name';
+  }
+
+  @override
+  String pubStartHostVerified(String host) {
+    return '$host ✓';
+  }
+
+  @override
+  String pubStartHostUnverified(String site, String webhook) {
+    return 'Wonky hasn\'t verified that this publication belongs to $site. Your story is sent to $webhook.';
+  }
+
+  @override
+  String pubStartConsent(String name) {
+    return 'You\'ll write in your own Wonky document. When you press Submit, $name receives the text and images of the document, the fields you fill in and your display name, and its moderators can read and comment on the document.';
+  }
+
+  @override
+  String get pubStartWhich => 'Story';
+
+  @override
+  String pubStartContinue(String name) {
+    return 'Continue “$name”';
+  }
+
+  @override
+  String get pubStartNew => 'Start a new story';
+
+  @override
+  String pubStartTerms(String name, String url) {
+    return 'I agree to $name\'s contributor terms ($url)';
+  }
+
+  @override
+  String pubStartTermsRequired(String name) {
+    return 'Agree to $name\'s contributor terms to start.';
+  }
+
+  @override
+  String get pubStartButton => 'Start writing';
+
+  @override
+  String pubStartBlocked(String name) {
+    return '$name isn\'t accepting stories from you.';
+  }
+
+  @override
+  String pubStartClosed(String name) {
+    return '$name isn\'t accepting stories right now.';
+  }
 }
 
 /// The translations for English (`en_XA`).
@@ -9288,5 +9704,425 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   @override
   String boardReviewedSha(String sha) {
     return '[Ŕéṽîéŵéð åţ $sha one]';
+  }
+
+  @override
+  String get settingsPublications => '[Þûƀļîçåţîöñš one t]';
+
+  @override
+  String get pubSectionHint =>
+      '[Ļéţ þéöþļé ŵŕîţé ƒöŕ ýöûŕ ƀļöĝ îñ Ŵöñķý Ŵŕîţé åñð šéñð šţöŕîéš ţö ýöûŕ ŕéṽîéŵ ǫûéûé ŵîţĥ öñé ƀûţţöñ. one two three four five six s]';
+
+  @override
+  String get pubNew => '[Ñéŵ þûƀļîçåţîöñ one t]';
+
+  @override
+  String get pubNewHint =>
+      '[Ŵöñķý šéñðš šûƀɱîţţéð šţöŕîéš ţö ýöûŕ ŵéƀĥööķ. Ýöû ĝéţ ţĥé šîĝñîñĝ šéçŕéţ öñçé, åƒţéŕ ýöû çŕéåţé ţĥé þûƀļîçåţîöñ. one two three four five six seven]';
+
+  @override
+  String pubEdit(String name) {
+    return '[Éðîţ “$name” one]';
+  }
+
+  @override
+  String get pubEditButton => '[Éðîţ… on]';
+
+  @override
+  String get pubGuide => '[Ðéṽéļöþéŕ ĝûîðé one t]';
+
+  @override
+  String get pubEmpty => '[Ýöû ĥåṽé ñö þûƀļîçåţîöñš ýéţ. one two t]';
+
+  @override
+  String get pubName => '[Ñåɱé on]';
+
+  @override
+  String get pubSiteUrl => '[Šîţé ÛŔĻ one]';
+
+  @override
+  String get pubWebhookUrl => '[Ŵéƀĥööķ ÛŔĻ one]';
+
+  @override
+  String get pubTermsUrl => '[Çöñţŕîƀûţöŕ ţéŕɱš ÛŔĻ (öþţîöñåļ) one two thr]';
+
+  @override
+  String get pubTemplate => '[Ţéɱþļåţé ðöçûɱéñţ (öþţîöñåļ) one two th]';
+
+  @override
+  String get pubTemplateHint =>
+      '[Þåšţé å ļîñķ ţö öñé öƒ ýöûŕ Ŵöñķý Ŵŕîţé ðöçûɱéñţš one two three]';
+
+  @override
+  String get pubTemplateInvalid =>
+      '[Þåšţé ţĥé ļîñķ öƒ å Ŵöñķý Ŵŕîţé ðöçûɱéñţ. one two thre]';
+
+  @override
+  String get pubRequired => '[Ŕéǫûîŕéð. one]';
+
+  @override
+  String get pubHttpsOnly => '[Ûšé åñ ĥţţþš:// åððŕéšš. one two]';
+
+  @override
+  String get pubFieldSummary => '[Šûɱɱåŕý one]';
+
+  @override
+  String get pubFieldTags => '[Ţåĝš on]';
+
+  @override
+  String get pubAllowedTags => '[Åļļöŵéð ţåĝš (öþţîöñåļ) one two]';
+
+  @override
+  String get pubAllowedTagsHint =>
+      '[Çöɱɱå šéþåŕåţéð; éɱþţý åļļöŵš åñý ţåĝ one two thre]';
+
+  @override
+  String get pubFieldCover => '[Çöṽéŕ îɱåĝé one]';
+
+  @override
+  String get pubFieldBio => '[Åûţĥöŕ ƀîö one]';
+
+  @override
+  String get pubFieldNote => '[Ñöţé ţö ţĥé ɱöðéŕåţöŕš one two]';
+
+  @override
+  String get pubFieldOff => '[Ñöţ åšķéð one]';
+
+  @override
+  String get pubFieldOptional => '[Öþţîöñåļ one]';
+
+  @override
+  String get pubFieldRequired => '[Ŕéǫûîŕéð one]';
+
+  @override
+  String get pubEnabled => '[Åççéþţ ñéŵ šţöŕîéš one tw]';
+
+  @override
+  String pubHostVerified(String host) {
+    return '[$host ✓ o]';
+  }
+
+  @override
+  String pubHostUnverified(String host) {
+    return '[$host (ñöţ ṽéŕîƒîéð) one t]';
+  }
+
+  @override
+  String get pubDisabled => '[Ñöţ åççéþţîñĝ šţöŕîéš one two]';
+
+  @override
+  String pubOpenCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count šţöŕîéš îñ ŕéṽîéŵ',
+      one: '1 šţöŕý îñ ŕéṽîéŵ',
+      zero: 'Ñö šţöŕîéš îñ ŕéṽîéŵ',
+    );
+    return '[$_temp0 one two three fou]';
+  }
+
+  @override
+  String get pubManage => '[Ṁåñåĝé one]';
+
+  @override
+  String get pubHide => '[Ĥîðé on]';
+
+  @override
+  String get pubContributorLink =>
+      '[Çöñţŕîƀûţöŕ ļîñķ (þûţ îţ ƀéĥîñð “Ŵŕîţé ƒöŕ ûš”) one two three]';
+
+  @override
+  String get pubId => '[Þûƀļîçåţîöñ îð one t]';
+
+  @override
+  String get pubCopy => '[Çöþý on]';
+
+  @override
+  String get pubCopied => '[Çöþîéð one]';
+
+  @override
+  String get pubDelete => '[Ðéļéţé one]';
+
+  @override
+  String get pubModerators => '[Ṁöðéŕåţöŕš one]';
+
+  @override
+  String get pubModeratorsHint =>
+      '[Ṁöðéŕåţöŕš ĝéţ çöɱɱéñţ åççéšš ţö šţöŕîéš ŵĥéñ ţĥéý åŕé šûƀɱîţţéð. Éñţéŕ ţĥé éɱåîļ åððŕéššéš öƒ ţĥéîŕ Ŵöñķý åççöûñţš, öñé þéŕ ļîñé. one two three four five six seven eight]';
+
+  @override
+  String get pubModeratorEmails => '[Éɱåîļ åððŕéššéš one t]';
+
+  @override
+  String pubModeratorsButton(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ɱöðéŕåţöŕš…',
+      one: '1 ɱöðéŕåţöŕ…',
+      zero: 'Åðð ɱöðéŕåţöŕš…',
+    );
+    return '[$_temp0 one two three]';
+  }
+
+  @override
+  String get pubVerification => '[Ṽéŕîƒîçåţîöñ one t]';
+
+  @override
+  String pubVerifyHint(String host) {
+    return '[Šéŕṽé ţĥîš åţ ĥţţþš://$host/.ŵéļļ-ķñöŵñ/ŵöñķý-þûƀļîçåţîöñš.ĵšöñ, ţĥéñ ṽéŕîƒý. Ûñţîļ ţĥéñ çöñţŕîƀûţöŕš šéé ýöûŕ ŵéƀĥööķ\'š ĥöšţ åñð å ŵåŕñîñĝ. one two three four five six seven eight ni]';
+  }
+
+  @override
+  String pubVerifiedAt(String host, String date) {
+    return '[$host ṽéŕîƒîéð $date one]';
+  }
+
+  @override
+  String get pubVerify => '[Ṽéŕîƒý one]';
+
+  @override
+  String pubVerified(String host) {
+    return '[$host îš ṽéŕîƒîéð one]';
+  }
+
+  @override
+  String get pubVerifyFailed => '[Ñöţ ṽéŕîƒîéð one]';
+
+  @override
+  String get pubCredentials => '[Šîĝñîñĝ šéçŕéţ åñð ÅÞÎ ķéý one two]';
+
+  @override
+  String get pubSecretHint =>
+      '[Ŵéƀĥööķš åŕé šîĝñéð ŵîţĥ ţĥé šîĝñîñĝ šéçŕéţ. Ýöûŕ šéŕṽéŕ çåļļš ţĥé þûƀļîçåţîöñ ÅÞÎ ŵîţĥ ţĥé ÅÞÎ ķéý. one two three four five six se]';
+
+  @override
+  String pubRotationActive(String date) {
+    return '[Ţĥé þŕéṽîöûš šîĝñîñĝ šéçŕéţ šţîļļ šîĝñš ûñţîļ $date. one two three]';
+  }
+
+  @override
+  String get pubRotateSecret => '[Ŕöţåţé šîĝñîñĝ šéçŕéţ one two]';
+
+  @override
+  String get pubRotateSecretBody =>
+      '[Ýöû ĝéţ å ñéŵ šéçŕéţ. Ƒöŕ 24 ĥöûŕš, ŵéƀĥööķš çåŕŕý šîĝñåţûŕéš öƒ ţĥé öļð åñð ţĥé ñéŵ šéçŕéţ. one two three four five six]';
+
+  @override
+  String get pubRotate => '[Ŕöţåţé one]';
+
+  @override
+  String get pubCreateApiKey => '[Çŕéåţé ÅÞÎ ķéý one t]';
+
+  @override
+  String get pubRotateApiKey => '[Ŕöţåţé ÅÞÎ ķéý one t]';
+
+  @override
+  String pubRotateApiKeyLast4(String last4) {
+    return '[Ŕöţåţé ÅÞÎ ķéý (…$last4) one tw]';
+  }
+
+  @override
+  String get pubRotateApiKeyBody =>
+      '[Ţĥé çûŕŕéñţ ķéý šţöþš ŵöŕķîñĝ åţ öñçé. one two thre]';
+
+  @override
+  String get pubApiKey => '[ÅÞÎ ķéý one]';
+
+  @override
+  String get pubSigningSecret => '[Šîĝñîñĝ šéçŕéţ one t]';
+
+  @override
+  String pubSecretOnce(String what) {
+    return '[Çöþý ţĥé $what ñöŵ. Îţ îšñ\'ţ šĥöŵñ åĝåîñ. one two thr]';
+  }
+
+  @override
+  String get pubSecretSaved => '[Î\'ṽé šţöŕéð îţ one t]';
+
+  @override
+  String get pubDeliveries => '[Ðéļîṽéŕîéš one]';
+
+  @override
+  String get pubSendTest => '[Šéñð ţéšţ one]';
+
+  @override
+  String get pubTestOk => '[Ýöûŕ ŵéƀĥööķ åççéþţéð ţĥé ţéšţ. one two th]';
+
+  @override
+  String get pubTestFailed =>
+      '[Ýöûŕ ŵéƀĥööķ ðîðñ\'ţ åççéþţ ţĥé ţéšţ one two thr]';
+
+  @override
+  String get pubNoDeliveries => '[Ñö ŵéƀĥööķš šéñţ ýéţ. one two]';
+
+  @override
+  String pubDelivered(int status_code) {
+    return '[Ðéļîṽéŕéð (ĤŢŢÞ $status_code) one tw]';
+  }
+
+  @override
+  String pubDeliveryFailed(String error) {
+    return '[Ƒåîļéð: $error one]';
+  }
+
+  @override
+  String get pubDeliveryQueued => '[Ǫûéûéð one]';
+
+  @override
+  String pubDeliveryRetrying(String error, String date) {
+    return '[$error · ñéẋţ ţŕý $date one]';
+  }
+
+  @override
+  String get pubResend => '[Ŕéšéñð one]';
+
+  @override
+  String pubDeleteTitle(String name) {
+    return '[Ðéļéţé “$name”? one]';
+  }
+
+  @override
+  String get pubDeleteBody =>
+      '[Çöñţŕîƀûţöŕš\' ðöçûɱéñţš šţåý îñ ţĥéîŕ ðŕîṽéš, ƀûţ ţĥéý çåñ\'ţ šûƀɱîţ ţĥéɱ åñýɱöŕé, åñð ɱöðéŕåţöŕš ļöšé åççéšš. Ýöûŕ ƀļöĝ ĝéţš ñö ŵéƀĥööķ åƀöûţ îţ. one two three four five six seven eight nine]';
+
+  @override
+  String get notifySubmissions => '[Šţöŕîéš ƒöŕ þûƀļîçåţîöñš one two]';
+
+  @override
+  String get notifySubmissionsHint =>
+      '[Šţåţûš çĥåñĝéš åñð ɱéššåĝéš ƒŕöɱ ƀļöĝš ýöû ŵŕîţé ƒöŕ one two three fo]';
+
+  @override
+  String notifSubmissionChanges(String publication, String what) {
+    return '[$publication åšķéð ƒöŕ çĥåñĝéš ţö “$what” one two]';
+  }
+
+  @override
+  String notifSubmissionDeclined(String publication, String what) {
+    return '[$publication ðéçļîñéð “$what” one]';
+  }
+
+  @override
+  String notifSubmissionPublished(String publication, String what) {
+    return '[$publication þûƀļîšĥéð “$what” one]';
+  }
+
+  @override
+  String notifSubmissionInReview(String publication, String what) {
+    return '[$publication îš ŕéṽîéŵîñĝ “$what” one t]';
+  }
+
+  @override
+  String notifSubmissionMessage(String publication, String what) {
+    return '[$publication šéñţ å ɱéššåĝé åƀöûţ “$what” one two]';
+  }
+
+  @override
+  String notifSubmissionFailed(String publication, String what) {
+    return '[$publication çöûļðñ\'ţ ŕéçéîṽé “$what” one tw]';
+  }
+
+  @override
+  String shareModerator(String publication) {
+    return '[Ṁöðéŕåţöŕ · $publication one]';
+  }
+
+  @override
+  String activitySubmitted(String who, String publication) {
+    return '[$who šûƀɱîţţéð îţ ţö $publication one t]';
+  }
+
+  @override
+  String activitySubmissionWithdrawn(String who, String publication) {
+    return '[$who ŵîţĥðŕéŵ îţ ƒŕöɱ $publication one t]';
+  }
+
+  @override
+  String activitySubmissionDisconnected(String who, String publication) {
+    return '[$who ðîšçöññéçţéð îţ ƒŕöɱ $publication one two]';
+  }
+
+  @override
+  String activitySubmissionReconnected(String who, String publication) {
+    return '[$who çöññéçţéð îţ ţö $publication åĝåîñ one two]';
+  }
+
+  @override
+  String activitySubmissionStatus(String publication, String status) {
+    return '[$publication: $status o]';
+  }
+
+  @override
+  String get submissionStatusDraft => '[Ðŕåƒţ on]';
+
+  @override
+  String get submissionStatusInReview => '[Îñ ŕéṽîéŵ one]';
+
+  @override
+  String get submissionStatusChangesRequested => '[Çĥåñĝéš ŕéǫûéšţéð one tw]';
+
+  @override
+  String get submissionStatusDeclined => '[Ðéçļîñéð one]';
+
+  @override
+  String get submissionStatusPublished => '[Þûƀļîšĥéð one]';
+
+  @override
+  String get submissionStatusWithdrawn => '[Ŵîţĥðŕåŵñ one]';
+
+  @override
+  String pubStartTitle(String name) {
+    return '[Ŵŕîţé ƒöŕ $name one]';
+  }
+
+  @override
+  String pubStartHostVerified(String host) {
+    return '[$host ✓ o]';
+  }
+
+  @override
+  String pubStartHostUnverified(String site, String webhook) {
+    return '[Ŵöñķý ĥåšñ\'ţ ṽéŕîƒîéð ţĥåţ ţĥîš þûƀļîçåţîöñ ƀéļöñĝš ţö $site. Ýöûŕ šţöŕý îš šéñţ ţö $webhook. one two three four five]';
+  }
+
+  @override
+  String pubStartConsent(String name) {
+    return '[Ýöû\'ļļ ŵŕîţé îñ ýöûŕ öŵñ Ŵöñķý ðöçûɱéñţ. Ŵĥéñ ýöû þŕéšš Šûƀɱîţ, $name ŕéçéîṽéš ţĥé ţéẋţ åñð îɱåĝéš öƒ ţĥé ðöçûɱéñţ, ţĥé ƒîéļðš ýöû ƒîļļ îñ åñð ýöûŕ ðîšþļåý ñåɱé, åñð îţš ɱöðéŕåţöŕš çåñ ŕéåð åñð çöɱɱéñţ öñ ţĥé ðöçûɱéñţ. one two three four five six seven eight nine ten one two three]';
+  }
+
+  @override
+  String get pubStartWhich => '[Šţöŕý on]';
+
+  @override
+  String pubStartContinue(String name) {
+    return '[Çöñţîñûé “$name” one]';
+  }
+
+  @override
+  String get pubStartNew => '[Šţåŕţ å ñéŵ šţöŕý one t]';
+
+  @override
+  String pubStartTerms(String name, String url) {
+    return '[Î åĝŕéé ţö $name\'š çöñţŕîƀûţöŕ ţéŕɱš ($url) one two th]';
+  }
+
+  @override
+  String pubStartTermsRequired(String name) {
+    return '[Åĝŕéé ţö $name\'š çöñţŕîƀûţöŕ ţéŕɱš ţö šţåŕţ. one two thre]';
+  }
+
+  @override
+  String get pubStartButton => '[Šţåŕţ ŵŕîţîñĝ one t]';
+
+  @override
+  String pubStartBlocked(String name) {
+    return '[$name îšñ\'ţ åççéþţîñĝ šţöŕîéš ƒŕöɱ ýöû. one two thr]';
+  }
+
+  @override
+  String pubStartClosed(String name) {
+    return '[$name îšñ\'ţ åççéþţîñĝ šţöŕîéš ŕîĝĥţ ñöŵ. one two thr]';
   }
 }

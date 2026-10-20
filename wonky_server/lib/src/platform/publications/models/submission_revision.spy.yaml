@@ -1,0 +1,22 @@
+### One submit of a submission (specs/18 §2, §6).
+class: SubmissionRevision
+table: submission_revision
+serverOnly: true
+fields:
+  submissionId: int, relation(parent=submission, onDelete=Cascade)
+  ### 1, 2, … per submission.
+  sequence: int
+  ### The Write document revision that was sent.
+  revision: int
+  ### The named version of this submit (specs/18 P8).
+  versionId: int?
+  values: SubmissionValues
+  ### The `submission.submitted` body sent for this submit (JSON), served
+  ### again by `GET submissions/{id}/content` (specs/18 §7.3).
+  payload: String
+  submittedById: int
+  submittedAt: DateTime
+indexes:
+  submission_revision_idx:
+    fields: submissionId, sequence
+    unique: true

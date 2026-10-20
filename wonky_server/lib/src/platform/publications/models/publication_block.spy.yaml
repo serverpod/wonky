@@ -1,0 +1,12 @@
+### A user the publication doesn't take stories from (specs/18 §7.3).
+class: PublicationBlock
+table: publication_block
+serverOnly: true
+fields:
+  publicationId: int, relation(parent=publication, onDelete=Cascade)
+  userId: int, relation(parent=user_profile, onDelete=Cascade)
+  at: DateTime
+indexes:
+  publication_block_idx:
+    fields: publicationId, userId
+    unique: true

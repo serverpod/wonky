@@ -34,7 +34,7 @@ void main() {
     }
 
     test('when listing the recurring jobs then the maintenance, RevLog, '
-        'script, storage and board jobs are there', () {
+        'script, storage, board and publication jobs are there', () {
       expect(
         jobs,
         containsAll([
@@ -44,6 +44,7 @@ void main() {
           'wonky.scriptsTick',
           'wonky.storageReconcile',
           'wonky.boardSweep',
+          'wonky.publicationSweep',
         ]),
       );
     });

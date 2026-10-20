@@ -347,6 +347,7 @@ class _ShareDialogState extends State<ShareDialog> {
                     p.role,
                     invitedEmail: p.user == null ? p.invitedEmail : null,
                     inheritedFrom: p.inheritedFromName,
+                    moderatorOf: p.viaPublication,
                     isMe: p.user?.id == me,
                     editable: canShare && p.inheritedFromUuid == null,
                   ),
@@ -583,6 +584,7 @@ class _ShareDialogState extends State<ShareDialog> {
     bool editable = false,
     String? invitedEmail,
     String? inheritedFrom,
+    String? moderatorOf,
   }) {
     final l = WonkyAppLocalizations.of(context);
     final theme = ShadTheme.of(context);
@@ -593,6 +595,7 @@ class _ShareDialogState extends State<ShareDialog> {
       if (user != null) email,
       if (invitedEmail != null) l.sharePending,
       if (inheritedFrom != null) l.shareInherited(inheritedFrom),
+      if (moderatorOf != null) l.shareModerator(moderatorOf),
     ].join(' · ');
     Widget trailing;
     if (isOwnerRow || !editable || isMe) {

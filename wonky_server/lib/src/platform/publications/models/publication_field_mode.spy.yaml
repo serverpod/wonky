@@ -1,0 +1,7 @@
+### Whether a submission field is shown and required (specs/18 §8.1).
+enum: PublicationFieldMode
+serialized: byName
+values:
+  - off
+  - optional
+  - required

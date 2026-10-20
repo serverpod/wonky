@@ -10,6 +10,7 @@ import '../features/ai/ai_commands.dart';
 import '../commands/theme_commands.dart';
 import '../features/document/write_collab_commands.dart';
 import '../features/history/write_version_renderer.dart';
+import '../features/publish/submission_commands.dart';
 import '../features/import/import_route.dart';
 import '../features/import/import_service.dart';
 import '../features/print/print_preview_screen.dart';
@@ -124,6 +125,7 @@ class WriteAppConfig extends WonkyAppConfig {
     ...writeCollabCommands(services),
     ...writeAiCommands(services),
     ...writeSettingsCommands(services),
+    ...writeSubmissionCommands(services),
   ];
 
   /// Installs the AI assistant (suite 10) after sign-in.

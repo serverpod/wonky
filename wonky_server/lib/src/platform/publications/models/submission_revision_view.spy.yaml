@@ -1,0 +1,8 @@
+class: SubmissionRevisionView
+fields:
+  sequence: int
+  revision: int
+  submittedByName: String
+  submittedAt: DateTime
+  ### The named version of this submit, when it still exists.
+  versionId: int?

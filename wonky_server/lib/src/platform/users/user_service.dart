@@ -164,6 +164,14 @@ abstract final class UserService {
             t.invitedEmail.equals(normalizedEmail) & t.userId.equals(null),
         transaction: tx,
       );
+      // Pending publication moderators (specs/18 §5.1); their access to
+      // open submissions follows with the next submit or status change.
+      await PublicationModerator.db.updateWhere(
+        session,
+        columnValues: (t) => [t.userId(profile.id!)],
+        where: (t) => t.email.equals(normalizedEmail) & t.userId.equals(null),
+        transaction: tx,
+      );
       return profile;
     }
 

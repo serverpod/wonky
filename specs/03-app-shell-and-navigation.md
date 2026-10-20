@@ -65,7 +65,7 @@ exception and must reuse the presentation-session state model.
 | `/shared`, `/starred`, `/recent`, `/offline` (app homes), `/trash` | Drive views |
 | `/search?q=…` | Search results |
 | `/templates` | Template gallery |
-| `/new?folder=&template=` (Write, Sheets, Slides; v2) | Creates an item of the app's kind (offline-first where supported) and replaces the route with its editor; used by Drive's *New* menu and *From template* |
+| `/new?folder=&template=` (Write, Sheets, Slides; v2) | Creates an item of the app's kind (offline-first where supported) and replaces the route with its editor; used by Drive's *New* menu and *From template*. (M14) Write: `/new?publication=pub_…&ref=` starts a story for a publication (online; consent dialog; [18 §3](18-publications-and-submissions.md)) |
 | `/import?file=<fileItemUuid>` (Write, Sheets; v2) | Imports an uploaded Drive file with the app's import dialog (Drive 02 §7.2) |
 | `/settings/:section` | Wonky Work settings (suite sections, 04 §4) — (v2) |
 | `/settings/app`, `/settings/app/:section` | The current app's settings (04 §4) — (v2) |

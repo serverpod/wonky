@@ -150,6 +150,24 @@ import 'package:wonky_client/src/protocol/platform/presence/presence_event.dart'
     as _i1lme7np;
 import 'package:wonky_client/src/protocol/platform/presence/presence_update.dart'
     as _izu9ijhe;
+import 'package:wonky_client/src/protocol/platform/publications/models/publication_card.dart'
+    as _igbz1wj9;
+import 'package:wonky_client/src/protocol/platform/publications/models/publication_check_result.dart'
+    as _i9sbxmp8;
+import 'package:wonky_client/src/protocol/platform/publications/models/publication_delivery_view.dart'
+    as _ipl2ldhs;
+import 'package:wonky_client/src/protocol/platform/publications/models/publication_input.dart'
+    as _ii8xbzwt;
+import 'package:wonky_client/src/protocol/platform/publications/models/publication_secret.dart'
+    as _ihfocp8h;
+import 'package:wonky_client/src/protocol/platform/publications/models/publication_settings.dart'
+    as _i9bruko9;
+import 'package:wonky_client/src/protocol/platform/publications/models/submission_started.dart'
+    as _i767e3eb;
+import 'package:wonky_client/src/protocol/platform/publications/models/submission_values.dart'
+    as _i8t9b0m8;
+import 'package:wonky_client/src/protocol/platform/publications/models/submission_view.dart'
+    as _iy9ei8t0;
 import 'package:wonky_client/src/protocol/platform/revlog/messages/rev_client_message.dart'
     as _iedvhh7l;
 import 'package:wonky_client/src/protocol/platform/revlog/messages/rev_server_message.dart'
@@ -2257,6 +2275,189 @@ class EndpointPresence extends _isc.EndpointRef {
       );
 }
 
+/// Publications (specs/18 §9.1): starting a story from a contributor link,
+/// and the owner's settings.
+/// {@category Endpoint}
+class EndpointPublication extends _isc.EndpointRef {
+  EndpointPublication(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'publication';
+
+  /// The publication of a contributor link.
+  _ida.Future<_igbz1wj9.PublicationCard> resolve(String publicId) =>
+      caller.callServerEndpoint<_igbz1wj9.PublicationCard>(
+        'publication',
+        'resolve',
+        {'publicId': publicId},
+      );
+
+  /// Creates the document of a new story; [agreed] confirms the consent
+  /// dialog.
+  _ida.Future<_i767e3eb.SubmissionStarted> startSubmission(
+    String publicId,
+    String? ref,
+    bool agreed,
+  ) => caller.callServerEndpoint<_i767e3eb.SubmissionStarted>(
+    'publication',
+    'startSubmission',
+    {
+      'publicId': publicId,
+      'ref': ref,
+      'agreed': agreed,
+    },
+  );
+
+  _ida.Future<List<_i9bruko9.PublicationSettings>> list() =>
+      caller.callServerEndpoint<List<_i9bruko9.PublicationSettings>>(
+        'publication',
+        'list',
+        {},
+      );
+
+  /// Creates a publication; the result holds the signing secret once.
+  _ida.Future<_ihfocp8h.PublicationSecret> create(
+    _ii8xbzwt.PublicationInput input,
+  ) => caller.callServerEndpoint<_ihfocp8h.PublicationSecret>(
+    'publication',
+    'create',
+    {'input': input},
+  );
+
+  _ida.Future<_i9bruko9.PublicationSettings> update(
+    String publicId,
+    _ii8xbzwt.PublicationInput input,
+  ) => caller.callServerEndpoint<_i9bruko9.PublicationSettings>(
+    'publication',
+    'update',
+    {
+      'publicId': publicId,
+      'input': input,
+    },
+  );
+
+  _ida.Future<void> delete(String publicId) => caller.callServerEndpoint<void>(
+    'publication',
+    'delete',
+    {'publicId': publicId},
+  );
+
+  _ida.Future<_i9sbxmp8.PublicationCheckResult> verify(String publicId) =>
+      caller.callServerEndpoint<_i9sbxmp8.PublicationCheckResult>(
+        'publication',
+        'verify',
+        {'publicId': publicId},
+      );
+
+  _ida.Future<_ihfocp8h.PublicationSecret> rotateSecret(String publicId) =>
+      caller.callServerEndpoint<_ihfocp8h.PublicationSecret>(
+        'publication',
+        'rotateSecret',
+        {'publicId': publicId},
+      );
+
+  _ida.Future<_ihfocp8h.PublicationSecret> createApiKey(String publicId) =>
+      caller.callServerEndpoint<_ihfocp8h.PublicationSecret>(
+        'publication',
+        'createApiKey',
+        {'publicId': publicId},
+      );
+
+  _ida.Future<_i9bruko9.PublicationSettings> setModerators(
+    String publicId,
+    List<String> emails,
+  ) => caller.callServerEndpoint<_i9bruko9.PublicationSettings>(
+    'publication',
+    'setModerators',
+    {
+      'publicId': publicId,
+      'emails': emails,
+    },
+  );
+
+  _ida.Future<List<_ipl2ldhs.PublicationDeliveryView>> deliveries(
+    String publicId,
+  ) => caller.callServerEndpoint<List<_ipl2ldhs.PublicationDeliveryView>>(
+    'publication',
+    'deliveries',
+    {'publicId': publicId},
+  );
+
+  _ida.Future<_ipl2ldhs.PublicationDeliveryView> resend(
+    String publicId,
+    String webhookId,
+  ) => caller.callServerEndpoint<_ipl2ldhs.PublicationDeliveryView>(
+    'publication',
+    'resend',
+    {
+      'publicId': publicId,
+      'webhookId': webhookId,
+    },
+  );
+
+  _ida.Future<_i9sbxmp8.PublicationCheckResult> sendTest(String publicId) =>
+      caller.callServerEndpoint<_i9sbxmp8.PublicationCheckResult>(
+        'publication',
+        'sendTest',
+        {'publicId': publicId},
+      );
+}
+
+/// A document's submission to a publication (specs/18 §9.2).
+/// {@category Endpoint}
+class EndpointSubmission extends _isc.EndpointRef {
+  EndpointSubmission(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'submission';
+
+  /// The document's submission, or null (viewer+).
+  _ida.Future<_iy9ei8t0.SubmissionView?> get(_isc.UuidValue itemUuid) =>
+      caller.callServerEndpoint<_iy9ei8t0.SubmissionView?>(
+        'submission',
+        'get',
+        {'itemUuid': itemUuid},
+      );
+
+  /// Submits the current revision (editor+); [agreed] confirms the
+  /// publication's terms when they changed.
+  _ida.Future<_iy9ei8t0.SubmissionView> submit(
+    _isc.UuidValue itemUuid,
+    _i8t9b0m8.SubmissionValues values,
+    bool agreed,
+  ) => caller.callServerEndpoint<_iy9ei8t0.SubmissionView>(
+    'submission',
+    'submit',
+    {
+      'itemUuid': itemUuid,
+      'values': values,
+      'agreed': agreed,
+    },
+  );
+
+  _ida.Future<_iy9ei8t0.SubmissionView> withdraw(_isc.UuidValue itemUuid) =>
+      caller.callServerEndpoint<_iy9ei8t0.SubmissionView>(
+        'submission',
+        'withdraw',
+        {'itemUuid': itemUuid},
+      );
+
+  _ida.Future<void> disconnect(_isc.UuidValue itemUuid) =>
+      caller.callServerEndpoint<void>(
+        'submission',
+        'disconnect',
+        {'itemUuid': itemUuid},
+      );
+
+  /// Undoes [disconnect].
+  _ida.Future<_iy9ei8t0.SubmissionView?> reconnect(_isc.UuidValue itemUuid) =>
+      caller.callServerEndpoint<_iy9ei8t0.SubmissionView?>(
+        'submission',
+        'reconnect',
+        {'itemUuid': itemUuid},
+      );
+}
+
 /// Sharing (specs/06 §4).
 /// {@category Endpoint}
 class EndpointSharing extends _isc.EndpointRef {
@@ -4243,6 +4444,8 @@ class Client extends _isc.ServerpodClientShared {
     meta = EndpointMeta(this);
     notification = EndpointNotification(this);
     presence = EndpointPresence(this);
+    publication = EndpointPublication(this);
+    submission = EndpointSubmission(this);
     sharing = EndpointSharing(this);
     accessToken = EndpointAccessToken(this);
     googleIdp = EndpointGoogleIdp(this);
@@ -4296,6 +4499,10 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointNotification notification;
 
   late final EndpointPresence presence;
+
+  late final EndpointPublication publication;
+
+  late final EndpointSubmission submission;
 
   late final EndpointSharing sharing;
 
@@ -4361,6 +4568,8 @@ class Client extends _isc.ServerpodClientShared {
     'meta': meta,
     'notification': notification,
     'presence': presence,
+    'publication': publication,
+    'submission': submission,
     'sharing': sharing,
     'accessToken': accessToken,
     'googleIdp': googleIdp,

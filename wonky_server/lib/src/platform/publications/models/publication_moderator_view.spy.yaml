@@ -1,0 +1,5 @@
+class: PublicationModeratorView
+fields:
+  email: String
+  ### Null while no account has this email.
+  name: String?

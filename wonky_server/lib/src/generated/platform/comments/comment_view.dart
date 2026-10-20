@@ -31,6 +31,7 @@ abstract class CommentView
     this.editedAt,
     required this.deleted,
     this.systemEvent,
+    this.authorLabel,
   });
 
   factory CommentView({
@@ -46,6 +47,7 @@ abstract class CommentView
     DateTime? editedAt,
     required bool deleted,
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    String? authorLabel,
   }) = _CommentViewImpl;
 
   factory CommentView.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -84,6 +86,7 @@ abstract class CommentView
           : _ikzs0dm0.CommentSystemEvent.fromJson(
               (jsonSerialization['systemEvent'] as String),
             ),
+      authorLabel: jsonSerialization['authorLabel'] as String?,
     );
   }
 
@@ -113,6 +116,10 @@ abstract class CommentView
 
   _ikzs0dm0.CommentSystemEvent? systemEvent;
 
+  /// (M14) Name shown instead of a user: the publication of a message
+  /// (specs/18 §5.2).
+  String? authorLabel;
+
   /// Returns a shallow copy of this [CommentView]
   /// with some or all fields replaced by the given arguments.
   @_is.useResult
@@ -129,6 +136,7 @@ abstract class CommentView
     DateTime? editedAt = const _is.$UndefinedDateTime(),
     bool? deleted,
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    String? authorLabel,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -146,6 +154,7 @@ abstract class CommentView
       if (editedAt != null) 'editedAt': editedAt?.toJson(),
       'deleted': deleted,
       if (systemEvent != null) 'systemEvent': systemEvent?.toJson(),
+      if (authorLabel != null) 'authorLabel': authorLabel,
     };
   }
 
@@ -165,6 +174,7 @@ abstract class CommentView
       if (editedAt != null) 'editedAt': editedAt?.toJson(),
       'deleted': deleted,
       if (systemEvent != null) 'systemEvent': systemEvent?.toJson(),
+      if (authorLabel != null) 'authorLabel': authorLabel,
     };
   }
 
@@ -195,6 +205,7 @@ class _CommentViewImpl extends CommentView {
     DateTime? editedAt,
     required bool deleted,
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    String? authorLabel,
   }) : super._(
          id: id,
          uuid: uuid,
@@ -208,6 +219,7 @@ class _CommentViewImpl extends CommentView {
          editedAt: editedAt,
          deleted: deleted,
          systemEvent: systemEvent,
+         authorLabel: authorLabel,
        );
 
   /// Returns a shallow copy of this [CommentView]
@@ -227,6 +239,7 @@ class _CommentViewImpl extends CommentView {
     DateTime? editedAt = const _is.$UndefinedDateTime(),
     bool? deleted,
     Object? systemEvent = _Undefined,
+    Object? authorLabel = _Undefined,
   }) {
     return CommentView(
       id: id ?? this.id,
@@ -255,6 +268,7 @@ class _CommentViewImpl extends CommentView {
       systemEvent: systemEvent is _ikzs0dm0.CommentSystemEvent?
           ? systemEvent
           : this.systemEvent,
+      authorLabel: authorLabel is String? ? authorLabel : this.authorLabel,
     );
   }
 }

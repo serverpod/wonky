@@ -1,0 +1,35 @@
+### The link between a Write document and a publication (specs/18 §2, §6).
+### A document has at most one.
+class: Submission
+table: submission
+serverOnly: true
+fields:
+  ### Public as "sub_<uuid>".
+  uuid: UuidValue, defaultModel=random_v7
+  publicationId: int, relation(parent=publication, onDelete=Cascade)
+  itemId: int, relation(parent=drive_item, onDelete=Cascade)
+  ### The blog's own reference from the contributor link.
+  ref: String?
+  status: SubmissionStatus
+  ### The status before the last submit, restored when its delivery fails
+  ### (specs/18 §7.2).
+  statusBeforeSubmit: SubmissionStatus?
+  ### Null = the last delivery was accepted.
+  delivery: SubmissionDeliveryState?
+  values: SubmissionValues
+  publicUrl: String?
+  ### The document-level comment thread of the publication's messages.
+  feedbackThreadId: int?
+  createdById: int
+  createdAt: DateTime
+  updatedAt: DateTime
+  disconnectedAt: DateTime?
+indexes:
+  submission_uuid_idx:
+    fields: uuid
+    unique: true
+  submission_item_idx:
+    fields: itemId
+    unique: true
+  submission_publication_idx:
+    fields: publicationId, status

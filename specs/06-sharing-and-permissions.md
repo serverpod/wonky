@@ -47,6 +47,7 @@ fields:
   grantedById: int
   grantedAt: DateTime
   expiresAt: DateTime?             # optional expiring access (Editors+ can set for others)
+  viaPublicationId: int?           # (M14) moderator grant of a submission (18 §5.1); removed with it
 indexes:
   perm_item_user_idx: { fields: itemId, userId, inheritedFromId, unique: true }
   perm_user_idx: { fields: userId }
@@ -147,6 +148,9 @@ the new owner's storage — checked at request and at acceptance, [Drive 03 §7.
 `handleAccessRequest(requestId, approve, role?)`; `resolveInvite(token)` → item uuid + role.
 
 Sharing changes are **not undoable**; destructive ones (remove, transfer) confirm.
+
+(M14) Submitting a document to a publication grants its moderators Commenter without a
+notification; the dialog shows them as "Moderator · <publication>" ([18 §5.1](18-publications-and-submissions.md)).
 
 ## 5. Share dialog (shared UI, `wonky_app`)
 

@@ -31,6 +31,7 @@ abstract class Comment
     this.editedAt,
     this.deletedAt,
     this.systemEvent,
+    this.publicationId,
   }) : reactions = reactions ?? '{}';
 
   factory Comment({
@@ -46,6 +47,7 @@ abstract class Comment
     DateTime? editedAt,
     DateTime? deletedAt,
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    int? publicationId,
   }) = _CommentImpl;
 
   factory Comment.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -78,6 +80,7 @@ abstract class Comment
           : _ikzs0dm0.CommentSystemEvent.fromJson(
               (jsonSerialization['systemEvent'] as String),
             ),
+      publicationId: jsonSerialization['publicationId'] as int?,
     );
   }
 
@@ -116,6 +119,9 @@ abstract class Comment
 
   _ikzs0dm0.CommentSystemEvent? systemEvent;
 
+  /// (M14) A publication's message (authorKind system), specs/18 §5.2.
+  int? publicationId;
+
   @override
   _is.Table<int?> get table => t;
 
@@ -135,6 +141,7 @@ abstract class Comment
     DateTime? editedAt = const _is.$UndefinedDateTime(),
     DateTime? deletedAt = const _is.$UndefinedDateTime(),
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    int? publicationId,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -152,6 +159,7 @@ abstract class Comment
       if (editedAt != null) 'editedAt': editedAt?.toJson(),
       if (deletedAt != null) 'deletedAt': deletedAt?.toJson(),
       if (systemEvent != null) 'systemEvent': systemEvent?.toJson(),
+      if (publicationId != null) 'publicationId': publicationId,
     };
   }
 
@@ -171,6 +179,7 @@ abstract class Comment
       if (editedAt != null) 'editedAt': editedAt?.toJson(),
       if (deletedAt != null) 'deletedAt': deletedAt?.toJson(),
       if (systemEvent != null) 'systemEvent': systemEvent?.toJson(),
+      if (publicationId != null) 'publicationId': publicationId,
     };
   }
 
@@ -218,6 +227,7 @@ class _CommentImpl extends Comment {
     DateTime? editedAt,
     DateTime? deletedAt,
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    int? publicationId,
   }) : super._(
          id: id,
          threadId: threadId,
@@ -231,6 +241,7 @@ class _CommentImpl extends Comment {
          editedAt: editedAt,
          deletedAt: deletedAt,
          systemEvent: systemEvent,
+         publicationId: publicationId,
        );
 
   /// Returns a shallow copy of this [Comment]
@@ -250,6 +261,7 @@ class _CommentImpl extends Comment {
     DateTime? editedAt = const _is.$UndefinedDateTime(),
     DateTime? deletedAt = const _is.$UndefinedDateTime(),
     Object? systemEvent = _Undefined,
+    Object? publicationId = _Undefined,
   }) {
     return Comment(
       id: id is int? ? id : this.id,
@@ -268,6 +280,7 @@ class _CommentImpl extends Comment {
       systemEvent: systemEvent is _ikzs0dm0.CommentSystemEvent?
           ? systemEvent
           : this.systemEvent,
+      publicationId: publicationId is int? ? publicationId : this.publicationId,
     );
   }
 }
@@ -337,6 +350,11 @@ class CommentUpdateTable extends _is.UpdateTable<CommentTable> {
     table.systemEvent,
     value,
   );
+
+  _is.ColumnValue<int, int> publicationId(int? value) => _is.ColumnValue(
+    table.publicationId,
+    value,
+  );
 }
 
 class CommentTable extends _is.Table<int?> {
@@ -389,6 +407,10 @@ class CommentTable extends _is.Table<int?> {
       this,
       _is.EnumSerialization.byName,
     );
+    publicationId = _is.ColumnInt(
+      'publicationId',
+      this,
+    );
   }
 
   late final CommentUpdateTable updateTable;
@@ -421,6 +443,9 @@ class CommentTable extends _is.Table<int?> {
 
   late final _is.ColumnEnum<_ikzs0dm0.CommentSystemEvent> systemEvent;
 
+  /// (M14) A publication's message (authorKind system), specs/18 §5.2.
+  late final _is.ColumnInt publicationId;
+
   @override
   List<_is.Column> get columns => [
     id,
@@ -435,6 +460,7 @@ class CommentTable extends _is.Table<int?> {
     editedAt,
     deletedAt,
     systemEvent,
+    publicationId,
   ];
 }
 

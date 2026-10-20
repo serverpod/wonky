@@ -26,7 +26,12 @@ enum ActivityType implements _isc.SerializableModel {
   exported,
 
   /// (v2) A file was uploaded (Drive 02 §3.3).
-  uploaded;
+  uploaded,
+
+  /// (M14) Submitted to, withdrawn from or disconnected from a publication,
+  /// or the publication changed the status (specs/18 §6; summary
+  /// {publication, action, status?}).
+  submission;
 
   static ActivityType fromJson(String name) {
     switch (name) {
@@ -54,6 +59,8 @@ enum ActivityType implements _isc.SerializableModel {
         return ActivityType.exported;
       case 'uploaded':
         return ActivityType.uploaded;
+      case 'submission':
+        return ActivityType.submission;
       default:
         throw ArgumentError(
           'Value "$name" cannot be converted to "ActivityType"',

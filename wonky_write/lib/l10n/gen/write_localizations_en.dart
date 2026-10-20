@@ -4640,6 +4640,202 @@ class WriteLocalizationsEn extends WriteLocalizations {
 
   @override
   String get slashContinueWriting => 'Continue writing';
+
+  @override
+  String get cmdSubmissionSubmit => 'Submit to publication…';
+
+  @override
+  String get cmdSubmissionStatus => 'Submission status';
+
+  @override
+  String get cmdSubmissionWithdraw => 'Withdraw submission';
+
+  @override
+  String get cmdSubmissionDisconnect => 'Disconnect from publication';
+
+  @override
+  String get submitButton => 'Submit';
+
+  @override
+  String get resubmitButton => 'Resubmit';
+
+  @override
+  String get submitUpdateButton => 'Submit update';
+
+  @override
+  String submitTooltip(String publication) {
+    return 'Submit to $publication';
+  }
+
+  @override
+  String get submittingChip => 'Submitting…';
+
+  @override
+  String submitTitle(String publication) {
+    return 'Submit to $publication';
+  }
+
+  @override
+  String submitHostVerified(String host) {
+    return '$host ✓';
+  }
+
+  @override
+  String submitHostUnverified(String host) {
+    return 'Sent to $host (Wonky hasn\'t verified this publication).';
+  }
+
+  @override
+  String submitNotVerified(String host) {
+    return '$host (not verified)';
+  }
+
+  @override
+  String submitOpenSuggestions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count open suggestions aren\'t included: the original text is sent.',
+      one: '1 open suggestion isn\'t included: the original text is sent.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get submitCommentsStay =>
+      'Comments stay in Wonky. The moderators can read them.';
+
+  @override
+  String get submitFieldTitle => 'Title';
+
+  @override
+  String get submitFieldSummary => 'Summary';
+
+  @override
+  String get submitFieldTags => 'Tags';
+
+  @override
+  String get submitFieldCover => 'Cover image';
+
+  @override
+  String get submitFieldBio => 'Author bio';
+
+  @override
+  String get submitFieldNote => 'Note to the moderators';
+
+  @override
+  String submitOptional(String label) {
+    return '$label (optional)';
+  }
+
+  @override
+  String get submitRequired => 'Required.';
+
+  @override
+  String get submitTagsHint => 'Comma separated';
+
+  @override
+  String submitTagsFrom(String tags) {
+    return 'Comma separated, from: $tags';
+  }
+
+  @override
+  String get submitNoCover => 'No cover image';
+
+  @override
+  String submitImage(int count) {
+    return 'Image $count';
+  }
+
+  @override
+  String submitImageAlt(int count, String alt) {
+    return 'Image $count: $alt';
+  }
+
+  @override
+  String submitTerms(String publication, String url) {
+    return 'I agree to $publication\'s contributor terms ($url)';
+  }
+
+  @override
+  String submitTermsRequired(String publication) {
+    return 'Agree to $publication\'s contributor terms to submit.';
+  }
+
+  @override
+  String get submitCoverRequired => 'Pick a cover image.';
+
+  @override
+  String submitDone(String publication) {
+    return 'Submitted to $publication';
+  }
+
+  @override
+  String submitPending(String publication) {
+    return '$publication didn\'t answer yet. We\'ll keep trying.';
+  }
+
+  @override
+  String submitDeliveryFailed(String publication) {
+    return '$publication couldn\'t receive your submission. Try again later.';
+  }
+
+  @override
+  String submittedBy(String name, String date, int count) {
+    return 'Submitted by $name · $date · #$count';
+  }
+
+  @override
+  String get submitOpenThread => 'Open messages';
+
+  @override
+  String get submitViewPost => 'View post';
+
+  @override
+  String submitDisconnect(String publication) {
+    return 'Disconnect from $publication';
+  }
+
+  @override
+  String get submitReasonNone =>
+      'This document isn\'t a story for a publication.';
+
+  @override
+  String get submitReasonOffline => 'Submitting needs a connection.';
+
+  @override
+  String submitReasonClosed(String publication) {
+    return '$publication isn\'t accepting stories right now.';
+  }
+
+  @override
+  String submitReasonDeclined(String publication) {
+    return '$publication declined this story.';
+  }
+
+  @override
+  String get submitReasonNoChanges => 'No changes since you submitted.';
+
+  @override
+  String get submitReasonNotInReview => 'The story isn\'t in review.';
+
+  @override
+  String get submitReasonWithdrawFirst =>
+      'Withdraw the story before you disconnect it.';
+
+  @override
+  String withdrawTitle(String publication) {
+    return 'Withdraw from $publication?';
+  }
+
+  @override
+  String withdrawBody(String publication) {
+    return '$publication is told, and its moderators lose access to the document. You can submit it again later.';
+  }
+
+  @override
+  String get withdrawButton => 'Withdraw';
 }
 
 /// The translations for English (`en_XA`).
@@ -9337,4 +9533,203 @@ class WriteLocalizationsEnXa extends WriteLocalizationsEn {
 
   @override
   String get slashContinueWriting => '[Çöñţîñûé ŵŕîţîñĝ one tw]';
+
+  @override
+  String get cmdSubmissionSubmit => '[Šûƀɱîţ ţö þûƀļîçåţîöñ… one two]';
+
+  @override
+  String get cmdSubmissionStatus => '[Šûƀɱîššîöñ šţåţûš one tw]';
+
+  @override
+  String get cmdSubmissionWithdraw => '[Ŵîţĥðŕåŵ šûƀɱîššîöñ one two]';
+
+  @override
+  String get cmdSubmissionDisconnect =>
+      '[Ðîšçöññéçţ ƒŕöɱ þûƀļîçåţîöñ one two t]';
+
+  @override
+  String get submitButton => '[Šûƀɱîţ one]';
+
+  @override
+  String get resubmitButton => '[Ŕéšûƀɱîţ one]';
+
+  @override
+  String get submitUpdateButton => '[Šûƀɱîţ ûþðåţé one t]';
+
+  @override
+  String submitTooltip(String publication) {
+    return '[Šûƀɱîţ ţö $publication one]';
+  }
+
+  @override
+  String get submittingChip => '[Šûƀɱîţţîñĝ… one]';
+
+  @override
+  String submitTitle(String publication) {
+    return '[Šûƀɱîţ ţö $publication one]';
+  }
+
+  @override
+  String submitHostVerified(String host) {
+    return '[$host ✓ o]';
+  }
+
+  @override
+  String submitHostUnverified(String host) {
+    return '[Šéñţ ţö $host (Ŵöñķý ĥåšñ\'ţ ṽéŕîƒîéð ţĥîš þûƀļîçåţîöñ). one two three fo]';
+  }
+
+  @override
+  String submitNotVerified(String host) {
+    return '[$host (ñöţ ṽéŕîƒîéð) one t]';
+  }
+
+  @override
+  String submitOpenSuggestions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count öþéñ šûĝĝéšţîöñš åŕéñ\'ţ îñçļûðéð: ţĥé öŕîĝîñåļ ţéẋţ îš šéñţ.',
+      one: '1 öþéñ šûĝĝéšţîöñ îšñ\'ţ îñçļûðéð: ţĥé öŕîĝîñåļ ţéẋţ îš šéñţ.',
+    );
+    return '[$_temp0 one two three four five six seven eig]';
+  }
+
+  @override
+  String get submitCommentsStay =>
+      '[Çöɱɱéñţš šţåý îñ Ŵöñķý. Ţĥé ɱöðéŕåţöŕš çåñ ŕéåð ţĥéɱ. one two three fo]';
+
+  @override
+  String get submitFieldTitle => '[Ţîţļé on]';
+
+  @override
+  String get submitFieldSummary => '[Šûɱɱåŕý one]';
+
+  @override
+  String get submitFieldTags => '[Ţåĝš on]';
+
+  @override
+  String get submitFieldCover => '[Çöṽéŕ îɱåĝé one]';
+
+  @override
+  String get submitFieldBio => '[Åûţĥöŕ ƀîö one]';
+
+  @override
+  String get submitFieldNote => '[Ñöţé ţö ţĥé ɱöðéŕåţöŕš one two]';
+
+  @override
+  String submitOptional(String label) {
+    return '[$label (öþţîöñåļ) one]';
+  }
+
+  @override
+  String get submitRequired => '[Ŕéǫûîŕéð. one]';
+
+  @override
+  String get submitTagsHint => '[Çöɱɱå šéþåŕåţéð one t]';
+
+  @override
+  String submitTagsFrom(String tags) {
+    return '[Çöɱɱå šéþåŕåţéð, ƒŕöɱ: $tags one two]';
+  }
+
+  @override
+  String get submitNoCover => '[Ñö çöṽéŕ îɱåĝé one t]';
+
+  @override
+  String submitImage(int count) {
+    return '[Îɱåĝé $count on]';
+  }
+
+  @override
+  String submitImageAlt(int count, String alt) {
+    return '[Îɱåĝé $count: $alt one]';
+  }
+
+  @override
+  String submitTerms(String publication, String url) {
+    return '[Î åĝŕéé ţö $publication\'š çöñţŕîƀûţöŕ ţéŕɱš ($url) one two th]';
+  }
+
+  @override
+  String submitTermsRequired(String publication) {
+    return '[Åĝŕéé ţö $publication\'š çöñţŕîƀûţöŕ ţéŕɱš ţö šûƀɱîţ. one two thre]';
+  }
+
+  @override
+  String get submitCoverRequired => '[Þîçķ å çöṽéŕ îɱåĝé. one tw]';
+
+  @override
+  String submitDone(String publication) {
+    return '[Šûƀɱîţţéð ţö $publication one]';
+  }
+
+  @override
+  String submitPending(String publication) {
+    return '[$publication ðîðñ\'ţ åñšŵéŕ ýéţ. Ŵé\'ļļ ķééþ ţŕýîñĝ. one two thre]';
+  }
+
+  @override
+  String submitDeliveryFailed(String publication) {
+    return '[$publication çöûļðñ\'ţ ŕéçéîṽé ýöûŕ šûƀɱîššîöñ. Ţŕý åĝåîñ ļåţéŕ. one two three fo]';
+  }
+
+  @override
+  String submittedBy(String name, String date, int count) {
+    return '[Šûƀɱîţţéð ƀý $name · $date · #$count one t]';
+  }
+
+  @override
+  String get submitOpenThread => '[Öþéñ ɱéššåĝéš one t]';
+
+  @override
+  String get submitViewPost => '[Ṽîéŵ þöšţ one]';
+
+  @override
+  String submitDisconnect(String publication) {
+    return '[Ðîšçöññéçţ ƒŕöɱ $publication one t]';
+  }
+
+  @override
+  String get submitReasonNone =>
+      '[Ţĥîš ðöçûɱéñţ îšñ\'ţ å šţöŕý ƒöŕ å þûƀļîçåţîöñ. one two three]';
+
+  @override
+  String get submitReasonOffline =>
+      '[Šûƀɱîţţîñĝ ñééðš å çöññéçţîöñ. one two th]';
+
+  @override
+  String submitReasonClosed(String publication) {
+    return '[$publication îšñ\'ţ åççéþţîñĝ šţöŕîéš ŕîĝĥţ ñöŵ. one two thr]';
+  }
+
+  @override
+  String submitReasonDeclined(String publication) {
+    return '[$publication ðéçļîñéð ţĥîš šţöŕý. one two]';
+  }
+
+  @override
+  String get submitReasonNoChanges =>
+      '[Ñö çĥåñĝéš šîñçé ýöû šûƀɱîţţéð. one two th]';
+
+  @override
+  String get submitReasonNotInReview => '[Ţĥé šţöŕý îšñ\'ţ îñ ŕéṽîéŵ. one two]';
+
+  @override
+  String get submitReasonWithdrawFirst =>
+      '[Ŵîţĥðŕåŵ ţĥé šţöŕý ƀéƒöŕé ýöû ðîšçöññéçţ îţ. one two three]';
+
+  @override
+  String withdrawTitle(String publication) {
+    return '[Ŵîţĥðŕåŵ ƒŕöɱ $publication? one t]';
+  }
+
+  @override
+  String withdrawBody(String publication) {
+    return '[$publication îš ţöļð, åñð îţš ɱöðéŕåţöŕš ļöšé åççéšš ţö ţĥé ðöçûɱéñţ. Ýöû çåñ šûƀɱîţ îţ åĝåîñ ļåţéŕ. one two three four five si]';
+  }
+
+  @override
+  String get withdrawButton => '[Ŵîţĥðŕåŵ one]';
 }

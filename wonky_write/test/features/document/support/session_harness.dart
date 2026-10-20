@@ -4,7 +4,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart' show pumpEventQueue;
 import 'package:go_router/go_router.dart';
 import 'package:wonky_app/spellcheck.dart' show ShellSpelling;
-import 'package:wonky_app/testing.dart' show noSpellDictionaries;
+import 'package:wonky_app/testing.dart'
+    show FakePublicationRepository, noSpellDictionaries;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_write/features/document/write_document_api.dart';
@@ -240,6 +241,7 @@ class SessionHarness {
         versions: _FakeVersions(),
         files: _FakeFiles(),
         meta: _FakeMeta(),
+        publications: publications,
       ),
       urls: const AppUrls(apiUrl: 'http://localhost:8080/', apps: {}),
       connectivity: ConnectivityService(ping: () async {}),
@@ -260,6 +262,9 @@ class SessionHarness {
   }
 
   final FakeDocumentServer server;
+
+  /// Publications and submissions (specs/18).
+  final FakePublicationRepository publications = FakePublicationRepository();
   final FakeComments comments;
   late final ShellServices services;
   late final FakeWriteApi api;
