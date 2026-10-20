@@ -39,6 +39,10 @@ import 'package:wonky_server/src/generated/platform/drive/template_view.dart'
     as _ibinmr4r;
 import 'package:wonky_server/src/generated/platform/files/file_url_view.dart'
     as _i28n3m1r;
+import 'package:wonky_server/src/generated/platform/publications/models/publication_delivery_view.dart'
+    as _idovycpn;
+import 'package:wonky_server/src/generated/platform/publications/models/publication_settings.dart'
+    as _i9ilkmgj;
 import 'package:wonky_server/src/generated/platform/revlog/models/rev_op_view.dart'
     as _iu7aww0d;
 import 'package:wonky_server/src/generated/platform/users/access_token_view.dart'
@@ -87,6 +91,8 @@ import 'future_calls_generated_models/file_preview_future_call_generate_model.da
     as _ilpvgw0t;
 import 'future_calls_generated_models/notification_email_future_call_send_model.dart'
     as _inb6x2l0;
+import 'future_calls_generated_models/publications_future_call_deliver_model.dart'
+    as _il37cz87;
 import 'future_calls_generated_models/storage_future_call_refresh_item_size_model.dart'
     as _io4auc29;
 import 'platform/activity/activity_dashboard.dart' as _izr1y672;
@@ -231,6 +237,36 @@ import 'platform/presence/presence_bus_message.dart' as _i7dp90q0;
 import 'platform/presence/presence_event.dart' as _i8r9afjv;
 import 'platform/presence/presence_state.dart' as _ik055xb9;
 import 'platform/presence/presence_update.dart' as _isz2sju0;
+import 'platform/publications/models/publication.dart' as _ikkxb56h;
+import 'platform/publications/models/publication_block.dart' as _i5vk42yw;
+import 'platform/publications/models/publication_card.dart' as _i9g6l3wu;
+import 'platform/publications/models/publication_check_result.dart'
+    as _i0a1sw0a;
+import 'platform/publications/models/publication_consent.dart' as _iqa48qn0;
+import 'platform/publications/models/publication_delivery.dart' as _ihiygfti;
+import 'platform/publications/models/publication_delivery_view.dart'
+    as _iz1gego0;
+import 'platform/publications/models/publication_field_mode.dart' as _iucp51pg;
+import 'platform/publications/models/publication_fields.dart' as _i63wbtw0;
+import 'platform/publications/models/publication_input.dart' as _iv6bey6s;
+import 'platform/publications/models/publication_moderator.dart' as _i1u9dlta;
+import 'platform/publications/models/publication_moderator_view.dart'
+    as _ij9tsbn9;
+import 'platform/publications/models/publication_open_submission.dart'
+    as _ivvukfve;
+import 'platform/publications/models/publication_secret.dart' as _iyqlj2kr;
+import 'platform/publications/models/publication_settings.dart' as _i5i48220;
+import 'platform/publications/models/submission.dart' as _ipbg6o7y;
+import 'platform/publications/models/submission_asset.dart' as _i49gtkgr;
+import 'platform/publications/models/submission_delivery_state.dart'
+    as _ip6l83ta;
+import 'platform/publications/models/submission_revision.dart' as _i71zy0hy;
+import 'platform/publications/models/submission_revision_view.dart'
+    as _iegijpud;
+import 'platform/publications/models/submission_started.dart' as _ijb8v3k4;
+import 'platform/publications/models/submission_status.dart' as _i7hbulg4;
+import 'platform/publications/models/submission_values.dart' as _iq9uje8l;
+import 'platform/publications/models/submission_view.dart' as _iakndug7;
 import 'platform/revlog/messages/rev_client_message.dart' as _i6ck957q;
 import 'platform/revlog/messages/rev_server_message.dart' as _ie6clghy;
 import 'platform/revlog/models/rev_bus_message.dart' as _iyewfisw;
@@ -557,6 +593,30 @@ export 'platform/presence/presence_bus_message.dart';
 export 'platform/presence/presence_event.dart';
 export 'platform/presence/presence_state.dart';
 export 'platform/presence/presence_update.dart';
+export 'platform/publications/models/publication.dart';
+export 'platform/publications/models/publication_block.dart';
+export 'platform/publications/models/publication_card.dart';
+export 'platform/publications/models/publication_check_result.dart';
+export 'platform/publications/models/publication_consent.dart';
+export 'platform/publications/models/publication_delivery.dart';
+export 'platform/publications/models/publication_delivery_view.dart';
+export 'platform/publications/models/publication_field_mode.dart';
+export 'platform/publications/models/publication_fields.dart';
+export 'platform/publications/models/publication_input.dart';
+export 'platform/publications/models/publication_moderator.dart';
+export 'platform/publications/models/publication_moderator_view.dart';
+export 'platform/publications/models/publication_open_submission.dart';
+export 'platform/publications/models/publication_secret.dart';
+export 'platform/publications/models/publication_settings.dart';
+export 'platform/publications/models/submission.dart';
+export 'platform/publications/models/submission_asset.dart';
+export 'platform/publications/models/submission_delivery_state.dart';
+export 'platform/publications/models/submission_revision.dart';
+export 'platform/publications/models/submission_revision_view.dart';
+export 'platform/publications/models/submission_started.dart';
+export 'platform/publications/models/submission_status.dart';
+export 'platform/publications/models/submission_values.dart';
+export 'platform/publications/models/submission_view.dart';
 export 'platform/revlog/messages/rev_client_message.dart';
 export 'platform/revlog/messages/rev_server_message.dart';
 export 'platform/revlog/models/rev_bus_message.dart';
@@ -763,6 +823,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i5z3lvv6.BoardGithubFutureCallReviewModel>,
           _is.getType<_ilpvgw0t.FilePreviewFutureCallGenerateModel>,
           _is.getType<_inb6x2l0.NotificationEmailFutureCallSendModel>,
+          _is.getType<_il37cz87.PublicationsFutureCallDeliverModel>,
           _is.getType<_io4auc29.StorageFutureCallRefreshItemSizeModel>,
           _is.getType<_izr1y672.ActivityDashboard>,
           _is.getType<_iatdjl5p.ActivityEvent>,
@@ -918,6 +979,30 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i8r9afjv.PresenceUpdated>,
           _is.getType<_ik055xb9.PresenceState>,
           _is.getType<_isz2sju0.PresenceUpdate>,
+          _is.getType<_ikkxb56h.Publication>,
+          _is.getType<_i5vk42yw.PublicationBlock>,
+          _is.getType<_i9g6l3wu.PublicationCard>,
+          _is.getType<_i0a1sw0a.PublicationCheckResult>,
+          _is.getType<_iqa48qn0.PublicationConsent>,
+          _is.getType<_ihiygfti.PublicationDelivery>,
+          _is.getType<_iz1gego0.PublicationDeliveryView>,
+          _is.getType<_iucp51pg.PublicationFieldMode>,
+          _is.getType<_i63wbtw0.PublicationFields>,
+          _is.getType<_iv6bey6s.PublicationInput>,
+          _is.getType<_i1u9dlta.PublicationModerator>,
+          _is.getType<_ij9tsbn9.PublicationModeratorView>,
+          _is.getType<_ivvukfve.PublicationOpenSubmission>,
+          _is.getType<_iyqlj2kr.PublicationSecret>,
+          _is.getType<_i5i48220.PublicationSettings>,
+          _is.getType<_ipbg6o7y.Submission>,
+          _is.getType<_i49gtkgr.SubmissionAsset>,
+          _is.getType<_ip6l83ta.SubmissionDeliveryState>,
+          _is.getType<_i71zy0hy.SubmissionRevision>,
+          _is.getType<_iegijpud.SubmissionRevisionView>,
+          _is.getType<_ijb8v3k4.SubmissionStarted>,
+          _is.getType<_i7hbulg4.SubmissionStatus>,
+          _is.getType<_iq9uje8l.SubmissionValues>,
+          _is.getType<_iakndug7.SubmissionView>,
           _is.getType<_ie6clghy.RevAck>,
           _is.getType<_i6ck957q.RevPing>,
           _is.getType<_i6ck957q.RevRequestOps>,
@@ -1145,6 +1230,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i5z3lvv6.BoardGithubFutureCallReviewModel?>,
           _is.getType<_ilpvgw0t.FilePreviewFutureCallGenerateModel?>,
           _is.getType<_inb6x2l0.NotificationEmailFutureCallSendModel?>,
+          _is.getType<_il37cz87.PublicationsFutureCallDeliverModel?>,
           _is.getType<_io4auc29.StorageFutureCallRefreshItemSizeModel?>,
           _is.getType<_izr1y672.ActivityDashboard?>,
           _is.getType<_iatdjl5p.ActivityEvent?>,
@@ -1300,6 +1386,30 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i8r9afjv.PresenceUpdated?>,
           _is.getType<_ik055xb9.PresenceState?>,
           _is.getType<_isz2sju0.PresenceUpdate?>,
+          _is.getType<_ikkxb56h.Publication?>,
+          _is.getType<_i5vk42yw.PublicationBlock?>,
+          _is.getType<_i9g6l3wu.PublicationCard?>,
+          _is.getType<_i0a1sw0a.PublicationCheckResult?>,
+          _is.getType<_iqa48qn0.PublicationConsent?>,
+          _is.getType<_ihiygfti.PublicationDelivery?>,
+          _is.getType<_iz1gego0.PublicationDeliveryView?>,
+          _is.getType<_iucp51pg.PublicationFieldMode?>,
+          _is.getType<_i63wbtw0.PublicationFields?>,
+          _is.getType<_iv6bey6s.PublicationInput?>,
+          _is.getType<_i1u9dlta.PublicationModerator?>,
+          _is.getType<_ij9tsbn9.PublicationModeratorView?>,
+          _is.getType<_ivvukfve.PublicationOpenSubmission?>,
+          _is.getType<_iyqlj2kr.PublicationSecret?>,
+          _is.getType<_i5i48220.PublicationSettings?>,
+          _is.getType<_ipbg6o7y.Submission?>,
+          _is.getType<_i49gtkgr.SubmissionAsset?>,
+          _is.getType<_ip6l83ta.SubmissionDeliveryState?>,
+          _is.getType<_i71zy0hy.SubmissionRevision?>,
+          _is.getType<_iegijpud.SubmissionRevisionView?>,
+          _is.getType<_ijb8v3k4.SubmissionStarted?>,
+          _is.getType<_i7hbulg4.SubmissionStatus?>,
+          _is.getType<_iq9uje8l.SubmissionValues?>,
+          _is.getType<_iakndug7.SubmissionView?>,
           _is.getType<_ie6clghy.RevAck?>,
           _is.getType<_i6ck957q.RevPing?>,
           _is.getType<_i6ck957q.RevRequestOps?>,
@@ -1551,6 +1661,9 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<_i48sm9f2.ImportWarningView>>,
           _is.getType<List<_izfzk9h3.NotificationView>>,
           _is.getType<List<_iylgyc33.Participant>>,
+          _is.getType<List<_ivvukfve.PublicationOpenSubmission>>,
+          _is.getType<List<_ij9tsbn9.PublicationModeratorView>>,
+          _is.getType<List<_iegijpud.SubmissionRevisionView>>,
           _is.getType<List<_it4o2pk5.RevOpView>>,
           _is.getType<List<_it4o2pk5.RevOpView>?>,
           _is.getType<List<_iead0ok9.PermissionView>>,
@@ -1585,7 +1698,9 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<_ibinmr4r.TemplateView>>,
           _is.getType<List<_iiw0494r.ActivityEventView>>,
           _is.getType<List<_i28n3m1r.FileUrlView>>,
+          _is.getType<List<_i9ilkmgj.PublicationSettings>>,
           _is.getType<List<String>>,
+          _is.getType<List<_idovycpn.PublicationDeliveryView>>,
           _is.getType<List<_ioyb7a1p.AccessTokenView>>,
           _is.getType<List<_i8uuoam6.UserSummary>>,
           _is.getType<List<_ir2w0lzm.ItemVersionView>>,
@@ -4811,6 +4926,12 @@ class Protocol extends _is.DatabaseSerializationManager
           isNullable: true,
           dartType: 'protocol:CommentSystemEvent?',
         ),
+        _isp.ColumnDefinition(
+          name: 'publicationId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
       ],
       foreignKeys: [
         _isp.ForeignKeyDefinition(
@@ -4821,6 +4942,16 @@ class Protocol extends _is.DatabaseSerializationManager
           referenceColumns: ['id'],
           onUpdate: _isp.ForeignKeyAction.noAction,
           onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'comment_fk_1',
+          columns: ['publicationId'],
+          referenceTable: 'publication',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.setNull,
           matchType: null,
         ),
       ],
@@ -6593,6 +6724,12 @@ class Protocol extends _is.DatabaseSerializationManager
           isNullable: true,
           dartType: 'DateTime?',
         ),
+        _isp.ColumnDefinition(
+          name: 'viaPublicationId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
       ],
       foreignKeys: [
         _isp.ForeignKeyDefinition(
@@ -6609,6 +6746,16 @@ class Protocol extends _is.DatabaseSerializationManager
           constraintName: 'drive_item_permission_fk_1',
           columns: ['userId'],
           referenceTable: 'user_profile',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'drive_item_permission_fk_2',
+          columns: ['viaPublicationId'],
+          referenceTable: 'publication',
           referenceTableSchema: 'public',
           referenceColumns: ['id'],
           onUpdate: _isp.ForeignKeyAction.noAction,
@@ -8452,6 +8599,606 @@ class Protocol extends _is.DatabaseSerializationManager
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'publication',
+      dartName: 'Publication',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'publicId',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ownerId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'siteUrl',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'webhookUrl',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'verifiedHost',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'verifiedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'templateItemId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'termsUrl',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fields',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'protocol:PublicationFields',
+        ),
+        _isp.ColumnDefinition(
+          name: 'signingSecret',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'previousSigningSecret',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'previousSecretUntil',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'apiKeyHash',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'apiKeyLast4',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'enabled',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'true',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_fk_0',
+          columns: ['ownerId'],
+          referenceTable: 'user_profile',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_fk_1',
+          columns: ['templateItemId'],
+          referenceTable: 'drive_item',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.setNull,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'publication_public_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'publicId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'publication_owner_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'ownerId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'publication_api_key_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'apiKeyHash',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'publication_block',
+      dartName: 'PublicationBlock',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'publicationId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'at',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_block_fk_0',
+          columns: ['publicationId'],
+          referenceTable: 'publication',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_block_fk_1',
+          columns: ['userId'],
+          referenceTable: 'user_profile',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'publication_block_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'publicationId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'publication_consent',
+      dartName: 'PublicationConsent',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'publicationId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'consentKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'at',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_consent_fk_0',
+          columns: ['publicationId'],
+          referenceTable: 'publication',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_consent_fk_1',
+          columns: ['userId'],
+          referenceTable: 'user_profile',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'publication_consent_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'publicationId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'publication_delivery',
+      dartName: 'PublicationDelivery',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'publicationId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'submissionId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'webhookId',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'type',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sequence',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'payload',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'attempts',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'nextAttemptAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'leaseUntil',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'lastStatus',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'lastError',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'deliveredAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'failedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_delivery_fk_0',
+          columns: ['publicationId'],
+          referenceTable: 'publication',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_delivery_fk_1',
+          columns: ['submissionId'],
+          referenceTable: 'submission',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.setNull,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'publication_delivery_webhook_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'webhookId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'publication_delivery_due_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'nextAttemptAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'publication_delivery_publication_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'publicationId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'publication_moderator',
+      dartName: 'PublicationModerator',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'publicationId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'email',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_moderator_fk_0',
+          columns: ['publicationId'],
+          referenceTable: 'publication',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'publication_moderator_fk_1',
+          columns: ['userId'],
+          referenceTable: 'user_profile',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'publication_moderator_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'publicationId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'email',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'publication_moderator_user_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
             ),
           ],
           type: 'btree',
@@ -13045,6 +13792,340 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'submission',
+      dartName: 'Submission',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'uuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+        _isp.ColumnDefinition(
+          name: 'publicationId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'itemId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ref',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'status',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:SubmissionStatus',
+        ),
+        _isp.ColumnDefinition(
+          name: 'statusBeforeSubmit',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'protocol:SubmissionStatus?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'delivery',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'protocol:SubmissionDeliveryState?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'values',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'protocol:SubmissionValues',
+        ),
+        _isp.ColumnDefinition(
+          name: 'publicUrl',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'feedbackThreadId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdById',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'disconnectedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'submission_fk_0',
+          columns: ['publicationId'],
+          referenceTable: 'publication',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'submission_fk_1',
+          columns: ['itemId'],
+          referenceTable: 'drive_item',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'submission_uuid_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'uuid',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'submission_item_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'itemId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'submission_publication_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'publicationId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'status',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'submission_asset',
+      dartName: 'SubmissionAsset',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'submissionId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fileUuid',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: false,
+          dartType: 'UuidValue',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'submission_asset_fk_0',
+          columns: ['submissionId'],
+          referenceTable: 'submission',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'submission_asset_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'submissionId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileUuid',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'submission_asset_file_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'fileUuid',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'submission_revision',
+      dartName: 'SubmissionRevision',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'submissionId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sequence',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'revision',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'versionId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'values',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'protocol:SubmissionValues',
+        ),
+        _isp.ColumnDefinition(
+          name: 'payload',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'submittedById',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'submittedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'submission_revision_fk_0',
+          columns: ['submissionId'],
+          referenceTable: 'submission',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'submission_revision_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'submissionId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sequence',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'user_activity_settings',
       dartName: 'UserActivitySettings',
       schema: 'public',
@@ -13866,6 +14947,9 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _inb6x2l0.NotificationEmailFutureCallSendModel) {
       return _inb6x2l0.NotificationEmailFutureCallSendModel.fromJson(data) as T;
     }
+    if (t == _il37cz87.PublicationsFutureCallDeliverModel) {
+      return _il37cz87.PublicationsFutureCallDeliverModel.fromJson(data) as T;
+    }
     if (t == _io4auc29.StorageFutureCallRefreshItemSizeModel) {
       return _io4auc29.StorageFutureCallRefreshItemSizeModel.fromJson(data)
           as T;
@@ -14331,6 +15415,78 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (t == _isz2sju0.PresenceUpdate) {
       return _isz2sju0.PresenceUpdate.fromJson(data) as T;
+    }
+    if (t == _ikkxb56h.Publication) {
+      return _ikkxb56h.Publication.fromJson(data) as T;
+    }
+    if (t == _i5vk42yw.PublicationBlock) {
+      return _i5vk42yw.PublicationBlock.fromJson(data) as T;
+    }
+    if (t == _i9g6l3wu.PublicationCard) {
+      return _i9g6l3wu.PublicationCard.fromJson(data) as T;
+    }
+    if (t == _i0a1sw0a.PublicationCheckResult) {
+      return _i0a1sw0a.PublicationCheckResult.fromJson(data) as T;
+    }
+    if (t == _iqa48qn0.PublicationConsent) {
+      return _iqa48qn0.PublicationConsent.fromJson(data) as T;
+    }
+    if (t == _ihiygfti.PublicationDelivery) {
+      return _ihiygfti.PublicationDelivery.fromJson(data) as T;
+    }
+    if (t == _iz1gego0.PublicationDeliveryView) {
+      return _iz1gego0.PublicationDeliveryView.fromJson(data) as T;
+    }
+    if (t == _iucp51pg.PublicationFieldMode) {
+      return _iucp51pg.PublicationFieldMode.fromJson(data) as T;
+    }
+    if (t == _i63wbtw0.PublicationFields) {
+      return _i63wbtw0.PublicationFields.fromJson(data) as T;
+    }
+    if (t == _iv6bey6s.PublicationInput) {
+      return _iv6bey6s.PublicationInput.fromJson(data) as T;
+    }
+    if (t == _i1u9dlta.PublicationModerator) {
+      return _i1u9dlta.PublicationModerator.fromJson(data) as T;
+    }
+    if (t == _ij9tsbn9.PublicationModeratorView) {
+      return _ij9tsbn9.PublicationModeratorView.fromJson(data) as T;
+    }
+    if (t == _ivvukfve.PublicationOpenSubmission) {
+      return _ivvukfve.PublicationOpenSubmission.fromJson(data) as T;
+    }
+    if (t == _iyqlj2kr.PublicationSecret) {
+      return _iyqlj2kr.PublicationSecret.fromJson(data) as T;
+    }
+    if (t == _i5i48220.PublicationSettings) {
+      return _i5i48220.PublicationSettings.fromJson(data) as T;
+    }
+    if (t == _ipbg6o7y.Submission) {
+      return _ipbg6o7y.Submission.fromJson(data) as T;
+    }
+    if (t == _i49gtkgr.SubmissionAsset) {
+      return _i49gtkgr.SubmissionAsset.fromJson(data) as T;
+    }
+    if (t == _ip6l83ta.SubmissionDeliveryState) {
+      return _ip6l83ta.SubmissionDeliveryState.fromJson(data) as T;
+    }
+    if (t == _i71zy0hy.SubmissionRevision) {
+      return _i71zy0hy.SubmissionRevision.fromJson(data) as T;
+    }
+    if (t == _iegijpud.SubmissionRevisionView) {
+      return _iegijpud.SubmissionRevisionView.fromJson(data) as T;
+    }
+    if (t == _ijb8v3k4.SubmissionStarted) {
+      return _ijb8v3k4.SubmissionStarted.fromJson(data) as T;
+    }
+    if (t == _i7hbulg4.SubmissionStatus) {
+      return _i7hbulg4.SubmissionStatus.fromJson(data) as T;
+    }
+    if (t == _iq9uje8l.SubmissionValues) {
+      return _iq9uje8l.SubmissionValues.fromJson(data) as T;
+    }
+    if (t == _iakndug7.SubmissionView) {
+      return _iakndug7.SubmissionView.fromJson(data) as T;
     }
     if (t == _ie6clghy.RevAck) {
       return _ie6clghy.RevAck.fromJson(data) as T;
@@ -15037,6 +16193,12 @@ class Protocol extends _is.DatabaseSerializationManager
               : null)
           as T;
     }
+    if (t == _is.getType<_il37cz87.PublicationsFutureCallDeliverModel?>()) {
+      return (data != null
+              ? _il37cz87.PublicationsFutureCallDeliverModel.fromJson(data)
+              : null)
+          as T;
+    }
     if (t == _is.getType<_io4auc29.StorageFutureCallRefreshItemSizeModel?>()) {
       return (data != null
               ? _io4auc29.StorageFutureCallRefreshItemSizeModel.fromJson(data)
@@ -15637,6 +16799,120 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (t == _is.getType<_isz2sju0.PresenceUpdate?>()) {
       return (data != null ? _isz2sju0.PresenceUpdate.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ikkxb56h.Publication?>()) {
+      return (data != null ? _ikkxb56h.Publication.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i5vk42yw.PublicationBlock?>()) {
+      return (data != null ? _i5vk42yw.PublicationBlock.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i9g6l3wu.PublicationCard?>()) {
+      return (data != null ? _i9g6l3wu.PublicationCard.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i0a1sw0a.PublicationCheckResult?>()) {
+      return (data != null
+              ? _i0a1sw0a.PublicationCheckResult.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_iqa48qn0.PublicationConsent?>()) {
+      return (data != null ? _iqa48qn0.PublicationConsent.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ihiygfti.PublicationDelivery?>()) {
+      return (data != null
+              ? _ihiygfti.PublicationDelivery.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_iz1gego0.PublicationDeliveryView?>()) {
+      return (data != null
+              ? _iz1gego0.PublicationDeliveryView.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_iucp51pg.PublicationFieldMode?>()) {
+      return (data != null
+              ? _iucp51pg.PublicationFieldMode.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_i63wbtw0.PublicationFields?>()) {
+      return (data != null ? _i63wbtw0.PublicationFields.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iv6bey6s.PublicationInput?>()) {
+      return (data != null ? _iv6bey6s.PublicationInput.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i1u9dlta.PublicationModerator?>()) {
+      return (data != null
+              ? _i1u9dlta.PublicationModerator.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_ij9tsbn9.PublicationModeratorView?>()) {
+      return (data != null
+              ? _ij9tsbn9.PublicationModeratorView.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_ivvukfve.PublicationOpenSubmission?>()) {
+      return (data != null
+              ? _ivvukfve.PublicationOpenSubmission.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_iyqlj2kr.PublicationSecret?>()) {
+      return (data != null ? _iyqlj2kr.PublicationSecret.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i5i48220.PublicationSettings?>()) {
+      return (data != null
+              ? _i5i48220.PublicationSettings.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_ipbg6o7y.Submission?>()) {
+      return (data != null ? _ipbg6o7y.Submission.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i49gtkgr.SubmissionAsset?>()) {
+      return (data != null ? _i49gtkgr.SubmissionAsset.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ip6l83ta.SubmissionDeliveryState?>()) {
+      return (data != null
+              ? _ip6l83ta.SubmissionDeliveryState.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_i71zy0hy.SubmissionRevision?>()) {
+      return (data != null ? _i71zy0hy.SubmissionRevision.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iegijpud.SubmissionRevisionView?>()) {
+      return (data != null
+              ? _iegijpud.SubmissionRevisionView.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_ijb8v3k4.SubmissionStarted?>()) {
+      return (data != null ? _ijb8v3k4.SubmissionStarted.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i7hbulg4.SubmissionStatus?>()) {
+      return (data != null ? _i7hbulg4.SubmissionStatus.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iq9uje8l.SubmissionValues?>()) {
+      return (data != null ? _iq9uje8l.SubmissionValues.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_iakndug7.SubmissionView?>()) {
+      return (data != null ? _iakndug7.SubmissionView.fromJson(data) : null)
           as T;
     }
     if (t == _is.getType<_ie6clghy.RevAck?>()) {
@@ -16754,6 +18030,24 @@ class Protocol extends _is.DatabaseSerializationManager
               .toList()
           as T;
     }
+    if (t == List<_ivvukfve.PublicationOpenSubmission>) {
+      return (data as List)
+              .map((e) => deserialize<_ivvukfve.PublicationOpenSubmission>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ij9tsbn9.PublicationModeratorView>) {
+      return (data as List)
+              .map((e) => deserialize<_ij9tsbn9.PublicationModeratorView>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_iegijpud.SubmissionRevisionView>) {
+      return (data as List)
+              .map((e) => deserialize<_iegijpud.SubmissionRevisionView>(e))
+              .toList()
+          as T;
+    }
     if (t == List<_it4o2pk5.RevOpView>) {
       return (data as List)
               .map((e) => deserialize<_it4o2pk5.RevOpView>(e))
@@ -16968,8 +18262,20 @@ class Protocol extends _is.DatabaseSerializationManager
               .toList()
           as T;
     }
+    if (t == List<_i9ilkmgj.PublicationSettings>) {
+      return (data as List)
+              .map((e) => deserialize<_i9ilkmgj.PublicationSettings>(e))
+              .toList()
+          as T;
+    }
     if (t == List<String>) {
       return (data as List).map((e) => deserialize<String>(e)).toList() as T;
+    }
+    if (t == List<_idovycpn.PublicationDeliveryView>) {
+      return (data as List)
+              .map((e) => deserialize<_idovycpn.PublicationDeliveryView>(e))
+              .toList()
+          as T;
     }
     if (t == List<_ioyb7a1p.AccessTokenView>) {
       return (data as List)
@@ -17113,6 +18419,8 @@ class Protocol extends _is.DatabaseSerializationManager
         'FilePreviewFutureCallGenerateModel',
       _inb6x2l0.NotificationEmailFutureCallSendModel =>
         'NotificationEmailFutureCallSendModel',
+      _il37cz87.PublicationsFutureCallDeliverModel =>
+        'PublicationsFutureCallDeliverModel',
       _io4auc29.StorageFutureCallRefreshItemSizeModel =>
         'StorageFutureCallRefreshItemSizeModel',
       _izr1y672.ActivityDashboard => 'ActivityDashboard',
@@ -17269,6 +18577,30 @@ class Protocol extends _is.DatabaseSerializationManager
       _i8r9afjv.PresenceUpdated => 'PresenceUpdated',
       _ik055xb9.PresenceState => 'PresenceState',
       _isz2sju0.PresenceUpdate => 'PresenceUpdate',
+      _ikkxb56h.Publication => 'Publication',
+      _i5vk42yw.PublicationBlock => 'PublicationBlock',
+      _i9g6l3wu.PublicationCard => 'PublicationCard',
+      _i0a1sw0a.PublicationCheckResult => 'PublicationCheckResult',
+      _iqa48qn0.PublicationConsent => 'PublicationConsent',
+      _ihiygfti.PublicationDelivery => 'PublicationDelivery',
+      _iz1gego0.PublicationDeliveryView => 'PublicationDeliveryView',
+      _iucp51pg.PublicationFieldMode => 'PublicationFieldMode',
+      _i63wbtw0.PublicationFields => 'PublicationFields',
+      _iv6bey6s.PublicationInput => 'PublicationInput',
+      _i1u9dlta.PublicationModerator => 'PublicationModerator',
+      _ij9tsbn9.PublicationModeratorView => 'PublicationModeratorView',
+      _ivvukfve.PublicationOpenSubmission => 'PublicationOpenSubmission',
+      _iyqlj2kr.PublicationSecret => 'PublicationSecret',
+      _i5i48220.PublicationSettings => 'PublicationSettings',
+      _ipbg6o7y.Submission => 'Submission',
+      _i49gtkgr.SubmissionAsset => 'SubmissionAsset',
+      _ip6l83ta.SubmissionDeliveryState => 'SubmissionDeliveryState',
+      _i71zy0hy.SubmissionRevision => 'SubmissionRevision',
+      _iegijpud.SubmissionRevisionView => 'SubmissionRevisionView',
+      _ijb8v3k4.SubmissionStarted => 'SubmissionStarted',
+      _i7hbulg4.SubmissionStatus => 'SubmissionStatus',
+      _iq9uje8l.SubmissionValues => 'SubmissionValues',
+      _iakndug7.SubmissionView => 'SubmissionView',
       _ie6clghy.RevAck => 'RevAck',
       _i6ck957q.RevPing => 'RevPing',
       _i6ck957q.RevRequestOps => 'RevRequestOps',
@@ -17518,6 +18850,8 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'FilePreviewFutureCallGenerateModel';
       case _inb6x2l0.NotificationEmailFutureCallSendModel():
         return 'NotificationEmailFutureCallSendModel';
+      case _il37cz87.PublicationsFutureCallDeliverModel():
+        return 'PublicationsFutureCallDeliverModel';
       case _io4auc29.StorageFutureCallRefreshItemSizeModel():
         return 'StorageFutureCallRefreshItemSizeModel';
       case _izr1y672.ActivityDashboard():
@@ -17828,6 +19162,54 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'PresenceState';
       case _isz2sju0.PresenceUpdate():
         return 'PresenceUpdate';
+      case _ikkxb56h.Publication():
+        return 'Publication';
+      case _i5vk42yw.PublicationBlock():
+        return 'PublicationBlock';
+      case _i9g6l3wu.PublicationCard():
+        return 'PublicationCard';
+      case _i0a1sw0a.PublicationCheckResult():
+        return 'PublicationCheckResult';
+      case _iqa48qn0.PublicationConsent():
+        return 'PublicationConsent';
+      case _ihiygfti.PublicationDelivery():
+        return 'PublicationDelivery';
+      case _iz1gego0.PublicationDeliveryView():
+        return 'PublicationDeliveryView';
+      case _iucp51pg.PublicationFieldMode():
+        return 'PublicationFieldMode';
+      case _i63wbtw0.PublicationFields():
+        return 'PublicationFields';
+      case _iv6bey6s.PublicationInput():
+        return 'PublicationInput';
+      case _i1u9dlta.PublicationModerator():
+        return 'PublicationModerator';
+      case _ij9tsbn9.PublicationModeratorView():
+        return 'PublicationModeratorView';
+      case _ivvukfve.PublicationOpenSubmission():
+        return 'PublicationOpenSubmission';
+      case _iyqlj2kr.PublicationSecret():
+        return 'PublicationSecret';
+      case _i5i48220.PublicationSettings():
+        return 'PublicationSettings';
+      case _ipbg6o7y.Submission():
+        return 'Submission';
+      case _i49gtkgr.SubmissionAsset():
+        return 'SubmissionAsset';
+      case _ip6l83ta.SubmissionDeliveryState():
+        return 'SubmissionDeliveryState';
+      case _i71zy0hy.SubmissionRevision():
+        return 'SubmissionRevision';
+      case _iegijpud.SubmissionRevisionView():
+        return 'SubmissionRevisionView';
+      case _ijb8v3k4.SubmissionStarted():
+        return 'SubmissionStarted';
+      case _i7hbulg4.SubmissionStatus():
+        return 'SubmissionStatus';
+      case _iq9uje8l.SubmissionValues():
+        return 'SubmissionValues';
+      case _iakndug7.SubmissionView():
+        return 'SubmissionView';
       case _ie6clghy.RevAck():
         return 'RevAck';
       case _i6ck957q.RevPing():
@@ -18326,6 +19708,11 @@ class Protocol extends _is.DatabaseSerializationManager
         data['data'],
       );
     }
+    if (dataClassName == 'PublicationsFutureCallDeliverModel') {
+      return deserialize<_il37cz87.PublicationsFutureCallDeliverModel>(
+        data['data'],
+      );
+    }
     if (dataClassName == 'StorageFutureCallRefreshItemSizeModel') {
       return deserialize<_io4auc29.StorageFutureCallRefreshItemSizeModel>(
         data['data'],
@@ -18792,6 +20179,78 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (dataClassName == 'PresenceUpdate') {
       return deserialize<_isz2sju0.PresenceUpdate>(data['data']);
+    }
+    if (dataClassName == 'Publication') {
+      return deserialize<_ikkxb56h.Publication>(data['data']);
+    }
+    if (dataClassName == 'PublicationBlock') {
+      return deserialize<_i5vk42yw.PublicationBlock>(data['data']);
+    }
+    if (dataClassName == 'PublicationCard') {
+      return deserialize<_i9g6l3wu.PublicationCard>(data['data']);
+    }
+    if (dataClassName == 'PublicationCheckResult') {
+      return deserialize<_i0a1sw0a.PublicationCheckResult>(data['data']);
+    }
+    if (dataClassName == 'PublicationConsent') {
+      return deserialize<_iqa48qn0.PublicationConsent>(data['data']);
+    }
+    if (dataClassName == 'PublicationDelivery') {
+      return deserialize<_ihiygfti.PublicationDelivery>(data['data']);
+    }
+    if (dataClassName == 'PublicationDeliveryView') {
+      return deserialize<_iz1gego0.PublicationDeliveryView>(data['data']);
+    }
+    if (dataClassName == 'PublicationFieldMode') {
+      return deserialize<_iucp51pg.PublicationFieldMode>(data['data']);
+    }
+    if (dataClassName == 'PublicationFields') {
+      return deserialize<_i63wbtw0.PublicationFields>(data['data']);
+    }
+    if (dataClassName == 'PublicationInput') {
+      return deserialize<_iv6bey6s.PublicationInput>(data['data']);
+    }
+    if (dataClassName == 'PublicationModerator') {
+      return deserialize<_i1u9dlta.PublicationModerator>(data['data']);
+    }
+    if (dataClassName == 'PublicationModeratorView') {
+      return deserialize<_ij9tsbn9.PublicationModeratorView>(data['data']);
+    }
+    if (dataClassName == 'PublicationOpenSubmission') {
+      return deserialize<_ivvukfve.PublicationOpenSubmission>(data['data']);
+    }
+    if (dataClassName == 'PublicationSecret') {
+      return deserialize<_iyqlj2kr.PublicationSecret>(data['data']);
+    }
+    if (dataClassName == 'PublicationSettings') {
+      return deserialize<_i5i48220.PublicationSettings>(data['data']);
+    }
+    if (dataClassName == 'Submission') {
+      return deserialize<_ipbg6o7y.Submission>(data['data']);
+    }
+    if (dataClassName == 'SubmissionAsset') {
+      return deserialize<_i49gtkgr.SubmissionAsset>(data['data']);
+    }
+    if (dataClassName == 'SubmissionDeliveryState') {
+      return deserialize<_ip6l83ta.SubmissionDeliveryState>(data['data']);
+    }
+    if (dataClassName == 'SubmissionRevision') {
+      return deserialize<_i71zy0hy.SubmissionRevision>(data['data']);
+    }
+    if (dataClassName == 'SubmissionRevisionView') {
+      return deserialize<_iegijpud.SubmissionRevisionView>(data['data']);
+    }
+    if (dataClassName == 'SubmissionStarted') {
+      return deserialize<_ijb8v3k4.SubmissionStarted>(data['data']);
+    }
+    if (dataClassName == 'SubmissionStatus') {
+      return deserialize<_i7hbulg4.SubmissionStatus>(data['data']);
+    }
+    if (dataClassName == 'SubmissionValues') {
+      return deserialize<_iq9uje8l.SubmissionValues>(data['data']);
+    }
+    if (dataClassName == 'SubmissionView') {
+      return deserialize<_iakndug7.SubmissionView>(data['data']);
     }
     if (dataClassName == 'RevAck') {
       return deserialize<_ie6clghy.RevAck>(data['data']);
@@ -19545,6 +21004,22 @@ class Protocol extends _is.DatabaseSerializationManager
         return _im8eh74x.StoredFile.t;
       case _ik59hiyp.UserNotification:
         return _ik59hiyp.UserNotification.t;
+      case _ikkxb56h.Publication:
+        return _ikkxb56h.Publication.t;
+      case _i5vk42yw.PublicationBlock:
+        return _i5vk42yw.PublicationBlock.t;
+      case _iqa48qn0.PublicationConsent:
+        return _iqa48qn0.PublicationConsent.t;
+      case _ihiygfti.PublicationDelivery:
+        return _ihiygfti.PublicationDelivery.t;
+      case _i1u9dlta.PublicationModerator:
+        return _i1u9dlta.PublicationModerator.t;
+      case _ipbg6o7y.Submission:
+        return _ipbg6o7y.Submission.t;
+      case _i49gtkgr.SubmissionAsset:
+        return _i49gtkgr.SubmissionAsset.t;
+      case _i71zy0hy.SubmissionRevision:
+        return _i71zy0hy.SubmissionRevision.t;
       case _ip7h3lg0.RevFile:
         return _ip7h3lg0.RevFile.t;
       case _ivfqwl6l.RevHookState:

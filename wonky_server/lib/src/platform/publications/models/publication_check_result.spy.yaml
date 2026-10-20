@@ -1,0 +1,7 @@
+### Result of *Verify* or *Send test* (specs/18 §8.1, §8.2).
+class: PublicationCheckResult
+fields:
+  ok: bool
+  ### What went wrong, for the owner.
+  message: String?
+  settings: PublicationSettings

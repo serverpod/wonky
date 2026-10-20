@@ -25,6 +25,7 @@ abstract class PermissionView
     this.inheritedFromName,
     required this.grantedAt,
     this.expiresAt,
+    this.viaPublication,
   });
 
   factory PermissionView({
@@ -35,6 +36,7 @@ abstract class PermissionView
     String? inheritedFromName,
     required DateTime grantedAt,
     DateTime? expiresAt,
+    String? viaPublication,
   }) = _PermissionViewImpl;
 
   factory PermissionView.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -60,6 +62,7 @@ abstract class PermissionView
       expiresAt: jsonSerialization['expiresAt'] == null
           ? null
           : _isc.DateTimeJsonExtension.fromJson(jsonSerialization['expiresAt']),
+      viaPublication: jsonSerialization['viaPublication'] as String?,
     );
   }
 
@@ -79,6 +82,9 @@ abstract class PermissionView
 
   DateTime? expiresAt;
 
+  /// (M14) The publication a moderator grant comes from (specs/18 §5.1).
+  String? viaPublication;
+
   /// Returns a shallow copy of this [PermissionView]
   /// with some or all fields replaced by the given arguments.
   @_isc.useResult
@@ -90,6 +96,7 @@ abstract class PermissionView
     String? inheritedFromName,
     DateTime? grantedAt,
     DateTime? expiresAt = const _isc.$UndefinedDateTime(),
+    String? viaPublication,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -103,6 +110,7 @@ abstract class PermissionView
       if (inheritedFromName != null) 'inheritedFromName': inheritedFromName,
       'grantedAt': grantedAt.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
+      if (viaPublication != null) 'viaPublication': viaPublication,
     };
   }
 
@@ -118,6 +126,7 @@ abstract class PermissionView
       if (inheritedFromName != null) 'inheritedFromName': inheritedFromName,
       'grantedAt': grantedAt.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
+      if (viaPublication != null) 'viaPublication': viaPublication,
     };
   }
 
@@ -143,6 +152,7 @@ class _PermissionViewImpl extends PermissionView {
     String? inheritedFromName,
     required DateTime grantedAt,
     DateTime? expiresAt,
+    String? viaPublication,
   }) : super._(
          user: user,
          invitedEmail: invitedEmail,
@@ -151,6 +161,7 @@ class _PermissionViewImpl extends PermissionView {
          inheritedFromName: inheritedFromName,
          grantedAt: grantedAt,
          expiresAt: expiresAt,
+         viaPublication: viaPublication,
        );
 
   /// Returns a shallow copy of this [PermissionView]
@@ -165,6 +176,7 @@ class _PermissionViewImpl extends PermissionView {
     Object? inheritedFromName = _Undefined,
     DateTime? grantedAt,
     DateTime? expiresAt = const _isc.$UndefinedDateTime(),
+    Object? viaPublication = _Undefined,
   }) {
     return PermissionView(
       user: user is _isc.UndefinedSentinel ? this.user?.copyWith() : user,
@@ -180,6 +192,9 @@ class _PermissionViewImpl extends PermissionView {
       expiresAt: expiresAt is _isc.UndefinedSentinel
           ? this.expiresAt
           : expiresAt,
+      viaPublication: viaPublication is String?
+          ? viaPublication
+          : this.viaPublication,
     );
   }
 }

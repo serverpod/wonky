@@ -1,0 +1,10 @@
+### The fields a contributor filled in (specs/18 §4.2).
+class: SubmissionValues
+fields:
+  title: String
+  summary: String?
+  tags: List<String>
+  ### A `wonky-file` uuid of an image in the document.
+  coverImage: UuidValue?
+  authorBio: String?
+  note: String?

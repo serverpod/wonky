@@ -17,6 +17,7 @@ export 'src/testing/command_sweep.dart';
 export 'src/testing/command_test_harness.dart';
 export 'src/testing/fake_board_repository.dart';
 export 'src/testing/fake_cross_app.dart';
+export 'src/testing/fake_publication_repository.dart';
 export 'src/testing/fake_storage.dart';
 export 'src/testing/fake_repositories.dart'
     hide

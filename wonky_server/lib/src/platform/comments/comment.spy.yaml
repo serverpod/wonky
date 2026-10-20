@@ -18,6 +18,8 @@ fields:
   ### Soft delete: shown as "Comment deleted".
   deletedAt: DateTime?
   systemEvent: CommentSystemEvent?
+  ### (M14) A publication's message (authorKind system), specs/18 §5.2.
+  publicationId: int?, relation(parent=publication, onDelete=SetNull)
 indexes:
   comment_thread_idx:
     fields: threadId, createdAt

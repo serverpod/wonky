@@ -55,6 +55,8 @@ abstract final class NotificationService {
   static const immediateKinds = {
     NotificationKind.mention,
     NotificationKind.assigned,
+    // (M14) Rare and waited for (specs/18 §5.3).
+    NotificationKind.submission,
   };
 
   static String channel(int userId) => 'notifications:$userId';
@@ -74,7 +76,11 @@ abstract final class NotificationService {
     NotificationKind.boardReply => 'board',
     NotificationKind.boardStatus => 'board',
     NotificationKind.boardClaim => 'board',
+    NotificationKind.submission => 'submissions',
   };
+
+  /// Categories whose default is in-app + email instead of in-app only.
+  static const _emailByDefault = {'submissions'};
 
   /// Older settings stored access requests under `shares`.
   static const _fallbackKeys = {'accessRequests': 'shares'};
@@ -86,7 +92,10 @@ abstract final class NotificationService {
     NotificationKind kind,
   ) {
     final key = settingKey(kind);
-    final value = settings[key] ?? settings[_fallbackKeys[key]];
+    final value =
+        settings[key] ??
+        settings[_fallbackKeys[key]] ??
+        (_emailByDefault.contains(key) ? 'email' : null);
     return value == 'email' || value == 'off' ? value as String : 'inApp';
   }
 

@@ -1,0 +1,11 @@
+### Which submission fields a publication asks for (specs/18 §8.1). The
+### title is always asked for and required.
+class: PublicationFields
+fields:
+  summary: PublicationFieldMode
+  tags: PublicationFieldMode
+  ### When not empty, tags must come from this list.
+  allowedTags: List<String>
+  coverImage: PublicationFieldMode
+  authorBio: PublicationFieldMode
+  note: PublicationFieldMode

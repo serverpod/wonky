@@ -14,6 +14,7 @@ import 'sections/account_section.dart';
 import 'sections/appearance_section.dart';
 import 'sections/keyboard_section.dart';
 import 'sections/other_sections.dart';
+import '../publications/publications_section.dart';
 import 'sections/security_section.dart';
 import 'sections/storage_section.dart';
 import 'settings_catalog.dart';
@@ -132,6 +133,14 @@ class SettingsScreen extends StatelessWidget {
         LucideIcons.squareTerminal,
         (_) => DeveloperSection(services: s),
       ),
+      // (M14) Blogs that take stories from Wonky Write (specs/18 §8.1).
+      if (s.repositories.hasPublications)
+        w(
+          'publications',
+          l.settingsPublications,
+          LucideIcons.newspaper,
+          (_) => PublicationsSection(services: s),
+        ),
       w(
         'about',
         l.settingsAbout,

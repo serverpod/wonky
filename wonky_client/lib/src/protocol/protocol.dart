@@ -38,6 +38,10 @@ import 'package:wonky_client/src/protocol/platform/drive/template_view.dart'
     as _i1pzk6fp;
 import 'package:wonky_client/src/protocol/platform/files/file_url_view.dart'
     as _i4i1hokq;
+import 'package:wonky_client/src/protocol/platform/publications/models/publication_delivery_view.dart'
+    as _ipl2ldhs;
+import 'package:wonky_client/src/protocol/platform/publications/models/publication_settings.dart'
+    as _i9bruko9;
 import 'package:wonky_client/src/protocol/platform/revlog/models/rev_op_view.dart'
     as _iq15rk0l;
 import 'package:wonky_client/src/protocol/platform/users/access_token_view.dart'
@@ -197,6 +201,28 @@ import 'platform/presence/participant.dart' as _iylgyc33;
 import 'platform/presence/presence_event.dart' as _i8r9afjv;
 import 'platform/presence/presence_state.dart' as _ik055xb9;
 import 'platform/presence/presence_update.dart' as _isz2sju0;
+import 'platform/publications/models/publication_card.dart' as _i9g6l3wu;
+import 'platform/publications/models/publication_check_result.dart'
+    as _i0a1sw0a;
+import 'platform/publications/models/publication_delivery_view.dart'
+    as _iz1gego0;
+import 'platform/publications/models/publication_field_mode.dart' as _iucp51pg;
+import 'platform/publications/models/publication_fields.dart' as _i63wbtw0;
+import 'platform/publications/models/publication_input.dart' as _iv6bey6s;
+import 'platform/publications/models/publication_moderator_view.dart'
+    as _ij9tsbn9;
+import 'platform/publications/models/publication_open_submission.dart'
+    as _ivvukfve;
+import 'platform/publications/models/publication_secret.dart' as _iyqlj2kr;
+import 'platform/publications/models/publication_settings.dart' as _i5i48220;
+import 'platform/publications/models/submission_delivery_state.dart'
+    as _ip6l83ta;
+import 'platform/publications/models/submission_revision_view.dart'
+    as _iegijpud;
+import 'platform/publications/models/submission_started.dart' as _ijb8v3k4;
+import 'platform/publications/models/submission_status.dart' as _i7hbulg4;
+import 'platform/publications/models/submission_values.dart' as _iq9uje8l;
+import 'platform/publications/models/submission_view.dart' as _iakndug7;
 import 'platform/revlog/messages/rev_client_message.dart' as _i6ck957q;
 import 'platform/revlog/messages/rev_server_message.dart' as _ie6clghy;
 import 'platform/revlog/models/rev_file_info.dart' as _ihwy023l;
@@ -450,6 +476,22 @@ export 'platform/presence/participant.dart';
 export 'platform/presence/presence_event.dart';
 export 'platform/presence/presence_state.dart';
 export 'platform/presence/presence_update.dart';
+export 'platform/publications/models/publication_card.dart';
+export 'platform/publications/models/publication_check_result.dart';
+export 'platform/publications/models/publication_delivery_view.dart';
+export 'platform/publications/models/publication_field_mode.dart';
+export 'platform/publications/models/publication_fields.dart';
+export 'platform/publications/models/publication_input.dart';
+export 'platform/publications/models/publication_moderator_view.dart';
+export 'platform/publications/models/publication_open_submission.dart';
+export 'platform/publications/models/publication_secret.dart';
+export 'platform/publications/models/publication_settings.dart';
+export 'platform/publications/models/submission_delivery_state.dart';
+export 'platform/publications/models/submission_revision_view.dart';
+export 'platform/publications/models/submission_started.dart';
+export 'platform/publications/models/submission_status.dart';
+export 'platform/publications/models/submission_values.dart';
+export 'platform/publications/models/submission_view.dart';
 export 'platform/revlog/messages/rev_client_message.dart';
 export 'platform/revlog/messages/rev_server_message.dart';
 export 'platform/revlog/models/rev_file_info.dart';
@@ -730,6 +772,22 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i8r9afjv.PresenceUpdated>,
           _isc.getType<_ik055xb9.PresenceState>,
           _isc.getType<_isz2sju0.PresenceUpdate>,
+          _isc.getType<_i9g6l3wu.PublicationCard>,
+          _isc.getType<_i0a1sw0a.PublicationCheckResult>,
+          _isc.getType<_iz1gego0.PublicationDeliveryView>,
+          _isc.getType<_iucp51pg.PublicationFieldMode>,
+          _isc.getType<_i63wbtw0.PublicationFields>,
+          _isc.getType<_iv6bey6s.PublicationInput>,
+          _isc.getType<_ij9tsbn9.PublicationModeratorView>,
+          _isc.getType<_ivvukfve.PublicationOpenSubmission>,
+          _isc.getType<_iyqlj2kr.PublicationSecret>,
+          _isc.getType<_i5i48220.PublicationSettings>,
+          _isc.getType<_ip6l83ta.SubmissionDeliveryState>,
+          _isc.getType<_iegijpud.SubmissionRevisionView>,
+          _isc.getType<_ijb8v3k4.SubmissionStarted>,
+          _isc.getType<_i7hbulg4.SubmissionStatus>,
+          _isc.getType<_iq9uje8l.SubmissionValues>,
+          _isc.getType<_iakndug7.SubmissionView>,
           _isc.getType<_ie6clghy.RevAck>,
           _isc.getType<_i6ck957q.RevPing>,
           _isc.getType<_i6ck957q.RevRequestOps>,
@@ -1030,6 +1088,22 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i8r9afjv.PresenceUpdated?>,
           _isc.getType<_ik055xb9.PresenceState?>,
           _isc.getType<_isz2sju0.PresenceUpdate?>,
+          _isc.getType<_i9g6l3wu.PublicationCard?>,
+          _isc.getType<_i0a1sw0a.PublicationCheckResult?>,
+          _isc.getType<_iz1gego0.PublicationDeliveryView?>,
+          _isc.getType<_iucp51pg.PublicationFieldMode?>,
+          _isc.getType<_i63wbtw0.PublicationFields?>,
+          _isc.getType<_iv6bey6s.PublicationInput?>,
+          _isc.getType<_ij9tsbn9.PublicationModeratorView?>,
+          _isc.getType<_ivvukfve.PublicationOpenSubmission?>,
+          _isc.getType<_iyqlj2kr.PublicationSecret?>,
+          _isc.getType<_i5i48220.PublicationSettings?>,
+          _isc.getType<_ip6l83ta.SubmissionDeliveryState?>,
+          _isc.getType<_iegijpud.SubmissionRevisionView?>,
+          _isc.getType<_ijb8v3k4.SubmissionStarted?>,
+          _isc.getType<_i7hbulg4.SubmissionStatus?>,
+          _isc.getType<_iq9uje8l.SubmissionValues?>,
+          _isc.getType<_iakndug7.SubmissionView?>,
           _isc.getType<_ie6clghy.RevAck?>,
           _isc.getType<_i6ck957q.RevPing?>,
           _isc.getType<_i6ck957q.RevRequestOps?>,
@@ -1220,6 +1294,9 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<List<_i48sm9f2.ImportWarningView>>,
           _isc.getType<List<_izfzk9h3.NotificationView>>,
           _isc.getType<List<_iylgyc33.Participant>>,
+          _isc.getType<List<_ivvukfve.PublicationOpenSubmission>>,
+          _isc.getType<List<_ij9tsbn9.PublicationModeratorView>>,
+          _isc.getType<List<_iegijpud.SubmissionRevisionView>>,
           _isc.getType<List<_it4o2pk5.RevOpView>>,
           _isc.getType<List<_it4o2pk5.RevOpView>?>,
           _isc.getType<List<_isc.UuidValue>>,
@@ -1257,7 +1334,9 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<List<_i1pzk6fp.TemplateView>>,
           _isc.getType<List<_itempttd.ActivityEventView>>,
           _isc.getType<List<_i4i1hokq.FileUrlView>>,
+          _isc.getType<List<_i9bruko9.PublicationSettings>>,
           _isc.getType<List<String>>,
+          _isc.getType<List<_ipl2ldhs.PublicationDeliveryView>>,
           _isc.getType<List<_ip6swqsj.AccessTokenView>>,
           _isc.getType<List<_iq7femvs.UserSummary>>,
           _isc.getType<List<_itqtmykd.ItemVersionView>>,
@@ -1727,6 +1806,54 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _isz2sju0.PresenceUpdate) {
       return _isz2sju0.PresenceUpdate.fromJson(data) as T;
+    }
+    if (t == _i9g6l3wu.PublicationCard) {
+      return _i9g6l3wu.PublicationCard.fromJson(data) as T;
+    }
+    if (t == _i0a1sw0a.PublicationCheckResult) {
+      return _i0a1sw0a.PublicationCheckResult.fromJson(data) as T;
+    }
+    if (t == _iz1gego0.PublicationDeliveryView) {
+      return _iz1gego0.PublicationDeliveryView.fromJson(data) as T;
+    }
+    if (t == _iucp51pg.PublicationFieldMode) {
+      return _iucp51pg.PublicationFieldMode.fromJson(data) as T;
+    }
+    if (t == _i63wbtw0.PublicationFields) {
+      return _i63wbtw0.PublicationFields.fromJson(data) as T;
+    }
+    if (t == _iv6bey6s.PublicationInput) {
+      return _iv6bey6s.PublicationInput.fromJson(data) as T;
+    }
+    if (t == _ij9tsbn9.PublicationModeratorView) {
+      return _ij9tsbn9.PublicationModeratorView.fromJson(data) as T;
+    }
+    if (t == _ivvukfve.PublicationOpenSubmission) {
+      return _ivvukfve.PublicationOpenSubmission.fromJson(data) as T;
+    }
+    if (t == _iyqlj2kr.PublicationSecret) {
+      return _iyqlj2kr.PublicationSecret.fromJson(data) as T;
+    }
+    if (t == _i5i48220.PublicationSettings) {
+      return _i5i48220.PublicationSettings.fromJson(data) as T;
+    }
+    if (t == _ip6l83ta.SubmissionDeliveryState) {
+      return _ip6l83ta.SubmissionDeliveryState.fromJson(data) as T;
+    }
+    if (t == _iegijpud.SubmissionRevisionView) {
+      return _iegijpud.SubmissionRevisionView.fromJson(data) as T;
+    }
+    if (t == _ijb8v3k4.SubmissionStarted) {
+      return _ijb8v3k4.SubmissionStarted.fromJson(data) as T;
+    }
+    if (t == _i7hbulg4.SubmissionStatus) {
+      return _i7hbulg4.SubmissionStatus.fromJson(data) as T;
+    }
+    if (t == _iq9uje8l.SubmissionValues) {
+      return _iq9uje8l.SubmissionValues.fromJson(data) as T;
+    }
+    if (t == _iakndug7.SubmissionView) {
+      return _iakndug7.SubmissionView.fromJson(data) as T;
     }
     if (t == _ie6clghy.RevAck) {
       return _ie6clghy.RevAck.fromJson(data) as T;
@@ -2746,6 +2873,86 @@ class Protocol extends _isc.SerializationManager
       return (data != null ? _isz2sju0.PresenceUpdate.fromJson(data) : null)
           as T;
     }
+    if (t == _isc.getType<_i9g6l3wu.PublicationCard?>()) {
+      return (data != null ? _i9g6l3wu.PublicationCard.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i0a1sw0a.PublicationCheckResult?>()) {
+      return (data != null
+              ? _i0a1sw0a.PublicationCheckResult.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_iz1gego0.PublicationDeliveryView?>()) {
+      return (data != null
+              ? _iz1gego0.PublicationDeliveryView.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_iucp51pg.PublicationFieldMode?>()) {
+      return (data != null
+              ? _iucp51pg.PublicationFieldMode.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_i63wbtw0.PublicationFields?>()) {
+      return (data != null ? _i63wbtw0.PublicationFields.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iv6bey6s.PublicationInput?>()) {
+      return (data != null ? _iv6bey6s.PublicationInput.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ij9tsbn9.PublicationModeratorView?>()) {
+      return (data != null
+              ? _ij9tsbn9.PublicationModeratorView.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_ivvukfve.PublicationOpenSubmission?>()) {
+      return (data != null
+              ? _ivvukfve.PublicationOpenSubmission.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_iyqlj2kr.PublicationSecret?>()) {
+      return (data != null ? _iyqlj2kr.PublicationSecret.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i5i48220.PublicationSettings?>()) {
+      return (data != null
+              ? _i5i48220.PublicationSettings.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_ip6l83ta.SubmissionDeliveryState?>()) {
+      return (data != null
+              ? _ip6l83ta.SubmissionDeliveryState.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_iegijpud.SubmissionRevisionView?>()) {
+      return (data != null
+              ? _iegijpud.SubmissionRevisionView.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_ijb8v3k4.SubmissionStarted?>()) {
+      return (data != null ? _ijb8v3k4.SubmissionStarted.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i7hbulg4.SubmissionStatus?>()) {
+      return (data != null ? _i7hbulg4.SubmissionStatus.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iq9uje8l.SubmissionValues?>()) {
+      return (data != null ? _iq9uje8l.SubmissionValues.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iakndug7.SubmissionView?>()) {
+      return (data != null ? _iakndug7.SubmissionView.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_ie6clghy.RevAck?>()) {
       return (data != null ? _ie6clghy.RevAck.fromJson(data) : null) as T;
     }
@@ -3630,6 +3837,24 @@ class Protocol extends _isc.SerializationManager
               .toList()
           as T;
     }
+    if (t == List<_ivvukfve.PublicationOpenSubmission>) {
+      return (data as List)
+              .map((e) => deserialize<_ivvukfve.PublicationOpenSubmission>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ij9tsbn9.PublicationModeratorView>) {
+      return (data as List)
+              .map((e) => deserialize<_ij9tsbn9.PublicationModeratorView>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_iegijpud.SubmissionRevisionView>) {
+      return (data as List)
+              .map((e) => deserialize<_iegijpud.SubmissionRevisionView>(e))
+              .toList()
+          as T;
+    }
     if (t == List<_it4o2pk5.RevOpView>) {
       return (data as List)
               .map((e) => deserialize<_it4o2pk5.RevOpView>(e))
@@ -3859,8 +4084,20 @@ class Protocol extends _isc.SerializationManager
               .toList()
           as T;
     }
+    if (t == List<_i9bruko9.PublicationSettings>) {
+      return (data as List)
+              .map((e) => deserialize<_i9bruko9.PublicationSettings>(e))
+              .toList()
+          as T;
+    }
     if (t == List<String>) {
       return (data as List).map((e) => deserialize<String>(e)).toList() as T;
+    }
+    if (t == List<_ipl2ldhs.PublicationDeliveryView>) {
+      return (data as List)
+              .map((e) => deserialize<_ipl2ldhs.PublicationDeliveryView>(e))
+              .toList()
+          as T;
     }
     if (t == List<_ip6swqsj.AccessTokenView>) {
       return (data as List)
@@ -4129,6 +4366,22 @@ class Protocol extends _isc.SerializationManager
       _i8r9afjv.PresenceUpdated => 'PresenceUpdated',
       _ik055xb9.PresenceState => 'PresenceState',
       _isz2sju0.PresenceUpdate => 'PresenceUpdate',
+      _i9g6l3wu.PublicationCard => 'PublicationCard',
+      _i0a1sw0a.PublicationCheckResult => 'PublicationCheckResult',
+      _iz1gego0.PublicationDeliveryView => 'PublicationDeliveryView',
+      _iucp51pg.PublicationFieldMode => 'PublicationFieldMode',
+      _i63wbtw0.PublicationFields => 'PublicationFields',
+      _iv6bey6s.PublicationInput => 'PublicationInput',
+      _ij9tsbn9.PublicationModeratorView => 'PublicationModeratorView',
+      _ivvukfve.PublicationOpenSubmission => 'PublicationOpenSubmission',
+      _iyqlj2kr.PublicationSecret => 'PublicationSecret',
+      _i5i48220.PublicationSettings => 'PublicationSettings',
+      _ip6l83ta.SubmissionDeliveryState => 'SubmissionDeliveryState',
+      _iegijpud.SubmissionRevisionView => 'SubmissionRevisionView',
+      _ijb8v3k4.SubmissionStarted => 'SubmissionStarted',
+      _i7hbulg4.SubmissionStatus => 'SubmissionStatus',
+      _iq9uje8l.SubmissionValues => 'SubmissionValues',
+      _iakndug7.SubmissionView => 'SubmissionView',
       _ie6clghy.RevAck => 'RevAck',
       _i6ck957q.RevPing => 'RevPing',
       _i6ck957q.RevRequestOps => 'RevRequestOps',
@@ -4582,6 +4835,38 @@ class Protocol extends _isc.SerializationManager
         return 'PresenceState';
       case _isz2sju0.PresenceUpdate():
         return 'PresenceUpdate';
+      case _i9g6l3wu.PublicationCard():
+        return 'PublicationCard';
+      case _i0a1sw0a.PublicationCheckResult():
+        return 'PublicationCheckResult';
+      case _iz1gego0.PublicationDeliveryView():
+        return 'PublicationDeliveryView';
+      case _iucp51pg.PublicationFieldMode():
+        return 'PublicationFieldMode';
+      case _i63wbtw0.PublicationFields():
+        return 'PublicationFields';
+      case _iv6bey6s.PublicationInput():
+        return 'PublicationInput';
+      case _ij9tsbn9.PublicationModeratorView():
+        return 'PublicationModeratorView';
+      case _ivvukfve.PublicationOpenSubmission():
+        return 'PublicationOpenSubmission';
+      case _iyqlj2kr.PublicationSecret():
+        return 'PublicationSecret';
+      case _i5i48220.PublicationSettings():
+        return 'PublicationSettings';
+      case _ip6l83ta.SubmissionDeliveryState():
+        return 'SubmissionDeliveryState';
+      case _iegijpud.SubmissionRevisionView():
+        return 'SubmissionRevisionView';
+      case _ijb8v3k4.SubmissionStarted():
+        return 'SubmissionStarted';
+      case _i7hbulg4.SubmissionStatus():
+        return 'SubmissionStatus';
+      case _iq9uje8l.SubmissionValues():
+        return 'SubmissionValues';
+      case _iakndug7.SubmissionView():
+        return 'SubmissionView';
       case _ie6clghy.RevAck():
         return 'RevAck';
       case _i6ck957q.RevPing():
@@ -5342,6 +5627,54 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'PresenceUpdate') {
       return deserialize<_isz2sju0.PresenceUpdate>(data['data']);
+    }
+    if (dataClassName == 'PublicationCard') {
+      return deserialize<_i9g6l3wu.PublicationCard>(data['data']);
+    }
+    if (dataClassName == 'PublicationCheckResult') {
+      return deserialize<_i0a1sw0a.PublicationCheckResult>(data['data']);
+    }
+    if (dataClassName == 'PublicationDeliveryView') {
+      return deserialize<_iz1gego0.PublicationDeliveryView>(data['data']);
+    }
+    if (dataClassName == 'PublicationFieldMode') {
+      return deserialize<_iucp51pg.PublicationFieldMode>(data['data']);
+    }
+    if (dataClassName == 'PublicationFields') {
+      return deserialize<_i63wbtw0.PublicationFields>(data['data']);
+    }
+    if (dataClassName == 'PublicationInput') {
+      return deserialize<_iv6bey6s.PublicationInput>(data['data']);
+    }
+    if (dataClassName == 'PublicationModeratorView') {
+      return deserialize<_ij9tsbn9.PublicationModeratorView>(data['data']);
+    }
+    if (dataClassName == 'PublicationOpenSubmission') {
+      return deserialize<_ivvukfve.PublicationOpenSubmission>(data['data']);
+    }
+    if (dataClassName == 'PublicationSecret') {
+      return deserialize<_iyqlj2kr.PublicationSecret>(data['data']);
+    }
+    if (dataClassName == 'PublicationSettings') {
+      return deserialize<_i5i48220.PublicationSettings>(data['data']);
+    }
+    if (dataClassName == 'SubmissionDeliveryState') {
+      return deserialize<_ip6l83ta.SubmissionDeliveryState>(data['data']);
+    }
+    if (dataClassName == 'SubmissionRevisionView') {
+      return deserialize<_iegijpud.SubmissionRevisionView>(data['data']);
+    }
+    if (dataClassName == 'SubmissionStarted') {
+      return deserialize<_ijb8v3k4.SubmissionStarted>(data['data']);
+    }
+    if (dataClassName == 'SubmissionStatus') {
+      return deserialize<_i7hbulg4.SubmissionStatus>(data['data']);
+    }
+    if (dataClassName == 'SubmissionValues') {
+      return deserialize<_iq9uje8l.SubmissionValues>(data['data']);
+    }
+    if (dataClassName == 'SubmissionView') {
+      return deserialize<_iakndug7.SubmissionView>(data['data']);
     }
     if (dataClassName == 'RevAck') {
       return deserialize<_ie6clghy.RevAck>(data['data']);

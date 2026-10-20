@@ -14,3 +14,7 @@ values:
   - exported
   ### (v2) A file was uploaded (Drive 02 §3.3).
   - uploaded
+  ### (M14) Submitted to, withdrawn from or disconnected from a publication,
+  ### or the publication changed the status (specs/18 §6; summary
+  ### {publication, action, status?}).
+  - submission

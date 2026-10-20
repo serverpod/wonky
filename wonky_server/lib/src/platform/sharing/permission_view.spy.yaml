@@ -9,3 +9,5 @@ fields:
   inheritedFromName: String?
   grantedAt: DateTime
   expiresAt: DateTime?
+  ### (M14) The publication a moderator grant comes from (specs/18 §5.1).
+  viaPublication: String?

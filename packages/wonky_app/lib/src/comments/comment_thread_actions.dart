@@ -93,7 +93,8 @@ class ThreadComment {
     return ThreadComment(
       id: '${cm.id}',
       authorId: cm.author?.id,
-      authorName: cm.author?.displayName,
+      // A publication's messages carry its name (specs/18 §5.2).
+      authorName: cm.authorLabel ?? cm.author?.displayName,
       authorColor: cm.author?.avatarColor,
       authorAvatarUrl: cm.author?.avatarUrl,
       authorIsAgent: cm.authorKind.name != 'user',

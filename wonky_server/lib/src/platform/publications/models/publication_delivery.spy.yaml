@@ -1,0 +1,34 @@
+### A webhook in the outbox (specs/18 §7.2): retried with the same id until
+### the blog answers 2xx or the retries run out.
+class: PublicationDelivery
+table: publication_delivery
+serverOnly: true
+fields:
+  publicationId: int, relation(parent=publication, onDelete=Cascade)
+  submissionId: int?, relation(parent=submission, onDelete=SetNull)
+  ### "msg_<uuid>", the `webhook-id` header; stable across retries.
+  webhookId: String
+  type: String
+  ### The submit's sequence of a `submission.submitted`.
+  sequence: int?
+  ### The JSON body.
+  payload: String
+  attempts: int, default=0
+  ### Null once delivered or given up.
+  nextAttemptAt: DateTime?
+  ### Lease of the instance sending it (specs/13 §4).
+  leaseUntil: DateTime?
+  ### HTTP status of the last attempt; 0 = network error or timeout.
+  lastStatus: int?
+  lastError: String?
+  deliveredAt: DateTime?
+  failedAt: DateTime?
+  createdAt: DateTime
+indexes:
+  publication_delivery_webhook_idx:
+    fields: webhookId
+    unique: true
+  publication_delivery_due_idx:
+    fields: nextAttemptAt
+  publication_delivery_publication_idx:
+    fields: publicationId, createdAt

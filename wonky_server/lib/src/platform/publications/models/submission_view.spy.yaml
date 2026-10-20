@@ -1,0 +1,28 @@
+### A document's submission as editors and moderators see it (specs/18 §4).
+class: SubmissionView
+fields:
+  ### "sub_<uuid>".
+  id: String
+  itemUuid: UuidValue
+  status: SubmissionStatus
+  delivery: SubmissionDeliveryState?
+  publicationId: String
+  publicationName: String
+  shownHost: String
+  verified: bool
+  ### The publication still takes submissions (enabled, caller not blocked).
+  accepting: bool
+  fields: PublicationFields
+  termsUrl: String?
+  ### The caller still has to agree to the terms before submitting.
+  consentNeeded: bool
+  values: SubmissionValues
+  publicUrl: String?
+  feedbackThreadUuid: UuidValue?
+  ### The publication's last message (Markdown) and when it came.
+  lastMessage: String?
+  lastMessageAt: DateTime?
+  ### The document revision of the last submit (null before the first).
+  lastSubmittedRevision: int?
+  revisions: List<SubmissionRevisionView>
+  updatedAt: DateTime

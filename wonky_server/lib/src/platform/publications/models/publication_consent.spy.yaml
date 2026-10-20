@@ -1,0 +1,15 @@
+### A user's consent to write for a publication (specs/18 §3). Asked again
+### when the site host, webhook host or terms URL change ([consentKey]).
+class: PublicationConsent
+table: publication_consent
+serverOnly: true
+fields:
+  publicationId: int, relation(parent=publication, onDelete=Cascade)
+  userId: int, relation(parent=user_profile, onDelete=Cascade)
+  ### Hash of what was agreed to (shown host, webhook host, terms URL).
+  consentKey: String
+  at: DateTime
+indexes:
+  publication_consent_idx:
+    fields: publicationId, userId
+    unique: true

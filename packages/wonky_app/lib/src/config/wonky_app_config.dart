@@ -8,6 +8,7 @@ import '../bootstrap/app_urls.dart';
 import '../commands/command.dart';
 import '../mcp_bridge/ui_tool.dart';
 import '../menus/shell_menus.dart';
+import '../publications/start_story.dart';
 import '../shell/shell_services.dart';
 import '../versions/version_renderer.dart';
 import 'home_scope.dart';
@@ -228,12 +229,23 @@ abstract class WonkyAppConfig {
   /// [createItem]; null (Drive) = the app has no `/new` route.
   NewItemRouteHandler? get newItemRoute => primaryKind == null
       ? null
-      : (context, services, request) => createItem(
-          services,
-          parentUuid: request.folderUuid,
-          templateUuid: request.templateUuid,
-          name: request.name,
-        );
+      : (context, services, request) =>
+            // A contributor link starts a story (Write, specs/18 §3).
+            request.publicationId != null &&
+                primaryKind == DriveItemKind.document &&
+                services.repositories.hasPublications
+            ? startPublicationStory(
+                context,
+                services,
+                request.publicationId!,
+                ref: request.ref,
+              )
+            : createItem(
+                services,
+                parentUuid: request.folderUuid,
+                templateUuid: request.templateUuid,
+                name: request.name,
+              );
 
   /// Handles `/import?file=<fileItemUuid>` (*Open with*, Drive 02 §7.2);
   /// null = the app has no import route (Drive, Slides). Write and Sheets

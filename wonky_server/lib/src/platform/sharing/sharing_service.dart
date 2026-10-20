@@ -26,6 +26,7 @@ abstract final class SharingService {
     t.grantedById,
     t.grantedAt,
     t.expiresAt,
+    t.viaPublicationId,
   ];
 
   static final _random = Random.secure();
@@ -129,6 +130,17 @@ abstract final class SharingService {
         best[key] = g;
       }
     }
+    // (M14) Moderator grants show the publication's name (specs/18 §5.1).
+    final publications = {
+      for (final p in await Publication.db.find(
+        session,
+        where: (t) => t.id.inSet(<int>{
+          for (final g in best.values)
+            if (g.viaPublicationId != null) g.viaPublicationId!,
+        }),
+      ))
+        p.id!: p.name,
+    };
     final permissions = [
       for (final g in best.values)
         PermissionView(
@@ -143,6 +155,9 @@ abstract final class SharingService {
               : sourceById[g.inheritedFromId]?.name,
           grantedAt: g.grantedAt,
           expiresAt: g.expiresAt,
+          viaPublication: g.viaPublicationId == null
+              ? null
+              : publications[g.viaPublicationId],
         ),
     ]..sort((a, b) => b.role.index.compareTo(a.role.index));
     final link = await ShareLink.db.findFirstRow(
@@ -282,6 +297,8 @@ abstract final class SharingService {
               grantedById: actor.userId,
               grantedAt: now,
               expiresAt: expiresAt,
+              // A moderator grant shared directly becomes a direct grant.
+              viaPublicationId: null,
             ),
             columns: _grantColumns,
             transaction: tx,
@@ -391,6 +408,7 @@ abstract final class SharingService {
           grantedById: actor.userId,
           grantedAt: nowUtc(),
           expiresAt: expiresAt,
+          viaPublicationId: null,
         ),
         columns: _grantColumns,
       );

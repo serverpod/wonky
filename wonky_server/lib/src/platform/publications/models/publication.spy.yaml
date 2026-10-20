@@ -1,0 +1,43 @@
+### A destination that takes stories from Wonky Write (specs/18 §2, §6),
+### owned by one user (the blog owner). Holds the signing secret, so it
+### never leaves the server; clients see [PublicationSettings] and
+### [PublicationCard].
+class: Publication
+table: publication
+serverOnly: true
+fields:
+  ### "pub_" + 22 url-safe characters; in contributor links, not a secret.
+  publicId: String
+  ownerId: int, relation(parent=user_profile, onDelete=Cascade)
+  name: String
+  ### https origin of the blog (`https://blog.example.com`).
+  siteUrl: String
+  ### https URL the webhooks go to.
+  webhookUrl: String
+  ### The site host proven by `/.well-known/wonky-publications.json`
+  ### (specs/18 §8.2); null = unverified.
+  verifiedHost: String?
+  verifiedAt: DateTime?
+  ### The owner's Write document new stories start from.
+  templateItemId: int?, relation(parent=drive_item, onDelete=SetNull)
+  termsUrl: String?
+  fields: PublicationFields
+  ### "whsec_" + base64 key; must be kept in plain to sign (specs/13 §2).
+  signingSecret: String
+  ### The previous secret signs too until [previousSecretUntil] (rotation).
+  previousSigningSecret: String?
+  previousSecretUntil: DateTime?
+  ### SHA-256 (hex) of the API key "wpk_…", shown once.
+  apiKeyHash: String?
+  apiKeyLast4: String?
+  enabled: bool, default=true
+  createdAt: DateTime
+  updatedAt: DateTime
+indexes:
+  publication_public_idx:
+    fields: publicId
+    unique: true
+  publication_owner_idx:
+    fields: ownerId
+  publication_api_key_idx:
+    fields: apiKeyHash

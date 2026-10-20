@@ -1,0 +1,4 @@
+### Result of starting a story (specs/18 §3 step 3).
+class: SubmissionStarted
+fields:
+  itemUuid: UuidValue

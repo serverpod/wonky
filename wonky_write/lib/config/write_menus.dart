@@ -31,6 +31,13 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
       .insertAfter('shell.file.import', [
         _c('write.insert.fromFile', label: l.cmdInsertFromFile),
       ])
+      // (M14) A story for a publication (specs/18 §4.4); disabled for
+      // documents without a submission.
+      .insertAfter(ShellMenuIds.fileShare, [
+        _c('write.submission.submit', label: l.cmdSubmissionSubmit),
+        _c('write.submission.showStatus', label: l.cmdSubmissionStatus),
+        _c('write.submission.withdraw', label: l.cmdSubmissionWithdraw),
+      ])
       .replace('shell.file.details', [
         _c('write.doc.properties', label: l.cmdDocProperties),
       ])

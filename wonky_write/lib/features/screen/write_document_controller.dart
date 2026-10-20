@@ -26,6 +26,7 @@ import '../export/export_service.dart';
 import '../find_replace/find_controller.dart';
 import '../images/image_services.dart';
 import '../outline/outline_panel.dart';
+import '../publish/submission_controller.dart';
 import '../spellcheck/write_spellcheck.dart';
 import '../themes/document_theme.dart';
 import '../themes/write_fonts.dart';
@@ -163,6 +164,14 @@ class WriteDocumentController extends DocumentController {
 
   /// Spellcheck of this document (Write 04 §28.2).
   late final WriteSpellcheck spellcheck = WriteSpellcheck(controller: editor);
+
+  /// The document's submission to a publication (specs/18 §4); started by
+  /// the screen once the document is open.
+  late final SubmissionController submission = SubmissionController(
+    services: services,
+    itemUuid: session.itemUuid,
+    revision: () => session.revision,
+  );
 
   /// Scrolls a Delta offset into view (set by the screen's editor widget).
   void Function(int offset)? revealOffset;
@@ -702,6 +711,7 @@ class WriteDocumentController extends DocumentController {
     editor.view.removeListener(notifyListeners);
     services.prefs.removeListener(_onPrefs);
     spellcheck.dispose();
+    submission.dispose();
     documentTheme.removeListener(_onTheme);
     images.dispose();
     viewPrefs.dispose();

@@ -1,0 +1,17 @@
+### A moderator of a publication (specs/18 §5.1): gets Commenter on the
+### publication's open submissions. Pending ([userId] null) until the
+### email signs up.
+class: PublicationModerator
+table: publication_moderator
+serverOnly: true
+fields:
+  publicationId: int, relation(parent=publication, onDelete=Cascade)
+  userId: int?, relation(parent=user_profile, onDelete=Cascade)
+  ### Lower-case email; kept after sign-up for display.
+  email: String
+indexes:
+  publication_moderator_idx:
+    fields: publicationId, email
+    unique: true
+  publication_moderator_user_idx:
+    fields: userId

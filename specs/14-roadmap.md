@@ -251,6 +251,17 @@ when the cache can't be opened and before *Clear local data* (15), the `cascaded
 (P2, 17 part 6 §6), and character-level merge of concurrent text edits in Slides
 ([Slides 02 §4.5](wonky_slides/02-data-model.md)).
 
+### 2.1c Publications & submissions (M14, built)
+
+| Milestone | Goal | Exit criteria |
+|-----------|------|---------------|
+| **M14 · Publications** ([18](18-publications-and-submissions.md), PUB-1…PUB-8) | Blogs register a publication and link to Wonky Write; contributors write and *Submit* to the blog's review queue; moderators comment in the document; the blog's decisions and messages come back as a feedback thread and notifications | J-P1 green against a fake blog receiver; API access matrix and transitions tested; signing vectors and SSRF matrix green; light/dark goldens of the consent dialog, submit dialog, chip and settings section; developer guide verified by building the sample receiver |
+
+**M14 status** (2026-10-20): built, see [18 §13](18-publications-and-submissions.md). Server
+suites (flow, API over HTTP, owner endpoints, rules, the guide's signing vector) and client
+suites (start flow, settings section, Write title row, submit, disconnect undo) are green.
+Open: J-P1 E2E, goldens, a walkthrough against a live server.
+
 ### 2.2 Executing the plan with parallel agents (v2)
 
 The app plans list **work packages** (Drive 05 §4: D-1…D-18; Slides 12 §4: SL-1…SL-45). Each

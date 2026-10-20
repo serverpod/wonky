@@ -213,8 +213,53 @@ String activityText(WonkyAppLocalizations l, ActivityEventView e) {
     ActivityType.restored => l.activityRestored(who),
     ActivityType.exported => l.activityExported(who),
     ActivityType.uploaded => l.activityUploaded(who),
+    ActivityType.submission => _submissionActivity(l, e, who),
   };
 }
+
+/// (M14) Submitted to, withdrawn from or disconnected from a publication,
+/// or the publication's status change (specs/18 §6).
+String _submissionActivity(
+  WonkyAppLocalizations l,
+  ActivityEventView e,
+  String who,
+) {
+  Map<String, Object?> m;
+  try {
+    final v = jsonDecode(e.summary);
+    m = v is Map ? v.cast<String, Object?>() : const {};
+  } on FormatException {
+    m = const {};
+  }
+  final pub = '${m['publication'] ?? ''}';
+  return switch (m['action']) {
+    'withdrawn' => l.activitySubmissionWithdrawn(who, pub),
+    'disconnected' => l.activitySubmissionDisconnected(who, pub),
+    'reconnected' => l.activitySubmissionReconnected(who, pub),
+    'status' => l.activitySubmissionStatus(
+      pub,
+      submissionStatusLabel(
+        l,
+        SubmissionStatus.values.asNameMap()['${m['status']}'] ??
+            SubmissionStatus.inReview,
+      ),
+    ),
+    _ => l.activitySubmitted(who, pub),
+  };
+}
+
+/// The label of a submission status (specs/18 §2.1).
+String submissionStatusLabel(
+  WonkyAppLocalizations l,
+  SubmissionStatus status,
+) => switch (status) {
+  SubmissionStatus.draft => l.submissionStatusDraft,
+  SubmissionStatus.inReview => l.submissionStatusInReview,
+  SubmissionStatus.changesRequested => l.submissionStatusChangesRequested,
+  SubmissionStatus.declined => l.submissionStatusDeclined,
+  SubmissionStatus.published => l.submissionStatusPublished,
+  SubmissionStatus.withdrawn => l.submissionStatusWithdrawn,
+};
 
 /// The detail line of an edit event (Slides 09 §5): "3 slides · 1 slide
 /// deleted · theme changed · with Claude", from the counters and sets of

@@ -1,0 +1,24 @@
+### The owner's view of a publication (specs/18 §8.1). Never holds secrets.
+class: PublicationSettings
+fields:
+  publicId: String
+  name: String
+  siteUrl: String
+  webhookUrl: String
+  verifiedHost: String?
+  verifiedAt: DateTime?
+  templateItemUuid: UuidValue?
+  templateName: String?
+  termsUrl: String?
+  fields: PublicationFields
+  moderators: List<PublicationModeratorView>
+  hasApiKey: bool
+  apiKeyLast4: String?
+  ### Set while the previous signing secret still signs.
+  previousSecretUntil: DateTime?
+  enabled: bool
+  ### `https://<host>/write/new?publication=<publicId>`.
+  contributorLink: String
+  ### Submissions in review or with changes requested.
+  openSubmissionCount: int
+  createdAt: DateTime

@@ -13,6 +13,8 @@ fields:
   grantedById: int
   grantedAt: DateTime
   expiresAt: DateTime?
+  ### (M14) Moderator grant of a submission (specs/18 §5.1); removed with it.
+  viaPublicationId: int?, relation(parent=publication, onDelete=Cascade)
 indexes:
   perm_item_user_idx:
     fields: itemId, userId, inheritedFromId, invitedEmail

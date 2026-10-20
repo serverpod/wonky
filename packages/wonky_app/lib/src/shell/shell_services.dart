@@ -35,6 +35,8 @@ import '../mcp_bridge/mcp_control.dart';
 import '../storage/storage_controller.dart';
 import '../storage/quota_error_presenter.dart';
 import '../board/board_repository.dart';
+import '../publications/publication_repository.dart';
+import '../publications/submission_undo.dart';
 import '../storage/storage_checks.dart';
 import '../menus/shell_menus.dart';
 import '../undo/drive_undo.dart';
@@ -68,8 +70,10 @@ class ShellRepositories {
     required this.meta,
     ActivityRepository? activity,
     BoardRepository? board,
+    PublicationRepository? publications,
   }) : _activity = activity, // ignore: prefer_initializing_formals
-       _board = board; // ignore: prefer_initializing_formals
+       _board = board, // ignore: prefer_initializing_formals
+       _publications = publications; // ignore: prefer_initializing_formals
 
   final DriveRepository drive;
   final UserRepository users;
@@ -82,6 +86,16 @@ class ShellRepositories {
   final MetaRepository meta;
   final ActivityRepository? _activity;
   final BoardRepository? _board;
+  final PublicationRepository? _publications;
+
+  /// Publications and submissions (specs/18); throws when the shell was
+  /// built without one.
+  PublicationRepository get publications =>
+      _publications ??
+      (throw StateError('No PublicationRepository installed.'));
+
+  /// Whether [publications] is available.
+  bool get hasPublications => _publications != null;
 
   /// Bugs & improvements (specs/16); throws when the shell was built
   /// without one.
@@ -130,6 +144,9 @@ class ShellServices implements ActiveDocumentHost {
     );
     undo.registerHandler(DriveUndoHandler(repositories.drive));
     undo.registerHandler(CommentsUndoHandler(this));
+    if (repositories.hasPublications) {
+      undo.registerHandler(SubmissionUndoHandler(this));
+    }
     undo.registerHandler(VersionsUndoHandler(this));
     quotaErrors.attach();
   }

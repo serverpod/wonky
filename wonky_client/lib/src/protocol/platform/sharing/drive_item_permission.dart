@@ -27,6 +27,7 @@ abstract class DriveItemPermission
     required this.grantedById,
     required this.grantedAt,
     this.expiresAt,
+    this.viaPublicationId,
   });
 
   factory DriveItemPermission({
@@ -39,6 +40,7 @@ abstract class DriveItemPermission
     required int grantedById,
     required DateTime grantedAt,
     DateTime? expiresAt,
+    int? viaPublicationId,
   }) = _DriveItemPermissionImpl;
 
   factory DriveItemPermission.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -58,6 +60,7 @@ abstract class DriveItemPermission
       expiresAt: jsonSerialization['expiresAt'] == null
           ? null
           : _isc.DateTimeJsonExtension.fromJson(jsonSerialization['expiresAt']),
+      viaPublicationId: jsonSerialization['viaPublicationId'] as int?,
     );
   }
 
@@ -84,6 +87,9 @@ abstract class DriveItemPermission
 
   DateTime? expiresAt;
 
+  /// (M14) Moderator grant of a submission (specs/18 §5.1); removed with it.
+  int? viaPublicationId;
+
   /// Returns a shallow copy of this [DriveItemPermission]
   /// with some or all fields replaced by the given arguments.
   @_isc.useResult
@@ -97,6 +103,7 @@ abstract class DriveItemPermission
     int? grantedById,
     DateTime? grantedAt,
     DateTime? expiresAt = const _isc.$UndefinedDateTime(),
+    int? viaPublicationId,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -111,6 +118,7 @@ abstract class DriveItemPermission
       'grantedById': grantedById,
       'grantedAt': grantedAt.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
+      if (viaPublicationId != null) 'viaPublicationId': viaPublicationId,
     };
   }
 
@@ -127,6 +135,7 @@ abstract class DriveItemPermission
       'grantedById': grantedById,
       'grantedAt': grantedAt.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
+      if (viaPublicationId != null) 'viaPublicationId': viaPublicationId,
     };
   }
 
@@ -149,6 +158,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
     required int grantedById,
     required DateTime grantedAt,
     DateTime? expiresAt,
+    int? viaPublicationId,
   }) : super._(
          id: id,
          itemId: itemId,
@@ -159,6 +169,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
          grantedById: grantedById,
          grantedAt: grantedAt,
          expiresAt: expiresAt,
+         viaPublicationId: viaPublicationId,
        );
 
   /// Returns a shallow copy of this [DriveItemPermission]
@@ -175,6 +186,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
     int? grantedById,
     DateTime? grantedAt,
     DateTime? expiresAt = const _isc.$UndefinedDateTime(),
+    Object? viaPublicationId = _Undefined,
   }) {
     return DriveItemPermission(
       id: id is int? ? id : this.id,
@@ -190,6 +202,9 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
       expiresAt: expiresAt is _isc.UndefinedSentinel
           ? this.expiresAt
           : expiresAt,
+      viaPublicationId: viaPublicationId is int?
+          ? viaPublicationId
+          : this.viaPublicationId,
     );
   }
 }

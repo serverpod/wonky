@@ -1,0 +1,12 @@
+### Lifecycle of a submission (specs/18 §2.1).
+enum: SubmissionStatus
+serialized: byName
+values:
+  ### Started from the link, never submitted.
+  - draft
+  - inReview
+  - changesRequested
+  ### Final for this submission.
+  - declined
+  - published
+  - withdrawn

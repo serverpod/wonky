@@ -14,3 +14,6 @@ fields:
   editedAt: DateTime?
   deleted: bool
   systemEvent: CommentSystemEvent?
+  ### (M14) Name shown instead of a user: the publication of a message
+  ### (specs/18 §5.2).
+  authorLabel: String?

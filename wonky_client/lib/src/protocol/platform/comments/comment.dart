@@ -30,6 +30,7 @@ abstract class Comment
     this.editedAt,
     this.deletedAt,
     this.systemEvent,
+    this.publicationId,
   }) : reactions = reactions ?? '{}';
 
   factory Comment({
@@ -45,6 +46,7 @@ abstract class Comment
     DateTime? editedAt,
     DateTime? deletedAt,
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    int? publicationId,
   }) = _CommentImpl;
 
   factory Comment.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -77,6 +79,7 @@ abstract class Comment
           : _ikzs0dm0.CommentSystemEvent.fromJson(
               (jsonSerialization['systemEvent'] as String),
             ),
+      publicationId: jsonSerialization['publicationId'] as int?,
     );
   }
 
@@ -113,6 +116,9 @@ abstract class Comment
 
   _ikzs0dm0.CommentSystemEvent? systemEvent;
 
+  /// (M14) A publication's message (authorKind system), specs/18 §5.2.
+  int? publicationId;
+
   /// Returns a shallow copy of this [Comment]
   /// with some or all fields replaced by the given arguments.
   @_isc.useResult
@@ -129,6 +135,7 @@ abstract class Comment
     DateTime? editedAt = const _isc.$UndefinedDateTime(),
     DateTime? deletedAt = const _isc.$UndefinedDateTime(),
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    int? publicationId,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -146,6 +153,7 @@ abstract class Comment
       if (editedAt != null) 'editedAt': editedAt?.toJson(),
       if (deletedAt != null) 'deletedAt': deletedAt?.toJson(),
       if (systemEvent != null) 'systemEvent': systemEvent?.toJson(),
+      if (publicationId != null) 'publicationId': publicationId,
     };
   }
 
@@ -165,6 +173,7 @@ abstract class Comment
       if (editedAt != null) 'editedAt': editedAt?.toJson(),
       if (deletedAt != null) 'deletedAt': deletedAt?.toJson(),
       if (systemEvent != null) 'systemEvent': systemEvent?.toJson(),
+      if (publicationId != null) 'publicationId': publicationId,
     };
   }
 
@@ -190,6 +199,7 @@ class _CommentImpl extends Comment {
     DateTime? editedAt,
     DateTime? deletedAt,
     _ikzs0dm0.CommentSystemEvent? systemEvent,
+    int? publicationId,
   }) : super._(
          id: id,
          threadId: threadId,
@@ -203,6 +213,7 @@ class _CommentImpl extends Comment {
          editedAt: editedAt,
          deletedAt: deletedAt,
          systemEvent: systemEvent,
+         publicationId: publicationId,
        );
 
   /// Returns a shallow copy of this [Comment]
@@ -222,6 +233,7 @@ class _CommentImpl extends Comment {
     DateTime? editedAt = const _isc.$UndefinedDateTime(),
     DateTime? deletedAt = const _isc.$UndefinedDateTime(),
     Object? systemEvent = _Undefined,
+    Object? publicationId = _Undefined,
   }) {
     return Comment(
       id: id is int? ? id : this.id,
@@ -240,6 +252,7 @@ class _CommentImpl extends Comment {
       systemEvent: systemEvent is _ikzs0dm0.CommentSystemEvent?
           ? systemEvent
           : this.systemEvent,
+      publicationId: publicationId is int? ? publicationId : this.publicationId,
     );
   }
 }

@@ -7995,6 +7995,648 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Reviewed at {sha}'**
   String boardReviewedSha(String sha);
+
+  /// Wonky Work settings section: blogs that take stories from Wonky Write (specs/18).
+  ///
+  /// In en, this message translates to:
+  /// **'Publications'**
+  String get settingsPublications;
+
+  /// No description provided for @pubSectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Let people write for your blog in Wonky Write and send stories to your review queue with one button.'**
+  String get pubSectionHint;
+
+  /// No description provided for @pubNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New publication'**
+  String get pubNew;
+
+  /// No description provided for @pubNewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Wonky sends submitted stories to your webhook. You get the signing secret once, after you create the publication.'**
+  String get pubNewHint;
+
+  /// No description provided for @pubEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit “{name}”'**
+  String pubEdit(String name);
+
+  /// No description provided for @pubEditButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit…'**
+  String get pubEditButton;
+
+  /// Opens the integration guide for blog owners.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer guide'**
+  String get pubGuide;
+
+  /// No description provided for @pubEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no publications yet.'**
+  String get pubEmpty;
+
+  /// No description provided for @pubName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get pubName;
+
+  /// No description provided for @pubSiteUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Site URL'**
+  String get pubSiteUrl;
+
+  /// No description provided for @pubWebhookUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Webhook URL'**
+  String get pubWebhookUrl;
+
+  /// No description provided for @pubTermsUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Contributor terms URL (optional)'**
+  String get pubTermsUrl;
+
+  /// No description provided for @pubTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Template document (optional)'**
+  String get pubTemplate;
+
+  /// No description provided for @pubTemplateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a link to one of your Wonky Write documents'**
+  String get pubTemplateHint;
+
+  /// No description provided for @pubTemplateInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the link of a Wonky Write document.'**
+  String get pubTemplateInvalid;
+
+  /// No description provided for @pubRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required.'**
+  String get pubRequired;
+
+  /// No description provided for @pubHttpsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Use an https:// address.'**
+  String get pubHttpsOnly;
+
+  /// No description provided for @pubFieldSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get pubFieldSummary;
+
+  /// No description provided for @pubFieldTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get pubFieldTags;
+
+  /// No description provided for @pubAllowedTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed tags (optional)'**
+  String get pubAllowedTags;
+
+  /// No description provided for @pubAllowedTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma separated; empty allows any tag'**
+  String get pubAllowedTagsHint;
+
+  /// No description provided for @pubFieldCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover image'**
+  String get pubFieldCover;
+
+  /// No description provided for @pubFieldBio.
+  ///
+  /// In en, this message translates to:
+  /// **'Author bio'**
+  String get pubFieldBio;
+
+  /// No description provided for @pubFieldNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note to the moderators'**
+  String get pubFieldNote;
+
+  /// No description provided for @pubFieldOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Not asked'**
+  String get pubFieldOff;
+
+  /// No description provided for @pubFieldOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get pubFieldOptional;
+
+  /// No description provided for @pubFieldRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get pubFieldRequired;
+
+  /// No description provided for @pubEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept new stories'**
+  String get pubEnabled;
+
+  /// No description provided for @pubHostVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} ✓'**
+  String pubHostVerified(String host);
+
+  /// No description provided for @pubHostUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} (not verified)'**
+  String pubHostUnverified(String host);
+
+  /// No description provided for @pubDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not accepting stories'**
+  String get pubDisabled;
+
+  /// No description provided for @pubOpenCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No stories in review} =1{1 story in review} other{{count} stories in review}}'**
+  String pubOpenCount(int count);
+
+  /// No description provided for @pubManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get pubManage;
+
+  /// No description provided for @pubHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get pubHide;
+
+  /// No description provided for @pubContributorLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Contributor link (put it behind “Write for us”)'**
+  String get pubContributorLink;
+
+  /// No description provided for @pubId.
+  ///
+  /// In en, this message translates to:
+  /// **'Publication id'**
+  String get pubId;
+
+  /// No description provided for @pubCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get pubCopy;
+
+  /// No description provided for @pubCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get pubCopied;
+
+  /// No description provided for @pubDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get pubDelete;
+
+  /// No description provided for @pubModerators.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderators'**
+  String get pubModerators;
+
+  /// No description provided for @pubModeratorsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderators get comment access to stories when they are submitted. Enter the email addresses of their Wonky accounts, one per line.'**
+  String get pubModeratorsHint;
+
+  /// No description provided for @pubModeratorEmails.
+  ///
+  /// In en, this message translates to:
+  /// **'Email addresses'**
+  String get pubModeratorEmails;
+
+  /// No description provided for @pubModeratorsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Add moderators…} =1{1 moderator…} other{{count} moderators…}}'**
+  String pubModeratorsButton(int count);
+
+  /// No description provided for @pubVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification'**
+  String get pubVerification;
+
+  /// No description provided for @pubVerifyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Serve this at https://{host}/.well-known/wonky-publications.json, then verify. Until then contributors see your webhook\'s host and a warning.'**
+  String pubVerifyHint(String host);
+
+  /// No description provided for @pubVerifiedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} verified {date}'**
+  String pubVerifiedAt(String host, String date);
+
+  /// No description provided for @pubVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get pubVerify;
+
+  /// No description provided for @pubVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} is verified'**
+  String pubVerified(String host);
+
+  /// No description provided for @pubVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not verified'**
+  String get pubVerifyFailed;
+
+  /// No description provided for @pubCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing secret and API key'**
+  String get pubCredentials;
+
+  /// No description provided for @pubSecretHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Webhooks are signed with the signing secret. Your server calls the publication API with the API key.'**
+  String get pubSecretHint;
+
+  /// No description provided for @pubRotationActive.
+  ///
+  /// In en, this message translates to:
+  /// **'The previous signing secret still signs until {date}.'**
+  String pubRotationActive(String date);
+
+  /// No description provided for @pubRotateSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate signing secret'**
+  String get pubRotateSecret;
+
+  /// No description provided for @pubRotateSecretBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You get a new secret. For 24 hours, webhooks carry signatures of the old and the new secret.'**
+  String get pubRotateSecretBody;
+
+  /// No description provided for @pubRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate'**
+  String get pubRotate;
+
+  /// No description provided for @pubCreateApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Create API key'**
+  String get pubCreateApiKey;
+
+  /// No description provided for @pubRotateApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate API key'**
+  String get pubRotateApiKey;
+
+  /// No description provided for @pubRotateApiKeyLast4.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate API key (…{last4})'**
+  String pubRotateApiKeyLast4(String last4);
+
+  /// No description provided for @pubRotateApiKeyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The current key stops working at once.'**
+  String get pubRotateApiKeyBody;
+
+  /// No description provided for @pubApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'API key'**
+  String get pubApiKey;
+
+  /// No description provided for @pubSigningSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing secret'**
+  String get pubSigningSecret;
+
+  /// No description provided for @pubSecretOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the {what} now. It isn\'t shown again.'**
+  String pubSecretOnce(String what);
+
+  /// No description provided for @pubSecretSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve stored it'**
+  String get pubSecretSaved;
+
+  /// No description provided for @pubDeliveries.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliveries'**
+  String get pubDeliveries;
+
+  /// No description provided for @pubSendTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send test'**
+  String get pubSendTest;
+
+  /// No description provided for @pubTestOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Your webhook accepted the test.'**
+  String get pubTestOk;
+
+  /// No description provided for @pubTestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your webhook didn\'t accept the test'**
+  String get pubTestFailed;
+
+  /// No description provided for @pubNoDeliveries.
+  ///
+  /// In en, this message translates to:
+  /// **'No webhooks sent yet.'**
+  String get pubNoDeliveries;
+
+  /// No description provided for @pubDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered (HTTP {status_code})'**
+  String pubDelivered(int status_code);
+
+  /// No description provided for @pubDeliveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed: {error}'**
+  String pubDeliveryFailed(String error);
+
+  /// No description provided for @pubDeliveryQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get pubDeliveryQueued;
+
+  /// No description provided for @pubDeliveryRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'{error} · next try {date}'**
+  String pubDeliveryRetrying(String error, String date);
+
+  /// No description provided for @pubResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get pubResend;
+
+  /// No description provided for @pubDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”?'**
+  String pubDeleteTitle(String name);
+
+  /// No description provided for @pubDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Contributors\' documents stay in their drives, but they can\'t submit them anymore, and moderators lose access. Your blog gets no webhook about it.'**
+  String get pubDeleteBody;
+
+  /// Notification settings: messages and status changes from blogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Stories for publications'**
+  String get notifySubmissions;
+
+  /// No description provided for @notifySubmissionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Status changes and messages from blogs you write for'**
+  String get notifySubmissionsHint;
+
+  /// No description provided for @notifSubmissionChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} asked for changes to “{what}”'**
+  String notifSubmissionChanges(String publication, String what);
+
+  /// No description provided for @notifSubmissionDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} declined “{what}”'**
+  String notifSubmissionDeclined(String publication, String what);
+
+  /// No description provided for @notifSubmissionPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} published “{what}”'**
+  String notifSubmissionPublished(String publication, String what);
+
+  /// No description provided for @notifSubmissionInReview.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} is reviewing “{what}”'**
+  String notifSubmissionInReview(String publication, String what);
+
+  /// No description provided for @notifSubmissionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} sent a message about “{what}”'**
+  String notifSubmissionMessage(String publication, String what);
+
+  /// No description provided for @notifSubmissionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} couldn\'t receive “{what}”'**
+  String notifSubmissionFailed(String publication, String what);
+
+  /// No description provided for @shareModerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderator · {publication}'**
+  String shareModerator(String publication);
+
+  /// No description provided for @activitySubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'{who} submitted it to {publication}'**
+  String activitySubmitted(String who, String publication);
+
+  /// No description provided for @activitySubmissionWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'{who} withdrew it from {publication}'**
+  String activitySubmissionWithdrawn(String who, String publication);
+
+  /// No description provided for @activitySubmissionDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'{who} disconnected it from {publication}'**
+  String activitySubmissionDisconnected(String who, String publication);
+
+  /// No description provided for @activitySubmissionReconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'{who} connected it to {publication} again'**
+  String activitySubmissionReconnected(String who, String publication);
+
+  /// No description provided for @activitySubmissionStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication}: {status}'**
+  String activitySubmissionStatus(String publication, String status);
+
+  /// Status of a story for a publication.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get submissionStatusDraft;
+
+  /// No description provided for @submissionStatusInReview.
+  ///
+  /// In en, this message translates to:
+  /// **'In review'**
+  String get submissionStatusInReview;
+
+  /// No description provided for @submissionStatusChangesRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes requested'**
+  String get submissionStatusChangesRequested;
+
+  /// No description provided for @submissionStatusDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Declined'**
+  String get submissionStatusDeclined;
+
+  /// No description provided for @submissionStatusPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get submissionStatusPublished;
+
+  /// No description provided for @submissionStatusWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawn'**
+  String get submissionStatusWithdrawn;
+
+  /// Consent dialog of a contributor link (specs/18 §3).
+  ///
+  /// In en, this message translates to:
+  /// **'Write for {name}'**
+  String pubStartTitle(String name);
+
+  /// No description provided for @pubStartHostVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} ✓'**
+  String pubStartHostVerified(String host);
+
+  /// No description provided for @pubStartHostUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Wonky hasn\'t verified that this publication belongs to {site}. Your story is sent to {webhook}.'**
+  String pubStartHostUnverified(String site, String webhook);
+
+  /// No description provided for @pubStartConsent.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll write in your own Wonky document. When you press Submit, {name} receives the text and images of the document, the fields you fill in and your display name, and its moderators can read and comment on the document.'**
+  String pubStartConsent(String name);
+
+  /// No description provided for @pubStartWhich.
+  ///
+  /// In en, this message translates to:
+  /// **'Story'**
+  String get pubStartWhich;
+
+  /// No description provided for @pubStartContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue “{name}”'**
+  String pubStartContinue(String name);
+
+  /// No description provided for @pubStartNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new story'**
+  String get pubStartNew;
+
+  /// No description provided for @pubStartTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to {name}\'s contributor terms ({url})'**
+  String pubStartTerms(String name, String url);
+
+  /// No description provided for @pubStartTermsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Agree to {name}\'s contributor terms to start.'**
+  String pubStartTermsRequired(String name);
+
+  /// No description provided for @pubStartButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Start writing'**
+  String get pubStartButton;
+
+  /// No description provided for @pubStartBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} isn\'t accepting stories from you.'**
+  String pubStartBlocked(String name);
+
+  /// No description provided for @pubStartClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} isn\'t accepting stories right now.'**
+  String pubStartClosed(String name);
 }
 
 class _WonkyAppLocalizationsDelegate

@@ -87,6 +87,7 @@ Overlays (dialogs, palette, toasts, offline banner, MCP pill) per suite 03 §3.
 | — spacer — | | |
 | Presence | `PresenceAvatarStack` | Click avatar → `write.nav.goToCollaborator`; ⋮ → Follow (`write.nav.follow`) |
 | Bugs & improvements (M12) | `ShadIconButton.ghost` (Lucide `messageSquarePlus`, tooltip "Bugs & improvements"; replaces *Report a bug*) | `shell.board.report` — report dialog, suite 16 §4.2; hidden below 640 px (still in Help) |
+| Submission status, Submit (M14) | `SubmissionStatusChip`, `ShadButton.secondary` (Lucide `send`) | Only for documents with a submission: status popover, `write.submission.submit` — [18 §4](../18-publications-and-submissions.md) |
 | Share | `ShadButton` primary (lock / globe / users icon by link state) | `shell.sharing.open` |
 | Account | `ShadAvatar` menu | suite 04; (v2) *Write settings*, *Wonky Work settings*, *Open ▸* the four apps, *Sign out* |
 
@@ -263,6 +264,7 @@ Write behaviour noted.
 | ─ | | | | |
 | Share ▸ Share with others *(shell)* | `shell.sharing.open` | — | — | always (role decides dialog content) |
 | Share ▸ Copy link *(shell)* | `shell.sharing.copyLink` | — | — | always |
+| Submit to <publication>… (M14) | `write.submission.submit` (+ *Submission status*, *Withdraw submission*; [18 §4.4](../18-publications-and-submissions.md)) | — | — | has a submission, role ≥ editor, `online` |
 | Download ▸ Markdown (.md) | `write.file.download {format: md}` | — | — | `copyAllowed` |
 | Download ▸ Markdown with images (.zip) | `{format: mdZip}` | — | — | same |
 | Download ▸ PDF (.pdf) | `{format: pdf}` | — | — | same |

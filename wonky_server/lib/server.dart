@@ -30,6 +30,7 @@ import 'src/web/routes/app_config_route.dart';
 import 'src/web/routes/github_webhook_route.dart';
 import 'src/web/routes/improvements_redirect_route.dart';
 import 'src/web/routes/invite_route.dart';
+import 'src/web/routes/publication_api_route.dart';
 import 'src/web/routes/root_redirect_route.dart';
 import 'src/web/web_apps.dart';
 import 'src/write/themes/theme_service.dart';
@@ -177,6 +178,8 @@ void _configureWebServer(Serverpod pod) {
   // Webhooks of the Bugs & improvements GitHub App (specs/16 §13.3, README
   // in lib/src/platform/board/github/).
   pod.webServer.addRoute(GithubWebhookRoute(), '/api/github/webhook');
+  // The API blogs call with their publication's key (specs/18 §7.3).
+  pod.webServer.addRoute(PublicationApiRoute(), '/api/pub/v1/**');
   // Wonky Drive file bytes (Drive 02 §3.3, §8; suite 13 §6): token-bound
   // downloads with forced headers and the PUT upload route.
   FileRoutes.register(pod.webServer);
@@ -292,6 +295,12 @@ final _jobs = <String, (String, RecurringJob)>{
   'wonky.boardSweep': (
     '*/10 * * * *',
     (c, id, cron) => c.callRecurring(identifier: id).cron(cron).board.sweep(),
+  ),
+  // Publication webhooks due for a retry (specs/18 §7.2).
+  'wonky.publicationSweep': (
+    '* * * * *',
+    (c, id, cron) =>
+        c.callRecurring(identifier: id).cron(cron).publications.sweep(),
   ),
 };
 

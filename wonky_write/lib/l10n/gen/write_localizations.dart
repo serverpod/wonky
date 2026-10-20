@@ -8204,6 +8204,294 @@ abstract class WriteLocalizations {
   /// In en, this message translates to:
   /// **'Continue writing'**
   String get slashContinueWriting;
+
+  /// File menu / command: submit the story to the blog it was started for (specs/18 §4.4).
+  ///
+  /// In en, this message translates to:
+  /// **'Submit to publication…'**
+  String get cmdSubmissionSubmit;
+
+  /// No description provided for @cmdSubmissionStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Submission status'**
+  String get cmdSubmissionStatus;
+
+  /// No description provided for @cmdSubmissionWithdraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw submission'**
+  String get cmdSubmissionWithdraw;
+
+  /// No description provided for @cmdSubmissionDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect from publication'**
+  String get cmdSubmissionDisconnect;
+
+  /// Title row button: sends the story to the publication's review queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get submitButton;
+
+  /// No description provided for @resubmitButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Resubmit'**
+  String get resubmitButton;
+
+  /// No description provided for @submitUpdateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit update'**
+  String get submitUpdateButton;
+
+  /// No description provided for @submitTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit to {publication}'**
+  String submitTooltip(String publication);
+
+  /// No description provided for @submittingChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitting…'**
+  String get submittingChip;
+
+  /// No description provided for @submitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit to {publication}'**
+  String submitTitle(String publication);
+
+  /// No description provided for @submitHostVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} ✓'**
+  String submitHostVerified(String host);
+
+  /// No description provided for @submitHostUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to {host} (Wonky hasn\'t verified this publication).'**
+  String submitHostUnverified(String host);
+
+  /// No description provided for @submitNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} (not verified)'**
+  String submitNotVerified(String host);
+
+  /// No description provided for @submitOpenSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 open suggestion isn\'t included: the original text is sent.} other{{count} open suggestions aren\'t included: the original text is sent.}}'**
+  String submitOpenSuggestions(int count);
+
+  /// No description provided for @submitCommentsStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments stay in Wonky. The moderators can read them.'**
+  String get submitCommentsStay;
+
+  /// No description provided for @submitFieldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get submitFieldTitle;
+
+  /// No description provided for @submitFieldSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get submitFieldSummary;
+
+  /// No description provided for @submitFieldTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get submitFieldTags;
+
+  /// No description provided for @submitFieldCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover image'**
+  String get submitFieldCover;
+
+  /// No description provided for @submitFieldBio.
+  ///
+  /// In en, this message translates to:
+  /// **'Author bio'**
+  String get submitFieldBio;
+
+  /// No description provided for @submitFieldNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note to the moderators'**
+  String get submitFieldNote;
+
+  /// No description provided for @submitOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} (optional)'**
+  String submitOptional(String label);
+
+  /// No description provided for @submitRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required.'**
+  String get submitRequired;
+
+  /// No description provided for @submitTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma separated'**
+  String get submitTagsHint;
+
+  /// No description provided for @submitTagsFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma separated, from: {tags}'**
+  String submitTagsFrom(String tags);
+
+  /// No description provided for @submitNoCover.
+  ///
+  /// In en, this message translates to:
+  /// **'No cover image'**
+  String get submitNoCover;
+
+  /// No description provided for @submitImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image {count}'**
+  String submitImage(int count);
+
+  /// No description provided for @submitImageAlt.
+  ///
+  /// In en, this message translates to:
+  /// **'Image {count}: {alt}'**
+  String submitImageAlt(int count, String alt);
+
+  /// No description provided for @submitTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to {publication}\'s contributor terms ({url})'**
+  String submitTerms(String publication, String url);
+
+  /// No description provided for @submitTermsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Agree to {publication}\'s contributor terms to submit.'**
+  String submitTermsRequired(String publication);
+
+  /// No description provided for @submitCoverRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a cover image.'**
+  String get submitCoverRequired;
+
+  /// No description provided for @submitDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted to {publication}'**
+  String submitDone(String publication);
+
+  /// No description provided for @submitPending.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} didn\'t answer yet. We\'ll keep trying.'**
+  String submitPending(String publication);
+
+  /// No description provided for @submitDeliveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} couldn\'t receive your submission. Try again later.'**
+  String submitDeliveryFailed(String publication);
+
+  /// No description provided for @submittedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted by {name} · {date} · #{count}'**
+  String submittedBy(String name, String date, int count);
+
+  /// No description provided for @submitOpenThread.
+  ///
+  /// In en, this message translates to:
+  /// **'Open messages'**
+  String get submitOpenThread;
+
+  /// No description provided for @submitViewPost.
+  ///
+  /// In en, this message translates to:
+  /// **'View post'**
+  String get submitViewPost;
+
+  /// No description provided for @submitDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect from {publication}'**
+  String submitDisconnect(String publication);
+
+  /// No description provided for @submitReasonNone.
+  ///
+  /// In en, this message translates to:
+  /// **'This document isn\'t a story for a publication.'**
+  String get submitReasonNone;
+
+  /// No description provided for @submitReasonOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitting needs a connection.'**
+  String get submitReasonOffline;
+
+  /// No description provided for @submitReasonClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} isn\'t accepting stories right now.'**
+  String submitReasonClosed(String publication);
+
+  /// No description provided for @submitReasonDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} declined this story.'**
+  String submitReasonDeclined(String publication);
+
+  /// No description provided for @submitReasonNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes since you submitted.'**
+  String get submitReasonNoChanges;
+
+  /// No description provided for @submitReasonNotInReview.
+  ///
+  /// In en, this message translates to:
+  /// **'The story isn\'t in review.'**
+  String get submitReasonNotInReview;
+
+  /// No description provided for @submitReasonWithdrawFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw the story before you disconnect it.'**
+  String get submitReasonWithdrawFirst;
+
+  /// No description provided for @withdrawTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw from {publication}?'**
+  String withdrawTitle(String publication);
+
+  /// No description provided for @withdrawBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} is told, and its moderators lose access to the document. You can submit it again later.'**
+  String withdrawBody(String publication);
+
+  /// No description provided for @withdrawButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get withdrawButton;
 }
 
 class _WriteLocalizationsDelegate

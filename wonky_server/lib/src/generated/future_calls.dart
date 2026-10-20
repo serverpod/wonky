@@ -20,6 +20,7 @@ import '../platform/files/file_preview_future_call.dart' as _iw6v1fyh;
 import '../platform/jobs/maintenance_future_call.dart' as _imgsvm9k;
 import '../platform/notifications/notification_email_future_call.dart'
     as _i1dis1nt;
+import '../platform/publications/publication_future_call.dart' as _igy9pnc4;
 import '../platform/sharing/acl_future_call.dart' as _ivytsclb;
 import '../platform/storage/storage_future_call.dart' as _iel4dsm1;
 import '../sheets/scripts/script_scheduler_future_call.dart' as _iq0nfb3f;
@@ -39,6 +40,8 @@ import 'future_calls_generated_models/file_preview_future_call_generate_model.da
     as _ilpvgw0t;
 import 'future_calls_generated_models/notification_email_future_call_send_model.dart'
     as _inb6x2l0;
+import 'future_calls_generated_models/publications_future_call_deliver_model.dart'
+    as _il37cz87;
 import 'future_calls_generated_models/storage_future_call_refresh_item_size_model.dart'
     as _io4auc29;
 
@@ -99,6 +102,8 @@ class FutureCalls extends _is.FutureCallDispatch<_FutureCallRef> {
       'MaintenanceExpireGrantsFutureCall': MaintenanceExpireGrantsFutureCall(),
       'MaintenanceDailyFutureCall': MaintenanceDailyFutureCall(),
       'NotificationEmailSendFutureCall': NotificationEmailSendFutureCall(),
+      'PublicationsDeliverFutureCall': PublicationsDeliverFutureCall(),
+      'PublicationsSweepFutureCall': PublicationsSweepFutureCall(),
       'AclFanOutFutureCall': AclFanOutFutureCall(),
       'StorageBackfillFutureCall': StorageBackfillFutureCall(),
       'StorageReconcileFutureCall': StorageReconcileFutureCall(),
@@ -234,6 +239,10 @@ class _FutureCallRef {
   late final maintenance = _MaintenanceFutureCallDispatcher(_invokeFutureCall);
 
   late final notificationEmail = _NotificationEmailFutureCallDispatcher(
+    _invokeFutureCall,
+  );
+
+  late final publications = _PublicationsFutureCallDispatcher(
     _invokeFutureCall,
   );
 
@@ -387,6 +396,29 @@ class _NotificationEmailFutureCallDispatcher {
     return _invokeFutureCall(
       'NotificationEmailSendFutureCall',
       object,
+    );
+  }
+}
+
+class _PublicationsFutureCallDispatcher {
+  _PublicationsFutureCallDispatcher(this._invokeFutureCall);
+
+  final _InvokeFutureCall _invokeFutureCall;
+
+  Future<void> deliver(int deliveryId) {
+    var object = _il37cz87.PublicationsFutureCallDeliverModel(
+      deliveryId: deliveryId,
+    );
+    return _invokeFutureCall(
+      'PublicationsDeliverFutureCall',
+      object,
+    );
+  }
+
+  Future<void> sweep() {
+    return _invokeFutureCall(
+      'PublicationsSweepFutureCall',
+      null,
     );
   }
 }
@@ -676,6 +708,35 @@ class NotificationEmailSendFutureCall
         object.notificationId,
       );
     }
+  }
+}
+
+class PublicationsDeliverFutureCall
+    extends _is.FutureCall<_il37cz87.PublicationsFutureCallDeliverModel>
+    implements
+        _is.InvokableFutureCall<_il37cz87.PublicationsFutureCallDeliverModel> {
+  @override
+  _ida.Future<void> invoke(
+    _is.Session session,
+    _il37cz87.PublicationsFutureCallDeliverModel? object,
+  ) async {
+    if (object != null) {
+      await _igy9pnc4.PublicationsFutureCall().deliver(
+        session,
+        object.deliveryId,
+      );
+    }
+  }
+}
+
+class PublicationsSweepFutureCall extends _is.FutureCall
+    implements _is.InvokableFutureCall {
+  @override
+  _ida.Future<void> invoke(
+    _is.Session session,
+    _is.SerializableModel? object,
+  ) async {
+    await _igy9pnc4.PublicationsFutureCall().sweep(session);
   }
 }
 

@@ -1,0 +1,14 @@
+### An image a submit referenced (specs/18 §5, §7.3): the publication's API
+### key may download it while the file exists.
+class: SubmissionAsset
+table: submission_asset
+serverOnly: true
+fields:
+  submissionId: int, relation(parent=submission, onDelete=Cascade)
+  fileUuid: UuidValue
+indexes:
+  submission_asset_idx:
+    fields: submissionId, fileUuid
+    unique: true
+  submission_asset_file_idx:
+    fields: fileUuid

@@ -67,10 +67,11 @@ charts).
 | 11 | [Quality](11-quality-testing-accessibility.md) | Testing, performance budgets, accessibility, i18n, observability |
 | 12 | [Offline & sync](12-offline-and-sync.md) | Local stores, Write offline, Sheets/Slides on RevLog (summary), upload queue, scale limits |
 | 13 | [Security & operations](13-security-and-operations.md) | Threat model, privacy, deployment, scheduled jobs, arbitrary uploads |
-| 14 | [Roadmap](14-roadmap.md) | Milestones M0–M13 (v2: M8 Drive + suite changes, M9–M11 Slides; M12 Bugs & improvements; M13 RevLog), how parallel agents execute the work packages, shared workstreams, risks |
+| 14 | [Roadmap](14-roadmap.md) | Milestones M0–M14 (v2: M8 Drive + suite changes, M9–M11 Slides; M12 Bugs & improvements; M13 RevLog; M14 Publications), how parallel agents execute the work packages, shared workstreams, risks |
 | 15 | [Writing tests](15-writing-tests.md) | How to write tests: layout, naming, helpers, server/widget/golden/property/E2E patterns, determinism, running |
 | 16 | [Bugs & improvements](16-bugs-and-improvements.md) | Public board for bug reports and improvement ideas: report dialog with annotated screenshots, votes, comments, AI triage and moderation, admins, tasks with contributor prompts, claims, GitHub PR rules (M12, built) |
 | 17 | [RevLog sync](17-revlog-sync.md) | Server-sequenced op log of Sheets and Slides: decisions, data model, change sets and apply rules, protocol, server (sequencer, hooks, pages, headless cache), client (cache, outbox, bootstrap, conflicts), performance gates, as-built notes (M13) |
+| 18 | [Publications & submissions](18-publications-and-submissions.md) | Blogs register a publication; contributors write in Wonky Write and *Submit* to the blog's review queue (signed webhooks, publication API, moderators with comment access, feedback in the document) (M14, built) |
 
 ## Conventions used in all specs
 

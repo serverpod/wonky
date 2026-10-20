@@ -194,18 +194,31 @@ class HomeNavSpec {
 /// The query of `/new?folder=&template=` (suite 03 §2, v2).
 @immutable
 class NewItemRequest {
-  const NewItemRequest({this.folderUuid, this.templateUuid, this.name});
+  const NewItemRequest({
+    this.folderUuid,
+    this.templateUuid,
+    this.name,
+    this.publicationId,
+    this.ref,
+  });
 
   /// Parses the route's query parameters (invalid uuids are ignored).
   factory NewItemRequest.fromQuery(Map<String, String> query) => NewItemRequest(
     folderUuid: _uuid(query['folder']),
     templateUuid: _uuid(query['template']),
     name: query['name'],
+    publicationId: query['publication'],
+    ref: query['ref'],
   );
 
   final UuidValue? folderUuid;
   final UuidValue? templateUuid;
   final String? name;
+
+  /// (M14) A contributor link: start a story for this publication
+  /// (`pub_…`, specs/18 §3), with the blog's optional [ref].
+  final String? publicationId;
+  final String? ref;
 
   /// The `/new` route of this request (relative to the app's base href):
   /// `/new?folder=<uuid>&template=<uuid>`.
@@ -214,6 +227,8 @@ class NewItemRequest {
       if (folderUuid != null) 'folder': folderUuid!.uuid,
       if (templateUuid != null) 'template': templateUuid!.uuid,
       if (name != null && name!.isNotEmpty) 'name': name!,
+      'publication': ?publicationId,
+      'ref': ?ref,
     };
     return q.isEmpty
         ? '/new'

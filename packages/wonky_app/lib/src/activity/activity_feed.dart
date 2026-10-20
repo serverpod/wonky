@@ -216,6 +216,7 @@ IconData activityIcon(ActivityType t) => switch (t) {
   ActivityType.restored => LucideIcons.archiveRestore,
   ActivityType.exported => LucideIcons.download,
   ActivityType.uploaded => LucideIcons.upload,
+  ActivityType.submission => LucideIcons.send,
 };
 
 class _EventAvatar extends StatelessWidget {
