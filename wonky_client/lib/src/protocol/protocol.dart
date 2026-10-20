@@ -100,6 +100,11 @@ import 'platform/ai/models/inline_ai_event_type.dart' as _i6pcz5z6;
 import 'platform/ai/models/inline_ai_request.dart' as _i4m43iwr;
 import 'platform/ai/models/proofread_event.dart' as _ie0jt2ne;
 import 'platform/ai/models/proofread_issue.dart' as _ivmxemza;
+import 'platform/analytics/models/analytics_cohort.dart' as _ixradasp;
+import 'platform/analytics/models/analytics_count.dart' as _innm1rwe;
+import 'platform/analytics/models/analytics_day.dart' as _is2u4stz;
+import 'platform/analytics/models/analytics_overview.dart' as _i61uxw4p;
+import 'platform/analytics/models/usage_app.dart' as _id3chnrt;
 import 'platform/board/models/board_area.dart' as _i0ag0upm;
 import 'platform/board/models/board_author.dart' as _ika8r7fc;
 import 'platform/board/models/board_bundle_suggestion.dart' as _ilo15wk2;
@@ -375,6 +380,11 @@ export 'platform/ai/models/inline_ai_event_type.dart';
 export 'platform/ai/models/inline_ai_request.dart';
 export 'platform/ai/models/proofread_event.dart';
 export 'platform/ai/models/proofread_issue.dart';
+export 'platform/analytics/models/analytics_cohort.dart';
+export 'platform/analytics/models/analytics_count.dart';
+export 'platform/analytics/models/analytics_day.dart';
+export 'platform/analytics/models/analytics_overview.dart';
+export 'platform/analytics/models/usage_app.dart';
 export 'platform/board/models/board_area.dart';
 export 'platform/board/models/board_author.dart';
 export 'platform/board/models/board_bundle_suggestion.dart';
@@ -659,6 +669,11 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i4m43iwr.InlineAiRequest>,
           _isc.getType<_ie0jt2ne.ProofreadEvent>,
           _isc.getType<_ivmxemza.ProofreadIssue>,
+          _isc.getType<_ixradasp.AnalyticsCohort>,
+          _isc.getType<_innm1rwe.AnalyticsCount>,
+          _isc.getType<_is2u4stz.AnalyticsDay>,
+          _isc.getType<_i61uxw4p.AnalyticsOverview>,
+          _isc.getType<_id3chnrt.UsageApp>,
           _isc.getType<_i0ag0upm.BoardArea>,
           _isc.getType<_ika8r7fc.BoardAuthor>,
           _isc.getType<_ilo15wk2.BoardBundleSuggestion>,
@@ -975,6 +990,11 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i4m43iwr.InlineAiRequest?>,
           _isc.getType<_ie0jt2ne.ProofreadEvent?>,
           _isc.getType<_ivmxemza.ProofreadIssue?>,
+          _isc.getType<_ixradasp.AnalyticsCohort?>,
+          _isc.getType<_innm1rwe.AnalyticsCount?>,
+          _isc.getType<_is2u4stz.AnalyticsDay?>,
+          _isc.getType<_i61uxw4p.AnalyticsOverview?>,
+          _isc.getType<_id3chnrt.UsageApp?>,
           _isc.getType<_i0ag0upm.BoardArea?>,
           _isc.getType<_ika8r7fc.BoardAuthor?>,
           _isc.getType<_ilo15wk2.BoardBundleSuggestion?>,
@@ -1272,6 +1292,10 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<List<_i4rkdm2k.AssistantMessageView>>,
           _isc.getType<List<_ivmxemza.ProofreadIssue>>,
           _isc.getType<List<_ivmxemza.ProofreadIssue>?>,
+          _isc.getType<List<int?>>,
+          _isc.getType<List<_is2u4stz.AnalyticsDay>>,
+          _isc.getType<List<_innm1rwe.AnalyticsCount>>,
+          _isc.getType<List<_ixradasp.AnalyticsCohort>>,
           _isc.getType<List<int>>,
           _isc.getType<List<_iq3f61ec.BoardPostListItem>>,
           _isc.getType<List<_i5pjfe5s.BoardFlagView>>,
@@ -1467,6 +1491,21 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _ivmxemza.ProofreadIssue) {
       return _ivmxemza.ProofreadIssue.fromJson(data) as T;
+    }
+    if (t == _ixradasp.AnalyticsCohort) {
+      return _ixradasp.AnalyticsCohort.fromJson(data) as T;
+    }
+    if (t == _innm1rwe.AnalyticsCount) {
+      return _innm1rwe.AnalyticsCount.fromJson(data) as T;
+    }
+    if (t == _is2u4stz.AnalyticsDay) {
+      return _is2u4stz.AnalyticsDay.fromJson(data) as T;
+    }
+    if (t == _i61uxw4p.AnalyticsOverview) {
+      return _i61uxw4p.AnalyticsOverview.fromJson(data) as T;
+    }
+    if (t == _id3chnrt.UsageApp) {
+      return _id3chnrt.UsageApp.fromJson(data) as T;
     }
     if (t == _i0ag0upm.BoardArea) {
       return _i0ag0upm.BoardArea.fromJson(data) as T;
@@ -2444,6 +2483,24 @@ class Protocol extends _isc.SerializationManager
     if (t == _isc.getType<_ivmxemza.ProofreadIssue?>()) {
       return (data != null ? _ivmxemza.ProofreadIssue.fromJson(data) : null)
           as T;
+    }
+    if (t == _isc.getType<_ixradasp.AnalyticsCohort?>()) {
+      return (data != null ? _ixradasp.AnalyticsCohort.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_innm1rwe.AnalyticsCount?>()) {
+      return (data != null ? _innm1rwe.AnalyticsCount.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_is2u4stz.AnalyticsDay?>()) {
+      return (data != null ? _is2u4stz.AnalyticsDay.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i61uxw4p.AnalyticsOverview?>()) {
+      return (data != null ? _i61uxw4p.AnalyticsOverview.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_id3chnrt.UsageApp?>()) {
+      return (data != null ? _id3chnrt.UsageApp.fromJson(data) : null) as T;
     }
     if (t == _isc.getType<_i0ag0upm.BoardArea?>()) {
       return (data != null ? _i0ag0upm.BoardArea.fromJson(data) : null) as T;
@@ -3698,6 +3755,27 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == List<int?>) {
+      return (data as List).map((e) => deserialize<int?>(e)).toList() as T;
+    }
+    if (t == List<_is2u4stz.AnalyticsDay>) {
+      return (data as List)
+              .map((e) => deserialize<_is2u4stz.AnalyticsDay>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_innm1rwe.AnalyticsCount>) {
+      return (data as List)
+              .map((e) => deserialize<_innm1rwe.AnalyticsCount>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ixradasp.AnalyticsCohort>) {
+      return (data as List)
+              .map((e) => deserialize<_ixradasp.AnalyticsCohort>(e))
+              .toList()
+          as T;
+    }
     if (t == List<int>) {
       return (data as List).map((e) => deserialize<int>(e)).toList() as T;
     }
@@ -4253,6 +4331,11 @@ class Protocol extends _isc.SerializationManager
       _i4m43iwr.InlineAiRequest => 'InlineAiRequest',
       _ie0jt2ne.ProofreadEvent => 'ProofreadEvent',
       _ivmxemza.ProofreadIssue => 'ProofreadIssue',
+      _ixradasp.AnalyticsCohort => 'AnalyticsCohort',
+      _innm1rwe.AnalyticsCount => 'AnalyticsCount',
+      _is2u4stz.AnalyticsDay => 'AnalyticsDay',
+      _i61uxw4p.AnalyticsOverview => 'AnalyticsOverview',
+      _id3chnrt.UsageApp => 'UsageApp',
       _i0ag0upm.BoardArea => 'BoardArea',
       _ika8r7fc.BoardAuthor => 'BoardAuthor',
       _ilo15wk2.BoardBundleSuggestion => 'BoardBundleSuggestion',
@@ -4609,6 +4692,16 @@ class Protocol extends _isc.SerializationManager
         return 'ProofreadEvent';
       case _ivmxemza.ProofreadIssue():
         return 'ProofreadIssue';
+      case _ixradasp.AnalyticsCohort():
+        return 'AnalyticsCohort';
+      case _innm1rwe.AnalyticsCount():
+        return 'AnalyticsCount';
+      case _is2u4stz.AnalyticsDay():
+        return 'AnalyticsDay';
+      case _i61uxw4p.AnalyticsOverview():
+        return 'AnalyticsOverview';
+      case _id3chnrt.UsageApp():
+        return 'UsageApp';
       case _i0ag0upm.BoardArea():
         return 'BoardArea';
       case _ika8r7fc.BoardAuthor():
@@ -5288,6 +5381,21 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'ProofreadIssue') {
       return deserialize<_ivmxemza.ProofreadIssue>(data['data']);
+    }
+    if (dataClassName == 'AnalyticsCohort') {
+      return deserialize<_ixradasp.AnalyticsCohort>(data['data']);
+    }
+    if (dataClassName == 'AnalyticsCount') {
+      return deserialize<_innm1rwe.AnalyticsCount>(data['data']);
+    }
+    if (dataClassName == 'AnalyticsDay') {
+      return deserialize<_is2u4stz.AnalyticsDay>(data['data']);
+    }
+    if (dataClassName == 'AnalyticsOverview') {
+      return deserialize<_i61uxw4p.AnalyticsOverview>(data['data']);
+    }
+    if (dataClassName == 'UsageApp') {
+      return deserialize<_id3chnrt.UsageApp>(data['data']);
     }
     if (dataClassName == 'BoardArea') {
       return deserialize<_i0ag0upm.BoardArea>(data['data']);

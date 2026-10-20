@@ -35,6 +35,7 @@ import '../board/board_repository.dart';
 import '../publications/publication_repository.dart';
 import 'overlays/shell_overlays.dart';
 import 'shell_services.dart';
+import 'usage_ping.dart';
 import '../undo/undo_service.dart';
 
 /// The locale tag forced at build time with
@@ -169,6 +170,7 @@ class _WonkyShellState extends State<WonkyShell> {
   bool _ready = false;
   final Locale? _locale = forcedLocale();
   StreamSubscription<UndoOutcome>? _undoSub;
+  late final UsagePing _usagePing = UsagePing(s);
   late final AppLifecycleListener _lifecycle;
 
   @override
@@ -310,10 +312,12 @@ class _WonkyShellState extends State<WonkyShell> {
       );
     }
     _undoSub ??= s.undo.outcomes.listen((_) => s.registry.notifyStateChanged());
+    _usagePing.start();
     await widget.config.onSignedIn(s);
   }
 
   Future<void> _beforeSignOut() async {
+    _usagePing.stop();
     await widget.config.onSigningOut(s);
     await s.supervisor.cancelAll();
     final storage = s.storage;
@@ -350,6 +354,7 @@ class _WonkyShellState extends State<WonkyShell> {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onUnfocusedKey);
     _lifecycle.dispose();
+    _usagePing.stop();
     _undoSub?.cancel();
     s.auth.removeListener(_onAuth);
     s.router.routerDelegate.removeListener(_onRoute);

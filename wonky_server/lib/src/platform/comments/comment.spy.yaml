@@ -26,3 +26,6 @@ indexes:
   comment_uuid_idx:
     fields: uuid
     unique: true
+  ### Comments by time (usage analytics, specs/19 §3).
+  comment_created_idx:
+    fields: createdAt

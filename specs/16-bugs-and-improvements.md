@@ -1169,6 +1169,7 @@ wonky:
   re-verification, or if `validateGoogleAccountDetails` is overridden.
 - Admin status is never stored. Removing the domain from the config removes admin rights at the
   next request.
+- The same rule decides who sees the usage analytics in Wonky Drive ([19](19-usage-analytics.md)).
 - `board.me()` returns `{signedIn, isAdmin, blocked, activeClaims, maxActiveClaims,
   claimBlockedUntil?, claimBlockedReason?, githubLogin?}` for the client.
   It is used to show admin UI only; every admin endpoint checks again on the server.

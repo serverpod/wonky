@@ -102,26 +102,33 @@ enum HomeNavDestination {
 
   /// Drive only: the Storage page (`/storage`).
   storage,
+
+  /// Drive only, admins only: usage analytics (`/analytics`, specs/19).
+  analytics,
 }
 
 /// One entry of the left menu's navigation.
 @immutable
 class HomeNavItem {
-  const HomeNavItem(this.destination, this.route);
+  const HomeNavItem(this.destination, this.route, {this.adminOnly = false});
 
   final HomeNavDestination destination;
 
   /// The route relative to the app's base href, e.g. `/my-files`.
   final String route;
 
+  /// Shown to admins only (the board's admin rule, specs/16 §9.1).
+  final bool adminOnly;
+
   @override
   bool operator ==(Object other) =>
       other is HomeNavItem &&
       other.destination == destination &&
-      other.route == route;
+      other.route == route &&
+      other.adminOnly == adminOnly;
 
   @override
-  int get hashCode => Object.hash(destination, route);
+  int get hashCode => Object.hash(destination, route, adminOnly);
 }
 
 /// The navigation section of an app's left menu (`WonkyAppConfig.homeNav`,
@@ -145,7 +152,7 @@ class HomeNavSpec {
   );
 
   /// Wonky Drive: Home, My Drive (+ folder tree), Shared with me, Recent,
-  /// Starred, Trash, Storage.
+  /// Starred, Trash, Storage, and for admins Analytics.
   static const drive = HomeNavSpec(
     items: [
       HomeNavItem(HomeNavDestination.home, '/'),
@@ -155,6 +162,7 @@ class HomeNavSpec {
       HomeNavItem(HomeNavDestination.starred, '/starred'),
       HomeNavItem(HomeNavDestination.trash, '/trash'),
       HomeNavItem(HomeNavDestination.storage, '/storage'),
+      HomeNavItem(HomeNavDestination.analytics, '/analytics', adminOnly: true),
     ],
     folderTree: true,
   );

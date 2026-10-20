@@ -50,6 +50,7 @@ and is configured by the app (`WonkyAppConfig.homeNav`, suite 03 §3.3). Drive v
 │ ☆  Starred                   │
 │ 🗑 Trash                     │
 │ ◔  Storage                   │
+│ 📈 Analytics                 │  ← admins only (specs/19 §3.1)
 │                              │  ← flexible space
 │ ──────────────────────────── │
 │ ⚙  Drive settings            │  → /settings/app            (shell.settings.openApp)
@@ -304,6 +305,12 @@ Specified in [03 §6.4](03-storage-quota.md). Reached from the left-menu item *S
 `StorageMeter`, banners, dialogs (*Manage storage*), Settings › Wonky Work › Storage and
 `shell.storage.open`.
 
+### 7.1 Analytics page (`/drive/analytics`, admins only)
+
+Specified in [suite 19 §3](../19-usage-analytics.md). Reached from the admin-only left-menu item
+*Analytics* (`HomeNavItem(adminOnly: true)`, shown when `BoardHub.me.isAdmin`) and
+`drive.analytics.show`; same frame as the Storage page.
+
 ## 8. Drive settings (`/settings/app`)
 
 Shown in the settings frame's app group "Wonky Drive" (suite 04 §4). One section `drive`:
@@ -362,6 +369,7 @@ Drive-only commands use `drive.<area>.<action>` and are registered by `wonky_dri
 | `drive.view.toggleFoldersOnTop` | Folders on top | — | — | — |
 | `drive.prefs.set` | (settings) | `{key, value}` | — | — |
 | `drive.storage.show` | Show storage | `{filter?: all\|documents\|spreadsheets\|presentations\|files\|trash\|large\|notOpened}` → `/storage?filter=` | — | — |
+| `drive.analytics.show` | Show analytics (admins only, suite 19 §3.1) | `{days?: 7\|30\|90\|365, includeAdmins?}` | — | — |
 | `drive.ai.askAboutItem` (P1) | Ask the assistant about this file | `{uuid}` | — | — |
 
 Shell commands used (unchanged ids): `shell.drive.newFolder` (`Shift+F`), `rename` (`F2`),

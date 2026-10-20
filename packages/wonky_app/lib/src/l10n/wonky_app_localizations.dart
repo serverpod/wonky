@@ -2326,6 +2326,12 @@ abstract class WonkyAppLocalizations {
   /// **'Storage'**
   String get navStorage;
 
+  /// Left menu (Drive, admins only): the usage analytics page (specs/19).
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics'**
+  String get navAnalytics;
+
   /// No description provided for @navTrash.
   ///
   /// In en, this message translates to:

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 
+import '../analytics/usage_tracker.dart';
 import '../common/actor.dart';
 import '../common/json.dart';
 import '../common/models.dart';
@@ -36,7 +37,22 @@ abstract final class ActivityService {
       ),
       transaction: transaction,
     );
+    if (_contributions.contains(type)) {
+      await UsageTracker.edited(
+        session,
+        actor,
+        itemId,
+        template: summary['template'],
+      );
+    }
   }
+
+  /// Events that make their actor an editor of the day (specs/19 §2).
+  static const _contributions = {
+    ActivityType.created,
+    ActivityType.uploaded,
+    ActivityType.restoredVersion,
+  };
 
   /// Records an edit, merged with the user's previous edit event on the item
   /// when it is less than [editWindow] old. Numeric [counters] are summed;
@@ -93,6 +109,7 @@ abstract final class ActivityService {
         ),
         transaction: transaction,
       );
+      await UsageTracker.edited(session, actor, itemId);
       return;
     }
     final summary = decodeObject(recent.summary);
@@ -117,6 +134,7 @@ abstract final class ActivityService {
       columns: (t) => [t.summary],
       transaction: transaction,
     );
+    await UsageTracker.edited(session, actor, itemId);
   }
 
   /// Max ids kept per set of an edit event ([logEdit]).

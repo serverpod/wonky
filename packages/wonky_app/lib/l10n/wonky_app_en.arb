@@ -666,6 +666,10 @@
   "@navStorage": {
     "description": "Left menu (Drive): the Storage page; storage meter label."
   },
+  "navAnalytics": "Analytics",
+  "@navAnalytics": {
+    "description": "Left menu (Drive, admins only): the usage analytics page (specs/19)."
+  },
   "navTrash": "Trash",
   "newButton": "New",
   "newFolderLabel": "Folder name",

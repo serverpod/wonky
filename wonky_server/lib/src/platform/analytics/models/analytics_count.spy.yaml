@@ -1,0 +1,9 @@
+### A labeled count of the usage analytics (specs/19 §3): items by kind,
+### sign-in methods, AI requests by feature or model.
+class: AnalyticsCount
+fields:
+  key: String
+  count: int
+  ### A second measure where one applies (bytes of items, AI tokens); 0
+  ### otherwise.
+  amount: int, default=0

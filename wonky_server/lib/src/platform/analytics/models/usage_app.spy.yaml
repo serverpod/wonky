@@ -1,0 +1,10 @@
+### Where a user was active (usage analytics, specs/19 §2): one of the
+### apps, or an MCP client with a personal access token.
+enum: UsageApp
+serialized: byName
+values:
+  - drive
+  - write
+  - sheets
+  - slides
+  - mcp

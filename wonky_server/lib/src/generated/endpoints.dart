@@ -24,6 +24,8 @@ import 'package:wonky_server/src/generated/platform/ai/models/assistant_context_
     as _ixc2f7d5;
 import 'package:wonky_server/src/generated/platform/ai/models/inline_ai_request.dart'
     as _i4c3y8bm;
+import 'package:wonky_server/src/generated/platform/analytics/models/usage_app.dart'
+    as _idlxfxe3;
 import 'package:wonky_server/src/generated/platform/board/models/board_area.dart'
     as _i2y7swbd;
 import 'package:wonky_server/src/generated/platform/board/models/board_flag_reason.dart'
@@ -110,6 +112,7 @@ import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
 import '../platform/activity/activity_endpoint.dart' as _id6etezj;
 import '../platform/ai/assistant_endpoint.dart' as _i8k7ge8b;
+import '../platform/analytics/analytics_endpoint.dart' as _ihmj012r;
 import '../platform/board/board_endpoint.dart' as _itoz815u;
 import '../platform/comments/comment_endpoint.dart' as _iuwjzuw0;
 import '../platform/drive/drive_endpoint.dart' as _ijanxtjh;
@@ -173,6 +176,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'assistant',
+          null,
+        ),
+      'analytics': _ihmj012r.AnalyticsEndpoint()
+        ..initialize(
+          server,
+          'analytics',
           null,
         ),
       'board': _itoz815u.BoardEndpoint()
@@ -980,6 +989,56 @@ class Endpoints extends _is.EndpointDispatch {
                     params['itemUuid'],
                     params['start'],
                     params['length'],
+                  ),
+        ),
+      },
+    );
+    connectors['analytics'] = _is.EndpointConnector(
+      name: 'analytics',
+      endpoint: endpoints['analytics']!,
+      methodConnectors: {
+        'ping': _is.MethodConnector(
+          name: 'ping',
+          params: {
+            'app': _is.ParameterDescription(
+              name: 'app',
+              type: _is.getType<_idlxfxe3.UsageApp>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['analytics'] as _ihmj012r.AnalyticsEndpoint).ping(
+                    session,
+                    params['app'],
+                  ),
+        ),
+        'overview': _is.MethodConnector(
+          name: 'overview',
+          params: {
+            'days': _is.ParameterDescription(
+              name: 'days',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'includeAdmins': _is.ParameterDescription(
+              name: 'includeAdmins',
+              type: _is.getType<bool>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['analytics'] as _ihmj012r.AnalyticsEndpoint)
+                  .overview(
+                    session,
+                    params['days'],
+                    params['includeAdmins'],
                   ),
         ),
       },

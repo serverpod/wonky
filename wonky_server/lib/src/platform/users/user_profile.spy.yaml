@@ -26,3 +26,6 @@ indexes:
   user_profile_email_idx:
     fields: email
     unique: true
+  ### Sign-ups by time (usage analytics, specs/19 §3).
+  user_profile_created_idx:
+    fields: createdAt

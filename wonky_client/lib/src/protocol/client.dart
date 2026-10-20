@@ -42,6 +42,10 @@ import 'package:wonky_client/src/protocol/platform/ai/models/inline_ai_request.d
     as _i31mo4jy;
 import 'package:wonky_client/src/protocol/platform/ai/models/proofread_event.dart'
     as _irtrv5vw;
+import 'package:wonky_client/src/protocol/platform/analytics/models/analytics_overview.dart'
+    as _iu8mc7mo;
+import 'package:wonky_client/src/protocol/platform/analytics/models/usage_app.dart'
+    as _izdyac9h;
 import 'package:wonky_client/src/protocol/platform/board/models/board_area.dart'
     as _ix53eas0;
 import 'package:wonky_client/src/protocol/platform/board/models/board_bundle_suggestion_view.dart'
@@ -752,6 +756,38 @@ class EndpointAssistant extends _isc.EndpointRef {
         },
         {},
       );
+}
+
+/// Usage analytics (specs/19): the apps' activity ping, and the admin
+/// dashboard of Wonky Drive (overview, admins only).
+/// {@category Endpoint}
+class EndpointAnalytics extends _isc.EndpointRef {
+  EndpointAnalytics(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'analytics';
+
+  /// The caller is using [app] (sent at app start and on resume).
+  _ida.Future<void> ping(_izdyac9h.UsageApp app) =>
+      caller.callServerEndpoint<void>(
+        'analytics',
+        'ping',
+        {'app': app},
+      );
+
+  /// The dashboard for the last [days] days (7, 30, 90 or 365); admins are
+  /// left out of every count unless [includeAdmins].
+  _ida.Future<_iu8mc7mo.AnalyticsOverview> overview(
+    int days,
+    bool includeAdmins,
+  ) => caller.callServerEndpoint<_iu8mc7mo.AnalyticsOverview>(
+    'analytics',
+    'overview',
+    {
+      'days': days,
+      'includeAdmins': includeAdmins,
+    },
+  );
 }
 
 /// Bugs & improvements (specs/16 §12). Read methods work signed out; write
@@ -4434,6 +4470,7 @@ class Client extends _isc.ServerpodClientShared {
     jwtRefresh = EndpointJwtRefresh(this);
     activity = EndpointActivity(this);
     assistant = EndpointAssistant(this);
+    analytics = EndpointAnalytics(this);
     board = EndpointBoard(this);
     comment = EndpointComment(this);
     drive = EndpointDrive(this);
@@ -4479,6 +4516,8 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointActivity activity;
 
   late final EndpointAssistant assistant;
+
+  late final EndpointAnalytics analytics;
 
   late final EndpointBoard board;
 
@@ -4558,6 +4597,7 @@ class Client extends _isc.ServerpodClientShared {
     'jwtRefresh': jwtRefresh,
     'activity': activity,
     'assistant': assistant,
+    'analytics': analytics,
     'board': board,
     'comment': comment,
     'drive': drive,

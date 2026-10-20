@@ -1,0 +1,23 @@
+### A user was active in [app] on a UTC day (usage analytics, specs/19 §2).
+### One row per user, day and app; written at most once per instance and
+### key (`UsageTracker`), kept 400 days (`analytics.purgeActivity`).
+###
+### [userId] has no foreign key on purpose: rows are written beside
+### transactions that may lock the profile, and the counts of past days stay
+### put when an account is deleted (its rows keep only the bare id).
+class: UserActivityDay
+table: user_activity_day
+serverOnly: true
+fields:
+  userId: int
+  ### UTC midnight of the day.
+  day: DateTime
+  app: UsageApp
+  ### Whether the user also created or edited something that day.
+  edited: bool, default=false
+indexes:
+  user_activity_day_idx:
+    fields: userId, day, app
+    unique: true
+  user_activity_day_day_idx:
+    fields: day

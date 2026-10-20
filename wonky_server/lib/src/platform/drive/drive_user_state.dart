@@ -2,6 +2,7 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 
 import '../activity/activity_service.dart';
+import '../analytics/usage_tracker.dart';
 import '../common/actor.dart';
 import '../common/errors.dart';
 import '../common/models.dart';
@@ -128,6 +129,7 @@ abstract final class DriveUserStates {
     );
     // Activity dashboard view counts (specs/07 §6).
     await ActivityService.recordView(session, item.id!, actor.userId);
+    await UsageTracker.opened(session, actor, item);
   }
 
   /// Records that the caller edited [item] (for "Last modified by me").

@@ -72,6 +72,7 @@ charts).
 | 16 | [Bugs & improvements](16-bugs-and-improvements.md) | Public board for bug reports and improvement ideas: report dialog with annotated screenshots, votes, comments, AI triage and moderation, admins, tasks with contributor prompts, claims, GitHub PR rules (M12, built) |
 | 17 | [RevLog sync](17-revlog-sync.md) | Server-sequenced op log of Sheets and Slides: decisions, data model, change sets and apply rules, protocol, server (sequencer, hooks, pages, headless cache), client (cache, outbox, bootstrap, conflicts), performance gates, as-built notes (M13) |
 | 18 | [Publications & submissions](18-publications-and-submissions.md) | Blogs register a publication; contributors write in Wonky Write and *Submit* to the blog's review queue (signed webhooks, publication API, moderators with comment access, feedback in the document) (M14, built) |
+| 19 | [Usage analytics](19-usage-analytics.md) | First-party analytics for admins in Wonky Drive: daily activity per person and app (ids and counts only), DAU/WAU/MAU, content, collaboration, AI and MCP use, sign-up cohorts, a daily rollup (built) |
 
 ## Conventions used in all specs
 

@@ -1195,5 +1195,418 @@
         "type": "String"
       }
     }
+  },
+  "cmdAnalyticsShow": "Show analytics",
+  "@cmdAnalyticsShow": {
+    "description": "Command: opens the usage analytics page (admins, specs/19)."
+  },
+  "categoryAnalytics": "Analytics",
+  "@categoryAnalytics": {
+    "description": "Command palette category of the analytics commands."
+  },
+  "analyticsTitle": "Analytics",
+  "@analyticsTitle": {
+    "description": "Title of the usage analytics page (specs/19 §3)."
+  },
+  "analyticsSubtitle": "Usage of Wonky Work by UTC day.",
+  "@analyticsSubtitle": {
+    "description": "Note under the analytics title while it loads."
+  },
+  "analyticsUpdated": "Updated {time}",
+  "@analyticsUpdated": {
+    "description": "When the shown numbers were computed.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsTrackingSince": "Activity recorded since {date}",
+  "@analyticsTrackingSince": {
+    "description": "Shown when activity tracking started inside the period (earlier days have no activity data).",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsNoActivityYet": "No activity recorded yet",
+  "@analyticsNoActivityYet": {
+    "description": "Shown before any activity was recorded."
+  },
+  "analyticsPeriodDays": "{days} days",
+  "@analyticsPeriodDays": {
+    "description": "A period tab of the analytics page.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsIncludeAdmins": "Include admins",
+  "@analyticsIncludeAdmins": {
+    "description": "Switch: count admins (Wonky Work team) in every number."
+  },
+  "analyticsRefresh": "Refresh",
+  "@analyticsRefresh": {
+    "description": "Reloads the analytics."
+  },
+  "analyticsForbiddenTitle": "Analytics are for admins",
+  "@analyticsForbiddenTitle": {
+    "description": "Page state when a non-admin opens /analytics."
+  },
+  "analyticsForbiddenBody": "Ask a Wonky Work admin if you need these numbers.",
+  "@analyticsForbiddenBody": {
+    "description": "Body of the admins-only state."
+  },
+  "analyticsErrorTitle": "The analytics could not be loaded",
+  "@analyticsErrorTitle": {
+    "description": "Error state of the analytics page."
+  },
+  "analyticsShowTable": "Show as table",
+  "@analyticsShowTable": {
+    "description": "Toggles a chart card to its table view."
+  },
+  "analyticsShowChart": "Show as chart",
+  "@analyticsShowChart": {
+    "description": "Toggles a chart card back to its chart."
+  },
+  "analyticsChartLabel": "Chart of {series} from {from} to {to}",
+  "@analyticsChartLabel": {
+    "description": "Screen reader label of a chart.",
+    "placeholders": {
+      "series": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsColDay": "Day",
+  "@analyticsColDay": {
+    "description": "Table view: the day column."
+  },
+  "analyticsColWeek": "Week",
+  "@analyticsColWeek": {
+    "description": "Table view: the week column (weekly bars)."
+  },
+  "analyticsTotal": "Total",
+  "@analyticsTotal": {
+    "description": "Tooltip row: the total of stacked bars."
+  },
+  "analyticsKpiAccounts": "Accounts",
+  "@analyticsKpiAccounts": {
+    "description": "Headline number: all accounts."
+  },
+  "analyticsKpiNew": "+{count} in {days} days",
+  "@analyticsKpiNew": {
+    "description": "Under the accounts number: accounts created in the period.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsKpiToday": "Active today",
+  "@analyticsKpiToday": {
+    "description": "Headline number: distinct active users today (UTC)."
+  },
+  "analyticsKpiEditorsToday": "{count} created or edited",
+  "@analyticsKpiEditorsToday": {
+    "description": "Under active today: how many of them created or edited something.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsKpiWeekly": "Weekly active",
+  "@analyticsKpiWeekly": {
+    "description": "Headline number: distinct active users in the last 7 days."
+  },
+  "analyticsKpiWeeklyNote": "Last 7 days",
+  "@analyticsKpiWeeklyNote": {
+    "description": "Note under the weekly number."
+  },
+  "analyticsKpiMonthly": "Monthly active",
+  "@analyticsKpiMonthly": {
+    "description": "Headline number: distinct active users in the last 30 days (MAU)."
+  },
+  "analyticsKpiMonthlyNote": "Last 30 days",
+  "@analyticsKpiMonthlyNote": {
+    "description": "Note under the monthly number."
+  },
+  "analyticsKpiStickiness": "Stickiness",
+  "@analyticsKpiStickiness": {
+    "description": "Headline number: average daily active users over monthly active users."
+  },
+  "analyticsKpiStickinessNote": "Daily ÷ monthly active",
+  "@analyticsKpiStickinessNote": {
+    "description": "Note under stickiness."
+  },
+  "analyticsKpiCreated": "Items created",
+  "@analyticsKpiCreated": {
+    "description": "Headline number: documents, spreadsheets, presentations and files created in the period."
+  },
+  "analyticsKpiInPeriod": "In {days} days",
+  "@analyticsKpiInPeriod": {
+    "description": "Note: the number covers the period.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsActiveTitle": "Active users",
+  "@analyticsActiveTitle": {
+    "description": "Card title."
+  },
+  "analyticsActiveSubtitle": "People who used any app or MCP",
+  "@analyticsActiveSubtitle": {
+    "description": "Card subtitle of active users."
+  },
+  "analyticsViewDaily": "Daily",
+  "@analyticsViewDaily": {
+    "description": "Tab: daily active users."
+  },
+  "analyticsViewWeekly": "Weekly",
+  "@analyticsViewWeekly": {
+    "description": "Tab: users active in the 7 days ending each day."
+  },
+  "analyticsViewMonthly": "Monthly",
+  "@analyticsViewMonthly": {
+    "description": "Tab: users active in the 30 days ending each day."
+  },
+  "analyticsSeriesActive": "Active",
+  "@analyticsSeriesActive": {
+    "description": "Series: daily active users."
+  },
+  "analyticsSeriesEditors": "Created or edited",
+  "@analyticsSeriesEditors": {
+    "description": "Series: users who created or edited something that day."
+  },
+  "analyticsSeriesWeekly": "Weekly active",
+  "@analyticsSeriesWeekly": {
+    "description": "Series: 7-day active users."
+  },
+  "analyticsSeriesMonthly": "Monthly active",
+  "@analyticsSeriesMonthly": {
+    "description": "Series: 30-day active users."
+  },
+  "analyticsAppsTitle": "Active users by app",
+  "@analyticsAppsTitle": {
+    "description": "Card title."
+  },
+  "analyticsAppsSubtitle": "A person using two apps counts in both",
+  "@analyticsAppsSubtitle": {
+    "description": "Card subtitle."
+  },
+  "analyticsSeriesMcp": "MCP clients",
+  "@analyticsSeriesMcp": {
+    "description": "Series: users active through an MCP client."
+  },
+  "analyticsSignupsTitle": "Sign-ups",
+  "@analyticsSignupsTitle": {
+    "description": "Card title."
+  },
+  "analyticsSignupsSubtitle": "{count} new · {total} accounts",
+  "@analyticsSignupsSubtitle": {
+    "description": "Card subtitle: new accounts in the period and all accounts.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsSeriesSignups": "Sign-ups",
+  "@analyticsSeriesSignups": {
+    "description": "Series: accounts created."
+  },
+  "analyticsContentNowTitle": "Content now",
+  "@analyticsContentNowTitle": {
+    "description": "Card title: items that exist now by kind."
+  },
+  "analyticsItemsTotal": "{count} items · {size} stored",
+  "@analyticsItemsTotal": {
+    "description": "Line in the content card: items now and the storage they use.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsSignInTitle": "Sign-in methods",
+  "@analyticsSignInTitle": {
+    "description": "Heading of the sign-in methods bar."
+  },
+  "analyticsSignInEmail": "Email",
+  "@analyticsSignInEmail": {
+    "description": "Sign-in method: email and password."
+  },
+  "analyticsSignInGoogle": "Google",
+  "@analyticsSignInGoogle": {
+    "description": "Sign-in method: Google."
+  },
+  "analyticsContentTitle": "Content created",
+  "@analyticsContentTitle": {
+    "description": "Card title."
+  },
+  "analyticsContentSubtitle": "By people, the assistant and MCP; welcome content left out",
+  "@analyticsContentSubtitle": {
+    "description": "Card subtitle."
+  },
+  "analyticsCollabTitle": "Collaboration",
+  "@analyticsCollabTitle": {
+    "description": "Card title."
+  },
+  "analyticsStatShared": "Items shared now",
+  "@analyticsStatShared": {
+    "description": "Stat: items shared with at least one other person."
+  },
+  "analyticsStatCoEdited": "Co-edited in {days} days",
+  "@analyticsStatCoEdited": {
+    "description": "Stat: items edited by two or more people in the period.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsStatCommenters": "Commenters in {days} days",
+  "@analyticsStatCommenters": {
+    "description": "Stat: people who commented in the period.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsSeriesComments": "Comments",
+  "@analyticsSeriesComments": {
+    "description": "Series: comments and replies."
+  },
+  "analyticsSeriesShares": "Shares",
+  "@analyticsSeriesShares": {
+    "description": "Series: items shared with people."
+  },
+  "analyticsAiTitle": "AI assistant",
+  "@analyticsAiTitle": {
+    "description": "Card title."
+  },
+  "analyticsAiSubtitle": "{requests} requests · {tokens} tokens · kept {days} days",
+  "@analyticsAiSubtitle": {
+    "description": "Card subtitle: AI usage in the period and how long it is kept.",
+    "placeholders": {
+      "requests": {
+        "type": "String"
+      },
+      "tokens": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsSeriesAiRequests": "Requests",
+  "@analyticsSeriesAiRequests": {
+    "description": "Series: AI model requests."
+  },
+  "analyticsAiByFeature": "By feature",
+  "@analyticsAiByFeature": {
+    "description": "Heading of AI usage by feature."
+  },
+  "analyticsAiByModel": "By model",
+  "@analyticsAiByModel": {
+    "description": "Heading of AI usage by model."
+  },
+  "analyticsAiRow": "{requests} · {tokens} tokens",
+  "@analyticsAiRow": {
+    "description": "Value of an AI usage row.",
+    "placeholders": {
+      "requests": {
+        "type": "String"
+      },
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsNoAiUse": "No AI use in this period",
+  "@analyticsNoAiUse": {
+    "description": "Empty AI usage list."
+  },
+  "analyticsMcpTitle": "MCP tool calls",
+  "@analyticsMcpTitle": {
+    "description": "Card title."
+  },
+  "analyticsMcpSubtitle": "{count} calls by people's access tokens (admins included)",
+  "@analyticsMcpSubtitle": {
+    "description": "Card subtitle.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsSeriesMcpCalls": "Tool calls",
+  "@analyticsSeriesMcpCalls": {
+    "description": "Series: MCP tool calls."
+  },
+  "analyticsRetentionTitle": "Retention",
+  "@analyticsRetentionTitle": {
+    "description": "Card title: weekly sign-up cohorts."
+  },
+  "analyticsRetentionSubtitle": "Share of each week's sign-ups active in the weeks after",
+  "@analyticsRetentionSubtitle": {
+    "description": "Card subtitle."
+  },
+  "analyticsCohortWeek": "Signed up",
+  "@analyticsCohortWeek": {
+    "description": "Cohort table column: the sign-up week."
+  },
+  "analyticsCohortSize": "Accounts",
+  "@analyticsCohortSize": {
+    "description": "Cohort table column: accounts in the cohort."
+  },
+  "analyticsCohortWeekN": "W{week}",
+  "@analyticsCohortWeekN": {
+    "description": "Cohort table column: week N after sign-up.",
+    "placeholders": {
+      "week": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsCohortCell": "Week of {cohort}: {active} active in week {week} ({share})",
+  "@analyticsCohortCell": {
+    "description": "Tooltip of a cohort cell.",
+    "placeholders": {
+      "cohort": {
+        "type": "String"
+      },
+      "week": {
+        "type": "int"
+      },
+      "active": {
+        "type": "int"
+      },
+      "share": {
+        "type": "String"
+      }
+    }
   }
 }
