@@ -65,9 +65,9 @@ cd wonky_server
 cp config/passwords.example.yaml config/passwords.yaml
 ```
 
-Replace the `CHANGE_ME` values with random
-strings (for example `openssl rand -base64 24`). AI keys are optional: without them, the in-app
-assistant asks each user for their own key, and the board skips its AI checks.
+Its values are development defaults that work as they are (they are not secrets; never reuse them
+elsewhere). AI keys are optional: without them, the in-app assistant asks each user for their own
+key, and the board skips its AI checks.
 
 ## 6. Run Wonky Work
 
@@ -77,7 +77,9 @@ serverpod start
 
 Run it in `wonky_server`. It starts the development database, the server, applies migrations, watches for changes and hot
 reloads. The apps are started on demand from its UI, or by your agent through the `serverpod` MCP
-server. `.mcp.json` in the repository root configures it, together with the `dart` MCP server.
+server. The repository configures it, together with the `dart` MCP server and the Flutter and
+Serverpod skills, for Claude Code (`.mcp.json`, `.claude/`), Codex (`.codex/`, `.agents/`), Cursor
+(`.cursor/`) and Antigravity (`.agents/`).
 The apps run at http://localhost:8082/drive/ (and `/write/`, `/sheets/`, `/slides/`) once built,
 or on their own dev ports when started from `serverpod start`.
 

@@ -4248,7 +4248,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardContribStep5 =>
-      'Create your passwords file in wonky_server and replace the CHANGE_ME values. AI keys are optional.';
+      'Create your passwords file in wonky_server. Its development values work as they are; AI keys are optional.';
 
   @override
   String get boardContribStep6Title => 'Start the server';
@@ -8922,7 +8922,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardContribStep5 =>
-      '[Çŕéåţé ýöûŕ þåššŵöŕðš ƒîļé îñ ŵöñķý_šéŕṽéŕ åñð ŕéþļåçé ţĥé ÇĤÅÑĜÉ_ṀÉ ṽåļûéš. ÅÎ ķéýš åŕé öþţîöñåļ. one two three four five six se]';
+      '[Çŕéåţé ýöûŕ þåššŵöŕðš ƒîļé îñ ŵöñķý_šéŕṽéŕ. Îţš ðéṽéļöþɱéñţ ṽåļûéš ŵöŕķ åš ţĥéý åŕé; ÅÎ ķéýš åŕé öþţîöñåļ. one two three four five six seve]';
 
   @override
   String get boardContribStep6Title => '[Šţåŕţ ţĥé šéŕṽéŕ one t]';

@@ -7,15 +7,15 @@ pubspec_overrides.yaml
 # The workspace root's overrides file is committed (see pubspec.yaml).
 !/pubspec_overrides.yaml
 
-# Agents
+# Agents: the skills and MCP configs of Claude Code (.claude/, .mcp.json),
+# Codex (.codex/, .agents/), Cursor (.cursor/) and Antigravity (.agents/) are
+# committed so a fresh checkout is ready for agentic coding. Only the skills
+# manager's cache and per-machine settings stay out.
 .dart_skills/
-.agents/
-.claude/
+.claude/settings.local.json
+.claude/worktrees/
 .gemini/
-.cursor/
 .vscode/mcp.json
-.codex/
-.mcp.json
 
 # Serverpod Cloud CLI
 .scloud/
