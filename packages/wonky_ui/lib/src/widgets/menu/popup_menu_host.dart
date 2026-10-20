@@ -5,6 +5,7 @@ import 'package:shad/shad.dart';
 
 import 'menu_entry.dart';
 import 'menu_items.dart';
+import 'menu_placement.dart';
 
 /// Hosts programmatic menus (context menus) anchored at a global position
 /// inside [child]: `WonkyPopupMenuHost.maybeOf(context)?.show(pos, entries)`.
@@ -44,10 +45,10 @@ class WonkyPopupMenuHostState extends State<WonkyPopupMenuHost> {
   final _items = GlobalKey(debugLabel: 'WonkyPopupMenuHost.items');
 
   /// Space kept between the menu and the screen edges.
-  static const _margin = 8.0;
+  static const _margin = WonkyMenuPlacement.margin;
 
   /// shad's vertical menu padding (4 px top and bottom) plus its 1 px border.
-  static const _chrome = 10.0;
+  static const _chrome = WonkyMenuPlacement.chrome;
 
   /// The top of a menu of height [height] asked for at [pointerY] on a screen
   /// of height [screen] (03 §10): below the pointer when it fits, else ending

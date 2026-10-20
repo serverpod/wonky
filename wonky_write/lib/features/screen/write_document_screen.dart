@@ -364,7 +364,7 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
               {'nodeId': nodeId, 'row': ?row, 'col': ?column},
             ),
             onCodeLanguageTap: (nodeId, rect) =>
-                PopupMenuHost.maybeOf(_menuContext ?? context)?.show(
+                WonkyPopupMenuHost.maybeOf(_menuContext ?? context)?.show(
                   rect.bottomLeft,
                   () => codeLanguageEntries(ui, doc, nodeId: nodeId),
                 ),
@@ -394,7 +394,7 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _attachPagination();
         });
-        return PopupMenuHost(
+        return WonkyPopupMenuHost(
           child: Builder(
             builder: (context) {
               _menuContext = context;
@@ -568,7 +568,7 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
       }
     }
     final ui = CommandUi(context, s);
-    PopupMenuHost.maybeOf(context)?.show(
+    WonkyPopupMenuHost.maybeOf(context)?.show(
       global,
       () => contextMenuEntries(ui, doc),
       onClosed: doc.focusEditor,

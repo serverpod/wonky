@@ -125,10 +125,12 @@ class _NotificationsButtonState extends State<NotificationsButton> {
     final l = WonkyAppLocalizations.of(context);
     return ShadPopover(
       controller: _popover,
-      anchor: const ShadAnchor(
-        childAlignment: AlignmentDirectional.bottomEnd,
-        overlayAlignment: AlignmentDirectional.topEnd,
-        offset: Offset(0, 6),
+      anchor: WonkyMenuPlacement.onScreen(
+        const ShadAnchor(
+          childAlignment: AlignmentDirectional.bottomEnd,
+          overlayAlignment: AlignmentDirectional.topEnd,
+          offset: Offset(0, 6),
+        ),
       ),
       popover: (context) => NotificationsPanel(
         controller: _ctl,

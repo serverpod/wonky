@@ -38,10 +38,12 @@ class BoardSearchButton extends StatelessWidget {
     return ShadPopover(
       controller: controller,
       padding: EdgeInsets.zero,
-      anchor: const ShadAnchor(
-        childAlignment: AlignmentDirectional.bottomEnd,
-        overlayAlignment: AlignmentDirectional.topEnd,
-        offset: Offset(0, 6),
+      anchor: WonkyMenuPlacement.onScreen(
+        const ShadAnchor(
+          childAlignment: AlignmentDirectional.bottomEnd,
+          overlayAlignment: AlignmentDirectional.topEnd,
+          offset: Offset(0, 6),
+        ),
       ),
       popover: (context) => BoardSearchPanel(
         services: services,

@@ -3,6 +3,7 @@ import 'package:shad/shad.dart';
 
 import 'menu_entry.dart';
 import 'menu_items.dart';
+import 'menu_placement.dart';
 import 'open_menu.dart';
 
 /// Builds the trigger of a [WonkyDropdownMenu].
@@ -30,7 +31,11 @@ class WonkyDropdownMenu extends StatefulWidget {
   final WonkyDropdownTriggerBuilder builder;
   final ShadContextMenuController? controller;
 
-  /// Defaults to below the trigger, start-aligned.
+  /// Defaults to below the trigger, start-aligned. A `ShadAnchor` is kept on
+  /// screen: the menu opens on the other side of the trigger when it does
+  /// not fit and shifts sideways at the window edges
+  /// ([WonkyMenuPlacement.onScreen]); menus taller than the room beside the
+  /// trigger scroll.
   final ShadAnchorBase? anchor;
   final BoxConstraints? constraints;
   final ValueChanged<bool>? onOpenChanged;
@@ -69,6 +74,25 @@ class _WonkyDropdownMenuState extends State<WonkyDropdownMenu> {
     super.dispose();
   }
 
+  static const _defaultAnchor = ShadAnchor(
+    childAlignment: AlignmentDirectional.bottomStart,
+    overlayAlignment: AlignmentDirectional.topStart,
+    offset: Offset(0, 4),
+  );
+
+  /// The room beside the trigger: the menu opens below or above it, so it
+  /// may be as tall as the larger side.
+  double? _maxHeight(ShadAnchorBase anchor) {
+    final rect = WonkyMenuPlacement.rectOf(context);
+    if (rect == null) return null;
+    final gap = switch (anchor) {
+      ShadAnchor(:final offset) ||
+      ShadAnchorAuto(:final offset) => offset.dy.abs(),
+      ShadGlobalAnchor() => 0.0,
+    };
+    return WonkyMenuPlacement.itemsMaxHeightBeside(context, rect, gap: gap);
+  }
+
   void _onChanged() {
     final open = _controller.isOpen;
     if (open != _wasOpen) {
@@ -85,23 +109,22 @@ class _WonkyDropdownMenuState extends State<WonkyDropdownMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final anchor = widget.anchor ?? _defaultAnchor;
     final items = _controller.isOpen
         ? buildWonkyMenuItems(
             context,
             widget.entries(),
             onClose: _controller.hide,
             requestFocus: true,
+            maxHeight: () => _maxHeight(anchor),
           )
         : const <Widget>[SizedBox.shrink()];
     return ShadContextMenu(
       controller: _controller,
-      anchor:
-          widget.anchor ??
-          const ShadAnchor(
-            childAlignment: AlignmentDirectional.bottomStart,
-            overlayAlignment: AlignmentDirectional.topStart,
-            offset: Offset(0, 4),
-          ),
+      // A manual anchor never moves the menu back onto the screen.
+      anchor: anchor is ShadAnchor
+          ? WonkyMenuPlacement.onScreen(anchor)
+          : anchor,
       constraints: widget.constraints ?? const BoxConstraints(minWidth: 200),
       items: items,
       onTapOutside: (_) => _controller.hide(),
@@ -159,6 +182,11 @@ class _LazyContextMenuRegion extends StatefulWidget {
 class _LazyContextMenuRegionState extends State<_LazyContextMenuRegion> {
   final _controller = ShadContextMenuController();
 
+  /// Where the last pointer went down: the menu opens there (shad flips it
+  /// above the pointer when it does not fit below and keeps it on screen
+  /// horizontally), so it may be as tall as the larger side.
+  Offset? _pointer;
+
   @override
   void initState() {
     super.initState();
@@ -181,6 +209,16 @@ class _LazyContextMenuRegionState extends State<_LazyContextMenuRegion> {
     super.dispose();
   }
 
+  double? _maxHeight() {
+    final at = _pointer;
+    if (at == null || !mounted) return null;
+    return WonkyMenuPlacement.itemsMaxHeight(
+      MediaQuery.sizeOf(context).height,
+      below: at.dy,
+      above: at.dy,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ShadContextMenuRegion(
@@ -192,12 +230,16 @@ class _LazyContextMenuRegionState extends State<_LazyContextMenuRegion> {
             context,
             widget.entries(),
             onClose: _controller.hide,
+            maxHeight: _maxHeight,
           )
         else
           const SizedBox.shrink(),
       ],
       child: Listener(
+        // Also over empty space, where shad's detector opens the menu too.
+        behavior: HitTestBehavior.translucent,
         onPointerDown: (e) {
+          _pointer = e.position;
           if (e.buttons == 2) widget.onOpen?.call();
         },
         child: widget.child,
