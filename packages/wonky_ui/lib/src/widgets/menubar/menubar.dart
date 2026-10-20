@@ -3,6 +3,7 @@ import 'package:shad/shad.dart';
 
 import '../menu/menu_entry.dart';
 import '../menu/menu_items.dart';
+import '../menu/menu_placement.dart';
 import '../menu/open_menu.dart';
 
 /// One top-level menu of a [WonkyMenubar].
@@ -178,6 +179,21 @@ class _WonkyMenubarState extends State<WonkyMenubar> {
     if (mounted) setState(() {});
   }
 
+  static final _anchor = WonkyMenuPlacement.onScreen(
+    const ShadAnchor(
+      offset: Offset(-4, 8),
+      childAlignment: AlignmentDirectional.bottomStart,
+      overlayAlignment: AlignmentDirectional.topStart,
+    ),
+  );
+
+  /// The menus open below the strip; long ones scroll.
+  double? _maxHeight() {
+    final rect = WonkyMenuPlacement.rectOf(context);
+    if (rect == null) return null;
+    return WonkyMenuPlacement.itemsMaxHeightBeside(context, rect, gap: 4);
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = _controller.._menus = widget.menus;
@@ -207,6 +223,9 @@ class _WonkyMenubarState extends State<WonkyMenubar> {
                   controller: controller._popoverAt(i),
                   height: widget.height - 4,
                   buttonPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  // shad's default anchor, kept on screen (a menu at the
+                  // end of a narrow strip ran off the right edge).
+                  anchor: _anchor,
                   constraints: const BoxConstraints(minWidth: 240),
                   items: selected == i
                       ? buildWonkyMenuItems(
@@ -217,6 +236,7 @@ class _WonkyMenubarState extends State<WonkyMenubar> {
                           // the keys (Escape, ↑/↓, type-ahead) instead of a
                           // focused document editor behind it.
                           requestFocus: true,
+                          maxHeight: _maxHeight,
                         )
                       : const [SizedBox.shrink()],
                   child: Text(

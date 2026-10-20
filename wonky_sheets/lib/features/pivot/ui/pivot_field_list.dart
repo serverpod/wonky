@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 import '../../../l10n/sheets_l10n.dart';
 import '../pivot_spec_edit.dart';
@@ -117,10 +118,12 @@ class _PivotAddFieldButtonState extends State<PivotAddFieldButton> {
     final l = sheetsL10n(context);
     return ShadPopover(
       controller: _popover,
-      anchor: const ShadAnchor(
-        childAlignment: AlignmentDirectional.bottomEnd,
-        overlayAlignment: AlignmentDirectional.topEnd,
-        offset: Offset(0, 4),
+      anchor: WonkyMenuPlacement.onScreen(
+        const ShadAnchor(
+          childAlignment: AlignmentDirectional.bottomEnd,
+          overlayAlignment: AlignmentDirectional.topEnd,
+          offset: Offset(0, 4),
+        ),
       ),
       padding: const EdgeInsets.all(6),
       popover: (context) => _list(context, l),

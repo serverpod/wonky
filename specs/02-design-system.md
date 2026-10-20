@@ -123,6 +123,21 @@ Thin wrapper over `ShadContextMenu` (controller + anchor) adding:
   `OpenMenu` slot when they open, which closes the menu that was open before (shad puts a menu,
   its trigger and its popover in one tap-region group, so a tap on another menu's trigger would
   otherwise not close it).
+- **Menus stay inside the window** (`WonkyMenuPlacement`, T-3): shad's manual `ShadAnchor`
+  glues an overlay to its trigger and never moves it, so a menu below a trigger at the bottom of
+  the window (the sheet tab menu) or start-aligned near the right edge ran off the screen.
+  `WonkyDropdownMenu` turns a `ShadAnchor` into an auto anchor (`WonkyMenuPlacement.onScreen`):
+  the menu opens where the anchor says when it fits, on the other side of the trigger (above
+  instead of below, the gap mirrored) when it does not, and shifts sideways to stay on screen.
+  Menus taller than the larger side of the trigger scroll (`buildWonkyMenuItems(maxHeight:)`), so
+  they always fit on one side. The same applies to submenus (beside their item, or ending level
+  with its bottom), the `WonkyMenubar` menus, `WonkyContextMenuRegion` (at the pointer, flipped
+  above it, as tall as the larger side of the pointer) and `WonkyPopupMenuHost` (top-left corner
+  at the pointer, moved left/up to fit). Every app's programmatic menus go through
+  `WonkyPopupMenuHost` (Write's own copy is gone), and dropdown-like `ShadPopover`s anchored with
+  a `ShadAnchor` (search suggestions, notifications, the pivot *Add field* list) wrap it in
+  `WonkyMenuPlacement.onScreen` too. A menu keeps its surface (`popover` colours, border,
+  shadow) wherever it opens, in light and dark.
 
 ### 4.3 `WonkyMenubar`
 `ShadMenubar` whose items are built from a declarative `MenuSpec` tree

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 
 import 'menu_entry.dart';
+import 'menu_placement.dart';
 
 /// Renders [entries] as shad context-menu items (for `ShadContextMenu`,
 /// `ShadContextMenuRegion` and `ShadMenubarItem`).
@@ -13,11 +14,30 @@ import 'menu_entry.dart';
 ///
 /// With [requestFocus], the menu takes keyboard focus when it opens (↑/↓,
 /// Home/End move between items; Enter activates).
+///
+/// [maxHeight], evaluated when the menu builds, limits the items' height and
+/// taller menus scroll (`WonkyMenuPlacement.itemsMaxHeight`). Submenus are
+/// limited to the room beside their item and open where they fit.
 List<Widget> buildWonkyMenuItems(
   BuildContext context,
   List<WonkyMenuEntry> entries, {
   VoidCallback? onClose,
   bool requestFocus = false,
+  double? Function()? maxHeight,
+}) => _menuItems(
+  entries,
+  onClose: onClose,
+  requestFocus: requestFocus,
+  maxHeight: maxHeight,
+  nested: false,
+);
+
+List<Widget> _menuItems(
+  List<WonkyMenuEntry> entries, {
+  required VoidCallback? onClose,
+  required bool requestFocus,
+  required double? Function()? maxHeight,
+  required bool nested,
 }) {
   final tidy = entries.tidy();
   if (tidy.isEmpty) return const [];
@@ -26,6 +46,8 @@ List<Widget> buildWonkyMenuItems(
       entries: tidy,
       onClose: onClose,
       requestFocus: requestFocus,
+      maxHeight: maxHeight,
+      nested: nested,
     ),
   ];
 }
@@ -35,11 +57,17 @@ class _TypeAheadMenuBody extends StatefulWidget {
     required this.entries,
     this.onClose,
     this.requestFocus = false,
+    this.maxHeight,
+    this.nested = false,
   });
 
   final List<WonkyMenuEntry> entries;
   final VoidCallback? onClose;
   final bool requestFocus;
+  final double? Function()? maxHeight;
+
+  /// Whether this body is a submenu (its own submenus open nested).
+  final bool nested;
 
   @override
   State<_TypeAheadMenuBody> createState() => _TypeAheadMenuBodyState();
@@ -178,15 +206,19 @@ class _TypeAheadMenuBodyState extends State<_TypeAheadMenuBody> {
         ),
       );
     }
-    return Focus(
-      focusNode: _root,
-      onKeyEvent: _onKey,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
-      ),
+    Widget body = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
     );
+    final maxHeight = widget.maxHeight?.call();
+    if (maxHeight != null) {
+      body = ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SingleChildScrollView(child: body),
+      );
+    }
+    return Focus(focusNode: _root, onKeyEvent: _onKey, child: body);
   }
 
   Widget _buildEntry(BuildContext context, WonkyMenuEntry e, bool leading) {
@@ -220,17 +252,24 @@ class _TypeAheadMenuBodyState extends State<_TypeAheadMenuBody> {
         return _stableEnabled(
           e.key,
           e.enabled,
-          (key) => ShadContextMenuItem(
+          // The builder's context finds the item's box: the submenu is as
+          // tall as the room beside the item allows.
+          (key) => Builder(
             key: key,
-            enabled: e.enabled,
-            leading: lead(e.icon),
-            trailing: const Icon(LucideIcons.chevronRight, size: 16),
-            items: buildWonkyMenuItems(
-              context,
-              e.children,
-              onClose: widget.onClose,
+            builder: (itemContext) => ShadContextMenuItem(
+              enabled: e.enabled,
+              anchor: WonkyMenuPlacement.submenu(nested: widget.nested),
+              leading: lead(e.icon),
+              trailing: const Icon(LucideIcons.chevronRight, size: 16),
+              items: _menuItems(
+                e.children,
+                onClose: widget.onClose,
+                requestFocus: false,
+                maxHeight: () => _submenuMaxHeight(itemContext),
+                nested: true,
+              ),
+              child: Text(e.label),
             ),
-            child: Text(e.label),
           ),
         );
       case WonkyMenuItem():
@@ -303,6 +342,18 @@ class _TypeAheadMenuBodyState extends State<_TypeAheadMenuBody> {
         return item;
     }
   }
+}
+
+/// The tallest the items of the submenu of the item at [itemContext] may be:
+/// it opens level with the item's top, or ends level with its bottom.
+double? _submenuMaxHeight(BuildContext itemContext) {
+  final rect = WonkyMenuPlacement.rectOf(itemContext);
+  if (rect == null) return null;
+  return WonkyMenuPlacement.itemsMaxHeight(
+    MediaQuery.sizeOf(itemContext).height,
+    below: rect.top,
+    above: rect.bottom,
+  );
 }
 
 /// Builds a shad menu item whose element is recreated when [enabled]

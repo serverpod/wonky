@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 import '../bootstrap/app_urls.dart';
 import '../branding/product_icon.dart';
@@ -219,10 +220,12 @@ class _DriveSearchFieldState extends State<DriveSearchField> {
     return ShadPopover(
       controller: _popover,
       padding: const EdgeInsets.all(4),
-      anchor: const ShadAnchor(
-        childAlignment: AlignmentDirectional.bottomStart,
-        overlayAlignment: AlignmentDirectional.topStart,
-        offset: Offset(0, 4),
+      anchor: WonkyMenuPlacement.onScreen(
+        const ShadAnchor(
+          childAlignment: AlignmentDirectional.bottomStart,
+          overlayAlignment: AlignmentDirectional.topStart,
+          offset: Offset(0, 4),
+        ),
       ),
       popover: (context) {
         final q = _text.text.trim();
