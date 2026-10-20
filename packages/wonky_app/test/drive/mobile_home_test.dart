@@ -222,8 +222,9 @@ void main() {
         expect(key('home.footer.reportBug'), findsOneWidget);
         expect(key('home.storage'), findsOneWidget);
         final rows = [
+          // Admin-only entries (Drive's Analytics) are hidden here.
           for (final item in h.services.config.homeNav.items)
-            'drive.nav.${item.destination.name}',
+            if (!item.adminOnly) 'drive.nav.${item.destination.name}',
           for (final a in WonkyAppKind.values) 'home.app.${a.name}',
           'home.footer.reportBug',
         ];

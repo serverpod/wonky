@@ -34,6 +34,7 @@ const specIndexReadme =
     '| 16 | Bugs & improvements (specs/16-bugs-and-improvements.md) | Public board for bug reports and improvement ideas: report dialog with annotated screenshots, votes, comments, AI triage and moderation, admins, tasks with contributor prompts, claims, GitHub PR rules (M12, built) |\n'
     '| 17 | RevLog sync (specs/17-revlog-sync.md) | Server-sequenced op log of Sheets and Slides: decisions, data model, change sets and apply rules, protocol, server (sequencer, hooks, pages, headless cache), client (cache, outbox, bootstrap, conflicts), performance gates, as-built notes (M13) |\n'
     '| 18 | Publications & submissions (specs/18-publications-and-submissions.md) | Blogs register a publication; contributors write in Wonky Write and *Submit* to the blog\'s review queue (signed webhooks, publication API, moderators with comment access, feedback in the document) (M14, built) |\n'
+    '| 19 | Usage analytics (specs/19-usage-analytics.md) | First-party analytics for admins in Wonky Drive: daily activity per person and app (ids and counts only), DAU/WAU/MAU, content, collaboration, AI and MCP use, sign-up cohorts, a daily rollup (built) |\n'
     '## Conventions used in all specs';
 
 /// Headings of the suite specs (`specs/*.md`).
@@ -396,6 +397,17 @@ const specIndexSuite =
     '    ## 11. Security and privacy summary\n'
     '    ## 12. Work packages\n'
     '    ## 13. As built (M14)\n'
+    'specs/19-usage-analytics.md\n'
+    '  # 19 · Usage analytics\n'
+    '    ## 1. Decisions\n'
+    '    ## 2. Recording (server)\n'
+    '      ### 2.1 Rollup and indexes\n'
+    '    ## 3. Dashboard\n'
+    '      ### 3.1 Page (`/drive/analytics[?days=…&admins=1]`)\n'
+    '      ### 3.2 Charts\n'
+    '    ## 4. Privacy\n'
+    '    ## 5. Tests\n'
+    '    ## 6. Later\n'
     'specs/v2-review.md\n'
     '  # Wonky Work v2 — review decisions\n'
     '    ## Summary\n'
@@ -499,6 +511,7 @@ const specIndexApps = <String, String>{
       '    ## 5. Opening items\n'
       '    ## 6. File preview screen (`/drive/file/:uuid`)\n'
       '    ## 7. Storage page (`/drive/storage`)\n'
+      '      ### 7.1 Analytics page (`/drive/analytics`, admins only)\n'
       '    ## 8. Drive settings (`/settings/app`)\n'
       '    ## 9. Commands\n'
       '    ## 10. Keyboard map\n'

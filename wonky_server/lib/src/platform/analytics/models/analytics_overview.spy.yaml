@@ -1,0 +1,39 @@
+### The usage analytics dashboard of Wonky Drive (specs/19 §3), for admins.
+class: AnalyticsOverview
+fields:
+  ### Period length in days; [series] has one entry per day, oldest first,
+  ### ending today (UTC).
+  days: int
+  includeAdmins: bool
+  generatedAt: DateTime
+  ### The first day with recorded activity (null: none yet).
+  trackingSince: DateTime?
+  ### All accounts now, and those created in the period.
+  accounts: int
+  newAccounts: int
+  ### Distinct active users today, in the last 7 and the last 30 days.
+  activeToday: int
+  weekly: int
+  monthly: int
+  ### The average daily active users of the last 30 days over [monthly]
+  ### (0–1).
+  stickiness: double
+  series: List<AnalyticsDay>
+  ### Items now (not trashed) by kind: count and bytes.
+  itemTotals: List<AnalyticsCount>
+  storageBytes: int
+  ### Accounts by sign-in method (`email`, `google`, …); an account with
+  ### two methods counts for both.
+  signInMethods: List<AnalyticsCount>
+  ### AI requests and tokens in the period by feature and by model.
+  aiFeatures: List<AnalyticsCount>
+  aiModels: List<AnalyticsCount>
+  ### How many days of AI usage the server keeps.
+  aiRetentionDays: int
+  ### Items now shared with at least one other person.
+  sharedItems: int
+  ### Items edited by two or more people in the period.
+  coEditedItems: int
+  ### People who commented in the period.
+  commenters: int
+  cohorts: List<AnalyticsCohort>

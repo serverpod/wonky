@@ -13,3 +13,6 @@ fields:
 indexes:
   activity_item_idx:
     fields: itemId, at
+  ### Creations and edits by time (usage analytics, specs/19 §3).
+  activity_type_at_idx:
+    fields: type, at

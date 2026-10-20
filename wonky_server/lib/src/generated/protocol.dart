@@ -125,6 +125,14 @@ import 'platform/ai/models/inline_ai_event_type.dart' as _i6pcz5z6;
 import 'platform/ai/models/inline_ai_request.dart' as _i4m43iwr;
 import 'platform/ai/models/proofread_event.dart' as _ie0jt2ne;
 import 'platform/ai/models/proofread_issue.dart' as _ivmxemza;
+import 'platform/analytics/models/analytics_cohort.dart' as _ixradasp;
+import 'platform/analytics/models/analytics_count.dart' as _innm1rwe;
+import 'platform/analytics/models/analytics_day.dart' as _is2u4stz;
+import 'platform/analytics/models/analytics_overview.dart' as _i61uxw4p;
+import 'platform/analytics/models/usage_app.dart' as _id3chnrt;
+import 'platform/analytics/models/usage_counter_day.dart' as _iamkojeb;
+import 'platform/analytics/models/usage_day_stats.dart' as _ibanfcrx;
+import 'platform/analytics/models/user_activity_day.dart' as _ik0bapqg;
 import 'platform/board/models/board_ai_usage.dart' as _icowsqvh;
 import 'platform/board/models/board_area.dart' as _i0ag0upm;
 import 'platform/board/models/board_author.dart' as _ika8r7fc;
@@ -481,6 +489,14 @@ export 'platform/ai/models/inline_ai_event_type.dart';
 export 'platform/ai/models/inline_ai_request.dart';
 export 'platform/ai/models/proofread_event.dart';
 export 'platform/ai/models/proofread_issue.dart';
+export 'platform/analytics/models/analytics_cohort.dart';
+export 'platform/analytics/models/analytics_count.dart';
+export 'platform/analytics/models/analytics_day.dart';
+export 'platform/analytics/models/analytics_overview.dart';
+export 'platform/analytics/models/usage_app.dart';
+export 'platform/analytics/models/usage_counter_day.dart';
+export 'platform/analytics/models/usage_day_stats.dart';
+export 'platform/analytics/models/user_activity_day.dart';
 export 'platform/board/models/board_ai_usage.dart';
 export 'platform/board/models/board_area.dart';
 export 'platform/board/models/board_author.dart';
@@ -855,6 +871,14 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i4m43iwr.InlineAiRequest>,
           _is.getType<_ie0jt2ne.ProofreadEvent>,
           _is.getType<_ivmxemza.ProofreadIssue>,
+          _is.getType<_ixradasp.AnalyticsCohort>,
+          _is.getType<_innm1rwe.AnalyticsCount>,
+          _is.getType<_is2u4stz.AnalyticsDay>,
+          _is.getType<_i61uxw4p.AnalyticsOverview>,
+          _is.getType<_id3chnrt.UsageApp>,
+          _is.getType<_iamkojeb.UsageCounterDay>,
+          _is.getType<_ibanfcrx.UsageDayStats>,
+          _is.getType<_ik0bapqg.UserActivityDay>,
           _is.getType<_icowsqvh.BoardAiUsage>,
           _is.getType<_i0ag0upm.BoardArea>,
           _is.getType<_ika8r7fc.BoardAuthor>,
@@ -1262,6 +1286,14 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_i4m43iwr.InlineAiRequest?>,
           _is.getType<_ie0jt2ne.ProofreadEvent?>,
           _is.getType<_ivmxemza.ProofreadIssue?>,
+          _is.getType<_ixradasp.AnalyticsCohort?>,
+          _is.getType<_innm1rwe.AnalyticsCount?>,
+          _is.getType<_is2u4stz.AnalyticsDay?>,
+          _is.getType<_i61uxw4p.AnalyticsOverview?>,
+          _is.getType<_id3chnrt.UsageApp?>,
+          _is.getType<_iamkojeb.UsageCounterDay?>,
+          _is.getType<_ibanfcrx.UsageDayStats?>,
+          _is.getType<_ik0bapqg.UserActivityDay?>,
           _is.getType<_icowsqvh.BoardAiUsage?>,
           _is.getType<_i0ag0upm.BoardArea?>,
           _is.getType<_ika8r7fc.BoardAuthor?>,
@@ -1637,6 +1669,10 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<List<_i4rkdm2k.AssistantMessageView>>,
           _is.getType<List<_ivmxemza.ProofreadIssue>>,
           _is.getType<List<_ivmxemza.ProofreadIssue>?>,
+          _is.getType<List<int?>>,
+          _is.getType<List<_is2u4stz.AnalyticsDay>>,
+          _is.getType<List<_innm1rwe.AnalyticsCount>>,
+          _is.getType<List<_ixradasp.AnalyticsCohort>>,
           _is.getType<List<int>>,
           _is.getType<List<_iq3f61ec.BoardPostListItem>>,
           _is.getType<List<_i5pjfe5s.BoardFlagView>>,
@@ -1914,6 +1950,23 @@ class Protocol extends _is.DatabaseSerializationManager
           isUnique: false,
           isPrimary: false,
         ),
+        _isp.IndexDefinition(
+          indexName: 'activity_type_at_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'type',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'at',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
       ],
       managed: true,
     ),
@@ -2175,6 +2228,19 @@ class Protocol extends _is.DatabaseSerializationManager
               type: _isp.IndexElementDefinitionType.column,
               definition: 'userId',
             ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'at',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'ai_usage_at_idx',
+          tableSpace: null,
+          elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'at',
@@ -4986,6 +5052,19 @@ class Protocol extends _is.DatabaseSerializationManager
           isUnique: true,
           isPrimary: false,
         ),
+        _isp.IndexDefinition(
+          indexName: 'comment_created_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
       ],
       managed: true,
     ),
@@ -6823,6 +6902,19 @@ class Protocol extends _is.DatabaseSerializationManager
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'expiresAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'perm_granted_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'grantedAt',
             ),
           ],
           type: 'btree',
@@ -14126,6 +14218,247 @@ class Protocol extends _is.DatabaseSerializationManager
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'usage_counter_day',
+      dartName: 'UsageCounterDay',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'day',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'value',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'usage_counter_day_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'day',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'name',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'usage_day_stats',
+      dartName: 'UsageDayStats',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'day',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'includeAdmins',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _isp.ColumnDefinition(
+          name: 'active',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'editors',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'drive',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'write',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sheets',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'slides',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'mcp',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'weekly',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'monthly',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'computedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'usage_day_stats_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'day',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'includeAdmins',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'user_activity_day',
+      dartName: 'UserActivityDay',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'day',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'app',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:UsageApp',
+        ),
+        _isp.ColumnDefinition(
+          name: 'edited',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'user_activity_day_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'day',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'app',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'user_activity_day_day_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'day',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'user_activity_settings',
       dartName: 'UserActivitySettings',
       schema: 'public',
@@ -14436,6 +14769,19 @@ class Protocol extends _is.DatabaseSerializationManager
           ],
           type: 'btree',
           isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'user_profile_created_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'createdAt',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
           isPrimary: false,
         ),
       ],
@@ -15043,6 +15389,30 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (t == _ivmxemza.ProofreadIssue) {
       return _ivmxemza.ProofreadIssue.fromJson(data) as T;
+    }
+    if (t == _ixradasp.AnalyticsCohort) {
+      return _ixradasp.AnalyticsCohort.fromJson(data) as T;
+    }
+    if (t == _innm1rwe.AnalyticsCount) {
+      return _innm1rwe.AnalyticsCount.fromJson(data) as T;
+    }
+    if (t == _is2u4stz.AnalyticsDay) {
+      return _is2u4stz.AnalyticsDay.fromJson(data) as T;
+    }
+    if (t == _i61uxw4p.AnalyticsOverview) {
+      return _i61uxw4p.AnalyticsOverview.fromJson(data) as T;
+    }
+    if (t == _id3chnrt.UsageApp) {
+      return _id3chnrt.UsageApp.fromJson(data) as T;
+    }
+    if (t == _iamkojeb.UsageCounterDay) {
+      return _iamkojeb.UsageCounterDay.fromJson(data) as T;
+    }
+    if (t == _ibanfcrx.UsageDayStats) {
+      return _ibanfcrx.UsageDayStats.fromJson(data) as T;
+    }
+    if (t == _ik0bapqg.UserActivityDay) {
+      return _ik0bapqg.UserActivityDay.fromJson(data) as T;
     }
     if (t == _icowsqvh.BoardAiUsage) {
       return _icowsqvh.BoardAiUsage.fromJson(data) as T;
@@ -16326,6 +16696,36 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (t == _is.getType<_ivmxemza.ProofreadIssue?>()) {
       return (data != null ? _ivmxemza.ProofreadIssue.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ixradasp.AnalyticsCohort?>()) {
+      return (data != null ? _ixradasp.AnalyticsCohort.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_innm1rwe.AnalyticsCount?>()) {
+      return (data != null ? _innm1rwe.AnalyticsCount.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_is2u4stz.AnalyticsDay?>()) {
+      return (data != null ? _is2u4stz.AnalyticsDay.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i61uxw4p.AnalyticsOverview?>()) {
+      return (data != null ? _i61uxw4p.AnalyticsOverview.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_id3chnrt.UsageApp?>()) {
+      return (data != null ? _id3chnrt.UsageApp.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iamkojeb.UsageCounterDay?>()) {
+      return (data != null ? _iamkojeb.UsageCounterDay.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ibanfcrx.UsageDayStats?>()) {
+      return (data != null ? _ibanfcrx.UsageDayStats.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ik0bapqg.UserActivityDay?>()) {
+      return (data != null ? _ik0bapqg.UserActivityDay.fromJson(data) : null)
           as T;
     }
     if (t == _is.getType<_icowsqvh.BoardAiUsage?>()) {
@@ -17879,6 +18279,27 @@ class Protocol extends _is.DatabaseSerializationManager
               : null)
           as T;
     }
+    if (t == List<int?>) {
+      return (data as List).map((e) => deserialize<int?>(e)).toList() as T;
+    }
+    if (t == List<_is2u4stz.AnalyticsDay>) {
+      return (data as List)
+              .map((e) => deserialize<_is2u4stz.AnalyticsDay>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_innm1rwe.AnalyticsCount>) {
+      return (data as List)
+              .map((e) => deserialize<_innm1rwe.AnalyticsCount>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ixradasp.AnalyticsCohort>) {
+      return (data as List)
+              .map((e) => deserialize<_ixradasp.AnalyticsCohort>(e))
+              .toList()
+          as T;
+    }
     if (t == List<int>) {
       return (data as List).map((e) => deserialize<int>(e)).toList() as T;
     }
@@ -18453,6 +18874,14 @@ class Protocol extends _is.DatabaseSerializationManager
       _i4m43iwr.InlineAiRequest => 'InlineAiRequest',
       _ie0jt2ne.ProofreadEvent => 'ProofreadEvent',
       _ivmxemza.ProofreadIssue => 'ProofreadIssue',
+      _ixradasp.AnalyticsCohort => 'AnalyticsCohort',
+      _innm1rwe.AnalyticsCount => 'AnalyticsCount',
+      _is2u4stz.AnalyticsDay => 'AnalyticsDay',
+      _i61uxw4p.AnalyticsOverview => 'AnalyticsOverview',
+      _id3chnrt.UsageApp => 'UsageApp',
+      _iamkojeb.UsageCounterDay => 'UsageCounterDay',
+      _ibanfcrx.UsageDayStats => 'UsageDayStats',
+      _ik0bapqg.UserActivityDay => 'UserActivityDay',
       _icowsqvh.BoardAiUsage => 'BoardAiUsage',
       _i0ag0upm.BoardArea => 'BoardArea',
       _ika8r7fc.BoardAuthor => 'BoardAuthor',
@@ -18914,6 +19343,22 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'ProofreadEvent';
       case _ivmxemza.ProofreadIssue():
         return 'ProofreadIssue';
+      case _ixradasp.AnalyticsCohort():
+        return 'AnalyticsCohort';
+      case _innm1rwe.AnalyticsCount():
+        return 'AnalyticsCount';
+      case _is2u4stz.AnalyticsDay():
+        return 'AnalyticsDay';
+      case _i61uxw4p.AnalyticsOverview():
+        return 'AnalyticsOverview';
+      case _id3chnrt.UsageApp():
+        return 'UsageApp';
+      case _iamkojeb.UsageCounterDay():
+        return 'UsageCounterDay';
+      case _ibanfcrx.UsageDayStats():
+        return 'UsageDayStats';
+      case _ik0bapqg.UserActivityDay():
+        return 'UserActivityDay';
       case _icowsqvh.BoardAiUsage():
         return 'BoardAiUsage';
       case _i0ag0upm.BoardArea():
@@ -19807,6 +20252,30 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (dataClassName == 'ProofreadIssue') {
       return deserialize<_ivmxemza.ProofreadIssue>(data['data']);
+    }
+    if (dataClassName == 'AnalyticsCohort') {
+      return deserialize<_ixradasp.AnalyticsCohort>(data['data']);
+    }
+    if (dataClassName == 'AnalyticsCount') {
+      return deserialize<_innm1rwe.AnalyticsCount>(data['data']);
+    }
+    if (dataClassName == 'AnalyticsDay') {
+      return deserialize<_is2u4stz.AnalyticsDay>(data['data']);
+    }
+    if (dataClassName == 'AnalyticsOverview') {
+      return deserialize<_i61uxw4p.AnalyticsOverview>(data['data']);
+    }
+    if (dataClassName == 'UsageApp') {
+      return deserialize<_id3chnrt.UsageApp>(data['data']);
+    }
+    if (dataClassName == 'UsageCounterDay') {
+      return deserialize<_iamkojeb.UsageCounterDay>(data['data']);
+    }
+    if (dataClassName == 'UsageDayStats') {
+      return deserialize<_ibanfcrx.UsageDayStats>(data['data']);
+    }
+    if (dataClassName == 'UserActivityDay') {
+      return deserialize<_ik0bapqg.UserActivityDay>(data['data']);
     }
     if (dataClassName == 'BoardAiUsage') {
       return deserialize<_icowsqvh.BoardAiUsage>(data['data']);
@@ -20968,6 +21437,12 @@ class Protocol extends _is.DatabaseSerializationManager
         return _i8cittxq.AssistantMessage.t;
       case _iaq6rutx.AssistantThread:
         return _iaq6rutx.AssistantThread.t;
+      case _iamkojeb.UsageCounterDay:
+        return _iamkojeb.UsageCounterDay.t;
+      case _ibanfcrx.UsageDayStats:
+        return _ibanfcrx.UsageDayStats.t;
+      case _ik0bapqg.UserActivityDay:
+        return _ik0bapqg.UserActivityDay.t;
       case _icowsqvh.BoardAiUsage:
         return _icowsqvh.BoardAiUsage.t;
       case _ilo15wk2.BoardBundleSuggestion:

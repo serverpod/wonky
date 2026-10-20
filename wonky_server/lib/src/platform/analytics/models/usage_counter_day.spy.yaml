@@ -1,0 +1,13 @@
+### A daily counter of the usage analytics (specs/19 §2), e.g. `mcp.calls`.
+class: UsageCounterDay
+table: usage_counter_day
+serverOnly: true
+fields:
+  ### UTC midnight of the day.
+  day: DateTime
+  name: String
+  value: int, default=0
+indexes:
+  usage_counter_day_idx:
+    fields: day, name
+    unique: true

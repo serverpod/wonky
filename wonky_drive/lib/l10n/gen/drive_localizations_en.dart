@@ -894,6 +894,271 @@ class DriveLocalizationsEn extends DriveLocalizations {
   String uploadConvertFailed(String name) {
     return '$name couldn\'t be converted. It was kept as a file.';
   }
+
+  @override
+  String get cmdAnalyticsShow => 'Show analytics';
+
+  @override
+  String get categoryAnalytics => 'Analytics';
+
+  @override
+  String get analyticsTitle => 'Analytics';
+
+  @override
+  String get analyticsSubtitle => 'Usage of Wonky Work by UTC day.';
+
+  @override
+  String analyticsUpdated(String time) {
+    return 'Updated $time';
+  }
+
+  @override
+  String analyticsTrackingSince(String date) {
+    return 'Activity recorded since $date';
+  }
+
+  @override
+  String get analyticsNoActivityYet => 'No activity recorded yet';
+
+  @override
+  String analyticsPeriodDays(int days) {
+    return '$days days';
+  }
+
+  @override
+  String get analyticsIncludeAdmins => 'Include admins';
+
+  @override
+  String get analyticsRefresh => 'Refresh';
+
+  @override
+  String get analyticsForbiddenTitle => 'Analytics are for admins';
+
+  @override
+  String get analyticsForbiddenBody =>
+      'Ask a Wonky Work admin if you need these numbers.';
+
+  @override
+  String get analyticsErrorTitle => 'The analytics could not be loaded';
+
+  @override
+  String get analyticsShowTable => 'Show as table';
+
+  @override
+  String get analyticsShowChart => 'Show as chart';
+
+  @override
+  String analyticsChartLabel(String series, String from, String to) {
+    return 'Chart of $series from $from to $to';
+  }
+
+  @override
+  String get analyticsColDay => 'Day';
+
+  @override
+  String get analyticsColWeek => 'Week';
+
+  @override
+  String get analyticsTotal => 'Total';
+
+  @override
+  String get analyticsKpiAccounts => 'Accounts';
+
+  @override
+  String analyticsKpiNew(String count, int days) {
+    return '+$count in $days days';
+  }
+
+  @override
+  String get analyticsKpiToday => 'Active today';
+
+  @override
+  String analyticsKpiEditorsToday(String count) {
+    return '$count created or edited';
+  }
+
+  @override
+  String get analyticsKpiWeekly => 'Weekly active';
+
+  @override
+  String get analyticsKpiWeeklyNote => 'Last 7 days';
+
+  @override
+  String get analyticsKpiMonthly => 'Monthly active';
+
+  @override
+  String get analyticsKpiMonthlyNote => 'Last 30 days';
+
+  @override
+  String get analyticsKpiStickiness => 'Stickiness';
+
+  @override
+  String get analyticsKpiStickinessNote => 'Daily ÷ monthly active';
+
+  @override
+  String get analyticsKpiCreated => 'Items created';
+
+  @override
+  String analyticsKpiInPeriod(int days) {
+    return 'In $days days';
+  }
+
+  @override
+  String get analyticsActiveTitle => 'Active users';
+
+  @override
+  String get analyticsActiveSubtitle => 'People who used any app or MCP';
+
+  @override
+  String get analyticsViewDaily => 'Daily';
+
+  @override
+  String get analyticsViewWeekly => 'Weekly';
+
+  @override
+  String get analyticsViewMonthly => 'Monthly';
+
+  @override
+  String get analyticsSeriesActive => 'Active';
+
+  @override
+  String get analyticsSeriesEditors => 'Created or edited';
+
+  @override
+  String get analyticsSeriesWeekly => 'Weekly active';
+
+  @override
+  String get analyticsSeriesMonthly => 'Monthly active';
+
+  @override
+  String get analyticsAppsTitle => 'Active users by app';
+
+  @override
+  String get analyticsAppsSubtitle => 'A person using two apps counts in both';
+
+  @override
+  String get analyticsSeriesMcp => 'MCP clients';
+
+  @override
+  String get analyticsSignupsTitle => 'Sign-ups';
+
+  @override
+  String analyticsSignupsSubtitle(String count, String total) {
+    return '$count new · $total accounts';
+  }
+
+  @override
+  String get analyticsSeriesSignups => 'Sign-ups';
+
+  @override
+  String get analyticsContentNowTitle => 'Content now';
+
+  @override
+  String analyticsItemsTotal(String count, String size) {
+    return '$count items · $size stored';
+  }
+
+  @override
+  String get analyticsSignInTitle => 'Sign-in methods';
+
+  @override
+  String get analyticsSignInEmail => 'Email';
+
+  @override
+  String get analyticsSignInGoogle => 'Google';
+
+  @override
+  String get analyticsContentTitle => 'Content created';
+
+  @override
+  String get analyticsContentSubtitle =>
+      'By people, the assistant and MCP; welcome content left out';
+
+  @override
+  String get analyticsCollabTitle => 'Collaboration';
+
+  @override
+  String get analyticsStatShared => 'Items shared now';
+
+  @override
+  String analyticsStatCoEdited(int days) {
+    return 'Co-edited in $days days';
+  }
+
+  @override
+  String analyticsStatCommenters(int days) {
+    return 'Commenters in $days days';
+  }
+
+  @override
+  String get analyticsSeriesComments => 'Comments';
+
+  @override
+  String get analyticsSeriesShares => 'Shares';
+
+  @override
+  String get analyticsAiTitle => 'AI assistant';
+
+  @override
+  String analyticsAiSubtitle(String requests, String tokens, int days) {
+    return '$requests requests · $tokens tokens · kept $days days';
+  }
+
+  @override
+  String get analyticsSeriesAiRequests => 'Requests';
+
+  @override
+  String get analyticsAiByFeature => 'By feature';
+
+  @override
+  String get analyticsAiByModel => 'By model';
+
+  @override
+  String analyticsAiRow(String requests, String tokens) {
+    return '$requests · $tokens tokens';
+  }
+
+  @override
+  String get analyticsNoAiUse => 'No AI use in this period';
+
+  @override
+  String get analyticsMcpTitle => 'MCP tool calls';
+
+  @override
+  String analyticsMcpSubtitle(String count) {
+    return '$count calls by people\'s access tokens (admins included)';
+  }
+
+  @override
+  String get analyticsSeriesMcpCalls => 'Tool calls';
+
+  @override
+  String get analyticsRetentionTitle => 'Retention';
+
+  @override
+  String get analyticsRetentionSubtitle =>
+      'Share of each week\'s sign-ups active in the weeks after';
+
+  @override
+  String get analyticsCohortWeek => 'Signed up';
+
+  @override
+  String get analyticsCohortSize => 'Accounts';
+
+  @override
+  String analyticsCohortWeekN(int week) {
+    return 'W$week';
+  }
+
+  @override
+  String analyticsCohortCell(
+    String cohort,
+    int week,
+    int active,
+    String share,
+  ) {
+    return 'Week of $cohort: $active active in week $week ($share)';
+  }
 }
 
 /// The translations for English (`en_XA`).
@@ -1794,5 +2059,273 @@ class DriveLocalizationsEnXa extends DriveLocalizationsEn {
   @override
   String uploadConvertFailed(String name) {
     return '[$name çöûļðñ\'ţ ƀé çöñṽéŕţéð. Îţ ŵåš ķéþţ åš å ƒîļé. one two three]';
+  }
+
+  @override
+  String get cmdAnalyticsShow => '[Šĥöŵ åñåļýţîçš one t]';
+
+  @override
+  String get categoryAnalytics => '[Åñåļýţîçš one]';
+
+  @override
+  String get analyticsTitle => '[Åñåļýţîçš one]';
+
+  @override
+  String get analyticsSubtitle => '[Ûšåĝé öƒ Ŵöñķý Ŵöŕķ ƀý ÛŢÇ ðåý. one two t]';
+
+  @override
+  String analyticsUpdated(String time) {
+    return '[Ûþðåţéð $time one]';
+  }
+
+  @override
+  String analyticsTrackingSince(String date) {
+    return '[Åçţîṽîţý ŕéçöŕðéð šîñçé $date one two]';
+  }
+
+  @override
+  String get analyticsNoActivityYet => '[Ñö åçţîṽîţý ŕéçöŕðéð ýéţ one two]';
+
+  @override
+  String analyticsPeriodDays(int days) {
+    return '[$days ðåýš on]';
+  }
+
+  @override
+  String get analyticsIncludeAdmins => '[Îñçļûðé åðɱîñš one t]';
+
+  @override
+  String get analyticsRefresh => '[Ŕéƒŕéšĥ one]';
+
+  @override
+  String get analyticsForbiddenTitle => '[Åñåļýţîçš åŕé ƒöŕ åðɱîñš one two]';
+
+  @override
+  String get analyticsForbiddenBody =>
+      '[Åšķ å Ŵöñķý Ŵöŕķ åðɱîñ îƒ ýöû ñééð ţĥéšé ñûɱƀéŕš. one two three]';
+
+  @override
+  String get analyticsErrorTitle =>
+      '[Ţĥé åñåļýţîçš çöûļð ñöţ ƀé ļöåðéð one two th]';
+
+  @override
+  String get analyticsShowTable => '[Šĥöŵ åš ţåƀļé one]';
+
+  @override
+  String get analyticsShowChart => '[Šĥöŵ åš çĥåŕţ one]';
+
+  @override
+  String analyticsChartLabel(String series, String from, String to) {
+    return '[Çĥåŕţ öƒ $series ƒŕöɱ $from ţö $to one t]';
+  }
+
+  @override
+  String get analyticsColDay => '[Ðåý on]';
+
+  @override
+  String get analyticsColWeek => '[Ŵééķ on]';
+
+  @override
+  String get analyticsTotal => '[Ţöţåļ on]';
+
+  @override
+  String get analyticsKpiAccounts => '[Åççöûñţš one]';
+
+  @override
+  String analyticsKpiNew(String count, int days) {
+    return '[+$count îñ $days ðåýš one]';
+  }
+
+  @override
+  String get analyticsKpiToday => '[Åçţîṽé ţöðåý one]';
+
+  @override
+  String analyticsKpiEditorsToday(String count) {
+    return '[$count çŕéåţéð öŕ éðîţéð one tw]';
+  }
+
+  @override
+  String get analyticsKpiWeekly => '[Ŵééķļý åçţîṽé one t]';
+
+  @override
+  String get analyticsKpiWeeklyNote => '[Ļåšţ 7 ðåýš one]';
+
+  @override
+  String get analyticsKpiMonthly => '[Ṁöñţĥļý åçţîṽé one t]';
+
+  @override
+  String get analyticsKpiMonthlyNote => '[Ļåšţ 30 ðåýš one]';
+
+  @override
+  String get analyticsKpiStickiness => '[Šţîçķîñéšš one]';
+
+  @override
+  String get analyticsKpiStickinessNote => '[Ðåîļý ÷ ɱöñţĥļý åçţîṽé one two]';
+
+  @override
+  String get analyticsKpiCreated => '[Îţéɱš çŕéåţéð one t]';
+
+  @override
+  String analyticsKpiInPeriod(int days) {
+    return '[Îñ $days ðåýš one]';
+  }
+
+  @override
+  String get analyticsActiveTitle => '[Åçţîṽé ûšéŕš one]';
+
+  @override
+  String get analyticsActiveSubtitle =>
+      '[Þéöþļé ŵĥö ûšéð åñý åþþ öŕ ṀÇÞ one two t]';
+
+  @override
+  String get analyticsViewDaily => '[Ðåîļý on]';
+
+  @override
+  String get analyticsViewWeekly => '[Ŵééķļý one]';
+
+  @override
+  String get analyticsViewMonthly => '[Ṁöñţĥļý one]';
+
+  @override
+  String get analyticsSeriesActive => '[Åçţîṽé one]';
+
+  @override
+  String get analyticsSeriesEditors => '[Çŕéåţéð öŕ éðîţéð one tw]';
+
+  @override
+  String get analyticsSeriesWeekly => '[Ŵééķļý åçţîṽé one t]';
+
+  @override
+  String get analyticsSeriesMonthly => '[Ṁöñţĥļý åçţîṽé one t]';
+
+  @override
+  String get analyticsAppsTitle => '[Åçţîṽé ûšéŕš ƀý åþþ one tw]';
+
+  @override
+  String get analyticsAppsSubtitle =>
+      '[Å þéŕšöñ ûšîñĝ ţŵö åþþš çöûñţš îñ ƀöţĥ one two thr]';
+
+  @override
+  String get analyticsSeriesMcp => '[ṀÇÞ çļîéñţš one]';
+
+  @override
+  String get analyticsSignupsTitle => '[Šîĝñ-ûþš one]';
+
+  @override
+  String analyticsSignupsSubtitle(String count, String total) {
+    return '[$count ñéŵ · $total åççöûñţš one t]';
+  }
+
+  @override
+  String get analyticsSeriesSignups => '[Šîĝñ-ûþš one]';
+
+  @override
+  String get analyticsContentNowTitle => '[Çöñţéñţ ñöŵ one]';
+
+  @override
+  String analyticsItemsTotal(String count, String size) {
+    return '[$count îţéɱš · $size šţöŕéð one t]';
+  }
+
+  @override
+  String get analyticsSignInTitle => '[Šîĝñ-îñ ɱéţĥöðš one t]';
+
+  @override
+  String get analyticsSignInEmail => '[Éɱåîļ on]';
+
+  @override
+  String get analyticsSignInGoogle => '[Ĝööĝļé one]';
+
+  @override
+  String get analyticsContentTitle => '[Çöñţéñţ çŕéåţéð one t]';
+
+  @override
+  String get analyticsContentSubtitle =>
+      '[Ɓý þéöþļé, ţĥé åššîšţåñţ åñð ṀÇÞ; ŵéļçöɱé çöñţéñţ ļéƒţ öûţ one two three four]';
+
+  @override
+  String get analyticsCollabTitle => '[Çöļļåƀöŕåţîöñ one t]';
+
+  @override
+  String get analyticsStatShared => '[Îţéɱš šĥåŕéð ñöŵ one t]';
+
+  @override
+  String analyticsStatCoEdited(int days) {
+    return '[Çö-éðîţéð îñ $days ðåýš one tw]';
+  }
+
+  @override
+  String analyticsStatCommenters(int days) {
+    return '[Çöɱɱéñţéŕš îñ $days ðåýš one tw]';
+  }
+
+  @override
+  String get analyticsSeriesComments => '[Çöɱɱéñţš one]';
+
+  @override
+  String get analyticsSeriesShares => '[Šĥåŕéš one]';
+
+  @override
+  String get analyticsAiTitle => '[ÅÎ åššîšţåñţ one]';
+
+  @override
+  String analyticsAiSubtitle(String requests, String tokens, int days) {
+    return '[$requests ŕéǫûéšţš · $tokens ţöķéñš · ķéþţ $days ðåýš one two t]';
+  }
+
+  @override
+  String get analyticsSeriesAiRequests => '[Ŕéǫûéšţš one]';
+
+  @override
+  String get analyticsAiByFeature => '[Ɓý ƒéåţûŕé one]';
+
+  @override
+  String get analyticsAiByModel => '[Ɓý ɱöðéļ one]';
+
+  @override
+  String analyticsAiRow(String requests, String tokens) {
+    return '[$requests · $tokens ţöķéñš one]';
+  }
+
+  @override
+  String get analyticsNoAiUse => '[Ñö ÅÎ ûšé îñ ţĥîš þéŕîöð one two]';
+
+  @override
+  String get analyticsMcpTitle => '[ṀÇÞ ţööļ çåļļš one t]';
+
+  @override
+  String analyticsMcpSubtitle(String count) {
+    return '[$count çåļļš ƀý þéöþļé\'š åççéšš ţöķéñš (åðɱîñš îñçļûðéð) one two three fo]';
+  }
+
+  @override
+  String get analyticsSeriesMcpCalls => '[Ţööļ çåļļš one]';
+
+  @override
+  String get analyticsRetentionTitle => '[Ŕéţéñţîöñ one]';
+
+  @override
+  String get analyticsRetentionSubtitle =>
+      '[Šĥåŕé öƒ éåçĥ ŵééķ\'š šîĝñ-ûþš åçţîṽé îñ ţĥé ŵééķš åƒţéŕ one two three fou]';
+
+  @override
+  String get analyticsCohortWeek => '[Šîĝñéð ûþ one]';
+
+  @override
+  String get analyticsCohortSize => '[Åççöûñţš one]';
+
+  @override
+  String analyticsCohortWeekN(int week) {
+    return '[Ŵ$week o]';
+  }
+
+  @override
+  String analyticsCohortCell(
+    String cohort,
+    int week,
+    int active,
+    String share,
+  ) {
+    return '[Ŵééķ öƒ $cohort: $active åçţîṽé îñ ŵééķ $week ($share) one two]';
   }
 }

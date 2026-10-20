@@ -14,3 +14,6 @@ fields:
 indexes:
   ai_usage_user_at_idx:
     fields: userId, at
+  ### Usage by time (usage analytics, specs/19 §3; the daily purge).
+  ai_usage_at_idx:
+    fields: at

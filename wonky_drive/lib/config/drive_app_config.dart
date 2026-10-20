@@ -7,6 +7,7 @@ import 'package:wonky_core/wonky_core.dart' show CommandArgs;
 
 import '../commands/drive_commands.dart';
 import '../commands/upload_commands.dart';
+import '../features/analytics/analytics_screen.dart';
 import '../features/preview/file_preview_screen.dart';
 import '../features/preview/preview_commands.dart';
 import '../features/settings/drive_settings.dart';
@@ -67,8 +68,8 @@ class DriveAppConfig extends WonkyAppConfig {
 
   /// The Drive commands (Drive 04 §9): previews (`drive.file.*`,
   /// `drive.preview.*`), uploads (`drive.upload.*`), the list view
-  /// (`drive.view.*`), settings (`drive.prefs.set`) and the Storage page
-  /// (`drive.storage.show`).
+  /// (`drive.view.*`), settings (`drive.prefs.set`), the Storage page
+  /// (`drive.storage.show`) and the Analytics page (`drive.analytics.show`).
   @override
   List<Command<CommandArgs>> commands(ShellServices services) => [
     ...previewCommands(services),
@@ -127,7 +128,8 @@ class DriveAppConfig extends WonkyAppConfig {
     await super.onSigningOut(services);
   }
 
-  /// `/storage[?filter=…]` (Drive 04 §7, Drive 03 §6.4).
+  /// `/storage[?filter=…]` (Drive 04 §7, Drive 03 §6.4) and, for admins,
+  /// `/analytics[?days=…&admins=1]` (specs/19 §3).
   @override
   List<RouteBase> routes(ShellServices services) => [
     GoRoute(
@@ -135,6 +137,13 @@ class DriveAppConfig extends WonkyAppConfig {
       pageBuilder: (context, state) => NoTransitionPage<void>(
         key: const ValueKey<String>('drive.storagePage'),
         child: storageRoutePage(services, state.uri),
+      ),
+    ),
+    GoRoute(
+      path: '/analytics',
+      pageBuilder: (context, state) => NoTransitionPage<void>(
+        key: const ValueKey<String>('drive.analyticsPage'),
+        child: analyticsRoutePage(services, state.uri),
       ),
     ),
   ];

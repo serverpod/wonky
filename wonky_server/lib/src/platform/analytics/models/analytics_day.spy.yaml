@@ -1,0 +1,33 @@
+### One UTC day of the usage analytics (specs/19 §3). Users are counted
+### once per day; the rolling counts are distinct users in the 7 and 30
+### days ending with [day].
+class: AnalyticsDay
+fields:
+  day: DateTime
+  ### Users active in any app or through MCP.
+  active: int
+  ### Users who created or edited something.
+  editors: int
+  weekly: int
+  monthly: int
+  drive: int
+  write: int
+  sheets: int
+  slides: int
+  mcp: int
+  ### Accounts created that day, and all accounts at its end.
+  signups: int
+  accounts: int
+  ### Items created that day by kind (templates of the gallery left out).
+  documents: int
+  spreadsheets: int
+  presentations: int
+  files: int
+  folders: int
+  ### Comments and replies by people (not system events).
+  comments: int
+  ### Direct grants to people (not inherited from a folder).
+  shares: int
+  aiRequests: int
+  aiTokens: int
+  mcpCalls: int

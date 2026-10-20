@@ -1428,6 +1428,456 @@ abstract class DriveLocalizations {
   /// In en, this message translates to:
   /// **'{name} couldn\'t be converted. It was kept as a file.'**
   String uploadConvertFailed(String name);
+
+  /// Command: opens the usage analytics page (admins, specs/19).
+  ///
+  /// In en, this message translates to:
+  /// **'Show analytics'**
+  String get cmdAnalyticsShow;
+
+  /// Command palette category of the analytics commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics'**
+  String get categoryAnalytics;
+
+  /// Title of the usage analytics page (specs/19 §3).
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics'**
+  String get analyticsTitle;
+
+  /// Note under the analytics title while it loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage of Wonky Work by UTC day.'**
+  String get analyticsSubtitle;
+
+  /// When the shown numbers were computed.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {time}'**
+  String analyticsUpdated(String time);
+
+  /// Shown when activity tracking started inside the period (earlier days have no activity data).
+  ///
+  /// In en, this message translates to:
+  /// **'Activity recorded since {date}'**
+  String analyticsTrackingSince(String date);
+
+  /// Shown before any activity was recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity recorded yet'**
+  String get analyticsNoActivityYet;
+
+  /// A period tab of the analytics page.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days'**
+  String analyticsPeriodDays(int days);
+
+  /// Switch: count admins (Wonky Work team) in every number.
+  ///
+  /// In en, this message translates to:
+  /// **'Include admins'**
+  String get analyticsIncludeAdmins;
+
+  /// Reloads the analytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get analyticsRefresh;
+
+  /// Page state when a non-admin opens /analytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics are for admins'**
+  String get analyticsForbiddenTitle;
+
+  /// Body of the admins-only state.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a Wonky Work admin if you need these numbers.'**
+  String get analyticsForbiddenBody;
+
+  /// Error state of the analytics page.
+  ///
+  /// In en, this message translates to:
+  /// **'The analytics could not be loaded'**
+  String get analyticsErrorTitle;
+
+  /// Toggles a chart card to its table view.
+  ///
+  /// In en, this message translates to:
+  /// **'Show as table'**
+  String get analyticsShowTable;
+
+  /// Toggles a chart card back to its chart.
+  ///
+  /// In en, this message translates to:
+  /// **'Show as chart'**
+  String get analyticsShowChart;
+
+  /// Screen reader label of a chart.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart of {series} from {from} to {to}'**
+  String analyticsChartLabel(String series, String from, String to);
+
+  /// Table view: the day column.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get analyticsColDay;
+
+  /// Table view: the week column (weekly bars).
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get analyticsColWeek;
+
+  /// Tooltip row: the total of stacked bars.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get analyticsTotal;
+
+  /// Headline number: all accounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get analyticsKpiAccounts;
+
+  /// Under the accounts number: accounts created in the period.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} in {days} days'**
+  String analyticsKpiNew(String count, int days);
+
+  /// Headline number: distinct active users today (UTC).
+  ///
+  /// In en, this message translates to:
+  /// **'Active today'**
+  String get analyticsKpiToday;
+
+  /// Under active today: how many of them created or edited something.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} created or edited'**
+  String analyticsKpiEditorsToday(String count);
+
+  /// Headline number: distinct active users in the last 7 days.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly active'**
+  String get analyticsKpiWeekly;
+
+  /// Note under the weekly number.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 days'**
+  String get analyticsKpiWeeklyNote;
+
+  /// Headline number: distinct active users in the last 30 days (MAU).
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly active'**
+  String get analyticsKpiMonthly;
+
+  /// Note under the monthly number.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 days'**
+  String get analyticsKpiMonthlyNote;
+
+  /// Headline number: average daily active users over monthly active users.
+  ///
+  /// In en, this message translates to:
+  /// **'Stickiness'**
+  String get analyticsKpiStickiness;
+
+  /// Note under stickiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily ÷ monthly active'**
+  String get analyticsKpiStickinessNote;
+
+  /// Headline number: documents, spreadsheets, presentations and files created in the period.
+  ///
+  /// In en, this message translates to:
+  /// **'Items created'**
+  String get analyticsKpiCreated;
+
+  /// Note: the number covers the period.
+  ///
+  /// In en, this message translates to:
+  /// **'In {days} days'**
+  String analyticsKpiInPeriod(int days);
+
+  /// Card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Active users'**
+  String get analyticsActiveTitle;
+
+  /// Card subtitle of active users.
+  ///
+  /// In en, this message translates to:
+  /// **'People who used any app or MCP'**
+  String get analyticsActiveSubtitle;
+
+  /// Tab: daily active users.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get analyticsViewDaily;
+
+  /// Tab: users active in the 7 days ending each day.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get analyticsViewWeekly;
+
+  /// Tab: users active in the 30 days ending each day.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get analyticsViewMonthly;
+
+  /// Series: daily active users.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get analyticsSeriesActive;
+
+  /// Series: users who created or edited something that day.
+  ///
+  /// In en, this message translates to:
+  /// **'Created or edited'**
+  String get analyticsSeriesEditors;
+
+  /// Series: 7-day active users.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly active'**
+  String get analyticsSeriesWeekly;
+
+  /// Series: 30-day active users.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly active'**
+  String get analyticsSeriesMonthly;
+
+  /// Card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Active users by app'**
+  String get analyticsAppsTitle;
+
+  /// Card subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A person using two apps counts in both'**
+  String get analyticsAppsSubtitle;
+
+  /// Series: users active through an MCP client.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP clients'**
+  String get analyticsSeriesMcp;
+
+  /// Card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-ups'**
+  String get analyticsSignupsTitle;
+
+  /// Card subtitle: new accounts in the period and all accounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} new · {total} accounts'**
+  String analyticsSignupsSubtitle(String count, String total);
+
+  /// Series: accounts created.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-ups'**
+  String get analyticsSeriesSignups;
+
+  /// Card title: items that exist now by kind.
+  ///
+  /// In en, this message translates to:
+  /// **'Content now'**
+  String get analyticsContentNowTitle;
+
+  /// Line in the content card: items now and the storage they use.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items · {size} stored'**
+  String analyticsItemsTotal(String count, String size);
+
+  /// Heading of the sign-in methods bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in methods'**
+  String get analyticsSignInTitle;
+
+  /// Sign-in method: email and password.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get analyticsSignInEmail;
+
+  /// Sign-in method: Google.
+  ///
+  /// In en, this message translates to:
+  /// **'Google'**
+  String get analyticsSignInGoogle;
+
+  /// Card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Content created'**
+  String get analyticsContentTitle;
+
+  /// Card subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'By people, the assistant and MCP; welcome content left out'**
+  String get analyticsContentSubtitle;
+
+  /// Card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Collaboration'**
+  String get analyticsCollabTitle;
+
+  /// Stat: items shared with at least one other person.
+  ///
+  /// In en, this message translates to:
+  /// **'Items shared now'**
+  String get analyticsStatShared;
+
+  /// Stat: items edited by two or more people in the period.
+  ///
+  /// In en, this message translates to:
+  /// **'Co-edited in {days} days'**
+  String analyticsStatCoEdited(int days);
+
+  /// Stat: people who commented in the period.
+  ///
+  /// In en, this message translates to:
+  /// **'Commenters in {days} days'**
+  String analyticsStatCommenters(int days);
+
+  /// Series: comments and replies.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get analyticsSeriesComments;
+
+  /// Series: items shared with people.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares'**
+  String get analyticsSeriesShares;
+
+  /// Card title.
+  ///
+  /// In en, this message translates to:
+  /// **'AI assistant'**
+  String get analyticsAiTitle;
+
+  /// Card subtitle: AI usage in the period and how long it is kept.
+  ///
+  /// In en, this message translates to:
+  /// **'{requests} requests · {tokens} tokens · kept {days} days'**
+  String analyticsAiSubtitle(String requests, String tokens, int days);
+
+  /// Series: AI model requests.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests'**
+  String get analyticsSeriesAiRequests;
+
+  /// Heading of AI usage by feature.
+  ///
+  /// In en, this message translates to:
+  /// **'By feature'**
+  String get analyticsAiByFeature;
+
+  /// Heading of AI usage by model.
+  ///
+  /// In en, this message translates to:
+  /// **'By model'**
+  String get analyticsAiByModel;
+
+  /// Value of an AI usage row.
+  ///
+  /// In en, this message translates to:
+  /// **'{requests} · {tokens} tokens'**
+  String analyticsAiRow(String requests, String tokens);
+
+  /// Empty AI usage list.
+  ///
+  /// In en, this message translates to:
+  /// **'No AI use in this period'**
+  String get analyticsNoAiUse;
+
+  /// Card title.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP tool calls'**
+  String get analyticsMcpTitle;
+
+  /// Card subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} calls by people\'s access tokens (admins included)'**
+  String analyticsMcpSubtitle(String count);
+
+  /// Series: MCP tool calls.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool calls'**
+  String get analyticsSeriesMcpCalls;
+
+  /// Card title: weekly sign-up cohorts.
+  ///
+  /// In en, this message translates to:
+  /// **'Retention'**
+  String get analyticsRetentionTitle;
+
+  /// Card subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share of each week\'s sign-ups active in the weeks after'**
+  String get analyticsRetentionSubtitle;
+
+  /// Cohort table column: the sign-up week.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed up'**
+  String get analyticsCohortWeek;
+
+  /// Cohort table column: accounts in the cohort.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get analyticsCohortSize;
+
+  /// Cohort table column: week N after sign-up.
+  ///
+  /// In en, this message translates to:
+  /// **'W{week}'**
+  String analyticsCohortWeekN(int week);
+
+  /// Tooltip of a cohort cell.
+  ///
+  /// In en, this message translates to:
+  /// **'Week of {cohort}: {active} active in week {week} ({share})'**
+  String analyticsCohortCell(String cohort, int week, int active, String share);
 }
 
 class _DriveLocalizationsDelegate

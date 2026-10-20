@@ -1,0 +1,27 @@
+### The activity of one finished UTC day (usage analytics, specs/19 §2.1):
+### computed once by the overview, then read. A finished day never changes,
+### because activity is only written for the current day. One row with and
+### one without admins (the admin rule of the time it was computed). Kept
+### after `user_activity_day` is purged.
+class: UsageDayStats
+table: usage_day_stats
+serverOnly: true
+fields:
+  ### UTC midnight of the day.
+  day: DateTime
+  includeAdmins: bool
+  active: int
+  editors: int
+  drive: int
+  write: int
+  sheets: int
+  slides: int
+  mcp: int
+  ### Distinct users in the 7 and the 30 days ending with [day].
+  weekly: int
+  monthly: int
+  computedAt: DateTime
+indexes:
+  usage_day_stats_idx:
+    fields: day, includeAdmins
+    unique: true

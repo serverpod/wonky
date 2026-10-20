@@ -6,6 +6,7 @@ import '../../write/ot/document_service.dart';
 import '../../write/themes/theme_service.dart';
 import '../../write/versions/write_history_service.dart';
 import '../ai/ai_usage_service.dart';
+import '../analytics/usage_tracker.dart';
 import '../common/guarded.dart';
 import '../drive/drive_file_service.dart';
 import '../drive/drive_trash.dart';
@@ -63,8 +64,8 @@ class MaintenanceFutureCall extends FutureCall {
 
   /// Daily: trash purge, (v2) expired uploads and folder kind masks,
   /// version thinning, op-log and change-log pruning, active-set eviction,
-  /// server change records, deleted themes, the diff cache, old AI usage
-  /// and old notifications.
+  /// server change records, deleted themes, the diff cache, old AI usage,
+  /// old usage analytics and old notifications.
   Future<void> daily(Session session) async {
     await _run(
       session,
@@ -111,6 +112,11 @@ class MaintenanceFutureCall extends FutureCall {
       () => WriteHistoryService.purgeDiffCache(session),
     );
     await _run(session, 'ai.purgeUsage', () => AiUsageService.purge(session));
+    await _run(
+      session,
+      'analytics.purgeActivity',
+      () => UsageTracker.purge(session),
+    );
     await _run(
       session,
       'notifications.purgeOld',

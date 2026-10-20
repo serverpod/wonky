@@ -7,6 +7,7 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' show InvocationSource;
 import 'package:wonky_ui/wonky_ui.dart';
 
+import '../board/board_hub.dart';
 import '../bootstrap/app_urls.dart';
 import '../branding/product_icon.dart';
 import '../config/home_scope.dart';
@@ -60,16 +61,29 @@ class _HomeSidebarState extends State<HomeSidebar> {
 
   ShellServices get s => widget.services;
 
+  /// Whether the menu has admin-only destinations (Drive's Analytics).
+  bool get _hasAdminItems => s.config.homeNav.items.any((i) => i.adminOnly);
+
   @override
   void initState() {
     super.initState();
     _sub = s.driveChanges.listen((c) {
       if (c.item?.isFolder ?? true) _tree.refresh(c.item?.parentUuid?.uuid);
     });
+    if (_hasAdminItems) {
+      final hub = BoardHub.of(s);
+      hub.me.addListener(_onAdminChanged);
+      unawaited(hub.loadMe());
+    }
+  }
+
+  void _onAdminChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    if (_hasAdminItems) BoardHub.of(s).me.removeListener(_onAdminChanged);
     _sub?.cancel();
     _tree.dispose();
     super.dispose();
@@ -132,7 +146,7 @@ class _HomeSidebarState extends State<HomeSidebar> {
       HomeNavDestination.starred => k == DriveLocationKind.starred,
       HomeNavDestination.offline => k == DriveLocationKind.offline,
       HomeNavDestination.trash => k == DriveLocationKind.trash,
-      HomeNavDestination.storage => false,
+      HomeNavDestination.storage || HomeNavDestination.analytics => false,
     };
   }
 
@@ -191,32 +205,34 @@ class _HomeSidebarState extends State<HomeSidebar> {
         HomeNewButton(services: s, onNavigate: widget.onNavigate)
       else
         const SizedBox(height: 4),
-      for (final item in nav.items) ...[
-        navRow(item),
-        if (_treeOpen &&
-            nav.folderTree &&
-            item.destination == HomeNavDestination.myFiles)
-          SizedBox(
-            height: 240,
-            child: WonkyTreeView<DriveItemView>(
-              keyPrefix: 'drive.tree',
-              controller: _tree,
-              semanticLabel: l.folderTree,
-              onActivate: (n) => _go('/f/${n.id}'),
-              dragData: (n) =>
-                  dragMoves && n.value.canManage ? DriveDragData([n.id]) : null,
-              canAcceptDrop: (data, target, pos) =>
-                  dragMoves &&
-                  data is DriveDragData &&
-                  pos == WonkyTreeDropPosition.inside &&
-                  target.value.canEdit &&
-                  !data.uuids.contains(target.id),
-              onDrop: (data, target, pos) {
-                if (data is DriveDragData) dropIntoFolder(s, data, target.id);
-              },
+      for (final item in nav.items)
+        if (!item.adminOnly || BoardHub.of(s).isAdmin) ...[
+          navRow(item),
+          if (_treeOpen &&
+              nav.folderTree &&
+              item.destination == HomeNavDestination.myFiles)
+            SizedBox(
+              height: 240,
+              child: WonkyTreeView<DriveItemView>(
+                keyPrefix: 'drive.tree',
+                controller: _tree,
+                semanticLabel: l.folderTree,
+                onActivate: (n) => _go('/f/${n.id}'),
+                dragData: (n) => dragMoves && n.value.canManage
+                    ? DriveDragData([n.id])
+                    : null,
+                canAcceptDrop: (data, target, pos) =>
+                    dragMoves &&
+                    data is DriveDragData &&
+                    pos == WonkyTreeDropPosition.inside &&
+                    target.value.canEdit &&
+                    !data.uuids.contains(target.id),
+                onDrop: (data, target, pos) {
+                  if (data is DriveDragData) dropIntoFolder(s, data, target.id);
+                },
+              ),
             ),
-          ),
-      ],
+        ],
     ];
 
     return SizedBox(
@@ -264,6 +280,7 @@ class _HomeSidebarState extends State<HomeSidebar> {
   HomeNavDestination.offline => (LucideIcons.cloudDownload, l.navOffline),
   HomeNavDestination.trash => (LucideIcons.trash2, l.navTrash),
   HomeNavDestination.storage => (LucideIcons.chartPie, l.navStorage),
+  HomeNavDestination.analytics => (LucideIcons.chartLine, l.navAnalytics),
 };
 
 /// Whether the home of [scope] has a *+ New* button: Drive and v1 homes;

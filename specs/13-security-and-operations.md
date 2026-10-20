@@ -51,6 +51,9 @@
 - (M14) Submissions send a document's text, images, fields and the submitter's display name to
   the publication the user chose, after a consent dialog; publication signing secrets are stored
   unencrypted because they must sign ([18 §11](18-publications-and-submissions.md)).
+- Usage analytics ([19](19-usage-analytics.md)): one row per person, UTC day and app (ids, a
+  day, an app and an *edited* flag; never content), kept 400 days; shown to admins only, and
+  named in the privacy policy (*Usage data*).
 - Export of all user data (*Settings › Account › Download your data*: zip of documents as
   Markdown, spreadsheets as XLSX, comments as JSON) — P1.
 

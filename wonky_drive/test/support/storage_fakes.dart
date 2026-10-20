@@ -73,9 +73,16 @@ class FakeStorageApi implements StorageApi {
 /// a router with the Storage page (`/storage`), the home and the preview
 /// route stubs.
 class StorageTestbed {
-  StorageTestbed({int usedBytes = 20 * mb, int trashBytes = 0})
-    : storage = FakeStorage.used(usedBytes, trashBytes: trashBytes) {
-    h = CommandTestHarness(config: const DriveAppConfig(), storage: storage);
+  StorageTestbed({
+    int usedBytes = 20 * mb,
+    int trashBytes = 0,
+    BoardRepository? board,
+  }) : storage = FakeStorage.used(usedBytes, trashBytes: trashBytes) {
+    h = CommandTestHarness(
+      config: const DriveAppConfig(),
+      storage: storage,
+      board: board,
+    );
     api = FakeStorageApi(h.drive);
     StorageHost.of(h.services)
       ..api = api

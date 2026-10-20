@@ -1218,6 +1218,9 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get navStorage => 'Storage';
 
   @override
+  String get navAnalytics => 'Analytics';
+
+  @override
   String get navTrash => 'Trash';
 
   @override
@@ -6263,6 +6266,9 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get navStorage => '[Šţöŕåĝé one]';
+
+  @override
+  String get navAnalytics => '[Åñåļýţîçš one]';
 
   @override
   String get navTrash => '[Ţŕåšĥ on]';

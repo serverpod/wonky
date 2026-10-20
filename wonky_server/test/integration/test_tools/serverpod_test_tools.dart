@@ -64,6 +64,10 @@ import 'package:wonky_server/src/generated/platform/ai/models/inline_ai_request.
     as _i4c3y8bm;
 import 'package:wonky_server/src/generated/platform/ai/models/proofread_event.dart'
     as _ib6yu876;
+import 'package:wonky_server/src/generated/platform/analytics/models/analytics_overview.dart'
+    as _ijo91y9q;
+import 'package:wonky_server/src/generated/platform/analytics/models/usage_app.dart'
+    as _idlxfxe3;
 import 'package:wonky_server/src/generated/platform/board/models/board_area.dart'
     as _i2y7swbd;
 import 'package:wonky_server/src/generated/platform/board/models/board_bundle_suggestion_view.dart'
@@ -463,6 +467,8 @@ class TestEndpoints {
 
   late final _AssistantEndpoint assistant;
 
+  late final _AnalyticsEndpoint analytics;
+
   late final _BoardEndpoint board;
 
   late final _CommentEndpoint comment;
@@ -554,6 +560,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
     assistant = _AssistantEndpoint(
+      endpoints,
+      serializationManager,
+    );
+    analytics = _AnalyticsEndpoint(
       endpoints,
       serializationManager,
     );
@@ -1657,6 +1667,83 @@ class _AssistantEndpoint {
       _localTestStreamManager.outputStreamController,
     );
     return _localTestStreamManager.outputStreamController.stream;
+  }
+}
+
+class _AnalyticsEndpoint {
+  _AnalyticsEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<void> ping(
+    _ist.TestSessionBuilder sessionBuilder,
+    _idlxfxe3.UsageApp app,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'analytics',
+            method: 'ping',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'analytics',
+          methodName: 'ping',
+          parameters: _ist.testObjectToJson({'app': app}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<void>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ijo91y9q.AnalyticsOverview> overview(
+    _ist.TestSessionBuilder sessionBuilder,
+    int days,
+    bool includeAdmins,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'analytics',
+            method: 'overview',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'analytics',
+          methodName: 'overview',
+          parameters: _ist.testObjectToJson({
+            'days': days,
+            'includeAdmins': includeAdmins,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ijo91y9q.AnalyticsOverview>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
   }
 }
 

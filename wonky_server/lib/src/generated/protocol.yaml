@@ -29,6 +29,9 @@ assistant:
   - revertChange:
   - inline:
   - proofread:
+analytics:
+  - ping:
+  - overview:
 board:
   - me:
   - list:

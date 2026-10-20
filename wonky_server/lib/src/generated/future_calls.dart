@@ -678,8 +678,8 @@ class MaintenanceExpireGrantsFutureCall extends _is.FutureCall
 
 /// Daily: trash purge, (v2) expired uploads and folder kind masks,
 /// version thinning, op-log and change-log pruning, active-set eviction,
-/// server change records, deleted themes, the diff cache, old AI usage
-/// and old notifications.
+/// server change records, deleted themes, the diff cache, old AI usage,
+/// old usage analytics and old notifications.
 class MaintenanceDailyFutureCall extends _is.FutureCall
     implements _is.InvokableFutureCall {
   @override

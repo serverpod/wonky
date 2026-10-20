@@ -110,9 +110,15 @@ abstract final class AiUsageService {
     );
   }
 
-  /// Deletes usage older than 90 days (the daily job); returns the count.
+  /// How many days of usage are kept.
+  static const retentionDays = 90;
+
+  /// Deletes usage older than [retentionDays] (the daily job); returns the
+  /// count.
   static Future<int> purge(Session session, {DateTime? now}) async {
-    final cutoff = (now ?? nowUtc()).subtract(const Duration(days: 90));
+    final cutoff = (now ?? nowUtc()).subtract(
+      const Duration(days: retentionDays),
+    );
     final deleted = await AiUsage.db.deleteWhere(
       session,
       where: (t) => t.at < cutoff,

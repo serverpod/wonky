@@ -1,0 +1,11 @@
+### A weekly sign-up cohort (specs/19 §3.5): accounts created in the week
+### starting [week] (Monday, UTC) and how many of them were active N weeks
+### later.
+class: AnalyticsCohort
+fields:
+  week: DateTime
+  size: int
+  ### Index N: active users of the cohort in week N after sign-up (0 = the
+  ### sign-up week). Null where the week is in the future or ended before
+  ### activity was recorded.
+  active: List<int?>

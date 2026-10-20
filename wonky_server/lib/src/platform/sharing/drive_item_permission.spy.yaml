@@ -27,3 +27,6 @@ indexes:
   ### Hourly removal of expired grants (`sharing.expiredGrants`).
   perm_expires_idx:
     fields: expiresAt
+  ### Shares by time (usage analytics, specs/19 §3).
+  perm_granted_idx:
+    fields: grantedAt

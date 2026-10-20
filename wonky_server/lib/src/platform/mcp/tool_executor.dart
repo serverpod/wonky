@@ -1,7 +1,8 @@
 import 'package:serverpod/serverpod.dart';
-import 'package:wonky_core/wonky_core.dart';
+import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 import 'package:wonky_write_core/wonky_write_core.dart' show AddressException;
 
+import '../analytics/usage_tracker.dart';
 import '../common/models.dart';
 import '../common/rate_limiter.dart';
 import 'tool_support.dart';
@@ -130,6 +131,10 @@ class ToolExecutor {
           ),
         );
       }
+    }
+    // Usage analytics (specs/19 §2): people's tokens, not the assistant.
+    if (ctx.actor.kind == ActorKind.mcp) {
+      await UsageTracker.mcpCall(ctx.session, ctx.actor.userId);
     }
     try {
       final result = await tool.handler(ctx, ToolArgs(arguments));

@@ -5,12 +5,14 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart';
 
 import '../features/settings/drive_settings_keys.dart';
+import '../features/analytics/analytics_controller.dart';
 import '../features/storage/storage_controller.dart';
 import '../l10n/drive_l10n.dart';
 
 /// Drive's view, settings and Storage page commands (Drive 04 §9):
 /// `drive.view.setLayout/sort/toggleFoldersOnTop` (the shown list),
-/// `drive.prefs.set` (Drive settings) and `drive.storage.show`. View state
+/// `drive.prefs.set` (Drive settings), `drive.storage.show` and (admins)
+/// `drive.analytics.show`. View state
 /// and settings are not undoable (suite 08 §2).
 List<Command<CommandArgs>> driveCommands(ShellServices s) {
   DriveController? view() => s.driveView.value;
@@ -164,6 +166,38 @@ List<Command<CommandArgs>> driveCommands(ShellServices s) {
         }
         s.router.go(storagePath(filter));
         return CommandResult.ok({'filter': filter.name});
+      },
+    ),
+    cmd(
+      'drive.analytics.show',
+      title: (l) => l.cmdAnalyticsShow,
+      category: (l) => l.categoryAnalytics,
+      icon: LucideIcons.chartLine,
+      args: JsonSchema.object(
+        properties: {
+          'days': JsonSchema.integer(
+            minimum: analyticsPeriods.first,
+            maximum: analyticsPeriods.last,
+            description:
+                'The period in days, ending today (UTC): one of '
+                '${analyticsPeriods.join(', ')}. Default: '
+                '$analyticsDefaultDays.',
+          ),
+          'includeAdmins': const JsonSchema.boolean(
+            description: 'Count admins too. Default: false.',
+          ),
+        },
+      ),
+      // Admins only (specs/19 §1): the board's admin rule.
+      enabled: (ctx, a) => BoardHub.of(s).isAdmin,
+      run: (ctx, a) async {
+        final days = a.integer('days') ?? analyticsDefaultDays;
+        if (!analyticsPeriods.contains(days)) {
+          return CommandResult.failed('Unknown period $days');
+        }
+        final admins = a.boolean('includeAdmins') ?? false;
+        s.router.go(analyticsPath(days: days, admins: admins));
+        return CommandResult.ok({'days': days, 'includeAdmins': admins});
       },
     ),
   ];
