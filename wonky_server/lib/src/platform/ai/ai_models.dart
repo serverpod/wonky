@@ -15,8 +15,8 @@ abstract final class AiModels {
 
   static const gpt = 'gpt-5';
   static const gptMini = 'gpt-5-mini';
-  static const geminiPro = 'gemini-2.5-pro';
-  static const geminiFlash = 'gemini-2.5-flash';
+  static const geminiPro = 'gemini-3.1-pro-preview';
+  static const geminiFlash = 'gemini-3.8-flash';
 
   /// The default `(model, fastModel)` of [provider].
   static (String, String) defaults(AiProvider provider) => switch (provider) {
