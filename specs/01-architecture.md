@@ -475,6 +475,13 @@ development) from one origin; there is no separate host app.
   source `icons/og.webp`): absolute, as crawlers need, and versioned in its name because
   `/web/` is served as immutable — a new image gets a new name. The legal pages carry the
   same tags with their own `og:url` and canonical link.
+- **No Grammarly**: the apps check spelling themselves (`wonky_spellcheck`), and Grammarly's
+  overlays on Flutter's hidden text fields interfere with editing. Each app's `web/index.html`
+  opts out: `data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"` on
+  `<html>` and `<body>`, and an inline script puts the same attributes on every `input`,
+  `textarea` and `contenteditable` that Flutter adds (MutationObserver) and on the focused field
+  (capturing `focusin`, which runs before the extension's own handler). A new app's
+  `index.html` copies the attributes and the script.
 - **Development**: the apps are declared in `serverpod: flutter_apps:` in the server pubspec
   (aliases `drive`, `write`, `sheets`, `slides`; `path: ../wonky_<app>`,
   `target: lib/driver.dart`, fixed `web-port`s so the origins are stable for
