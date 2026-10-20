@@ -28,6 +28,7 @@ import '../paste/editor_clipboard.dart';
 import '../plugins/slash_items.dart';
 import '../plugins/trigger_queries.dart';
 import '../popovers/editor_popovers.dart';
+import '../setup/editor_factory.dart' show selectionGuard;
 import '../styles/editor_theme.dart';
 import '../styles/style_phases.dart';
 import '../styles/write_stylesheet.dart';
@@ -139,9 +140,10 @@ class WonkyEditor extends StatefulWidget {
   final double endInset;
 
   /// Left and right padding around the text instead of the page margins
-  /// (Pages; the page then fills the width) or the pageless padding: the
-  /// mobile layout's (suite 02 §6.1, T-12). Null: the document's own. Only
-  /// the rendering changes, not the page setup.
+  /// (Pages; the page then fills the width) or the pageless padding, where
+  /// it is also the space above the first and below the last block: the
+  /// mobile layout's (suite 02 §6.1, T-12, T-1). Null: the document's own.
+  /// Only the rendering changes, not the page setup.
   final double? compactPadding;
 
   /// Source of OS drops (defaults to the platform's; tests inject one).
@@ -609,9 +611,18 @@ class WonkyEditorState extends State<WonkyEditor> {
         ? SuggestionView.accepted(delta)
         : SuggestionView.original(delta);
     final document = const DeltaDocumentMapper().documentFromDelta(viewed);
-    _previewEditor = createDefaultDocumentEditor(
-      document: document,
-      composer: MutableDocumentComposer(),
+    // No text selection where the controller has none (mobile, T-1).
+    _previewEditor = Editor(
+      editables: {
+        Editor.documentKey: document,
+        Editor.composerKey: MutableDocumentComposer(),
+      },
+      requestHandlers: [
+        selectionGuard(() => controller.selectable),
+        ...defaultRequestHandlers.cast<EditRequestHandler>(),
+      ],
+      reactionPipeline: List.from(defaultEditorReactions),
+      isHistoryEnabled: false,
     );
   }
 
@@ -675,12 +686,15 @@ class WonkyEditorState extends State<WonkyEditor> {
           )
         : compact == null
         ? style.stylesheet
+        // Pageless: [compact] also above the first and below the last block.
         : _paddedStylesheet(
             style.stylesheet,
-            _compact(
-              style.stylesheet.documentPadding ?? EdgeInsets.zero,
-              compact,
+            (style.stylesheet.documentPadding ?? EdgeInsets.zero).copyWith(
+              left: compact,
+              right: compact,
+              top: compact,
             ),
+            lastBlockBottom: compact,
           );
     _tables
       ..onUndo = widget.shortcutCallbacks?.onUndo
@@ -788,22 +802,50 @@ class WonkyEditorState extends State<WonkyEditor> {
       : padding.copyWith(left: compact, right: compact);
 
   /// [base] with [margins] as document padding (Pages: the page margins;
-  /// `compactPadding`), memoized: a new stylesheet makes `super_editor`
-  /// recreate its layout presenter and restyle every block, which must not
-  /// happen on every keystroke.
-  Stylesheet _paddedStylesheet(Stylesheet base, EdgeInsets margins) {
+  /// `compactPadding`) and, when given, [lastBlockBottom] below the last
+  /// block, memoized: a new stylesheet makes `super_editor` recreate its
+  /// layout presenter and restyle every block, which must not happen on
+  /// every keystroke.
+  Stylesheet _paddedStylesheet(
+    Stylesheet base,
+    EdgeInsets margins, {
+    double? lastBlockBottom,
+  }) {
     final cached = _pagesSheet;
     if (cached != null &&
         identical(cached.base, base) &&
-        cached.margins == margins) {
+        cached.margins == margins &&
+        cached.lastBlockBottom == lastBlockBottom) {
       return cached.sheet;
     }
-    final sheet = base.copyWith(documentPadding: margins);
-    _pagesSheet = (base: base, margins: margins, sheet: sheet);
+    final sheet = base.copyWith(
+      documentPadding: margins,
+      addRulesAfter: [
+        if (lastBlockBottom != null)
+          StyleRule(
+            BlockSelector.all.last(),
+            (doc, node) => {
+              Styles.padding: CascadingPadding.only(bottom: lastBlockBottom),
+            },
+          ),
+      ],
+    );
+    _pagesSheet = (
+      base: base,
+      margins: margins,
+      lastBlockBottom: lastBlockBottom,
+      sheet: sheet,
+    );
     return sheet;
   }
 
-  ({Stylesheet base, EdgeInsets margins, Stylesheet sheet})? _pagesSheet;
+  ({
+    Stylesheet base,
+    EdgeInsets margins,
+    double? lastBlockBottom,
+    Stylesheet sheet,
+  })?
+  _pagesSheet;
 
   /// The last SuperEditor/SuperReader widget and the inputs it was built
   /// from (see `_build`).

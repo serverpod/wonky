@@ -176,6 +176,15 @@ void main() {
 
     test('when the page and export defaults are invoked then they are '
         'stored, and invalid values fail', () async {
+      // Unset: new documents are Pageless (T-1).
+      expect(
+        h.services.dispatcher.stateOf('write.prefs.setDefaultLayout', {
+          'layout': 'pageless',
+        }).checked,
+        isTrue,
+      );
+      await h.invoke('write.prefs.setDefaultLayout', {'layout': 'pages'});
+      expect(h.services.prefs.writeDefaults['pageless'], false);
       await h.invoke('write.prefs.setDefaultLayout', {'layout': 'pageless'});
       expect(h.services.prefs.writeDefaults['pageless'], true);
       await h.invoke('write.prefs.setExportFormat', {'format': 'docx'});

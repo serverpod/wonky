@@ -1,7 +1,19 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:super_editor/super_editor.dart'
+    show
+        ChangeSelectionRequest,
+        DocumentPosition,
+        DocumentSelection,
+        SelectionChangeType,
+        SelectionReason,
+        StandardEditables,
+        SuperReader,
+        TextNode;
 import 'package:shad/shad.dart';
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
@@ -410,6 +422,40 @@ void main() {
     );
   }
 
+  group('Given a new document (T-1)', () {
+    for (final (name, layout) in [
+      ('the page setup the server gives new documents', 'pageless'),
+      ('a user default of Pages', 'pages'),
+    ]) {
+      testWidgets(
+        'when it opens with $name then it shows ${layout == 'pageless' ? 'Pageless' : 'Pages'}',
+        (tester) async {
+          // What `DriveService.newDocumentPageSetup` stores.
+          server.meta = DocumentMetaView(
+            pageSetupJson: jsonEncode(
+              PageSetup.defaultsFor('en').toJson()..['layout'] = layout,
+            ),
+          );
+          await pumpScreen(tester);
+
+          final pageless = layout == 'pageless';
+          expect(
+            session.editor.view.layout,
+            pageless ? LayoutMode.pageless : LayoutMode.pages,
+          );
+          expect(
+            find.byKey(const ValueKey('write.page')),
+            pageless ? findsNothing : findsOneWidget,
+          );
+          // The rest of the page setup is the locale default.
+          expect(session.editor.view.pageSetup.margins.left, 96);
+          await tester.pumpWidget(const SizedBox());
+          await tester.pump(const Duration(seconds: 2));
+        },
+      );
+    }
+  });
+
   group('Given a narrow (mobile) window', () {
     Future<void> close(WidgetTester tester) async {
       await tester.pumpWidget(const SizedBox());
@@ -479,27 +525,149 @@ void main() {
         tester.getTopLeft(find.text('Hello world', findRichText: true)).dx -
         tester.getTopLeft(find.byType(WonkyEditor)).dx;
 
-    for (final layout in LayoutMode.values) {
-      testWidgets('when a ${layout.name} document shows then the text has '
-          '16 px beside it instead of the margins (T-12)', (tester) async {
-        await pumpScreen(tester, size: const Size(390, 844));
-        session.editor.view.layout = layout;
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 50));
-        expect(session.editor.view.layout, layout);
+    testWidgets('when a Pages document opens then it shows Pageless, and '
+        'Pages again once the window is wide; the page setup is unchanged '
+        '(T-1)', (tester) async {
+      // The fake server's document has the default page setup: Pages.
+      await pumpScreen(tester, size: const Size(390, 844));
+      await tester.pump();
 
-        final editor = tester.widget<WonkyEditor>(find.byType(WonkyEditor));
-        expect(editor.compactPadding, WriteDocumentScreen.mobileTextPadding);
-        expect(textInset(tester), closeTo(16, 1));
-        if (layout == LayoutMode.pages) {
-          // The page fills the width; its setup keeps the 1-inch margins.
-          final page = tester.getRect(find.byKey(const ValueKey('write.page')));
-          expect(page.width, tester.getSize(find.byType(WonkyEditor)).width);
-          expect(session.editor.view.pageSetup.margins.left, 96);
-        }
+      expect(session.meta.value.pageSetup.layout, PageLayoutMode.pages);
+      expect(session.editor.view.layout, LayoutMode.pageless);
+      expect(find.byKey(const ValueKey('write.page')), findsNothing);
+
+      tester.view.physicalSize = const Size(1440, 900);
+      await tester.pump();
+      await tester.pump();
+      expect(session.editor.view.layout, LayoutMode.pages);
+      expect(find.byKey(const ValueKey('write.page')), findsOneWidget);
+      await close(tester);
+    });
+
+    testWidgets('when the document shows then the text has 16 px beside and '
+        'above it instead of the margins (T-12, T-1)', (tester) async {
+      await pumpScreen(tester, size: const Size(390, 844));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final editor = tester.widget<WonkyEditor>(find.byType(WonkyEditor));
+      expect(editor.compactPadding, WriteDocumentScreen.mobileTextPadding);
+      expect(textInset(tester), closeTo(16, 1));
+      // The first block (the title) starts 16 px below the separator, not
+      // the pageless 48 px.
+      final top =
+          tester
+              .getTopLeft(
+                find.descendant(
+                  of: find.byType(WonkyEditor),
+                  matching: find.text('Plan', findRichText: true),
+                ),
+              )
+              .dy -
+          tester.getTopLeft(find.byType(WonkyEditor)).dy;
+      expect(top, lessThan(24));
+      // Below the last block: 16 px instead of the pageless 96 px.
+      final scrollable = tester.state<ScrollableState>(
+        find
+            .descendant(
+              of: find.byType(WonkyEditor),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      final viewport = tester.getSize(find.byType(WonkyEditor)).height;
+      final position = scrollable.position;
+      final contentHeight = position.maxScrollExtent + viewport;
+      final lastBottom =
+          tester.getBottomLeft(find.text('Money', findRichText: true)).dy -
+          tester.getTopLeft(find.byType(WonkyEditor)).dy;
+      if (position.maxScrollExtent > 0) {
+        expect(contentHeight - lastBottom, lessThan(40));
+      }
+      await close(tester);
+    });
+
+    for (final dark in [false, true]) {
+      testWidgets('when the document shows in ${dark ? 'dark' : 'light'} '
+          'then a 1 px border line separates the title row from the page '
+          '(T-1)', (tester) async {
+        await pumpScreen(tester, size: const Size(390, 844), dark: dark);
+        await tester.pump();
+
+        final line = find.byKey(const ValueKey('write.mobile.separator'));
+        expect(line, findsOneWidget);
+        expect(tester.getSize(line).height, 1);
+        final color = tester
+            .widget<ColoredBox>(
+              find.descendant(of: line, matching: find.byType(ColoredBox)),
+            )
+            .color;
+        final theme = dark ? WonkyTheme.dark() : WonkyTheme.light();
+        expect(color, theme.colorScheme.border);
+        // Right below the title row, above the page.
+        expect(
+          tester.getTopLeft(line).dy,
+          lessThanOrEqualTo(tester.getTopLeft(find.byType(WonkyEditor)).dy),
+        );
         await close(tester);
       });
     }
+
+    testWidgets('when the user double-taps or long-presses a word then no '
+        'text is selected (T-1)', (tester) async {
+      await pumpScreen(tester, size: const Size(390, 844));
+      await tester.pump();
+      expect(session.editor.selectable, isFalse);
+
+      final word = tester.getCenter(
+        find.text('Hello world', findRichText: true),
+      );
+      await tester.tapAt(word);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tapAt(word);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.longPressAt(word);
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Nothing is selected: at most a collapsed position, which a
+      // read-only document doesn't show.
+      final reader = tester.widget<SuperReader>(find.byType(SuperReader));
+      expect(reader.editor.composer.selection?.isCollapsed ?? true, isTrue);
+      expect(session.editor.selection?.isCollapsed ?? true, isTrue);
+      expect(tester.takeException(), isNull);
+
+      // What the reader's gestures ask for (a word, a drag) is collapsed.
+      final node = reader.editor.document.first as TextNode;
+      reader.editor.execute([
+        ChangeSelectionRequest(
+          DocumentSelection(
+            base: DocumentPosition(
+              nodeId: node.id,
+              nodePosition: node.beginningPosition,
+            ),
+            extent: DocumentPosition(
+              nodeId: node.id,
+              nodePosition: node.endPosition,
+            ),
+          ),
+          SelectionChangeType.expandSelection,
+          SelectionReason.userInteraction,
+        ),
+      ]);
+      await tester.pump();
+      expect(reader.editor.composer.selection!.isCollapsed, isTrue);
+      expect(
+        reader.editor.composer.selection!.extent.nodePosition,
+        node.endPosition,
+      );
+
+      // The desktop selects again.
+      tester.view.physicalSize = const Size(1440, 900);
+      await tester.pump();
+      await tester.pump();
+      expect(session.editor.selectable, isTrue);
+      await close(tester);
+    });
 
     testWidgets('when the window is wide then the page keeps its margins and '
         'width (the desktop is unchanged)', (tester) async {

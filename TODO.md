@@ -352,9 +352,9 @@ Everything below is deferred; the app works without it. Areas are in rough prior
 - **Settings split (D-12 follow-ups, suite 04 §4):** *Sign-in & security* lacks the Google
   account link status / *Link Google account* (needs a server call listing the user's identity
   providers) and *Sign out of all devices* (P2). *Offline & device data* shows only the current
-  app's device data, not the summary row per other app on this device. Write's *Page & export* defaults are stored but not yet
-  applied: new documents ignore the default layout / saved page setup and the export dialog
-  doesn't preselect the default format (as in v1). The `/settings/sheets` hand-over from
+  app's device data, not the summary row per other app on this device. Write's *Page & export* defaults are stored but not all
+  applied: new documents apply the default layout (T-1) but ignore the saved page setup, and the
+  export dialog doesn't preselect the default format (as in v1). The `/settings/sheets` hand-over from
   Write and the `/settings/write` redirect were checked in the browser (D-18); the
   *Settings of other apps* links were not clicked.
 - **Shared chart packages (D-3 follow-ups, SL-27 in M10, Slides 08 §2.7, §2.10):** `ChartData`

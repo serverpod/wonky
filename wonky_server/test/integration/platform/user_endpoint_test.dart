@@ -38,6 +38,16 @@ void main() {
         );
 
         expect(page.items.map((i) => i.name), ['New here? Read me first']);
+        // It opens Pageless, like every new document (T-1).
+        final item = await DriveItem.db.findFirstRow(
+          sessionBuilder.build(),
+          where: (t) => t.uuid.equals(page.items.single.uuid),
+        );
+        final doc = await Document.db.findFirstRow(
+          sessionBuilder.build(),
+          where: (t) => t.itemId.equals(item!.id),
+        );
+        expect(jsonDecode(doc!.pageSetupJson)['layout'], 'pageless');
       },
     );
 

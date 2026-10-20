@@ -404,19 +404,20 @@ void main() {
       () async {
         final r = await mcp.call('write.update_page_setup', {
           'document_uuid': docOf(doc),
-          'patch': {'layout': 'pageless'},
+          // New documents are Pageless (T-1).
+          'patch': {'layout': 'pages'},
         });
         var setup = await mcp.call('write.get_page_setup', {
           'document_uuid': docOf(doc),
         });
-        expect((setup['page_setup'] as Map)['layout'], 'pageless');
+        expect((setup['page_setup'] as Map)['layout'], 'pages');
 
         await mcp.call('changes.revert', {'change_id': r['change_id']});
 
         setup = await mcp.call('write.get_page_setup', {
           'document_uuid': docOf(doc),
         });
-        expect((setup['page_setup'] as Map)['layout'], isNot('pageless'));
+        expect((setup['page_setup'] as Map)['layout'], 'pageless');
       },
     );
 

@@ -47,14 +47,38 @@ bool isTextInsertionRequest(EditRequest request) =>
     request is InsertSoftNewlineAtCaretRequest ||
     request is PasteEditorRequest;
 
+/// Collapses the selections the user makes (double taps, drags, long presses)
+/// while [selectable] is false: the read-only mobile layout has no text
+/// selection (suite 02 §6.1, T-1). Read-only documents don't show a
+/// collapsed selection, and super_editor's gesture interactors expect their
+/// selection requests to set one (refusing them crashes the touch
+/// interactors). Selections set by content changes still apply.
+EditRequestHandler selectionGuard(bool Function() selectable) =>
+    (editor, request) {
+      if (selectable() ||
+          request is! ChangeSelectionRequest ||
+          request.reason != SelectionReason.userInteraction) {
+        return null;
+      }
+      final selection = request.newSelection;
+      if (selection == null || selection.isCollapsed) return null;
+      return ChangeSelectionCommand(
+        DocumentSelection.collapsed(position: selection.extent),
+        request.changeType,
+        request.reason,
+      );
+    };
+
 /// Request handlers that run before super_editor's own (Write 04 §2.2).
 List<EditRequestHandler> wonkyRequestHandlers({
   required EditorMode Function() mode,
+  bool Function()? selectable,
   required int Function() documentLength,
   required void Function() onMaxLengthReached,
   int maxDocumentChars = 2000000,
 }) {
   return [
+    if (selectable != null) selectionGuard(selectable),
     // Mode guard (§31): Viewing refuses every content change.
     (editor, request) =>
         mode() == EditorMode.viewing && !isNonMutatingRequest(request)

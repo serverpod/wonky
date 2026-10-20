@@ -27,8 +27,20 @@ class PaginationController extends ChangeNotifier {
   /// that runs before the layout picked up new gaps stays correct.
   Map<String, double> _applied = const {};
   int _pageCount = 1;
+  double _tail = 0;
 
   Map<String, double> get gaps => _gaps;
+
+  /// Space below the canvas's last page (Write 05 §16: 48 px bottom canvas
+  /// padding), unscaled.
+  static const double canvasBottomPadding = 48;
+
+  /// Extra bottom padding of the document layout (scaled): the room between
+  /// the last block and the last page's bottom edge, plus
+  /// [canvasBottomPadding]. The page cards are painted under the document,
+  /// so without it the scroll extent ends at the last line and a page that
+  /// isn't full can't be scrolled to its bottom (#1).
+  double get tailPadding => _tail + canvasBottomPadding * _zoom;
 
   /// Number of pages after the last layout.
   int get pageCount => _pageCount;
@@ -152,6 +164,7 @@ class PaginationController extends ChangeNotifier {
     final newGaps = <String, double>{};
     var shift = 0.0;
     var page = 0;
+    double? lastBottom;
     for (var i = 0; i < nodes.length; i += 1) {
       final rect = natural[i];
       if (rect == null) continue;
@@ -202,12 +215,20 @@ class PaginationController extends ChangeNotifier {
         // Oversized block: it overflows across the seam.
         page += 1;
       }
+      lastBottom = bottom;
     }
 
     final changed = !_sameGaps(newGaps, _gaps);
     if (changed) _gaps = newGaps;
     final count = page + 1;
-    if (changed || count != _pageCount) {
+    // The last block's bottom margin (the document padding) ends where its
+    // page ends; the rest of that page is the tail.
+    final tail = lastBottom == null
+        ? 0.0
+        : (contentBottomOf(page) - lastBottom).clamp(0.0, double.infinity);
+    final tailChanged = (tail - _tail).abs() > 0.5;
+    if (tailChanged) _tail = tail;
+    if (changed || tailChanged || count != _pageCount) {
       _pageCount = count;
       notifyListeners();
     }
@@ -278,18 +299,33 @@ class PaginationStylePhase extends SingleColumnLayoutStylePhase {
   ) {
     final gaps = pagination.gaps;
     pagination.markApplied(gaps);
-    if (gaps.isEmpty) return viewModel;
+    final models = viewModel.componentViewModels;
+    // The layout reaches the last page's bottom edge (see `tailPadding`).
+    // It is the last block's bottom padding, not the document padding: the
+    // layout is rebuilt only when a component's view model changes, and the
+    // padding is outside the component, so its measured size is unchanged.
+    final tail = pagination.tailPadding;
     return SingleColumnLayoutViewModel(
       padding: viewModel.padding,
       componentViewModels: [
-        for (final model in viewModel.componentViewModels)
-          if (gaps[model.nodeId] case final gap?)
-            (model.copy()
-              ..padding = model.padding.add(EdgeInsets.only(top: gap)))
-          else
-            model,
+        for (var i = 0; i < models.length; i += 1)
+          _padded(
+            models[i],
+            top: gaps[models[i].nodeId] ?? 0,
+            bottom: i == models.length - 1 ? tail : 0,
+          ),
       ],
     );
+  }
+
+  static SingleColumnLayoutComponentViewModel _padded(
+    SingleColumnLayoutComponentViewModel model, {
+    required double top,
+    required double bottom,
+  }) {
+    if (top == 0 && bottom == 0) return model;
+    return model.copy()
+      ..padding = model.padding.add(EdgeInsets.only(top: top, bottom: bottom));
   }
 }
 

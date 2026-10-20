@@ -6,7 +6,9 @@ import '../../commands/write_command.dart';
 /// Keys of `UserPreferences.writeDefaults` set by Write settings (Write 05
 /// §13.3) that have no command of their own elsewhere.
 abstract final class WriteSettingsKeys {
-  /// Default layout of new documents: true = pageless (v1 key).
+  /// Default layout of new documents: true = pageless (v1 key). Unset is
+  /// Pageless (T-1); the server applies it when it creates a document
+  /// (`UserService.defaultPageless`).
   static const pageless = 'pageless';
 
   /// Default export format id (`md`, `html`, `pdf`, `docx`, `odt`, `txt`).
@@ -38,9 +40,9 @@ List<Command<CommandArgs>> writeSettingsCommands(ShellServices s) => [
     ),
     checked: (ctx, a) => a.string('layout') == null
         ? null
-        : (s.prefs.writeDefaults[WriteSettingsKeys.pageless] == true
-                  ? 'pageless'
-                  : 'pages') ==
+        : (s.prefs.writeDefaults[WriteSettingsKeys.pageless] == false
+                  ? 'pages'
+                  : 'pageless') ==
               a.string('layout'),
     run: (ctx, a) async {
       await s.prefs.setWriteDefault(

@@ -20,6 +20,7 @@ Future<EditorHarness> _pumpPages(
   Delta delta, {
   EditorImageServices images = const NetworkImageServices(),
   LayoutMode layout = LayoutMode.pages,
+  ScrollController? scroll,
 }) async {
   tester.view.physicalSize = const Size(1200, 900);
   tester.view.devicePixelRatio = 1;
@@ -34,6 +35,7 @@ Future<EditorHarness> _pumpPages(
           controller: h.controller,
           documentTitle: 'Test doc',
           imageServices: images,
+          scrollController: scroll,
         ),
       ),
     ),
@@ -238,6 +240,60 @@ void main() {
         );
 
         expect(_rectOf(h, _imageId(h)).size, const Size(300, 500));
+      },
+    );
+  });
+
+  group('Given the Pages layout and a page that is not full (#1)', () {
+    /// How far below the top of the canvas the user can scroll to.
+    double scrollableBottom(ScrollController scroll) =>
+        scroll.position.maxScrollExtent + scroll.position.viewportDimension;
+
+    testWidgets(
+      'when the document is one line then it scrolls to the bottom of the page and its padding',
+      (tester) async {
+        final scroll = ScrollController();
+        addTearDown(scroll.dispose);
+        await _pumpPages(tester, Delta()..insert('Short\n'), scroll: scroll);
+
+        final pagination = _state(tester).pagination;
+        final pageBottom = pagination.setup.size.height * pagination.zoom;
+        expect(pagination.pageCount, 1);
+        expect(
+          scrollableBottom(scroll),
+          greaterThanOrEqualTo(
+            pageBottom + PaginationController.canvasBottomPadding,
+          ),
+        );
+
+        scroll.jumpTo(scroll.position.maxScrollExtent);
+        await tester.pump();
+        expect(scroll.offset, greaterThan(0));
+      },
+    );
+
+    testWidgets(
+      'when the last page is partly full then the scroll extent reaches that page\x27s bottom',
+      (tester) async {
+        final scroll = ScrollController();
+        addTearDown(scroll.dispose);
+        final h = await _pumpPages(tester, _paragraphs(40), scroll: scroll);
+
+        final pagination = _state(tester).pagination;
+        final pages = pagination.pageCount;
+        expect(pages, greaterThan(1));
+        final lastPageBottom =
+            (pages - 1) * pagination.pageStride +
+            pagination.setup.size.height * pagination.zoom;
+        final lastText = _rectOf(h, h.controller.document.last.id).bottom;
+        expect(lastText, lessThan(lastPageBottom - 100));
+        expect(
+          scrollableBottom(scroll),
+          closeTo(
+            lastPageBottom + PaginationController.canvasBottomPadding,
+            24,
+          ),
+        );
       },
     );
   });
