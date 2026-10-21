@@ -48,7 +48,11 @@ class ScreenHarness {
   final List<String> invoked = [];
 
   /// Pumps [child] inside a shad app with the shell services provided.
-  Future<void> pump(WidgetTester tester, Widget child) async {
+  Future<void> pump(
+    WidgetTester tester,
+    Widget child, {
+    Brightness brightness = Brightness.light,
+  }) async {
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -57,7 +61,9 @@ class ScreenHarness {
       Provider<ShellServices>.value(
         value: services,
         child: ShadApp(
-          theme: WonkyTheme.light(),
+          theme: brightness == Brightness.dark
+              ? WonkyTheme.dark()
+              : WonkyTheme.light(),
           localizationsDelegates: const [
             WonkyAppLocalizations.delegate,
             WonkyUiLocalizations.delegate,

@@ -232,7 +232,7 @@ context stack:
 | `img` | image embed (`data:` URIs → uploaded; `http(s)` kept as remote `src`, or downloaded when `downloadRemoteImages` (server only, SSRF-safe fetcher: https only, public IPs, ≤ 10 MB, 15 s)) |
 | `ul`/`ol`/`li` (nested) | `list` bullet/ordered with `indent` = nesting depth (max 8; deeper flattened) |
 | `li` starting with `input[type=checkbox]` or `☐/☑/☒` | `list: checked/unchecked` |
-| `blockquote` (nested) | `blockquote` (flattened to one level, lists inside → paragraphs + warning) |
+| `blockquote` (nested) | `blockquote` (flattened to one level; lists inside → quoted list items, `blockquote` + `list`, 02 §1.2) |
 | `hr` | divider |
 | `table` | table embed: `thead`/`th` row or first row = header; `colspan`/`rowspan` → content in first cell, others empty (warning); nested tables → text; `align`/`text-align` → column align |
 | `figure > img + figcaption` | image with `title` = caption text |
@@ -905,7 +905,8 @@ MCP mapping ([../09-mcp.md](../09-mcp.md) §4):
 | Bullet / ordered lists (nesting) | ✓ | — | ✓ | ✓ | ✓ | ✓ |
 | List start ≠ 1 | ≈ restart | — | ≈ | ≈ | ≈ | ≈ |
 | Task lists | ✓ | — | ✓ | ≈ (glyph/checkbox) | ≈ | ≈ |
-| Blockquote | ✓ (flattened) | — | ✓ (flattened) | ≈ (Quote style) | ≈ | ≈ |
+| Blockquote | ✓ (nesting flattened) | — | ✓ (nesting flattened) | ≈ (Quote style) | ≈ | ≈ |
+| Lists inside quotes | ✓ | — | ✓ | ≈ (plain list items) | ≈ | ≈ |
 | Code block (+ language) | ✓ | — | ✓ | ≈ (no language) | ≈ | ≈ |
 | Images | ✓ (URL / zip) | — | ✓ | ✓ (EMF/WMF ✗) | ✓ | ✓ (png/jpeg) |
 | Image captions | title | — | figcaption | ✗ | ✗ | ✗ |
@@ -929,6 +930,7 @@ MCP mapping ([../09-mcp.md](../09-mcp.md) §4):
 | Images | link/zip | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `[image]` |
 | Tables (header repeat) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ≈ |
 | Task checkboxes | ✓ | ✓ | ✓ | ≈ glyph | ≈ glyph | ≈ glyph | ✓ | ✓ `[ ]` |
+| Lists inside quotes | ✓ `> - ` | ✓ bar + indent | ✓ `<blockquote><ul>` | ≈ bar + indent | ≈ quote style | ≈ bar + indent | ✓ | ✓ `> - ` |
 | Links / mentions | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | URL in parens |
 | Page setup / header & footer | ✗ | ✓ | ≈ (`@page` size/margins) | ✓ | ✓ | ✓ | ✗ | ✗ |
 | TOC | ✗ | ✓ (opt) | ✓ (opt) | ✓ (field) | ✓ (opt) | ✗ | nav ✓ | ✗ |

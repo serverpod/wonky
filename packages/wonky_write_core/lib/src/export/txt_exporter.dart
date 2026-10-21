@@ -114,10 +114,29 @@ final class TxtExporter implements DocumentExporter<TxtExportOptions> {
           blocks.add((_table(cells, options.tables), false, true));
       }
     }
+    // A list inside a quote (Write 02 §1.2): the items behind `> `, joined to
+    // the quote's lines by a `>` line like in Markdown.
+    final quoted = [
+      for (final block in tree.blocks)
+        block is ListItemBlock || block is TaskBlock ? isInQuote(block) : false,
+    ];
+    final inQuote = [for (final block in tree.blocks) isInQuote(block)];
     final b = StringBuffer();
     for (var i = 0; i < blocks.length; i++) {
-      if (i > 0) b.write(blocks[i - 1].$2 && blocks[i].$2 ? '\n' : '\n\n');
-      b.write(blocks[i].$1);
+      if (i > 0) {
+        final lists = blocks[i - 1].$2 && blocks[i].$2;
+        b.write(
+          inQuote[i - 1] && inQuote[i]
+              ? (lists ? '\n' : '\n>\n')
+              : lists && !inQuote[i - 1] && !inQuote[i]
+              ? '\n'
+              : '\n\n',
+        );
+      }
+      final text = blocks[i].$1;
+      b.write(
+        quoted[i] ? text.split('\n').map((l) => '> $l').join('\n') : text,
+      );
     }
     b.write('\n');
     final out = b.toString();

@@ -43,9 +43,9 @@ Sources:
 
 - The assistant's edits (`ActorKind.ai`) count for the person who asked; scripts and the system
   don't count.
-- The **welcome content** (the welcome document and spreadsheet every account gets,
-  `write.welcome` / `sheets.welcome`) is not counted as created and does not make anyone an
-  editor.
+- The **welcome content** (the welcome document every account gets and the welcome
+  spreadsheet older accounts got, `write.welcome` / `sheets.welcome`) is not counted as created
+  and does not make anyone an editor.
 - Each instance remembers which (user, day, app) keys it wrote (LRU of 50,000), so the hot paths
   cost a map lookup. Pings, opens and MCP calls also refresh `user_profile.lastSeenAt` (at most
   every 15 min per user). Edits don't, because they can run inside a transaction that locks the

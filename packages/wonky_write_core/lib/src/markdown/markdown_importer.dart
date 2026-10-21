@@ -345,11 +345,7 @@ final class MarkdownImporter {
         case 'blockquote':
           _quote(c, depth: depth + 1);
         case 'ul' || 'ol':
-          _warn(
-            ImportWarningKind.listInQuoteFlattened,
-            'List inside a blockquote flattened',
-          );
-          _flattenListInto(c, line);
+          _list(c, 0, inQuote: true);
         case 'h1' || 'h2' || 'h3' || 'h4' || 'h5' || 'h6':
           _flattenWarn();
           _inlineBlock(c.children ?? const [], (runs) => QuoteBlock([runs]));
@@ -380,26 +376,9 @@ final class MarkdownImporter {
     );
   }
 
-  void _flattenListInto(md.Element list, void Function(List<InlineRun>) line) {
-    for (final li
-        in (list.children ?? const <md.Node>[]).whereType<md.Element>()) {
-      final inline = <md.Node>[];
-      for (final c in li.children ?? const <md.Node>[]) {
-        if (c is md.Element && (c.tag == 'ul' || c.tag == 'ol')) {
-          if (inline.isNotEmpty) line(_brRule(_reader.readRuns(inline)));
-          inline.clear();
-          _flattenListInto(c, line);
-        } else if (c is md.Element && c.tag == 'p') {
-          inline.addAll(c.children ?? const []);
-        } else {
-          inline.add(c);
-        }
-      }
-      if (inline.isNotEmpty) line(_brRule(_reader.readRuns(inline)));
-    }
-  }
-
-  void _list(md.Element list, int depth) {
+  /// Imports a list; [inQuote] for a list inside a blockquote (its items
+  /// are quoted, Write 02 §1.2).
+  void _list(md.Element list, int depth, {bool inQuote = false}) {
     final ordered = list.tag == 'ol';
     final start = list.attributes['start'];
     if (ordered && start != null && start != '1' && !_warnedStart) {
@@ -501,13 +480,14 @@ final class MarkdownImporter {
       }
       final content = _brRule(InlineRun.merge(runs));
       if (checked != null) {
-        _blocks.add(TaskBlock(checked, indent, content));
+        _blocks.add(TaskBlock(checked, indent, content, inQuote: inQuote));
       } else {
         _blocks.add(
           ListItemBlock(
             ordered ? ListKindIr.ordered : ListKindIr.bullet,
             indent,
             content,
+            inQuote: inQuote,
           ),
         );
       }
@@ -520,7 +500,7 @@ final class MarkdownImporter {
         _topBlock(o);
       }
       for (final n in nested) {
-        _list(n, depth + 1);
+        _list(n, depth + 1, inQuote: inQuote);
       }
     }
   }

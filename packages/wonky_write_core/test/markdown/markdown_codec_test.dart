@@ -66,23 +66,6 @@ void main() {
             {ImportWarningKind.nestedQuoteFlattened},
           ),
           (
-            'a list in a quote',
-            '> - a\n> - b\n',
-            [
-              {'insert': 'a'},
-              {
-                'insert': '\n',
-                'attributes': {'blockquote': true},
-              },
-              {'insert': 'b'},
-              {
-                'insert': '\n',
-                'attributes': {'blockquote': true},
-              },
-            ],
-            {ImportWarningKind.listInQuoteFlattened},
-          ),
-          (
             'footnotes',
             'Text[^1]\n\n[^1]: Note\n',
             [

@@ -106,8 +106,11 @@ final class HtmlBodyWriter {
     return b.toString();
   }
 
-  /// HTML for a sequence of blocks (lists are nested from indents).
-  String blocks(List<DocBlock> blocks) {
+  /// HTML for a sequence of blocks (lists are nested from indents; quote
+  /// lines and the quoted list items next to them share one `<blockquote>`).
+  String blocks(List<DocBlock> blocks) => _blocks(blocks, quoteBody: false);
+
+  String _blocks(List<DocBlock> blocks, {required bool quoteBody}) {
     final b = StringBuffer();
     // Open list stack: (tag, kind key).
     final stack = <(String tag, String key)>[];
@@ -117,7 +120,26 @@ final class HtmlBodyWriter {
       }
     }
 
-    for (final block in blocks) {
+    for (var i = 0; i < blocks.length; i++) {
+      final block = blocks[i];
+      if (!quoteBody && isInQuote(block)) {
+        closeTo(0);
+        var end = i;
+        while (end < blocks.length && isInQuote(blocks[end])) {
+          end++;
+        }
+        b
+          ..write('<blockquote>')
+          ..write(_blocks(blocks.sublist(i, end), quoteBody: true))
+          ..write('</blockquote>\n');
+        i = end - 1;
+        continue;
+      }
+      if (quoteBody && block is QuoteBlock) {
+        closeTo(0);
+        b.write(_quoteLines(block.lines));
+        continue;
+      }
       if (block is ListItemBlock || block is TaskBlock) {
         final (indent, tag, key, item) = switch (block) {
           ListItemBlock(:final indent, :final kind, :final runs) => (
@@ -166,6 +188,11 @@ final class HtmlBodyWriter {
     return b.toString();
   }
 
+  /// The `<p>`s of quote lines (inside a `<blockquote>`).
+  String _quoteLines(List<List<InlineRun>> lines) => lines
+      .map((l) => l.isEmpty ? '<p>$_br</p>' : '<p>${inline(l)}</p>')
+      .join();
+
   /// HTML of one non-list block.
   String block(DocBlock block) {
     switch (block) {
@@ -174,7 +201,7 @@ final class HtmlBodyWriter {
       case HeadingBlock(:final level, :final runs, :final anchorId):
         return '<h$level id="${attr(anchorId)}">${runs.isEmpty ? _br : inline(runs)}</h$level>';
       case QuoteBlock(:final lines):
-        return '<blockquote>${lines.map((l) => l.isEmpty ? '<p>$_br</p>' : '<p>${inline(l)}</p>').join()}</blockquote>';
+        return '<blockquote>${_quoteLines(lines)}</blockquote>';
       case CodeBlock(:final language, :final text):
         final cls = language.isEmpty
             ? ''

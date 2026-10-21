@@ -127,9 +127,14 @@ final class ListItemBlock extends DocBlock {
     this.indent,
     this.runs, {
     this.ordinal = 1,
+    this.inQuote = false,
     super.deltaStart,
     super.deltaLength,
   });
+
+  /// Whether the item is inside a blockquote; it belongs to the quote of the
+  /// [QuoteBlock]s and quoted items right before and after it.
+  final bool inQuote;
 
   /// Bullet or ordered.
   final ListKindIr kind;
@@ -151,9 +156,13 @@ final class TaskBlock extends DocBlock {
     this.checked,
     this.indent,
     this.runs, {
+    this.inQuote = false,
     super.deltaStart,
     super.deltaLength,
   });
+
+  /// Whether the item is inside a blockquote (see [ListItemBlock.inQuote]).
+  final bool inQuote;
 
   /// Whether the task is done.
   final bool checked;
@@ -164,6 +173,14 @@ final class TaskBlock extends DocBlock {
   /// Inline content.
   final List<InlineRun> runs;
 }
+
+/// Whether [block] is part of a blockquote: a [QuoteBlock] or a quoted list
+/// or task item. Consecutive such blocks form one quote.
+bool isInQuote(DocBlock? block) => switch (block) {
+  QuoteBlock() => true,
+  ListItemBlock(:final inQuote) || TaskBlock(:final inQuote) => inQuote,
+  _ => false,
+};
 
 /// Consecutive blockquote lines.
 final class QuoteBlock extends DocBlock {

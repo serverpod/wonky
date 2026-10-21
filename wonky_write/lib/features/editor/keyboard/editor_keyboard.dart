@@ -6,6 +6,7 @@ import '../applier/delta_applier.dart';
 import '../commands/write_editor_commands.dart';
 import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
+import '../mapping/wonky_schema.dart' show isQuotedListNode;
 import '../model/document_queries.dart';
 
 /// Handles a key event before the editor; returns `true` when handled.
@@ -97,7 +98,40 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
     collapseSelectionWhenEscIsPressed,
   };
   final defaults = ime ? defaultImeKeyboardActions : defaultKeyboardActions;
-  return [handler, ...defaults.where((action) => !removed.contains(action))];
+  return [
+    handler,
+    _backspaceInQuotedListItem,
+    ...defaults.where((action) => !removed.contains(action)),
+  ];
+}
+
+/// Backspace at the start of a list or task item inside a quote: through
+/// [DeleteUpstreamRequest], so Write's handler un-indents it or makes it a
+/// quote line (Write 04 §14). super_editor's own list actions run their
+/// commands directly and would make it a Normal paragraph.
+ExecutionInstruction _backspaceInQuotedListItem({
+  required SuperEditorContext editContext,
+  required KeyEvent keyEvent,
+}) {
+  if (keyEvent is! KeyDownEvent && keyEvent is! KeyRepeatEvent) {
+    return ExecutionInstruction.continueExecution;
+  }
+  if (keyEvent.logicalKey != LogicalKeyboardKey.backspace) {
+    return ExecutionInstruction.continueExecution;
+  }
+  final selection = editContext.composer.selection;
+  if (selection == null || !selection.isCollapsed) {
+    return ExecutionInstruction.continueExecution;
+  }
+  final position = selection.extent.nodePosition;
+  final node = editContext.document.getNodeById(selection.extent.nodeId);
+  if (!isQuotedListNode(node) ||
+      position is! TextNodePosition ||
+      position.offset != 0) {
+    return ExecutionInstruction.continueExecution;
+  }
+  editContext.editor.execute([const DeleteUpstreamRequest()]);
+  return ExecutionInstruction.haltExecution;
 }
 
 bool _builtInShortcut(

@@ -947,8 +947,10 @@ final class _HtmlWalker {
   void _heading(int level, dom.Element e, _Fmt fmt) {
     _flush();
     _stack.add(_HeadingCtx(level));
+    final start = _blocks.length;
     _children(e, fmt);
-    _flush();
+    // A heading of only whitespace is still a (empty) heading line.
+    _flush(explicitEmpty: _blocks.length == start);
     _stack.removeLast();
   }
 
@@ -1066,7 +1068,7 @@ final class _HtmlWalker {
   void _list(dom.Element e, _Fmt fmt, CssDeclarations decls) {
     _flush();
     final inner = _stack.lastOrNull;
-    if (inner is _ItemCtx && !inner.emitted && !_inQuote) {
+    if (inner is _ItemCtx && !inner.emitted) {
       _emitItem(inner, const []);
     }
     var ordered = e.localName == 'ol';
@@ -1188,7 +1190,7 @@ final class _HtmlWalker {
   }
 
   void _closeItem(_ItemCtx item) {
-    if (!item.emitted && _blocks.length == item.startBlocks && !_inQuote) {
+    if (!item.emitted && _blocks.length == item.startBlocks) {
       _emitItem(item, const []);
     }
   }
@@ -1379,8 +1381,6 @@ final class _HtmlWalker {
   // -------------------------------------------------------------------------
   // Emission
 
-  bool get _inQuote => _stack.any((c) => c is _QuoteCtx);
-
   void _flush({bool explicitEmpty = false}) {
     if (_cellDepth > 0) {
       _buf.space(_Fmt.plain);
@@ -1414,14 +1414,12 @@ final class _HtmlWalker {
     }
     if (qi >= 0) {
       if (ii > qi) {
-        _warnings.add(
-          ImportWarningKind.listInQuoteFlattened,
-          'Lists inside quotes were converted to quote lines.',
-          blockIndex: _blocks.length,
-        );
-      } else if (hi > qi || ii >= 0) {
-        _flattened();
+        // A list inside the quote: quoted list items (Write 02 §1.2).
+        if (hi > ii) _flattened();
+        _emitItem(_stack[ii] as _ItemCtx, runs);
+        return;
       }
+      if (hi > qi || ii >= 0) _flattened();
       _blocks.add(QuoteBlock([runs]));
       return;
     }
@@ -1452,10 +1450,18 @@ final class _HtmlWalker {
     blockIndex: _blocks.length,
   );
 
-  DocBlock _itemBlock(_ItemCtx item, bool? checked, List<InlineRun> runs) =>
-      checked != null
-      ? TaskBlock(checked, item.indent, runs)
-      : ListItemBlock(item.kind, item.indent, runs);
+  DocBlock _itemBlock(_ItemCtx item, bool? checked, List<InlineRun> runs) {
+    final quoted = _isQuoted(item);
+    return checked != null
+        ? TaskBlock(checked, item.indent, runs, inQuote: quoted)
+        : ListItemBlock(item.kind, item.indent, runs, inQuote: quoted);
+  }
+
+  /// Whether [item]'s list is inside a blockquote.
+  bool _isQuoted(_ItemCtx item) {
+    final at = _stack.indexOf(item);
+    return at > 0 && _stack.take(at).any((c) => c is _QuoteCtx);
+  }
 
   void _emitItem(_ItemCtx item, List<InlineRun> runs) {
     if (!item.emitted) {

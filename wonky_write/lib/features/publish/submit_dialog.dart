@@ -1,43 +1,50 @@
 import 'package:flutter/widgets.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_core/wonky_core.dart' show UuidV7Generator;
 
 import '../../l10n/write_l10n.dart';
+import '../images/image_dialogs.dart';
+import '../images/image_services.dart';
 import '../screen/write_document_controller.dart';
 
 /// The default name of a story's document (server: `PublicationService`).
 const untitledStoryName = 'Untitled story';
 
-/// An image of the document that can be the cover (specs/18 §4.2).
-class StoryImage {
-  const StoryImage(this.fileUuid, this.alt);
+/// Picks the cover image instead of the platform picker (tests).
+@visibleForTesting
+Future<PickedImage?> Function()? debugPickCoverImage;
 
-  final UuidValue fileUuid;
-  final String alt;
-}
-
-/// The uploaded images of the document, in order.
-List<StoryImage> storyImages(WriteDocumentController doc) {
-  final out = <StoryImage>[];
-  final seen = <String>{};
-  for (final op in doc.editor.delta.toList()) {
-    final data = op.data;
-    if (data is! Map || data['image'] is! Map) continue;
-    final image = data['image'] as Map;
-    final src = '${image['src'] ?? ''}';
-    const scheme = 'wonky-file://';
-    if (!src.startsWith(scheme)) continue;
-    final id = src.substring(scheme.length);
-    if (!seen.add(id)) continue;
-    try {
-      out.add(
-        StoryImage(UuidValue.withValidation(id), '${image['alt'] ?? ''}'),
-      );
-    } on FormatException {
-      continue;
-    }
-  }
-  return out;
+/// Picks an image and uploads it as the story's cover (specs/18 §4.2): an
+/// image file of the document (counted like its images, readable by the
+/// moderators) that is not inserted into the text, so blogs that show the
+/// cover above the post don't show it twice. Null when cancelled.
+Future<ImageFieldPick?> uploadCoverImage(
+  ShellServices s,
+  WriteDocumentController doc,
+) async {
+  final l = writeL10nOf(s);
+  final picked = debugPickCoverImage != null
+      ? await debugPickCoverImage!()
+      : (await pickImageFiles(
+          multiple: false,
+          onRejected: (name, reason) =>
+              s.toasts.error(reason, description: name),
+          l: l,
+        )).firstOrNull;
+  if (picked == null) return null;
+  if (!await imagesFitStorage(s, [picked])) return null;
+  final fileUuid = UuidValue.withValidation(
+    UuidV7Generator.instance.nextString(),
+  );
+  await s.repositories.files.upload(
+    fileUuid: fileUuid,
+    itemUuid: doc.itemUuid,
+    fileName: picked.name,
+    mimeType: picked.mimeType,
+    bytes: picked.bytes,
+  );
+  return (value: fileUuid.uuid, preview: MemoryImage(picked.bytes));
 }
 
 /// The number of open suggestions in the document (they are sent as the
@@ -78,14 +85,11 @@ Future<SubmissionView?> showSubmitDialog(
   if (v == null) return null;
   final l = writeL10n(context);
   final f = v.fields;
-  final images = storyImages(doc);
   final suggestions = openSuggestionCount(doc);
   String? need(PublicationFieldMode mode, String value) =>
       mode == PublicationFieldMode.required && value.trim().isEmpty
       ? l.submitRequired
       : null;
-  final cover =
-      v.values.coverImage ?? (images.isEmpty ? null : images.first.fileUuid);
   final r = await showWonkyFormDialog(
     context,
     WonkyDialogSpec(
@@ -127,17 +131,22 @@ Future<SubmissionView?> showSubmitDialog(
             validator: (x) => need(f.tags, x),
           ),
         if (f.coverImage != PublicationFieldMode.off)
-          SelectFieldSpec(
+          ImageFieldSpec(
             id: 'cover',
             label: _label(l, l.submitFieldCover, f.coverImage),
-            options: {
-              '': l.submitNoCover,
-              for (final (i, img) in images.indexed)
-                img.fileUuid.uuid: img.alt.isEmpty
-                    ? l.submitImage(i + 1)
-                    : l.submitImageAlt(i + 1, img.alt),
-            },
-            initial: cover?.uuid ?? '',
+            // The stored cover (also one picked from the document's images
+            // before covers were uploaded); none on a first submit.
+            initial: v.values.coverImage?.uuid ?? '',
+            preview: (id) =>
+                doc.images.resolve('${WriteImageServices.scheme}$id'),
+            pick: () => uploadCoverImage(s, doc),
+            description: l.submitCoverHint,
+            uploadLabel: l.submitCoverUpload,
+            replaceLabel: l.submitCoverReplace,
+            removeLabel: l.submitCoverRemove,
+            emptyLabel: l.submitNoCover,
+            uploadingLabel: l.submitCoverUploading,
+            errorLabel: l.submitCoverFailed,
           ),
         if (f.authorBio != PublicationFieldMode.off)
           TextFieldSpec(

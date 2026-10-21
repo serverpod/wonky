@@ -79,30 +79,37 @@ void main() {
             50,
           );
 
-          expect(page.items.map((i) => i.name).toList()..sort(), [
+          expect(page.items.map((i) => i.name), [
             'New here? Read me first',
-            'Welcome to Wonky Sheets',
           ], reason: 'round $round');
         }
       },
     );
 
     test(
-      'when calling getMe then the welcome spreadsheet is created',
+      'when calling getMe then only the Write welcome document is created',
       () async {
+        // No welcome spreadsheet or presentation (T-19, specs/04 §1.1).
         final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
 
         await endpoints.user.getMe(anna.endpointSession);
         final page = await endpoints.drive.list(
           anna.endpointSession,
           null,
-          DriveListFilter(kinds: [DriveItemKind.spreadsheet]),
+          DriveListFilter(),
           DriveSort(),
           null,
           50,
         );
 
-        expect(page.items.map((i) => i.name), ['Welcome to Wonky Sheets']);
+        expect(page.items.map((i) => (i.kind, i.name)), [
+          (DriveItemKind.document, 'New here? Read me first'),
+        ]);
+        expect(
+          await Spreadsheet.db.count(sessionBuilder.build()),
+          0,
+          reason: 'no spreadsheet row either',
+        );
       },
     );
 

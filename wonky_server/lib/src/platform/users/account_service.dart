@@ -20,7 +20,8 @@ import 'user_service.dart';
 abstract final class AccountService {
   // --------------------------------------------------------------- welcome
 
-  /// Creates the welcome document and spreadsheet once per account.
+  /// Creates the welcome document once per account. Only Write gets starter
+  /// content: no welcome spreadsheet or presentation (specs/04 §1.1).
   static Future<void> ensureWelcomeContent(Session session, Actor actor) async {
     final profile = await UserService.requireProfile(session, actor.userId);
     if (profile.welcomeContentAt != null) return;
@@ -38,16 +39,6 @@ abstract final class AccountService {
         actor,
         name: doc.name,
         templateUuid: doc.uuid,
-      );
-      final sheet = BuiltinTemplates.byKey(
-        BuiltinTemplates.welcomeSpreadsheetKey,
-      );
-      await DriveService.createSpreadsheet(
-        session,
-        actor,
-        name: sheet.name,
-        templateUuid: sheet.uuid,
-        timeZone: profile.timeZone ?? 'UTC',
       );
     } on Exception catch (e, st) {
       session.log(

@@ -772,14 +772,42 @@ clients.
   quote nodes render as **one** visual quote. The theme's quote rule uses
   `BlockSelector("blockquote").after("blockquote")` to collapse the vertical padding between
   them and continue the left border.
+- `WonkyParagraphComponentBuilder` paints the bar in the quote's left indent (a `CustomPaint`
+  around the paragraph component). The bar is **not a hit target** (its painter's `hitTest`
+  returns false): a hit-testable painter made every quote line absorb taps and clicks before
+  the interactor below the document layer saw them, so quote text could not be clicked,
+  selected or edited (T-19). Quote lines take the caret, selections, typing, formatting and
+  undo like any paragraph.
 - Applied with `write.format.blockType {type: quote}` (toggle), `> `, slash `/quote`, or the
   context menu's *Turn into*.
 - Enter, Backspace and Shift+Enter work as in §6.
-- No nesting. Lists inside quotes are not supported: making a quote line a list removes the
-  quote type.
+- **Lists inside quotes** (T-19; schema in [02](02-document-model.md) §1.2): bullet, numbered and
+  task items can be in a quote (`ListItemNode`/`TaskNode` with metadata `wonkyQuoted`). They sit
+  in the quote's indent with its bar (`WonkyListItemComponentBuilder`, `WonkyTaskComponentBuilder`
+  through `quoteBar`; their item spacing is inside the bar too) and its text style. Rules:
+  - In a quote line, `- `, `1. ` and `[ ] ` (and the list toggles / *Turn into*) make a list item
+    inside the quote; toggling the list off gives a quote line back.
+  - Quote on list items moves them into a quote; Quote on lines that are all in a quote takes
+    them out (list items stay list items). The Quote toggle is on for quoted items
+    (`selectionInQuote`). `> ` typed at the start of a list item moves it into a quote.
+  - Headings, code blocks and *Normal text* leave the quote.
+  - Enter in a quoted item adds a quoted item of the same type and indent (a new task is
+    unchecked); on an empty item it un-indents, then makes it a quote line; on an empty quote
+    line it leaves the quote. Backspace at the start of a quoted item un-indents, then makes it
+    a quote line (a Write keyboard action runs before super_editor's list actions, which would
+    make it a Normal paragraph). Tab / Shift+Tab indent within the quote.
+  - A quoted and an unquoted list are two lists (indent and numbering restart).
+- No nested quotes.
 
 **AC-14.1** Three consecutive quote lines render with one continuous border. Export gives one
 `>` block with blank `>` separators ([02](02-document-model.md) §2.2).
+**AC-14.2** Tapping or clicking any line of a single- or multi-line quote places the caret
+there; double-click selects a word, typing, Enter and Mod+B work in it, and undo/redo restore
+it. A list item between quote lines is edited the same way (T-19; widget tests in
+`components/blockquote_test.dart`).
+**AC-14.3** A quote of a paragraph and a bulleted list shows one unbroken bar along the paragraph
+and the items; typing, Enter, Backspace, Tab and the block-type commands keep items in the quote
+as above, and undo restores each change. `> - item` Markdown round-trips.
 
 ## 15. Code blocks
 

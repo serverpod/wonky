@@ -98,7 +98,10 @@ List<EditorCommandSpec> editorCommandCatalog() {
         bindings: bindings,
         requiredRole: Role.commenter,
         enabled: (t, _) => t.commands.canChangeBlockType(),
-        checked: (t, _) => t.commands.selectedBlockKind == kind,
+        // Quote is on for list items inside a quote too.
+        checked: (t, _) => kind == BlockKind.quote
+            ? t.commands.selectionInQuote
+            : t.commands.selectedBlockKind == kind,
         run: (t, _) => _result(t.commands.setBlockType(kind)),
       );
 

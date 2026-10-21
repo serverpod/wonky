@@ -640,7 +640,17 @@ final class _RtfWriter {
       _ => const <InlineRun>[],
     };
     final style = task ? theme.task.style : l.style;
-    final (li, fi) = _listIndents(indent);
+    var (li, fi) = _listIndents(indent);
+    // A list inside a quote (Write 02 §1.2): moved right by the quote's
+    // indent, with its bar and background.
+    var quote = '';
+    if (isInQuote(b)) {
+      final q = theme.blockquote;
+      li += _tw(q.box.padding.left + (q.bar.isVisible ? q.bar.width : 0.0));
+      quote =
+          '${q.bar.isVisible ? '\\brdrl${_border(q.bar, space: q.box.padding.left)}' : ''}'
+          '${_shading(q.box.background)}';
+    }
     final content = _Rtf();
     switch (b) {
       case ListItemBlock(:final kind, :final ordinal):
@@ -682,7 +692,7 @@ final class _RtfWriter {
     final box = task ? theme.task.box : l.box;
     return _Unit.para(
       '\\s${_S.listParagraph}\\ql\\fi$fi\\li$li${_lineSpacing(style)}'
-      '\\ls$ls\\ilvl$indent${_chars(style)}',
+      '\\ls$ls\\ilvl$indent$quote${_chars(style)}',
       content.done(),
       before: first ? box.spaceBefore : l.itemSpacing,
       after: last ? math.max(l.itemSpacing, box.spaceAfter) : l.itemSpacing,

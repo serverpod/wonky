@@ -241,6 +241,9 @@ class BuiltinTemplate {
 /// hard line breaks (one block, several lines); keep the trailing spaces.
 abstract final class BuiltinTemplates {
   static const welcomeDocumentKey = 'write.welcome';
+
+  /// No longer created at sign-up (T-19); kept so spreadsheets that older
+  /// accounts got from it still resolve their template.
   static const welcomeSpreadsheetKey = 'sheets.welcome';
 
   static BuiltinTemplate? byUuid(UuidValue uuid) {

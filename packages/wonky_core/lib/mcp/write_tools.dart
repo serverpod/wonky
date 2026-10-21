@@ -426,7 +426,8 @@ abstract final class WriteTools {
     title: 'Set the block type',
     description:
         'Changes every line touched by the range to a paragraph, heading '
-        '(level 1–6), bullet/ordered/task list item (indent 0–8, checked), '
+        '(level 1–6), bullet/ordered/task list item (indent 0–8, checked; '
+        'a list item in a quote keeps the quote unless quoted is false), '
         'quote or code block (language). Converting lines to code merges '
         'them into one code block.$_addressing',
     inputSchema: WriteSchemas.doc(
@@ -446,6 +447,7 @@ abstract final class WriteTools {
         'level': const JsonSchema.integer(minimum: 1, maximum: 6),
         'indent': const JsonSchema.integer(minimum: 0, maximum: 8),
         'checked': const JsonSchema.boolean(),
+        'quoted': const JsonSchema.boolean(),
         'language': const JsonSchema.string(maxLength: 40),
       },
       required: ['range', 'type'],

@@ -8355,23 +8355,47 @@ abstract class WriteLocalizations {
   /// **'Comma separated, from: {tags}'**
   String submitTagsFrom(String tags);
 
-  /// No description provided for @submitNoCover.
+  /// Submit dialog: shown in the empty cover image thumbnail.
   ///
   /// In en, this message translates to:
-  /// **'No cover image'**
+  /// **'No cover'**
   String get submitNoCover;
 
-  /// No description provided for @submitImage.
+  /// Submit dialog: picks an image file and uploads it as the story's cover (specs/18 §4.2).
   ///
   /// In en, this message translates to:
-  /// **'Image {count}'**
-  String submitImage(int count);
+  /// **'Upload image'**
+  String get submitCoverUpload;
 
-  /// No description provided for @submitImageAlt.
+  /// Submit dialog: uploads another image in place of the cover.
   ///
   /// In en, this message translates to:
-  /// **'Image {count}: {alt}'**
-  String submitImageAlt(int count, String alt);
+  /// **'Replace'**
+  String get submitCoverReplace;
+
+  /// Submit dialog: submits without a cover image.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get submitCoverRemove;
+
+  /// No description provided for @submitCoverUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading…'**
+  String get submitCoverUploading;
+
+  /// No description provided for @submitCoverFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The image couldn\'t be uploaded. Try again.'**
+  String get submitCoverFailed;
+
+  /// No description provided for @submitCoverHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown with your post. It isn\'t added to the document.'**
+  String get submitCoverHint;
 
   /// No description provided for @submitTerms.
   ///

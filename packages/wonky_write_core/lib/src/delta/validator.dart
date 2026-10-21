@@ -31,7 +31,8 @@ enum ValidationCode {
   /// An attribute value of the wrong type or range.
   invalidAttributeValue,
 
-  /// More than one of `header`, `blockquote`, `code-block`, `list`.
+  /// More than one of `header`, `blockquote`, `code-block`, `list` (only
+  /// `blockquote` with `list` is allowed: a list item inside a quote).
   conflictingBlockAttributes,
 
   /// `indent` without `list`, or an indent deeper than allowed by the
@@ -169,7 +170,9 @@ final class WonkyDeltaValidator {
     final pendingInline = <int>[];
     final pendingSoftBreaks = <int>[];
     // List run state.
+    // (A quoted and an unquoted list next to each other are two runs.)
     int? prevListIndent;
+    var prevListQuoted = false;
     Operation? prev;
     var prevWasEmbed = false;
 
@@ -281,7 +284,10 @@ final class WonkyDeltaValidator {
           pendingInline.clear();
           // Indent rules.
           if (format != null && format.isList) {
-            final maxAllowed = prevListIndent == null ? 0 : prevListIndent + 1;
+            final maxAllowed =
+                prevListIndent == null || prevListQuoted != format.quoted
+                ? 0
+                : prevListIndent + 1;
             if (format.indent > maxAllowed) {
               add(
                 ValidationCode.invalidIndent,
@@ -290,6 +296,7 @@ final class WonkyDeltaValidator {
               );
             }
             prevListIndent = format.indent;
+            prevListQuoted = format.quoted;
           } else {
             prevListIndent = null;
           }
@@ -465,7 +472,8 @@ final class WonkyDeltaValidator {
             );
           }
         case WonkyAttr.blockquote:
-          types++;
+          // A list item may be inside a quote (Write 02 §1.2).
+          if (!attrs.containsKey(WonkyAttr.list)) types++;
           if (v != true) {
             add(
               ValidationCode.invalidAttributeValue,

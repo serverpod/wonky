@@ -127,6 +127,19 @@ class WriteStylesheetBuilder {
           : style.letterSpacing! * scale,
     );
     double px(double value) => value * scale;
+    // List and task items; inside a quote they sit in the quote's indent
+    // and their spacing is inside the bar (WonkyParagraphComponentBuilder).
+    CascadingPadding listItemPadding(DocumentNode node) =>
+        isQuotedListNode(node)
+        ? CascadingPadding.only(
+            left: px(theme.quoteBarWidth + 12),
+            top: 0,
+            bottom: 0,
+          )
+        : CascadingPadding.only(
+            top: px(theme.listItemSpacing),
+            bottom: px(theme.listItemSpacing),
+          );
     final maxWidth = layout == LayoutMode.pageless
         ? px(theme.pagelessMaxWidth)
         : (contentWidth ?? 794) * scale;
@@ -163,10 +176,13 @@ class WriteStylesheetBuilder {
       StyleRule(const BlockSelector('blockquote'), (doc, node) {
         return {
           Styles.textStyle: scaled(theme.quote),
+          // The space above and below each quote line is inside the bar
+          // (WonkyParagraphComponentBuilder), so consecutive lines and
+          // paragraphs of one quote share one unbroken bar (Write 04 §14).
           Styles.padding: CascadingPadding.only(
             left: px(theme.quoteBarWidth + 12),
-            top: px(2),
-            bottom: px(2),
+            top: 0,
+            bottom: 0,
           ),
         };
       }),
@@ -182,10 +198,8 @@ class WriteStylesheetBuilder {
         final indent = node is ListItemNode ? node.indent : 0;
         final glyph = theme.bullets[indent % theme.bullets.length];
         return {
-          Styles.padding: CascadingPadding.only(
-            top: px(theme.listItemSpacing),
-            bottom: px(theme.listItemSpacing),
-          ),
+          Styles.padding: listItemPadding(node),
+          if (isQuotedListNode(node)) Styles.textStyle: scaled(theme.quote),
           Styles.dotColor: theme.listMarkerColor,
           Styles.dotShape: glyph == '▪' ? BoxShape.rectangle : BoxShape.circle,
           Styles.dotSize: Size(
@@ -201,10 +215,8 @@ class WriteStylesheetBuilder {
       }),
       StyleRule(const BlockSelector('task'), (doc, node) {
         return {
-          Styles.padding: CascadingPadding.only(
-            top: px(theme.listItemSpacing),
-            bottom: px(theme.listItemSpacing),
-          ),
+          Styles.padding: listItemPadding(node),
+          if (isQuotedListNode(node)) Styles.textStyle: scaled(theme.quote),
         };
       }),
       StyleRule(const BlockSelector('horizontalRule'), (doc, node) {

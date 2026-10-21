@@ -689,6 +689,76 @@ class WonkyTableComponentBuilder implements ComponentBuilder {
 // -----------------------------------------------------------------------------
 // Code blocks and quotes (Write 04 §14, §15).
 
+/// The space above and below each quote line (px at 100 %), painted over by
+/// the quote bar.
+const quoteLineSpacing = 2.0;
+
+/// A part of a quote (a quote line, or a list or task item inside a quote,
+/// Write 04 §14): [child] with the quote bar in the stylesheet's quote
+/// indent left of it, and [spacing] (px at 100 %) above and below inside
+/// the bar, so the bars of the quote's parts touch.
+Widget quoteBar(
+  BuildContext context, {
+  required EditorTheme theme,
+  required double zoom,
+  required double spacing,
+  required Widget child,
+}) => Semantics(
+  label: writeL10n(context).editorQuoteLabel,
+  child: CustomPaint(
+    painter: _QuoteBarPainter(
+      color: theme.quoteBarColor,
+      width: theme.quoteBarWidth * zoom,
+      // The stylesheet indents quotes by bar width + 12 px; the bar sits in
+      // that indent, left of the text.
+      gap: 12 * zoom,
+    ),
+    child: Padding(
+      padding: EdgeInsets.symmetric(vertical: spacing * zoom),
+      child: child,
+    ),
+  ),
+);
+
+/// super_editor's list items; inside a quote with the quote bar.
+class WonkyListItemComponentBuilder implements ComponentBuilder {
+  const WonkyListItemComponentBuilder({
+    required this.document,
+    required this.theme,
+    required this.zoom,
+  });
+
+  final Document document;
+  final EditorTheme theme;
+  final double zoom;
+  static const _inner = ListItemComponentBuilder();
+
+  @override
+  SingleColumnLayoutComponentViewModel? createViewModel(
+    Document document,
+    DocumentNode node,
+  ) => _inner.createViewModel(document, node);
+
+  @override
+  Widget? createComponent(
+    SingleColumnDocumentComponentContext componentContext,
+    SingleColumnLayoutComponentViewModel viewModel,
+  ) {
+    final component = _inner.createComponent(componentContext, viewModel);
+    if (component == null ||
+        !isQuotedListNode(document.getNodeById(viewModel.nodeId))) {
+      return component;
+    }
+    return quoteBar(
+      componentContext.context,
+      theme: theme,
+      zoom: zoom,
+      spacing: theme.listItemSpacing,
+      child: component,
+    );
+  }
+}
+
 /// Paragraph components with Wonky chrome: code blocks get a language chip
 /// and a copy button; quote lines get a continuous left bar.
 class WonkyParagraphComponentBuilder implements ComponentBuilder {
@@ -736,18 +806,12 @@ class WonkyParagraphComponentBuilder implements ComponentBuilder {
     );
     if (component == null) return null;
     if (blockType == blockquoteAttribution) {
-      return Semantics(
-        label: writeL10n(componentContext.context).editorQuoteLabel,
-        child: CustomPaint(
-          painter: _QuoteBarPainter(
-            color: theme.quoteBarColor,
-            width: theme.quoteBarWidth * zoom,
-            // The stylesheet indents quotes by bar width + 12 px; the bar
-            // sits in that indent, left of the text.
-            gap: 12 * zoom,
-          ),
-          child: component,
-        ),
+      return quoteBar(
+        componentContext.context,
+        theme: theme,
+        zoom: zoom,
+        spacing: quoteLineSpacing,
+        child: component,
       );
     }
     if (blockType == codeAttribution) {
@@ -788,6 +852,13 @@ class _QuoteBarPainter extends CustomPainter {
       Paint()..color = color,
     );
   }
+
+  /// The bar is not a hit target. A [CustomPaint] whose painter does not
+  /// answer counts as hit, which made every quote line absorb taps and
+  /// clicks before the interactor below the document layer saw them: quote
+  /// text could not be clicked, selected or edited (T-19).
+  @override
+  bool hitTest(Offset position) => false;
 
   @override
   bool shouldRepaint(_QuoteBarPainter oldDelegate) =>
@@ -1017,6 +1088,9 @@ class WonkyTaskComponentBuilder implements ComponentBuilder {
   WonkyTaskComponentBuilder(
     this._editor, {
     required this.onToggle,
+    required this.theme,
+    this.zoom = 1,
+    this.document,
     this.editable = true,
   }) : _inner = TaskComponentBuilder(_editor);
 
@@ -1024,6 +1098,13 @@ class WonkyTaskComponentBuilder implements ComponentBuilder {
   final TaskComponentBuilder _inner;
   final void Function(String nodeId) onToggle;
   final bool editable;
+
+  /// For the quote bar of tasks inside a quote.
+  final EditorTheme theme;
+  final double zoom;
+
+  /// The document shown (a suggestion preview's); the editor's when null.
+  final Document? document;
 
   Editor get editor => _editor;
 
@@ -1047,10 +1128,21 @@ class WonkyTaskComponentBuilder implements ComponentBuilder {
     if (component == null || viewModel is! TaskComponentViewModel) {
       return component;
     }
-    return Semantics(
+    final task = Semantics(
       checked: viewModel.isComplete,
       label: writeL10n(componentContext.context).editorCheckboxLabel,
       child: component,
+    );
+    final shown = document ?? _editor.document;
+    if (!isQuotedListNode(shown.getNodeById(viewModel.nodeId))) {
+      return task;
+    }
+    return quoteBar(
+      componentContext.context,
+      theme: theme,
+      zoom: zoom,
+      spacing: theme.listItemSpacing,
+      child: task,
     );
   }
 }

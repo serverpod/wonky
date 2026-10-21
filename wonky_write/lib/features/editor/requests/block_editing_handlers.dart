@@ -117,6 +117,17 @@ EditCommand? _newlineCommand(
     return null;
   }
 
+  // A list or task item inside a quote: new items stay in the quote; Enter
+  // on an empty top-level item leaves the list but not the quote (§14).
+  if (isQuotedListNode(node)) {
+    final indent = _indentOf(node);
+    if (text.isEmpty) {
+      return indent > 0
+          ? _SetIndentCommand(node.id, indent - 1)
+          : _ToParagraphCommand(node.id, quote: true);
+    }
+    return _SplitQuotedItemCommand(node.id, offset, newNodeId);
+  }
   if (node is ListItemNode && text.isEmpty && node.indent > 0) {
     return _SetIndentCommand(node.id, node.indent - 1);
   }
@@ -186,18 +197,20 @@ EditCommand? _backspaceAtStartCommand(Editor editor, TextNode node) {
         ? _MergeTextNodesCommand(previous.id, node.id)
         : null;
   }
-  if (node is ListItemNode) {
-    return node.indent > 0
-        ? _SetIndentCommand(node.id, node.indent - 1)
-        : _ToParagraphCommand(node.id);
-  }
-  if (node is TaskNode) {
-    return node.indent > 0
-        ? _SetIndentCommand(node.id, node.indent - 1)
-        : _ToParagraphCommand(node.id);
+  if (node is ListItemNode || node is TaskNode) {
+    // Inside a quote, a top-level item becomes a quote line (§14).
+    final indent = _indentOf(node);
+    return indent > 0
+        ? _SetIndentCommand(node.id, indent - 1)
+        : _ToParagraphCommand(node.id, quote: isQuotedListNode(node));
   }
   return null;
 }
+
+int _indentOf(DocumentNode node) => switch (node) {
+  ListItemNode(:final indent) || TaskNode(:final indent) => indent,
+  _ => 0,
+};
 
 EditCommand? _deleteCommand(Editor editor) {
   final selection = editor.composer.selection;
@@ -423,6 +436,54 @@ class _SplitKeepingTypeCommand extends EditCommand {
   }
 }
 
+/// Splits a list or task item inside a quote: the new item has the same type
+/// and indent and stays in the quote (a new task is unchecked).
+class _SplitQuotedItemCommand extends EditCommand {
+  _SplitQuotedItemCommand(this.nodeId, this.offset, this.newNodeId);
+
+  final String nodeId;
+  final int offset;
+  final String newNodeId;
+
+  @override
+  void execute(EditContext context, CommandExecutor executor) {
+    final node = context.document.getNodeById(nodeId)! as TextNode;
+    final rest = node.text.copyText(offset);
+    final metadata = {WonkyNodeMetadata.quoted: true};
+    final (TextNode first, TextNode second) = switch (node) {
+      ListItemNode() => (
+        node.copyListItemWith(text: node.text.copyText(0, offset)),
+        ListItemNode(
+          id: newNodeId,
+          itemType: node.type,
+          indent: node.indent,
+          text: rest,
+          metadata: metadata,
+        ),
+      ),
+      TaskNode() => (
+        node.copyTaskWith(text: node.text.copyText(0, offset)),
+        TaskNode(
+          id: newNodeId,
+          text: rest,
+          isComplete: false,
+          indent: node.indent,
+          metadata: metadata,
+        ),
+      ),
+      _ => throw StateError('Not a list item: $nodeId'),
+    };
+    executor
+      ..executeCommand(
+        ReplaceNodeCommand(existingNodeId: nodeId, newNode: first),
+      )
+      ..executeCommand(
+        InsertNodeAfterNodeCommand(existingNodeId: nodeId, newNode: second),
+      );
+    _placeCaret(executor, newNodeId, const TextNodePosition(offset: 0));
+  }
+}
+
 /// Enter at the start of a non-empty heading: an empty Normal paragraph above.
 class _ParagraphAboveCommand extends EditCommand {
   _ParagraphAboveCommand(this.nodeId, this.newNodeId);
@@ -494,11 +555,13 @@ class _SetIndentCommand extends EditCommand {
   }
 }
 
-/// Converts a list item or task to a Normal paragraph (keeps line overlays).
+/// Converts a list item or task to a Normal paragraph, or with [quote] to a
+/// quote line (keeps line overlays).
 class _ToParagraphCommand extends EditCommand {
-  _ToParagraphCommand(this.nodeId);
+  _ToParagraphCommand(this.nodeId, {this.quote = false});
 
   final String nodeId;
+  final bool quote;
 
   @override
   void execute(EditContext context, CommandExecutor executor) {
@@ -512,7 +575,10 @@ class _ToParagraphCommand extends EditCommand {
         newNode: ParagraphNode(
           id: nodeId,
           text: node.text,
-          metadata: {WonkyNodeMetadata.lineAttributes: ?lineAttributes},
+          metadata: {
+            WonkyNodeMetadata.lineAttributes: ?lineAttributes,
+            if (quote) NodeMetadata.blockType: blockquoteAttribution,
+          },
         ),
       ),
     );

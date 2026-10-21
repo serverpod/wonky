@@ -69,14 +69,20 @@ real lines).
 | `list` | `"bullet"` \| `"ordered"` | `- ` / `1. ` | `ListItemNode.unordered` / `.ordered` |
 | `list` | `"checked"` \| `"unchecked"` | `- [x] ` / `- [ ] ` | `TaskNode(isComplete)` |
 | `indent` | `1`–`8` | nested list (2/3-space indentation per level) | `ListItemNode.indent` / `TaskNode.indent`; **only valid with `list`** |
+| `blockquote` + `list` | `true` next to a `list` value (+ `indent`) | `> - ` / `> 1. ` / `> - [ ] ` (a list inside a quote) | `ListItemNode` / `TaskNode` with node metadata `wonkyQuoted: true` (T-19) |
 
 The line-end `"\n"` may additionally carry `cmt_*` and `sug_*` attributes (not block attributes):
 `sug_<id>` with `t:"ins"`/`t:"del"` on a `"\n"` represents a suggested line split/merge, and
 `t:"fmt"` with `before: {<previous block attrs>}` represents a suggested block-type change
 (e.g. paragraph → heading); `cmt_*` on `"\n"` lets a comment span whole lines.
 
-Combinations: `header`, `blockquote`, `code-block`, `list` are mutually exclusive. Lists inside
-quotes are not supported (not supported by super_editor) — import flattens them with a notice.
+Combinations: `header`, `blockquote`, `code-block`, `list` are mutually exclusive, except
+`blockquote` with `list`: a **list item inside a quote** (bullet, ordered or task, any indent;
+`BlockFormat.quoted`). Consecutive quote lines and quoted list items form one quote. A quoted and
+an unquoted list next to each other are two lists: an item's indent may be at most one deeper
+than the previous list line's only when both are quoted or both are not (validator, normalizer
+and the editor's schema guard), and ordered numbering restarts. Headings and code blocks can't
+be in a quote; nested quotes are flattened to one level.
 
 ### 1.3 Block embeds
 
@@ -125,7 +131,8 @@ client, server, importers and MCP tools.
   | Setext headings | `header` |
   | Inline HTML | stripped to text (except `<br>` → U+2028) |
   | HTML blocks | converted to text paragraphs (tags stripped) |
-  | Nested blockquotes / lists in quotes | flattened to one level |
+  | Nested blockquotes | flattened to one level |
+  | Lists in quotes | quoted list items (`blockquote` + `list`, §1.2) |
   | Footnotes, math, definition lists | kept as literal text |
   | Reference-style links/images | resolved to inline |
   | Loose vs tight lists | both → list lines (export always tight) |
@@ -141,7 +148,9 @@ client, server, importers and MCP tools.
 - Lists: `-` for bullets, `1.` numbering incremented, 2 spaces per indent level for bullets, 3
   for ordered.
 - Blockquote runs: consecutive `blockquote` lines → one `>` block, lines separated by `>` blank
-  lines (paragraphs).
+  lines (paragraphs). Quoted list items are the list's Markdown behind `> ` in the same block:
+  items of one list on consecutive lines, a `>` blank line between a paragraph and a list; a
+  quoted and an unquoted block are always separated by a blank line (the quote ends).
 - Code: ```` ```lang ```` fences.
 - Tables: pipes escaped in cells, alignment row from `align`.
 - Comments are dropped; suggestions are exported as *accepted* (default) or *original*

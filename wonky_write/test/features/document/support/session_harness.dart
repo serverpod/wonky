@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart' show pumpEventQueue;
@@ -78,7 +79,38 @@ class _FakePresence extends _Unimplemented implements PresenceRepository {}
 
 class _FakeVersions extends _Unimplemented implements VersionRepository {}
 
-class _FakeFiles extends _Unimplemented implements FileRepository {}
+/// In-memory uploads (`FileRepository`): every upload is ready at once.
+class FakeFiles implements FileRepository {
+  /// The uploads, in order.
+  final uploads = <({UuidValue fileUuid, UuidValue? itemUuid, String name})>[];
+
+  FileUrlView _view(UuidValue fileUuid, String name, String mime, int size) =>
+      FileUrlView(
+        fileUuid: fileUuid,
+        status: StoredFileStatus.ready,
+        fileName: name,
+        mimeType: mime,
+        sizeBytes: size,
+      );
+
+  @override
+  Future<FileUrlView> upload({
+    required UuidValue fileUuid,
+    UuidValue? itemUuid,
+    required String fileName,
+    required String mimeType,
+    required Uint8List bytes,
+    StoredFileKind kind = StoredFileKind.image,
+  }) async {
+    uploads.add((fileUuid: fileUuid, itemUuid: itemUuid, name: fileName));
+    return _view(fileUuid, fileName, mimeType, bytes.length);
+  }
+
+  /// Ready without a URL: images show their placeholder.
+  @override
+  Future<FileUrlView> getUrl(UuidValue fileUuid) async =>
+      _view(fileUuid, 'image.png', 'image/png', 1);
+}
 
 class _FakeMeta extends _Unimplemented implements MetaRepository {}
 
@@ -239,7 +271,7 @@ class SessionHarness {
         notifications: _FakeNotifications(),
         presence: _FakePresence(),
         versions: _FakeVersions(),
-        files: _FakeFiles(),
+        files: files,
         meta: _FakeMeta(),
         publications: publications,
       ),
@@ -265,6 +297,9 @@ class SessionHarness {
 
   /// Publications and submissions (specs/18).
   final FakePublicationRepository publications = FakePublicationRepository();
+
+  /// Uploads (images, the cover image of a submission).
+  final FakeFiles files = FakeFiles();
   final FakeComments comments;
   late final ShellServices services;
   late final FakeWriteApi api;

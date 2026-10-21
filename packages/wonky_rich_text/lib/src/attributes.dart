@@ -64,7 +64,8 @@ abstract final class WonkyAttr {
   /// All block attribute keys.
   static const blockKeys = {header, blockquote, codeBlock, list, indent};
 
-  /// Mutually exclusive block-type keys (in normalization priority order).
+  /// Mutually exclusive block-type keys (in normalization priority order);
+  /// only [blockquote] may sit next to [list] (a list item in a quote).
   static const blockTypeKeys = [codeBlock, header, list, blockquote];
 
   /// Maximum list indent.
@@ -163,6 +164,7 @@ final class BlockFormat {
     this.indent = 0,
     this.checked = false,
     this.language = '',
+    this.quoted = false,
   });
 
   /// A plain paragraph.
@@ -185,6 +187,15 @@ final class BlockFormat {
 
   /// Code block language (`""` = none).
   final String language;
+
+  /// Whether a list or task item is inside a blockquote (`blockquote: true`
+  /// next to `list`, Write 02 §1.2). Always false for other types: a quote
+  /// line is [BlockType.quote].
+  final bool quoted;
+
+  /// Whether the line is part of a blockquote (a quote line or a quoted
+  /// list item).
+  bool get inQuote => type == BlockType.quote || quoted;
 
   /// Whether this is a list (bullet, ordered or task) item.
   bool get isList =>
@@ -216,15 +227,29 @@ final class BlockFormat {
       final indent = rawIndent is int
           ? rawIndent.clamp(0, WonkyAttr.maxIndent)
           : 0;
+      final quoted = attributes[WonkyAttr.blockquote] == true;
       return switch (list) {
-        ListKind.bullet => BlockFormat(BlockType.bullet, indent: indent),
-        ListKind.ordered => BlockFormat(BlockType.ordered, indent: indent),
+        ListKind.bullet => BlockFormat(
+          BlockType.bullet,
+          indent: indent,
+          quoted: quoted,
+        ),
+        ListKind.ordered => BlockFormat(
+          BlockType.ordered,
+          indent: indent,
+          quoted: quoted,
+        ),
         ListKind.checked => BlockFormat(
           BlockType.task,
           indent: indent,
           checked: true,
+          quoted: quoted,
         ),
-        ListKind.unchecked => BlockFormat(BlockType.task, indent: indent),
+        ListKind.unchecked => BlockFormat(
+          BlockType.task,
+          indent: indent,
+          quoted: quoted,
+        ),
       };
     }
     if (attributes[WonkyAttr.blockquote] == true) {
@@ -242,6 +267,7 @@ final class BlockFormat {
     BlockType.bullet || BlockType.ordered || BlockType.task => {
       WonkyAttr.list: listKind!.value,
       if (indent > 0) WonkyAttr.indent: indent,
+      if (quoted) WonkyAttr.blockquote: true,
     },
   };
 
@@ -269,15 +295,18 @@ final class BlockFormat {
       other.level == level &&
       other.indent == indent &&
       other.checked == checked &&
-      other.language == language;
+      other.language == language &&
+      other.quoted == quoted;
 
   @override
-  int get hashCode => Object.hash(type, level, indent, checked, language);
+  int get hashCode =>
+      Object.hash(type, level, indent, checked, language, quoted);
 
   @override
   String toString() =>
       'BlockFormat($type, level: $level, indent: $indent, '
-      'checked: $checked, language: "$language")';
+      'checked: $checked, language: "$language"'
+      '${quoted ? ', quoted' : ''})';
 }
 
 /// Kind of a suggestion part.

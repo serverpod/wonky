@@ -372,6 +372,13 @@ class WriteEditorCommands {
     return kinds.length == 1 ? kinds.single : null;
   }
 
+  /// Whether every selected text block is in a quote (a quote line or a
+  /// quoted list item): the Quote toggle is on.
+  bool get selectionInQuote {
+    final blocks = _selectedBlocks().where((b) => b.isText).toList();
+    return blocks.isNotEmpty && blocks.every((b) => isInQuoteNode(b.node));
+  }
+
   bool canChangeBlockType() =>
       canEdit && _selectedBlocks().any((b) => b.isText);
 
@@ -401,28 +408,57 @@ class WriteEditorCommands {
     final target = isToggle && textBlocks.every((b) => kindOf(b) == kind)
         ? BlockKind.paragraph
         : kind;
+    // Lists inside quotes (§14): Quote on lines that are all in a quote
+    // takes them out of it (list items stay list items); Quote on list items
+    // moves them into a quote; list kinds keep the quote a line is in, and
+    // toggling a list off inside a quote leaves a quote line.
+    const listKinds = {
+      BlockKind.bulleted,
+      BlockKind.numbered,
+      BlockKind.checklist,
+    };
+    final unquote =
+        isToggle &&
+        kind == BlockKind.quote &&
+        textBlocks.every((b) => isInQuoteNode(b.node));
+    final listOff = listKinds.contains(kind) && target == BlockKind.paragraph;
 
     final language = lastCodeLanguage;
+    Map<String, dynamic> attributesOf(BlockRef block) {
+      final node = block.node;
+      final isItem = node is ListItemNode || node is TaskNode;
+      final inQuote = isInQuoteNode(node);
+      if (unquote) {
+        return isItem ? {DeltaKeys.blockquote: null} : {..._clearBlock};
+      }
+      if (kind == BlockKind.quote && isItem) {
+        return {DeltaKeys.blockquote: true};
+      }
+      final current = kindOf(block);
+      final currentIndent = switch (node) {
+        ListItemNode(:final indent) || TaskNode(:final indent) => indent,
+        _ => 0,
+      };
+      final attributes = _blockAttributesFor(
+        listOff && inQuote ? BlockKind.quote : target,
+        current,
+        currentIndent,
+        node,
+        language,
+      );
+      if (listKinds.contains(target) && inQuote) {
+        attributes[DeltaKeys.blockquote] = true;
+      }
+      return attributes;
+    }
+
     final change = Delta();
     var offset = 0;
     for (final block in textBlocks) {
       change.retain(block.start - offset);
       offset = block.start;
       final delta = controller.mirror.entryAt(block.index).delta;
-      final current = kindOf(block);
-      final node = block.node;
-      final currentIndent = node is ListItemNode
-          ? node.indent
-          : node is TaskNode
-          ? node.indent
-          : 0;
-      final attributes = _blockAttributesFor(
-        target,
-        current,
-        currentIndent,
-        node,
-        language,
-      );
+      final attributes = attributesOf(block);
       for (final op in delta.operations) {
         final data = op.data;
         if (data is! String) {
