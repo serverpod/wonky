@@ -158,7 +158,7 @@ except theme library tools requires) and outputs. Types: `int`, `str`, `bool`, `
 
 Output: `{document_uuid, title, revision, doc_length, format, content (string, or Delta JSON
 array for "delta", or outline array), blocks?: [{index, type: "paragraph"|"heading"|"bullet"|
-"ordered"|"task"|"quote"|"code"|"image"|"divider"|"table", level?, indent?, checked?, language?,
+"ordered"|"task"|"quote"|"code"|"image"|"divider"|"table", level?, indent?, checked?, quoted?, language?,
 delta_start, delta_length, md_start, md_length, preview}], front_matter?, theme_uuid,
 layout: "pages"|"pageless", truncated, next_cursor?}`.
 
@@ -237,7 +237,9 @@ embeds in the range are skipped.
 #### `write.set_block_type`
 Input: `range: Range` (all lines touched), `type: "paragraph"|"heading"|"bullet"|"ordered"|
 "task"|"quote"|"code"`, `level?: 1–6` (heading), `indent?: 0–8` (lists/tasks), `checked?: bool`
-(task), `language?: str` (code), MutationOptions. Converting lines to `code` merges them into one
+(task), `quoted?: bool` (lists/tasks: inside a quote; omitted keeps whether the line is in a
+quote, so a quote line becomes a quoted list item, T-19),
+`language?: str` (code), MutationOptions. Converting lines to `code` merges them into one
 code block; converting a code block to paragraphs splits at its lines.
 
 #### `write.set_markdown`

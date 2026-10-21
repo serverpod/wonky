@@ -4741,17 +4741,26 @@ class WriteLocalizationsEn extends WriteLocalizations {
   }
 
   @override
-  String get submitNoCover => 'No cover image';
+  String get submitNoCover => 'No cover';
 
   @override
-  String submitImage(int count) {
-    return 'Image $count';
-  }
+  String get submitCoverUpload => 'Upload image';
 
   @override
-  String submitImageAlt(int count, String alt) {
-    return 'Image $count: $alt';
-  }
+  String get submitCoverReplace => 'Replace';
+
+  @override
+  String get submitCoverRemove => 'Remove';
+
+  @override
+  String get submitCoverUploading => 'Uploading…';
+
+  @override
+  String get submitCoverFailed => 'The image couldn\'t be uploaded. Try again.';
+
+  @override
+  String get submitCoverHint =>
+      'Shown with your post. It isn\'t added to the document.';
 
   @override
   String submitTerms(String publication, String url) {
@@ -9635,17 +9644,27 @@ class WriteLocalizationsEnXa extends WriteLocalizationsEn {
   }
 
   @override
-  String get submitNoCover => '[Ñö çöṽéŕ îɱåĝé one t]';
+  String get submitNoCover => '[Ñö çöṽéŕ one]';
 
   @override
-  String submitImage(int count) {
-    return '[Îɱåĝé $count on]';
-  }
+  String get submitCoverUpload => '[Ûþļöåð îɱåĝé one]';
 
   @override
-  String submitImageAlt(int count, String alt) {
-    return '[Îɱåĝé $count: $alt one]';
-  }
+  String get submitCoverReplace => '[Ŕéþļåçé one]';
+
+  @override
+  String get submitCoverRemove => '[Ŕéɱöṽé one]';
+
+  @override
+  String get submitCoverUploading => '[Ûþļöåðîñĝ… one]';
+
+  @override
+  String get submitCoverFailed =>
+      '[Ţĥé îɱåĝé çöûļðñ\'ţ ƀé ûþļöåðéð. Ţŕý åĝåîñ. one two three]';
+
+  @override
+  String get submitCoverHint =>
+      '[Šĥöŵñ ŵîţĥ ýöûŕ þöšţ. Îţ îšñ\'ţ åððéð ţö ţĥé ðöçûɱéñţ. one two three fo]';
 
   @override
   String submitTerms(String publication, String url) {

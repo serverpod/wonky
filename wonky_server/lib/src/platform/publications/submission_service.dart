@@ -226,10 +226,19 @@ abstract final class SubmissionService {
     if (utf8.encode(markdown).length > PublicationRules.maxMarkdownBytes) {
       throw Errors.tooLarge('This story is too long to submit (over 5 MB).');
     }
-    final cover =
-        clean.coverImage != null && assets.containsKey(clean.coverImage)
-        ? clean.coverImage
-        : null;
+    // The cover is uploaded in the submit dialog as an image of the document
+    // without being in its text (specs/18 §4.2), or (older submits) one of
+    // the document's images. Either way it is an asset of the submission, so
+    // the API key may download it.
+    final coverFile = clean.coverImage == null
+        ? null
+        : assets[clean.coverImage] ??
+              await _coverOfItem(session, item, clean.coverImage!);
+    if (coverFile != null) assets[coverFile.fileUuid] = coverFile;
+    final cover = coverFile?.fileUuid;
+    if (cover == null && p.fields.coverImage == PublicationFieldMode.required) {
+      throw Errors.invalid('Upload a cover image.');
+    }
     final stored = clean.copyWith(coverImage: cover);
     final submitter = (await UserService.summaries(session, [
       actor.userId,
@@ -354,6 +363,24 @@ abstract final class SubmissionService {
   }
 
   /// The images of [markdown] the submitter may read, by file uuid.
+  /// The cover image [fileUuid] when it is a ready image file of [item]
+  /// (uploaded in the submit dialog); null otherwise, so a submit can't
+  /// hand the publication someone else's file.
+  static Future<StoredFile?> _coverOfItem(
+    Session session,
+    DriveItem item,
+    UuidValue fileUuid,
+  ) async {
+    final file = await FileService.byUuid(session, fileUuid);
+    if (file == null ||
+        file.itemId != item.id ||
+        file.kind != StoredFileKind.image ||
+        file.status != StoredFileStatus.ready) {
+      return null;
+    }
+    return file;
+  }
+
   static Future<Map<UuidValue, StoredFile>> _assets(
     Session session,
     Actor actor,

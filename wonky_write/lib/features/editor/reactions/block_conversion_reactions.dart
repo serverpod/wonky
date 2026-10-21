@@ -54,6 +54,9 @@ class BlockPrefixConversionReaction extends EditReaction {
     final isParagraph =
         node is ParagraphNode &&
         node.getMetadataValue(NodeMetadata.blockType) == paragraphAttribution;
+    final isQuote =
+        node is ParagraphNode &&
+        node.getMetadataValue(NodeMetadata.blockType) == blockquoteAttribution;
 
     final requests = <EditRequest>[];
     final rest = node.text.copyText(prefix.length);
@@ -85,20 +88,30 @@ class BlockPrefixConversionReaction extends EditReaction {
           ),
         );
       }
-    } else if (_bullet.hasMatch(prefix) && isParagraph) {
-      requests.add(
-        ConvertParagraphToListItemRequest(
-          nodeId: node.id,
-          type: ListItemType.unordered,
-        ),
-      );
-    } else if (_ordered.hasMatch(prefix) && isParagraph) {
-      requests.add(
-        ConvertParagraphToListItemRequest(
-          nodeId: node.id,
-          type: ListItemType.ordered,
-        ),
-      );
+    } else if ((_bullet.hasMatch(prefix) || _ordered.hasMatch(prefix)) &&
+        (isParagraph || isQuote)) {
+      final type = _bullet.hasMatch(prefix)
+          ? ListItemType.unordered
+          : ListItemType.ordered;
+      if (isParagraph) {
+        requests.add(
+          ConvertParagraphToListItemRequest(nodeId: node.id, type: type),
+        );
+      } else {
+        // In a quote line: a list item inside the quote (§14).
+        deletePrefix = false;
+        requests.add(
+          ReplaceNodeRequest(
+            existingNodeId: node.id,
+            newNode: ListItemNode(
+              id: node.id,
+              itemType: type,
+              text: rest,
+              metadata: _carriedListMetadata(node),
+            ),
+          ),
+        );
+      }
     } else if (_quote.hasMatch(prefix) && isParagraph) {
       requests.add(
         ChangeParagraphBlockTypeRequest(
@@ -106,8 +119,18 @@ class BlockPrefixConversionReaction extends EditReaction {
           blockType: blockquoteAttribution,
         ),
       );
+    } else if (_quote.hasMatch(prefix) &&
+        (node is ListItemNode || node is TaskNode) &&
+        !isQuotedListNode(node)) {
+      // `> ` at the start of a list item: the item moves into a quote.
+      requests.add(
+        ChangeNodeMetadataRequest(
+          nodeId: node.id,
+          metadata: {WonkyNodeMetadata.quoted: true},
+        ),
+      );
     } else if ((match = _task.firstMatch(prefix)) != null &&
-        (isParagraph || node is ListItemNode)) {
+        (isParagraph || isQuote || node is ListItemNode)) {
       final checked = (match!.group(2) ?? ' ').toLowerCase() == 'x';
       deletePrefix = false;
       requests.add(
@@ -118,7 +141,7 @@ class BlockPrefixConversionReaction extends EditReaction {
             text: rest,
             isComplete: checked,
             indent: node is ListItemNode ? node.indent : 0,
-            metadata: _carriedMetadata(node),
+            metadata: _carriedListMetadata(node),
           ),
         ),
       );
@@ -186,4 +209,11 @@ class BlockPrefixConversionReaction extends EditReaction {
     );
     return {WonkyNodeMetadata.lineAttributes: ?lineAttributes};
   }
+
+  /// [_carriedMetadata] of a node becoming a list or task item; it stays in
+  /// the quote the node is in.
+  static Map<String, dynamic> _carriedListMetadata(DocumentNode node) => {
+    ..._carriedMetadata(node),
+    if (isInQuoteNode(node)) WonkyNodeMetadata.quoted: true,
+  };
 }

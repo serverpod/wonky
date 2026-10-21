@@ -509,6 +509,28 @@ final class _DocxJob {
     return out;
   }
 
+  /// A list item inside a quote (Write 02 §1.2): the level's numbering indent
+  /// moved right by the quote's indent, with the quote's bar and background.
+  void _quoted(ParaProps p, int indent) {
+    final q = theme.blockquote;
+    final l = theme.list;
+    final level = indent.clamp(0, 8);
+    p
+      ..indentLeft =
+          q.box.padding.left +
+          (q.bar.isVisible ? q.bar.width : 0) +
+          l.indentFor(level)
+      ..hanging = l.indentPerLevel;
+    if (q.bar.isVisible) {
+      p.left = docxBorder(
+        'left',
+        q.bar,
+        space: q.box.padding.left.clamp(0, 31),
+      );
+    }
+    if (q.box.background != null) p.shading = q.box.background;
+  }
+
   String _body() {
     final b = StringBuffer();
     final blocks = tree.blocks;
@@ -594,6 +616,7 @@ final class _DocxJob {
             ..numbering = (numId, indent.clamp(0, 8));
           if (before != 0) p.spaceBefore = before;
           if (after != theme.list.itemSpacing) p.spaceAfter = after;
+          if (block.inQuote) _quoted(p, indent);
           b.write(_paragraph(p, runs));
         case TaskBlock(:final checked, :final indent, :final runs):
           orderedNum.remove(indent);
@@ -602,6 +625,7 @@ final class _DocxJob {
             ..numbering = (DocxNumIds.tasks, indent.clamp(0, 8));
           if (before != 0) p.spaceBefore = before;
           if (after != theme.list.itemSpacing) p.spaceAfter = after;
+          if (block.inQuote) _quoted(p, indent);
           final glyph = RunProps()
             ..font = 'Segoe UI Symbol'
             ..color = theme.task.checkbox.borderColor;

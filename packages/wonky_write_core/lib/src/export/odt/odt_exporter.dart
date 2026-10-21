@@ -317,9 +317,11 @@ final class _OdtWriter {
       }
       final b = blocks[i];
       if (b is ListItemBlock || b is TaskBlock) {
+        // A list inside a quote is its own run (Write 02 §1.2).
         var j = i;
         while (j < blocks.length &&
-            (blocks[j] is ListItemBlock || blocks[j] is TaskBlock)) {
+            (blocks[j] is ListItemBlock || blocks[j] is TaskBlock) &&
+            isInQuote(blocks[j]) == isInQuote(b)) {
           j++;
         }
         _listRun(blocks.sublist(i, j));
@@ -749,8 +751,13 @@ final class _OdtWriter {
       closeItem(list);
       _body.write('<text:list-item>');
       list.itemOpen = true;
+      // Quoted items take the quote's bar, padding and background.
       final style = _p(
-        checked == true ? _taskChecked : 'List_20_Paragraph',
+        checked == true
+            ? _taskChecked
+            : isInQuote(item)
+            ? 'Quotations'
+            : 'List_20_Paragraph',
         _groupMargins(
           n,
           items.length,

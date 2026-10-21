@@ -439,6 +439,7 @@ final class _PdfJob {
       if (i % 8 == 7) await _turn();
       final b = source[i];
       final afterHeading = prev is HeadingBlock;
+      final next = i + 1 < source.length ? source[i + 1] : null;
       switch (b) {
         case ParagraphBlock(:final runs):
           final box = t.body.box;
@@ -518,6 +519,7 @@ final class _PdfJob {
               ordered: kind == ListKindIr.ordered,
               ordinal: ordinal,
               prev: prev,
+              next: next,
             ),
           );
         case TaskBlock(:final checked, :final indent, :final runs):
@@ -530,6 +532,7 @@ final class _PdfJob {
               task: true,
               checked: checked,
               prev: prev,
+              next: next,
             ),
           );
         case QuoteBlock(:final lines):
@@ -556,11 +559,15 @@ final class _PdfJob {
               kind: _Kind.text,
               lines: laid,
               textLeft: left,
-              paddingTop: q.box.padding.top,
+              // Next to a quoted list item, the gap is inside the quote
+              // (one unbroken bar, Write 02 §1.2).
+              paddingTop:
+                  q.box.padding.top +
+                  (isInQuote(prev) ? t.list.box.spaceAfter : 0),
               paddingBottom: q.box.padding.bottom,
               background: q.box.background,
-              spaceBefore: q.box.spaceBefore,
-              spaceAfter: q.box.spaceAfter,
+              spaceBefore: isInQuote(prev) ? 0 : q.box.spaceBefore,
+              spaceAfter: isInQuote(next) ? 0 : q.box.spaceAfter,
             )..leftBar = q.bar.isVisible ? q.bar : null,
           );
         case CodeBlock(:final language, :final text):
@@ -601,12 +608,20 @@ final class _PdfJob {
     bool task = false,
     bool checked = false,
     DocBlock? prev,
+    DocBlock? next,
   }) {
     final t = theme;
     final l = t.list;
     final style = task ? t.task.style : l.style;
-    final left = l.indentPerLevel * (indent + 1);
-    final width = contentWidth - left;
+    final q = t.blockquote;
+    final quoted = isInQuote(b);
+    // A list inside a quote (Write 02 §1.2): moved right by the quote's
+    // indent, under its bar and background.
+    final quoteLeft = quoted
+        ? q.box.padding.left + (q.bar.isVisible ? q.bar.width : 0.0)
+        : 0.0;
+    final left = quoteLeft + l.indentPerLevel * (indent + 1);
+    final width = contentWidth - left - (quoted ? q.box.padding.right : 0);
     final lines = breaker.layout(
       _runs(
         runs,
@@ -620,15 +635,23 @@ final class _PdfJob {
     );
     final firstInRun = prev is! ListItemBlock && prev is! TaskBlock;
     final box = task ? t.task.box : l.box;
+    final before = firstInRun ? box.spaceBefore : l.itemSpacing;
+    // Inside a quote the gaps to the quote's other parts are padding, so
+    // the bars touch.
+    final joinPrev = quoted && isInQuote(prev);
+    final joinNext = quoted && isInQuote(next);
     final block = _Block(
       source: b,
       index: index,
       kind: _Kind.text,
       lines: lines,
       textLeft: left,
-      spaceBefore: firstInRun ? box.spaceBefore : l.itemSpacing,
-      spaceAfter: l.itemSpacing,
+      paddingTop: joinPrev ? before : 0,
+      background: quoted ? q.box.background : null,
+      spaceBefore: joinPrev ? 0 : before,
+      spaceAfter: joinNext ? 0 : l.itemSpacing,
     );
+    if (quoted && q.bar.isVisible) block.leftBar = q.bar;
     if (task) {
       block
         ..task = t.task

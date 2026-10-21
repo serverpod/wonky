@@ -66,9 +66,7 @@ final class MarkdownExporter {
         continue;
       }
       final text = _block(block, isFirst: first, cols: cols);
-      if (!first) {
-        b.write(_isListLike(prev) && _isListLike(block) ? '\n' : '\n\n');
-      }
+      if (!first) b.write(_separator(prev, block));
       positions.add((start: b.length, length: text.length));
       b.write(text);
       prev = block;
@@ -79,6 +77,19 @@ final class MarkdownExporter {
   }
 
   static bool _isListLike(DocBlock? b) => b is ListItemBlock || b is TaskBlock;
+
+  /// What goes between [prev] and [next]. Inside one quote (Write 02 §2.2):
+  /// items of a list are on consecutive lines, anything else is separated by
+  /// a blank `>` line. A quoted and an unquoted block are always separated by
+  /// a blank line, so the quote ends (no lazy continuation).
+  static String _separator(DocBlock? prev, DocBlock next) {
+    final prevQuoted = isInQuote(prev);
+    final nextQuoted = isInQuote(next);
+    final lists = _isListLike(prev) && _isListLike(next);
+    if (prevQuoted && nextQuoted) return lists ? '\n' : '\n>\n';
+    if (prevQuoted != nextQuoted) return '\n\n';
+    return lists ? '\n' : '\n\n';
+  }
 
   String _block(
     DocBlock block, {
@@ -149,7 +160,9 @@ final class MarkdownExporter {
       kind: block is TaskBlock ? _Kind.task : _Kind.list,
       nested: indent > 0,
     );
-    return item.split('\n').map((l) => '$pad$l').join('\n');
+    // A list inside a quote: the same item behind the quote marker.
+    final quote = isInQuote(block) ? '> ' : '';
+    return item.split('\n').map((l) => '$quote$pad$l').join('\n');
   }
 
   String _verified(

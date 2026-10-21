@@ -164,7 +164,11 @@ final class DeltaGen {
     return attrs.isEmpty ? null : attrs;
   }
 
-  Map<String, dynamic>? _blockAttributes(int? prevListIndent) {
+  Map<String, dynamic>? _blockAttributes(
+    int? prevListIndent, {
+    bool prevInQuote = false,
+    bool prevListQuoted = false,
+  }) {
     final p = random.nextInt(100);
     if (p < 40) return null;
     if (p < 52) return {WonkyAttr.header: 1 + random.nextInt(6)};
@@ -175,13 +179,16 @@ final class DeltaGen {
       };
     }
     final kinds = ListKind.values;
-    final maxIndent = prevListIndent == null
+    // Lists inside quotes: mostly right after a quote line or quoted item.
+    final quoted = random.nextInt(prevInQuote ? 2 : 8) == 0;
+    final maxIndent = prevListIndent == null || prevListQuoted != quoted
         ? 0
         : (prevListIndent + 1).clamp(0, 8);
     final indent = random.nextInt(maxIndent + 1);
     return {
       WonkyAttr.list: kinds[random.nextInt(kinds.length)].value,
       if (indent > 0) WonkyAttr.indent: indent,
+      if (quoted) WonkyAttr.blockquote: true,
     };
   }
 
@@ -236,6 +243,8 @@ final class DeltaGen {
     final d = Delta();
     final lines = 1 + random.nextInt(options.maxLines);
     int? prevListIndent;
+    var prevInQuote = false;
+    var prevListQuoted = false;
     for (var l = 0; l < lines; l++) {
       if (options.embeds && random.nextInt(8) == 0) {
         final e = embed();
@@ -245,9 +254,14 @@ final class DeltaGen {
         d.insert(e.toInsert(), attrs);
         d.insert('\n');
         prevListIndent = null;
+        prevInQuote = false;
         continue;
       }
-      final block = _blockAttributes(prevListIndent);
+      final block = _blockAttributes(
+        prevListIndent,
+        prevInQuote: prevInQuote,
+        prevListQuoted: prevListQuoted,
+      );
       final runs = options.emptyLines && random.nextInt(8) == 0
           ? 0
           : 1 + random.nextInt(options.maxRunsPerLine);
@@ -257,6 +271,8 @@ final class DeltaGen {
       d.insert('\n', block);
       final f = BlockFormat.fromAttributes(block);
       prevListIndent = f.isList ? f.indent : null;
+      prevInQuote = f.inQuote;
+      prevListQuoted = f.quoted;
     }
     return d;
   }

@@ -264,6 +264,7 @@ final class WonkyDeltaNormalizer {
       startsDocument: start == 0,
       endsDocument: end == docLength,
       prevListIndent: listIndent(before),
+      prevListQuoted: BlockFormat.fromAttributes(before).quoted,
     );
 
     // The change within the window.
@@ -342,6 +343,7 @@ final class WonkyDeltaNormalizer {
     }
 
     int? prevListIndent = window.prevListIndent;
+    var prevListQuoted = window.prevListQuoted;
     for (final line in doc.lines) {
       final isLast = window.endsDocument && line.index == doc.lines.length - 1;
       final blockIn = line.attributes;
@@ -388,10 +390,11 @@ final class WonkyDeltaNormalizer {
 
       // Indent clamping uses the output state at each emitted line end.
       Map<String, dynamic> clamped() =>
-          _clampIndent(blockOut, prevListIndent, fixes);
+          _clampIndent(blockOut, prevListIndent, prevListQuoted, fixes);
       void track(Map<String, dynamic> attrs) {
         final f = BlockFormat.fromAttributes(attrs);
         prevListIndent = f.isList ? f.indent : null;
+        prevListQuoted = f.quoted;
       }
 
       for (var gi = 0; gi < groups.length; gi++) {
@@ -687,6 +690,11 @@ final class WonkyDeltaNormalizer {
         fixes.add(NormalizationFix.removedAttributes);
         continue;
       }
+      if (type == WonkyAttr.list && key == WonkyAttr.blockquote) {
+        // A list item inside a quote (Write 02 §1.2).
+        out[key] = value;
+        continue;
+      }
       if (type != null) {
         fixes.add(NormalizationFix.resolvedBlockConflict);
         continue;
@@ -721,14 +729,20 @@ final class WonkyDeltaNormalizer {
     return out;
   }
 
+  /// Clamps a list line's indent to one deeper than the previous list line
+  /// of the same run; a quoted and an unquoted list are two runs.
   Map<String, dynamic> _clampIndent(
     Map<String, dynamic> block,
     int? prevListIndent,
+    bool prevListQuoted,
     Set<NormalizationFix> fixes,
   ) {
     if (!block.containsKey(WonkyAttr.list)) return block;
     final indent = (block[WonkyAttr.indent] as int?) ?? 0;
-    final maxAllowed = prevListIndent == null ? 0 : prevListIndent + 1;
+    final quoted = block[WonkyAttr.blockquote] == true;
+    final maxAllowed = prevListIndent == null || prevListQuoted != quoted
+        ? 0
+        : prevListIndent + 1;
     if (indent <= maxAllowed) return block;
     fixes.add(NormalizationFix.clampedIndent);
     final out = Map<String, dynamic>.from(block);
@@ -954,12 +968,14 @@ final class _Window {
     required this.startsDocument,
     required this.endsDocument,
     required this.prevListIndent,
+    required this.prevListQuoted,
   });
 
   const _Window.whole()
     : startsDocument = true,
       endsDocument = true,
-      prevListIndent = null;
+      prevListIndent = null,
+      prevListQuoted = false;
 
   /// Whether the first line is the document's first.
   final bool startsDocument;
@@ -969,4 +985,7 @@ final class _Window {
 
   /// List indent of the line before the first (null: not a list line).
   final int? prevListIndent;
+
+  /// Whether the line before the first is a quoted list item.
+  final bool prevListQuoted;
 }

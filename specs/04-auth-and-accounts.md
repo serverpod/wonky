@@ -21,8 +21,10 @@ cookie on the shared origin; desktop details in [01 §2.5](01-architecture.md).
    *Change email*.
 4. On success → create `UserProfile` (see §3), set `writeDefaults.defaultThemeId` to the
    built-in default theme (built-in themes are global rows, see Write 06), create a welcome
-   document + welcome spreadsheet (from templates; (v2) + a welcome presentation once Slides
-   ships, M9 — all small and counted in the new user's 50 MB, Drive 03) → land on **Wonky
+   document (from the `write.welcome` template; small and counted in the new user's 50 MB,
+   Drive 03). Only Write gets starter content: no welcome spreadsheet or presentation is
+   created (T-19; the `sheets.welcome` template stays for spreadsheets older accounts got
+   from it) → land on **Wonky
    Write's home** (v2; `/` redirects there, 01 §2.4, v2 review Q2) — or on the app the sign-up
    started from when `next` points into it.
 

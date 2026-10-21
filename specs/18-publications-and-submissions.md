@@ -113,7 +113,7 @@ Documents with a submission show, left of *Share* (Write 05 §3.2):
 │ Title*        [ How we sped up our CI ×3          ]         │
 │ Summary       [ A short look at …                 ]         │
 │ Tags          [ dart ×] [ ci ×] [ + ]                       │
-│ Cover image   [ (thumbnail) Change ]                        │
+│ Cover image   [thumbnail] [⇪ Upload image] (Replace, Remove)│
 │ Note to the moderators  [                          ]        │
 │ ⚠ 2 open suggestions aren't included. Review them first?    │
 │ Comments in the document stay in Wonky (moderators can see  │
@@ -123,8 +123,19 @@ Documents with a submission show, left of *Share* (Write 05 §3.2):
 ```
 
 - Fields are the publication's configuration (§8.1). First submit prefills: title = document
-  title (or the first heading), summary = the first paragraph (≤ 300 chars), cover = the first
-  image. Later submits start from the stored values.
+  title (or the first heading), summary = the first paragraph (≤ 300 chars); the cover is never
+  prefilled (below). Later submits start from the stored values.
+- **Cover image** (T-19): uploaded in the dialog, not picked from the document. An image in the
+  text would be shown twice by blogs that put the cover above the post (and at full size).
+  The field (`ImageFieldSpec` of the form dialog, `wonky_app`) shows a 16:9 thumbnail (muted
+  box with *No cover* when empty), *Upload image* (*Replace* once set) and *Remove*, and the
+  hint "Shown with your post. It isn't added to the document." *Upload image* opens the image
+  picker (png, jpg, gif, webp; Write 04 §17.1), runs the storage pre-check and uploads the file
+  as an **image of the story's document** (`StoredFileKind.image`, the document's item: counted
+  in its owner's quota, readable by its moderators, deleted with it) without inserting it into
+  the text. *Submit* waits for a running upload. A stored cover (also one picked from the
+  document's images before T-19) shows as the thumbnail. A required cover without an image:
+  toast "Pick a cover image."
 - Open suggestions are sent as the original text (Write 07 §4.1 `suggestions: original`); the
   warning links to the first one.
 - *Submit* calls `submission.submit(itemUuid, fields, expectedRevision)`; it waits up to 10 s
@@ -264,6 +275,11 @@ check the signature, reject timestamps more than 5 minutes off and drop repeated
 
 - `markdown` is the Write Markdown export (Write 07 §4) with suggestions as original, no front
   matter and no comments; `wonky-file://` images become asset URLs, `https://` images stay.
+- `fields.coverImage` is the asset id of the cover, which is always in `assets` (and a
+  `submission_asset`, so the API key may download it). The cover is accepted when it is an
+  image in the text or a ready image file of the story's document (uploaded in the submit
+  dialog, §4.2); anything else is dropped, and a required cover that isn't one is refused
+  ("Upload a cover image.").
 - Asset URLs need the API key (§7.3). The blog should download them when it receives the
   webhook; they work as long as the image exists in Wonky.
 - No email addresses are sent. `wonkyUserId` is the profile uuid (for blocking, §7.3).
@@ -366,7 +382,9 @@ submission, sends nothing).
 
 `get(itemUuid)` → `SubmissionView?` (viewer+); `submit(itemUuid, values, agreed)` (editor+,
 publication enabled, not blocked, not `declined`; `agreed` confirms changed terms): names a
-version, exports that version's revision and sends it; `withdraw(itemUuid)`,
+version, exports that version's revision and sends it; `values.coverImage` is the file uuid of
+the cover (uploaded through `file.createUpload`/`completeUpload` as an image of the document,
+§4.2, §7.1); `withdraw(itemUuid)`,
 `disconnect(itemUuid)`, `reconnect(itemUuid)` (editor+). Changes reach open editors as a
 `DriveChange` of kind `updated` for the item; Write's `SubmissionController` reloads on it.
 
@@ -432,8 +450,9 @@ stored unencrypted (it must sign) with the same caveat as user AI keys; the priv
   `SubmissionTitleActions`, the submit dialog, `write.submission.*` commands, File menu items,
   which stay listed but disabled for documents without a submission).
 - **Tests**: server `test/unit/publications/` (signing vector of the guide, rules) and
-  `test/integration/platform/publications/` (flow, API over HTTP, owner endpoints); client
-  `wonky_app/test/publications/` and `wonky_write/test/features/publish/`.
+  `test/integration/platform/publications/` (flow, API over HTTP, owner endpoints, the uploaded
+  cover image in `submission_cover_test.dart`); client `wonky_app/test/publications/` and
+  `wonky_write/test/features/publish/`.
 - **Open**: light/dark goldens of the dialogs and chip; the E2E journey J-P1; moderators who
   sign up later get access only with the next submit or status change.
 - **Not planned** (only on a feature request): MCP tools (§9.3); Write `?comment=` deep links,

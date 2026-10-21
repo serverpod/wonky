@@ -182,12 +182,16 @@ class WonkySchemaGuardReaction extends EditReaction {
       }
     }
 
-    // List indentation: at most 8, at most one deeper than the previous item.
+    // List indentation: at most 8, at most one deeper than the previous item
+    // of the same list (a quoted and an unquoted list are two lists).
     if (result is ListItemNode || result is TaskNode) {
       final indent = result is ListItemNode
           ? result.indent
           : (result as TaskNode).indent;
-      final previousIndent = previous is ListItemNode
+      final sameList = isQuotedListNode(previous) == isQuotedListNode(result);
+      final previousIndent = !sameList
+          ? -1
+          : previous is ListItemNode
           ? previous.indent
           : previous is TaskNode
           ? previous.indent

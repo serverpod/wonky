@@ -243,6 +243,31 @@ void main() {
     );
 
     test(
+      'when making a quote line a bullet then it is a list item inside the '
+      'quote, and quoted false takes it out',
+      () async {
+        Future<void> set(Map<String, Object?> args) =>
+            mcp.call('write.set_block_type', {
+              'document_uuid': docOf(doc),
+              'range': {'type': 'quote', 'quote': 'Gamma'},
+              ...args,
+            });
+
+        await set({'type': 'quote'});
+        await set({'type': 'bullet'});
+        expect(
+          await _markdown(endpoints, anna, doc),
+          contains('> - Gamma delta.'),
+        );
+
+        await set({'type': 'bullet', 'quoted': false});
+        final markdown = await _markdown(endpoints, anna, doc);
+        expect(markdown, contains('- Gamma delta.'));
+        expect(markdown, isNot(contains('> - Gamma')));
+      },
+    );
+
+    test(
       'when inserting and updating a table then the table changes',
       () async {
         final r = await mcp.call('write.insert_table', {

@@ -17,8 +17,8 @@ const _deepEquality = DeepCollectionEquality();
 /// |---|---|
 /// | paragraph / `header` / `blockquote` | [ParagraphNode] with block type |
 /// | consecutive `code-block` lines of one language | one [ParagraphNode] (`codeAttribution`) whose text contains `\n`; language in [WonkyNodeMetadata.codeLanguage] |
-/// | `list: bullet/ordered` (+ `indent`) | [ListItemNode] |
-/// | `list: checked/unchecked` (+ `indent`) | [TaskNode] |
+/// | `list: bullet/ordered` (+ `indent`, `blockquote`) | [ListItemNode] ([WonkyNodeMetadata.quoted] inside a quote) |
+/// | `list: checked/unchecked` (+ `indent`, `blockquote`) | [TaskNode] (same) |
 /// | `image` / `divider` / `table` embed + `\n` | [ImageNode] / [HorizontalRuleNode] / [TableBlockNode] (raw embed in [WonkyNodeMetadata.embed]) |
 ///
 /// Soft line breaks (U+2028) are `\n` inside non-code node text. Overlay
@@ -110,12 +110,14 @@ class WonkyDeltaSerializer implements DeltaSerializer {
             ? 'ordered'
             : 'bullet',
         if (node.indent > 0) DeltaKeys.indent: node.indent,
+        if (isQuotedListNode(node)) DeltaKeys.blockquote: true,
       };
     }
     if (node is TaskNode) {
       return {
         DeltaKeys.list: node.isComplete ? 'checked' : 'unchecked',
         if (node.indent > 0) DeltaKeys.indent: node.indent,
+        if (isQuotedListNode(node)) DeltaKeys.blockquote: true,
       };
     }
     if (node is ParagraphNode) {
@@ -348,6 +350,11 @@ class WonkyDeltaParser {
     final indent = rawIndent is int
         ? rawIndent.clamp(0, DeltaKeys.maxIndent)
         : 0;
+    // A list item inside a quote (Write 02 §1.2).
+    final listMetadata = {
+      ...metadata,
+      if (end?[DeltaKeys.blockquote] == true) WonkyNodeMetadata.quoted: true,
+    };
     if (list == 'bullet' || list == 'ordered') {
       return ListItemNode(
         id: id,
@@ -356,7 +363,7 @@ class WonkyDeltaParser {
             : ListItemType.unordered,
         text: text,
         indent: indent,
-        metadata: metadata,
+        metadata: listMetadata,
       );
     }
     if (list == 'checked' || list == 'unchecked') {
@@ -365,7 +372,7 @@ class WonkyDeltaParser {
         text: text,
         isComplete: list == 'checked',
         indent: indent,
-        metadata: metadata,
+        metadata: listMetadata,
       );
     }
 

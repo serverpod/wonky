@@ -62,6 +62,9 @@ abstract final class WonkyNodeMetadata {
   /// Language of a code block node (`""` = plain text). Shared with the
   /// vendored super_editor Quill serializer (patch SE-1).
   static const codeLanguage = codeLanguageMetadataKey;
+
+  /// `true` on a list or task item inside a quote (Write 04 §14).
+  static const quoted = 'wonkyQuoted';
 }
 
 /// Heading block type attributions by level (index 0 = level 1).
@@ -96,3 +99,15 @@ String codeLanguageOf(DocumentNode node) {
   final language = node.getMetadataValue(WonkyNodeMetadata.codeLanguage);
   return language is String ? language : '';
 }
+
+/// Whether [node] is a list or task item inside a quote (`blockquote: true`
+/// next to `list`, Write 02 §1.2).
+bool isQuotedListNode(DocumentNode? node) =>
+    (node is ListItemNode || node is TaskNode) &&
+    node!.getMetadataValue(WonkyNodeMetadata.quoted) == true;
+
+/// Whether [node] is part of a quote: a quote line or a quoted list item.
+bool isInQuoteNode(DocumentNode? node) =>
+    isQuotedListNode(node) ||
+    (node is ParagraphNode &&
+        node.getMetadataValue(NodeMetadata.blockType) == blockquoteAttribution);

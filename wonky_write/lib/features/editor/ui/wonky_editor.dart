@@ -925,6 +925,14 @@ class WonkyEditorState extends State<WonkyEditor> {
         controller.editor,
         editable: editable,
         onToggle: (nodeId) => _commands.toggleChecked(nodeId: nodeId),
+        theme: theme,
+        zoom: zoom,
+        document: document,
+      ),
+      WonkyListItemComponentBuilder(
+        document: document ?? controller.document,
+        theme: theme,
+        zoom: zoom,
       ),
       WonkyParagraphComponentBuilder(
         document: document ?? controller.document,

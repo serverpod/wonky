@@ -34,12 +34,16 @@ final class DocTreeBuilder {
     final anchors = AnchorIdGenerator();
     // Ordinal state per indent level: (kind, count).
     final ordinals = <int, (ListKindIr, int)>{};
+    // Whether the list run so far is inside a quote (a quoted and an
+    // unquoted list next to each other are two lists).
+    var quotedRun = false;
     var i = 0;
     final lines = doc.lines;
     while (i < lines.length) {
       final line = lines[i];
       final f = line.format;
-      if (!f.isList) ordinals.clear();
+      if (!f.isList || f.quoted != quotedRun) ordinals.clear();
+      quotedRun = f.isList && f.quoted;
       if (line.isEmbedLine) {
         final embed = line.embed;
         switch (embed) {
@@ -152,6 +156,7 @@ final class DocTreeBuilder {
                 f.checked,
                 indent,
                 _runs(line),
+                inQuote: f.quoted,
                 deltaStart: line.start,
                 deltaLength: line.length,
               ),
@@ -169,6 +174,7 @@ final class DocTreeBuilder {
                 indent,
                 _runs(line),
                 ordinal: n,
+                inQuote: f.quoted,
                 deltaStart: line.start,
                 deltaLength: line.length,
               ),
@@ -209,7 +215,12 @@ final class DocTreeToDelta {
         case HeadingBlock(:final level, runs: final rs):
           runs(rs);
           d.insert('\n', {WonkyAttr.header: level.clamp(1, 6)});
-        case ListItemBlock(:final kind, :final indent, runs: final rs):
+        case ListItemBlock(
+          :final kind,
+          :final indent,
+          :final inQuote,
+          runs: final rs,
+        ):
           runs(rs);
           d.insert('\n', {
             WonkyAttr.list: kind == ListKindIr.ordered
@@ -217,8 +228,14 @@ final class DocTreeToDelta {
                 : ListKind.bullet.value,
             if (indent > 0)
               WonkyAttr.indent: indent.clamp(1, WonkyAttr.maxIndent),
+            if (inQuote) WonkyAttr.blockquote: true,
           });
-        case TaskBlock(:final checked, :final indent, runs: final rs):
+        case TaskBlock(
+          :final checked,
+          :final indent,
+          :final inQuote,
+          runs: final rs,
+        ):
           runs(rs);
           d.insert('\n', {
             WonkyAttr.list: checked
@@ -226,6 +243,7 @@ final class DocTreeToDelta {
                 : ListKind.unchecked.value,
             if (indent > 0)
               WonkyAttr.indent: indent.clamp(1, WonkyAttr.maxIndent),
+            if (inQuote) WonkyAttr.blockquote: true,
           });
         case QuoteBlock(:final lines):
           for (final l in lines) {

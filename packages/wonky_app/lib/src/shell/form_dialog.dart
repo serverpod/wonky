@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
@@ -184,6 +186,46 @@ class SelectFieldSpec extends DialogFieldSpec {
   final String initial;
 }
 
+/// What [ImageFieldSpec.pick] returns: the new value (an id) and its
+/// thumbnail.
+typedef ImageFieldPick = ({String value, ImageProvider? preview});
+
+/// An image the user uploads in the dialog (e.g. a story's cover image,
+/// specs/18 §4.2): a thumbnail with *Upload* (*Replace* once set) and
+/// *Remove*. The value is an id, `''` for none. [pick] picks and uploads an
+/// image and returns its id (null when cancelled; a throw shows
+/// [errorLabel]); [preview] resolves the thumbnail of [initial]. Keys:
+/// `<dialogKey>.<id>` (the field), `.preview`, `.upload`, `.remove`.
+class ImageFieldSpec extends DialogFieldSpec {
+  const ImageFieldSpec({
+    required super.id,
+    required super.label,
+    required this.pick,
+    required this.uploadLabel,
+    required this.replaceLabel,
+    required this.removeLabel,
+    required this.emptyLabel,
+    required this.uploadingLabel,
+    required this.errorLabel,
+    this.initial = '',
+    this.preview,
+    this.description,
+  });
+
+  final String initial;
+  final Future<ImageFieldPick?> Function() pick;
+  final FutureOr<ImageProvider?> Function(String value)? preview;
+  final String uploadLabel;
+  final String replaceLabel;
+  final String removeLabel;
+
+  /// Shown in the thumbnail box without an image.
+  final String emptyLabel;
+  final String uploadingLabel;
+  final String errorLabel;
+  final String? description;
+}
+
 /// A dialog button.
 class DialogButtonSpec {
   const DialogButtonSpec({
@@ -300,7 +342,51 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
           };
         case SelectFieldSpec():
           _values[f.id] = f.initial;
+        case ImageFieldSpec():
+          _values[f.id] = f.initial;
+          _resolvePreview(f, f.initial);
       }
+    }
+  }
+
+  /// Thumbnails of [ImageFieldSpec]s; ids of those uploading.
+  final Map<String, ImageProvider?> _previews = {};
+  final Set<String> _uploading = {};
+
+  void _resolvePreview(ImageFieldSpec f, String value) {
+    _previews[f.id] = null;
+    if (value.isEmpty || f.preview == null) return;
+    final p = f.preview!(value);
+    if (p is Future<ImageProvider?>) {
+      unawaited(
+        p.then((provider) {
+          if (mounted && _values[f.id] == value) {
+            setState(() => _previews[f.id] = provider);
+          }
+        }, onError: (Object _) {}),
+      );
+    } else {
+      _previews[f.id] = p;
+    }
+  }
+
+  Future<void> _pickImage(ImageFieldSpec f) async {
+    setState(() {
+      _uploading.add(f.id);
+      _errors[f.id] = null;
+    });
+    try {
+      final picked = await f.pick();
+      if (!mounted || picked == null) return;
+      setState(() {
+        _values[f.id] = picked.value;
+        _previews[f.id] = picked.preview;
+      });
+      if (picked.preview == null) _resolvePreview(f, picked.value);
+    } catch (e) {
+      if (mounted) setState(() => _errors[f.id] = f.errorLabel);
+    } finally {
+      if (mounted) setState(() => _uploading.remove(f.id));
     }
   }
 
@@ -352,6 +438,8 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
   }
 
   void _press(DialogButtonSpec b) {
+    // Not before an image field's upload has finished.
+    if (b.id != widget.spec.cancelId && _uploading.isNotEmpty) return;
     if (b.id != widget.spec.cancelId && b.validates && !_validate()) return;
     Navigator.of(context).pop(DialogResult(b.id, _all));
   }
@@ -377,7 +465,10 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
             CheckboxFieldSpec() => 'checkbox',
             ChecklistFieldSpec() => 'checklist',
             SelectFieldSpec() => 'select',
+            ImageFieldSpec() => 'image',
           },
+          if (f is ImageFieldSpec && _uploading.contains(f.id))
+            'uploading': true,
           'value': _all[f.id],
           if (f is ChecklistFieldSpec) ...{
             'options': [for (final i in f.items) i.value],
@@ -416,6 +507,13 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
       case SelectFieldSpec():
         if (!f.options.containsKey(value)) return false;
         setState(() => _values[id] = value);
+      case ImageFieldSpec():
+        // An id of an image that is already uploaded, or '' for none.
+        if (value is! String) return false;
+        setState(() {
+          _values[id] = value;
+          _resolvePreview(f, value);
+        });
       case null:
         return false;
     }
@@ -494,6 +592,110 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _image(ImageFieldSpec f, ShadThemeData theme, String? key) {
+    final cs = theme.colorScheme;
+    final value = _values[f.id]! as String;
+    final preview = _previews[f.id];
+    final uploading = _uploading.contains(f.id);
+    ValueKey<String>? k(String part) =>
+        key == null ? null : ValueKey<String>('$key.${f.id}$part');
+    final Widget thumbnail;
+    if (uploading) {
+      thumbnail = Text(f.uploadingLabel, style: theme.textTheme.muted);
+    } else if (value.isEmpty) {
+      thumbnail = Column(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 4,
+        children: [
+          Icon(LucideIcons.image, size: 20, color: cs.mutedForeground),
+          Text(
+            f.emptyLabel,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.muted,
+          ),
+        ],
+      );
+    } else if (preview == null) {
+      thumbnail = Icon(LucideIcons.image, size: 20, color: cs.mutedForeground);
+    } else {
+      thumbnail = Image(
+        key: k('.preview'),
+        image: preview,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, _, _) =>
+            Icon(LucideIcons.imageOff, size: 20, color: cs.mutedForeground),
+      );
+    }
+    return Column(
+      key: k(''),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(f.label, style: theme.textTheme.small),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          spacing: 12,
+          children: [
+            // 16:9, the usual shape of a blog's cover.
+            Container(
+              width: 128,
+              height: 72,
+              alignment: Alignment.center,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: cs.muted,
+                border: Border.all(color: cs.border),
+                borderRadius: theme.radius,
+              ),
+              child: thumbnail,
+            ),
+            Flexible(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ShadButton.outline(
+                    key: k('.upload'),
+                    size: ShadButtonSize.sm,
+                    enabled: !uploading,
+                    leading: const Icon(LucideIcons.upload, size: 16),
+                    onPressed: () => unawaited(_pickImage(f)),
+                    child: Text(value.isEmpty ? f.uploadLabel : f.replaceLabel),
+                  ),
+                  if (value.isNotEmpty && !uploading)
+                    ShadButton.ghost(
+                      key: k('.remove'),
+                      size: ShadButtonSize.sm,
+                      leading: const Icon(LucideIcons.x, size: 16),
+                      onPressed: () => setState(() {
+                        _values[f.id] = '';
+                        _previews[f.id] = null;
+                      }),
+                      child: Text(f.removeLabel),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (f.description != null) ...[
+          const SizedBox(height: 6),
+          Text(f.description!, style: theme.textTheme.muted),
+        ],
+        if (_errors[f.id] != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            _errors[f.id]!,
+            style: theme.textTheme.small.copyWith(color: cs.destructive),
+          ),
+        ],
       ],
     );
   }
@@ -587,6 +789,8 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
               ],
             ),
           );
+        case ImageFieldSpec():
+          fields.add(_image(f, theme, key));
       }
     }
     // Below shad's `sm` breakpoint the actions stack vertically and each

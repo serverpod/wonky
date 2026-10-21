@@ -104,10 +104,15 @@ final class BlockTypeSpec {
     this.indent,
     this.checked,
     this.language,
+    this.quoted,
   });
 
   /// Block type.
   final BlockType type;
+
+  /// Whether list and task items are inside a quote (`null` keeps whether
+  /// the line is in a quote: a quote line becomes a quoted list item).
+  final bool? quoted;
 
   /// Heading level 1–6.
   final int? level;
@@ -166,6 +171,7 @@ final class BlockTypeSpec {
       indent: indent,
       checked: json['checked'] as bool?,
       language: json['language'] as String?,
+      quoted: json['quoted'] as bool?,
     );
   }
 }
@@ -703,6 +709,7 @@ final class DocumentEdits {
       if (line.isEmbedLine || !line.hasNewline) continue;
       final current = line.format;
       final indent = spec.indent ?? (current.isList ? current.indent : 0);
+      final quoted = spec.quoted ?? current.inQuote;
       final target = switch (spec.type) {
         BlockType.paragraph => BlockFormat.paragraph,
         BlockType.heading => BlockFormat.heading(
@@ -715,14 +722,23 @@ final class DocumentEdits {
               spec.language ??
               (current.type == BlockType.code ? current.language : ''),
         ),
-        BlockType.bullet => BlockFormat(BlockType.bullet, indent: indent),
-        BlockType.ordered => BlockFormat(BlockType.ordered, indent: indent),
+        BlockType.bullet => BlockFormat(
+          BlockType.bullet,
+          indent: indent,
+          quoted: quoted,
+        ),
+        BlockType.ordered => BlockFormat(
+          BlockType.ordered,
+          indent: indent,
+          quoted: quoted,
+        ),
         BlockType.task => BlockFormat(
           BlockType.task,
           indent: indent,
           checked:
               spec.checked ??
               (current.type == BlockType.task && current.checked),
+          quoted: quoted,
         ),
       };
       if (spec.type == BlockType.code) {

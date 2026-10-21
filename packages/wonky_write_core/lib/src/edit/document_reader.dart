@@ -268,6 +268,7 @@ final class DocumentReader {
         if (b.type == 'heading') 'level': f.level,
         if (f.isList) 'indent': f.indent,
         if (b.type == 'task') 'checked': f.checked,
+        if (f.quoted) 'quoted': true,
         if (b.type == 'code') 'language': f.language,
         'delta_start': b.start,
         'delta_length': b.length,
