@@ -1,1 +1,1 @@
-{"apiUrl": "http://localhost:8080", "apps": {"drive": "http://localhost:8100/", "write": "http://localhost:8101/", "sheets": "http://localhost:8102/", "slides": "http://localhost:8104/"}, "cookieAuth": true, "webUrl": "http://localhost:8082/"}
+{"apiUrl": "http://localhost:8080", "apps": {"drive": "http://localhost:8100/", "write": "http://localhost:8101/", "sheets": "http://localhost:8102/", "slides": "http://localhost:8104/"}, "cookieAuth": false, "webUrl": "http://localhost:8082/"}

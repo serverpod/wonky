@@ -62,20 +62,9 @@ sessionLogs:
 #  concurrencyLimit: 1 # Defaults to 1, a negative or null value removes the limit
 #  scanInterval: 5000 # Unit in milliseconds, defaults to 5000
 
-# Keeps auth tokens in httpOnly cookies shared by all apps (/drive/, /write/,
-# /sheets/, /slides/) and the `flutter run` dev origins (cookies are not
-# port-isolated). Web clients
-# opt in with `client.cookieAuth = true` (specs/01-architecture.md §2.5).
-authCookie:
-  secure: false # Cookies require https; relaxed for http://localhost
-  path: /
-  sameSite: lax
-allowedOrigins:
-  - http://localhost:8082 # The web server serving /drive/, /write/, /sheets/, /slides/
-  - http://localhost:8100 # Wonky Drive dev app (`flutter run`)
-  - http://localhost:8101 # Wonky Write dev app (`flutter run`)
-  - http://localhost:8102 # Wonky Sheets dev app (`flutter run`)
-  - http://localhost:8104 # Wonky Slides dev app (`flutter run`)
+# No `authCookie` / `allowedOrigins`, as in production (Serverpod Cloud): the
+# web apps use token auth with the session shared in localStorage
+# (specs/01-architecture.md §2.5).
 
 # Wonky Work settings (read by `lib/src/platform/config/wonky_config.dart`;
 # specs/01-architecture.md §6). Unknown to Serverpod itself.

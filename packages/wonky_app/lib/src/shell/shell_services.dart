@@ -9,6 +9,7 @@ import 'package:wonky_ui/wonky_ui.dart';
 import '../auth/auth_controller.dart';
 import '../bootstrap/app_urls.dart';
 import '../bootstrap/cross_app.dart';
+import '../bootstrap/wonky_client.dart';
 import '../comments/comments_controller.dart';
 import '../comments/comments_host.dart';
 import '../comments/comments_undo.dart';
@@ -136,7 +137,12 @@ class ShellServices implements ActiveDocumentHost {
       users: repositories.users,
     );
     supervisor = StreamSupervisor(connectivity);
-    this.crossApp = crossApp ?? CrossAppNavigator(urls);
+    this.crossApp =
+        crossApp ??
+        CrossAppNavigator(
+          urls,
+          beforeLeave: () => WonkyClient.authRefreshSettled(client),
+        );
     toasts = Toasts(() => navigatorContext);
     panels = WonkySplitViewController(
       width: prefs.device<double>('panel.width'),

@@ -59,8 +59,8 @@ Tests: `wonky_server/test/integration/platform/board/github/` and `test/unit/boa
    The key may also be pasted as one line with `\n` escapes; the server turns them back into
    line breaks. Locally, put both into `config/passwords.yaml` under `development:` (only to try
    it against a test repository; the App can only reach a public URL, e.g. through a tunnel).
-4. **Config** (`wonky: board: github:` in `config/production.yaml`, or the environment of the
-   Cloud deployment, since Serverpod Cloud does not upload `config/*.yaml`):
+4. **Config** (the environment of the Cloud deployment, since Serverpod Cloud does not upload
+   `config/*.yaml`; locally `wonky: board: github:` in `config/development.yaml`):
 
    ```yaml
    wonky:

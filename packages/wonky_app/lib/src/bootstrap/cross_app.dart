@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../shell/bug_report.dart';
 import 'app_urls.dart';
 import 'navigation_io.dart'
@@ -7,14 +9,20 @@ import 'navigation_io.dart'
 /// Cross-app navigation (suite 03 §1, §6): Drive, Write, Sheets and Slides
 /// in the same window.
 class CrossAppNavigator {
-  const CrossAppNavigator(this.urls);
+  const CrossAppNavigator(this.urls, {this.beforeLeave});
 
   final AppUrls urls;
 
+  /// Awaited before the page is replaced (another app, a reload): lets an
+  /// auth refresh in flight finish, so its rotated token is not lost
+  /// (`WonkyClient.authRefreshSettled`).
+  final Future<void> Function()? beforeLeave;
+
   /// Opens [path] (e.g. `/s/<uuid>`, `/`) in [app].
-  Future<void> open(WonkyAppKind app, String path) {
+  Future<void> open(WonkyAppKind app, String path) async {
     final web = urls.urlFor(app, path);
     final p = path.startsWith('/') ? path.substring(1) : path;
+    await beforeLeave?.call();
     return nav.openOtherApp('${app.urlScheme}://$p', web);
   }
 
@@ -22,7 +30,11 @@ class CrossAppNavigator {
   Future<void> openExternal(String url) => nav.openExternal(url);
 
   /// Reloads the web page.
-  void reload() => nav.reloadPage();
+  void reload() => unawaited(
+    (beforeLeave?.call() ?? Future.value()).then((_) {
+      nav.reloadPage();
+    }),
+  );
 
   /// Goes back in the browser's history (to another app's page, e.g. Drive
   /// after *Open with* was cancelled); false when there is no previous page
