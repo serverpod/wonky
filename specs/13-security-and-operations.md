@@ -154,9 +154,10 @@ The server runs as one instance or as several identical instances behind a load 
 (no sticky sessions needed). Several instances **require Redis**: Postgres is the only shared
 state besides Redis, and `session.messages` is global only with Redis.
 
-**Enabling it.** `config/staging.yaml` and `production.yaml` ship with `redis: enabled: false`
-(a single instance, which works wherever no Redis is provisioned). To scale out, enable Redis in the
-config or with `SERVERPOD_REDIS_ENABLED=true`, `SERVERPOD_REDIS_HOST`, `SERVERPOD_REDIS_PORT`
+**Enabling it.** There are no staging/production config files: Serverpod Cloud generates the
+server config from its variables, and production enables Redis there. Without Redis the server
+runs as a single instance, which works wherever no Redis is provisioned. To scale out, enable
+Redis with `SERVERPOD_REDIS_ENABLED=true`, `SERVERPOD_REDIS_HOST`, `SERVERPOD_REDIS_PORT`
 and `SERVERPOD_REDIS_PASSWORD` (or `redis:` in `passwords.yaml`). Only enable it with a Redis
 that is reachable: in `production` run mode Serverpod does not fall back when Redis is down,
 and messages to the other instances are then lost (sessions on the same instance still get

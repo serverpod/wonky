@@ -150,7 +150,7 @@ referred to by package name.
    (flutter_driver entry, text entry emulation off) to both apps.
 4. Server: replace the single `web/app` `FlutterRoute` with the two app routes and update
    `flutter_build` (§2.4); list both apps under `serverpod: flutter_apps:`; enable cookie auth
-   (§2.5); add `shared_packages: [../packages/wonky_sync_models]` to `config/generator.yaml`;
+   (§2.5; since removed: every environment uses token auth); add `shared_packages: [../packages/wonky_sync_models]` to `config/generator.yaml`;
    remove the greeting example (endpoint, model, test).
 5. Delete `wonky_flutter/` and remove it from the workspace.
 6. Extend CI (analyze/format/test) to every workspace package, add the dependency-rule check
@@ -490,7 +490,7 @@ development) from one origin; there is no separate host app.
 - **Development**: the apps are declared in `serverpod: flutter_apps:` in the server pubspec
   (aliases `drive`, `write`, `sheets`, `slides`; `path: ../wonky_<app>`,
   `target: lib/driver.dart`, fixed `web-port`s so the origins are stable for
-  `allowedOrigins` and cookie auth). None is launched automatically (`auto_launch: false`): a
+  the MCP `allowedOrigins`). None is launched automatically (`auto_launch: false`): a
   debug web app costs a lot of memory, so `serverpod start` starts only the server and the app
   under test is started on demand (from the `serverpod start` UI or the `spawn_flutter_app` MCP
   tool):
@@ -526,22 +526,19 @@ are one click away in the left menu. (Q2 had chosen Wonky Write's home.)
 A user signs in once and stays signed in when switching between the apps (v2: Drive, Write,
 Sheets, Slides — all on one origin, so everything below applies to the four of them).
 
-- **Web**: both apps live on the same origin, so they share one session in either mode:
-  - **Cookie auth** when the server is configured for it: `authCookie` (httpOnly, `path: /`,
-    `secure` in staging/production) plus `allowedOrigins` (the web server origin; in development
-    also both `flutter run` origins) in `config/*.yaml`. The server's `AppConfigRoute` then
-    serves `cookieAuth: true` in `config.json` and the client sets `client.cookieAuth = true`.
-    The session cookie is shared by `/write/` and `/sheets/` (and, in development, by both
-    localhost ports — cookies are not port-isolated); tokens never sit in JavaScript-readable
-    storage. The bundled development `config.json` sets `cookieAuth: true` to match
-    `development.yaml`.
-  - **Token auth** otherwise (`cookieAuth` false or missing), as in the Serverpod template app.
-    This is the case on **Serverpod Cloud**: it generates the server config (`.scloudignore`
-    excludes `config/production.yaml`), so there is no `authCookie`, the API answers CORS with
-    `Access-Control-Allow-Origin: *`, and browsers reject every credentialed request. The API
+- **Web**: both apps live on the same origin, so they share one session:
+  - **Token auth** in every environment (`cookieAuth: false` in `config.json`), as in the
+    Serverpod template app. Production runs on **Serverpod Cloud**, which generates the server
+    config from its variables (there is no `config/staging.yaml` or `config/production.yaml`),
+    so there is no `authCookie`, the API answers CORS with `Access-Control-Allow-Origin: *`,
+    and browsers reject every credentialed request. `development.yaml` has no `authCookie` or
+    `allowedOrigins` either, so local development behaves like production, and the bundled
+    `config.json` of each app sets `cookieAuth: false`. The API
     also runs on its own host (`<project>.api.serverpod.space`, the app on
-    `<project>.serverpod.space`). The session is then kept in the origin's storage, which
-    `/write/` and `/sheets/` share.
+    `<project>.serverpod.space`). The session is kept in `localStorage`
+    (`wonky.auth.session`, `SharedJwtAuthKeyProvider` in `wonky_app/lib/src/auth/shared_session.dart`),
+    shared by every tab and app of the origin; it is moved once from the package default
+    storage (`flutter_secure_storage`) so nobody is signed out when it ships.
   Cookie auth must never be switched on by the client alone: with a `*` CORS answer the app
   cannot reach the server at all.
   - **Production domains:** the apps are served on `https://wonky.work` and call the API on the
@@ -552,13 +549,31 @@ Sheets, Slides — all on one origin, so everything below applies to the four of
     site, where cookie auth cannot work. `/mcp` also answers on both public hosts
     (`McpConfig.defaultAllowedHosts`).
   - **Multiple tabs:** refresh tokens rotate and a reused one revokes the session. Cookie mode
-    serializes refreshes across the tabs of one origin (Web Locks); token mode does not, so
-    several tabs refreshing at once (e.g. after the laptop wakes) can sign the user out. To use
+    serializes refreshes across the tabs of one origin (Web Locks). Serverpod's token mode does
+    not (several tabs refreshing at once, e.g. after the laptop wakes, signed the user out), so
+    the apps replace its JWT key provider in token mode:
+    - every read of the session goes to `localStorage`, so a token another tab or app stored is
+      used at once; a `storage` event restores the session in the other tabs (sign-in,
+      sign-out, rotation);
+    - a refresh runs under the same Web Lock as cookie mode (`client.authRefreshCrossTabLock`)
+      and re-reads the session inside it: when another tab rotated meanwhile, its token is used
+      instead of rotating again;
+    - a page load does not rotate (`validateSharedSession` instead of
+      `ClientAuthSessionManager.initialize()`, which forces a rotation on every load, so on
+      every switch between the apps): it checks the stored token with `status.isSignedIn()`
+      and rotates only when it is about to expire, or once when the server rejects it;
+    - switching apps and reloading (`CrossAppNavigator`) wait up to 5 s for a refresh in
+      flight, so the page does not go away with a rotated token the server already handed out.
+
+    What remains: a refresh response lost to sleep, a network drop or a server restart still
+    leaves the old token in storage, and the next refresh revokes the session. Only a grace
+    period for the previous secret on the server would cover that (not done: Serverpod's
+    rotation, `JwtAdmin.rotateRefreshToken`, has none). To use
     cookie auth on Serverpod Cloud, set the Serverpod variables (`SERVERPOD_ALLOWED_ORIGINS=
     https://wonky.work`, `SERVERPOD_AUTH_COOKIE_SECURE=true`, `SERVERPOD_AUTH_COOKIE_SAME_SITE=
-    lax`, `SERVERPOD_AUTH_COOKIE_PATH=/`); `config.json` then serves `cookieAuth: true`. In
-    development, debug apps on ports 8100–8104 and release builds on 8082 are different origins
-    sharing one cookie, so they are not coordinated: don't keep both signed in at once.
+    lax`, `SERVERPOD_AUTH_COOKIE_PATH=/`); `config.json` then serves `cookieAuth: true` (the client still
+    supports it). In development, the release builds on 8082 share one session; the debug apps
+    on ports 8100–8104 are separate origins with a session (and a sign-in) each.
 - Signing out in either app revokes the session for both; the other app notices on its next
   request or auth-state check and shows the sign-in screen (03 §4 *Session expired* flow).
 - **Desktop** (deferred in v2, A13): each binary keeps its tokens in secure storage. On macOS
@@ -667,8 +682,8 @@ sheets: {dir: web/sheets, path: /sheets/}, slides: {dir: web/slides, path: /slid
 drive and slides v2); (v2) `drive: {quotaBytesPerUser, warnAtPercent, maxPendingUploadsPerUser}`,
 `files: {maxFileUploadBytes, maxImageUploadBytes, maxImportUploadBytes, downloadBytesPerDay}` (Drive 03 §3),
 `help: {bugReportUrl}` (default
-`https://github.com/serverpod/wonky/issues`, the fallback of 03 §3.4), (M12) `board: {enabled, repository}` in `config.json` (16 §12); the template's commented-out
-`authCookie` + `allowedOrigins` are enabled (§2.5).
+`https://github.com/serverpod/wonky/issues`, the fallback of 03 §3.4), (M12) `board: {enabled, repository}` in `config.json` (16 §12); no `authCookie` /
+`allowedOrigins`, as in production (§2.5).
 RevLog limits (op size and change count, message size, ops in `RevInit`, page sizes, retention,
 hook timing, headless cache budget, schema window) are listed as a `revlog:` section in
 [17](17-revlog-sync.md) Part 1; as built they are constants of the RevLog services (e.g.
@@ -681,8 +696,9 @@ Secrets in `passwords.yaml`: `openaiApiKey` / `anthropicApiKey` / `geminiApiKey`
 Redis is **required** as soon as more than one server instance runs (global
 `session.messages` for presence, Write op fan-out, UI bridge and assistant relays, plus the
 MCP session registry and rate counter); how every in-memory service behaves across instances
-is in [13 §4](13-security-and-operations.md). The shipped staging/production configs run one
-instance with Redis disabled; enabling it is a config/env change. Development and tests run
+is in [13 §4](13-security-and-operations.md). There are no staging/production config files:
+Serverpod Cloud generates the server config from its variables, and production enables Redis
+there (`SERVERPOD_REDIS_*`). Development and tests run
 without Redis (local scope).
 
 ## 7. Protocol versioning
