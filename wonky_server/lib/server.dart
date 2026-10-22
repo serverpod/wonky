@@ -27,9 +27,11 @@ import 'src/sheets/versions/sheets_version_provider.dart';
 import 'src/slides/versions/slides_version_provider.dart';
 import 'src/web/middleware/sqlite_asset_alias.dart';
 import 'src/web/routes/app_config_route.dart';
+import 'src/web/routes/flutter_app_route.dart';
 import 'src/web/routes/github_webhook_route.dart';
 import 'src/web/routes/improvements_redirect_route.dart';
 import 'src/web/routes/invite_route.dart';
+import 'src/web/routes/legal_page_route.dart';
 import 'src/web/routes/publication_api_route.dart';
 import 'src/web/routes/root_redirect_route.dart';
 import 'src/web/web_apps.dart';
@@ -160,12 +162,10 @@ void _configureWebServer(Serverpod pod) {
   // Sign in with Google on web (specs/04 §1.6): the OAuth2 redirect lands
   // here and hands the code back to the app's sign-in popup.
   pod.webServer.addRoute(FlutterWebAuth2CallbackRoute(), '/auth/callback');
-  // Legal pages (specs/13 §5), linked from account creation.
+  // Legal pages (specs/13 §5), linked from account creation: templates, so
+  // their /web/ asset URLs are cache-busted.
   for (final page in const ['privacy', 'terms']) {
-    pod.webServer.addRoute(
-      StaticRoute.file(File(Uri(path: 'web/pages/$page.html').toFilePath())),
-      '/$page',
-    );
+    pod.webServer.addRoute(LegalPageRoute(page), '/$page');
   }
   pod.webServer.addRoute(InviteRoute(), '/invite/:token');
   // Bugs & improvements links (specs/16 §4.3): `/improvements/**` opens
@@ -201,7 +201,8 @@ void _configureWebServer(Serverpod pod) {
     final dir = Directory(Uri(path: 'web/$app').toFilePath());
     if (dir.existsSync()) {
       // Built with --wasm: cross-origin isolation headers (specs/13 §3).
-      pod.webServer.addRoute(FlutterRoute(dir), '/$app');
+      // The shell, index.html, is a template with cache-busted /web/ URLs.
+      pod.webServer.addRoute(FlutterAppRoute(dir), '/$app');
       // sqlite3.wasm asked for relative to a deep link (`/sheets/s/…`).
       pod.webServer.addMiddleware(sqliteAssetAlias(app, dir), '/$app');
     } else {
