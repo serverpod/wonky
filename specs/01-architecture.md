@@ -334,6 +334,7 @@ controls: toasts for people, none for agents), `WonkyFindBar`, `showConflictRevi
 | `wonky_server` | `image` | Drive upload previews and thumbnails (Drive 02 §6) |
 | `wonky_server` | `mime` | MIME sniffing of uploaded files (Drive 02 §5, suite 13 §6) |
 | `wonky_server` | `dart_jsonwebtoken` | RS256 JWT of the Bugs & improvements GitHub App (specs/16 §13.3) |
+| `wonky_server` | `whiskers` | The app shells' templates (`AppShellRoute`, §2.4); Serverpod's template engine (already a dependency of `serverpod`), whose registry only loads `web/templates` |
 | `wonky_ui` | `flutter_svg` | Empty-state illustrations (already a dependency of `shad`) |
 | `wonky_ui` | `flutter_test` | `pumpWonky` in `lib/testing.dart` (15 §7) |
 | `wonky_rich_editor` | `flutter_test` | `enterMarkdown` / `typeMarkdown` in `lib/testing.dart` (15 §7) |
