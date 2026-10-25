@@ -363,6 +363,7 @@ const rules = <String, PackageRule>{
       'image': 'Drive upload previews and thumbnails (Drive 02 §6)',
       'mime': 'MIME sniffing of uploaded files (Drive 02 §5, suite 13 §6)',
       'dart_jsonwebtoken': 'RS256 JWT of the GitHub App (specs/16 §13.3)',
+      'whiskers': "app shell templates, Serverpod's template engine (§2.4)",
     },
   ),
   'wonky_client': PackageRule(

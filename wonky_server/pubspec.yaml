@@ -21,6 +21,7 @@ dependencies:
   serverpod: 4.1.0-rc.1
   serverpod_auth_idp_server: 4.1.0-rc.1
   serverpod_cloud_storage: 4.1.0-rc.1
+  whiskers: ^0.1.1
   wonky_core:
     path: ../packages/wonky_core
   wonky_sheets_core:

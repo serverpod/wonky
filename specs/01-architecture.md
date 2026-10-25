@@ -159,7 +159,7 @@ referred to by package name.
 
 **(v2) Adding an app (Drive and the Slides skeleton in M8)** follows the same steps: create the
 Flutter app in the workspace (`resolution: workspace`, `lib/driver.dart`), add its `webApps`
-entry, its `FlutterRoute`, its `flutter_apps` alias and port (§2.4), its origin to
+entry, its `FlutterAppRoute` (via `webApps`), its `flutter_apps` alias and port (§2.4), its origin to
 `allowedOrigins`, its build to `flutter_build`, its CI matrix entry and dependency-rule row
 (§2.1), its web icons and favicon (02 §5; desktop icons only so the desktop target compiles,
 A13), its `WonkyAppKind` value and `config.json` URL, and its lines in `AGENTS.md`. The package
@@ -334,6 +334,7 @@ controls: toasts for people, none for agents), `WonkyFindBar`, `showConflictRevi
 | `wonky_server` | `image` | Drive upload previews and thumbnails (Drive 02 §6) |
 | `wonky_server` | `mime` | MIME sniffing of uploaded files (Drive 02 §5, suite 13 §6) |
 | `wonky_server` | `dart_jsonwebtoken` | RS256 JWT of the Bugs & improvements GitHub App (specs/16 §13.3) |
+| `wonky_server` | `whiskers` | The app shells' templates (`AppShellRoute`, §2.4); Serverpod's template engine (already a dependency of `serverpod`), whose registry only loads `web/templates` |
 | `wonky_ui` | `flutter_svg` | Empty-state illustrations (already a dependency of `shad`) |
 | `wonky_ui` | `flutter_test` | `pumpWonky` in `lib/testing.dart` (15 §7) |
 | `wonky_rich_editor` | `flutter_test` | `enterMarkdown` / `typeMarkdown` in `lib/testing.dart` (15 §7) |
@@ -445,14 +446,15 @@ development) from one origin; there is no separate host app.
 
 | Path | Served from | Notes |
 |------|-------------|-------|
-| `/drive/…` (v2) | `web/drive/` — `wonky_drive` built with `--base-href /drive/` | `FlutterRoute` (SPA fallback to `index.html`) |
-| `/write/…` | `web/write/` — `wonky_write` built with `--base-href /write/` | `FlutterRoute` (SPA fallback to `index.html`) |
-| `/sheets/…` | `web/sheets/` — `wonky_sheets` built with `--base-href /sheets/` | `FlutterRoute` |
-| `/slides/…` (v2) | `web/slides/` — `wonky_slides` built with `--base-href /slides/` | `FlutterRoute` |
+| `/drive/…` (v2) | `web/drive/` — `wonky_drive` built with `--base-href /drive/` | `FlutterAppRoute` (SPA fallback to `index.html`, the shell rendered as a template) |
+| `/write/…` | `web/write/` — `wonky_write` built with `--base-href /write/` | `FlutterAppRoute` (SPA fallback to `index.html`, the shell rendered as a template) |
+| `/sheets/…` | `web/sheets/` — `wonky_sheets` built with `--base-href /sheets/` | `FlutterAppRoute` |
+| `/slides/…` (v2) | `web/slides/` — `wonky_slides` built with `--base-href /slides/` | `FlutterAppRoute` |
 | `/<app>/**/sqlite3.wasm`, `/<app>/**/db_worker.js` (nested paths) | `sqliteAssetAlias` middleware | Serves the app's root copies: when `sqlite3_web` opens a database in the page (its worker failed) it resolves the relative default URIs of `sqlite_async` (set inside `serverpod_database`, not configurable) against the page URL, e.g. `/sheets/s/sqlite3.wasm`, which the SPA fallback answered with `index.html` and the local replica could not open |
 | `/<app>/assets/assets/config.json` (each app) | `AppConfigRoute` | Replaces the bundled `assets/config.json` at runtime: `{apiUrl, webUrl, apps: {drive, write, sheets, slides}, cookieAuth, google?: {clientId, redirectUri}}` (the API URL — `wonky.publicApiUrl` / `WONKY_PUBLIC_API_URL`, default `https://api.wonky.work` in production (§2.5), else the API server's public host —, the public web origin for the legal pages, the base URL of each app for cross-app links, and Google sign-in, 04 §1.6). The public web origin is `wonky.publicWebUrl` / `WONKY_PUBLIC_WEB_URL`, default `https://wonky.work` in production (Serverpod Cloud generates the server config, so its own `*.serverpod.space` host is never used in links), else the web server's public host; e-mail and MCP links use it too |
 | `/auth/callback` | `FlutterWebAuth2CallbackRoute` | OAuth popup callback for Sign in with Google (04 §1.6) |
-| `/privacy`, `/terms` | `StaticRoute.file` | Privacy policy and terms of service (`web/pages/privacy.html`, `terms.html`; suite 13 §5) |
+| `/web/…` | `StaticRoute.withCacheBusting` (`cacheBustingConfig`) | `web/static/`, `public, immutable, max-age` one year. Pages link these files by their cache-busted URL, `/web/images/og-1@<hash>.jpg` (Relic strips the hash): every page that links one is a template (the legal pages, the app shells) and says `{{{@/web/…}}}`, which `WidgetRoute` resolves with `cacheBustingConfig` (the hash is computed once per file) |
+| `/privacy`, `/terms` | `LegalPageRoute` (a `WidgetRoute`) | Privacy policy and terms of service, the templates `web/templates/privacy.html`, `terms.html` (suite 13 §5); their `/web/` URLs are cache-busted |
 | `/` | redirect | (v2) Always to **`/drive/`** — Wonky Drive's home, the default landing app (v2 review B4; `RootRedirectRoute`, `rootRedirectTarget`). The `wonky_last_app` cookie is no longer read (the apps may stop setting it) |
 | `/mcp`, `/files/…`, `/invite/:token` | server routes | See 09, 05, 06; (v2) `/files/d/:fileUuid/:name` downloads and `PUT /files/upload/:fileUuid` token uploads (MCP P0, chunked P1), Drive 02 §3.3, §4.3, §8 |
 | anything else unbuilt | `web/pages/build_flutter_app.html` | Template fallback shown when an app's build folder is missing |
@@ -476,10 +478,23 @@ development) from one origin; there is no separate host app.
   `summary_large_image`). The SPA fallback serves that file for every URL of the app, shared
   documents and invites included, so the tags stay **generic: never an item's title, owner or
   content**, and there is no `og:url` (it would name another page as the canonical one). The
-  image is `https://wonky.work/web/images/og-1.jpg` (1200×630 JPEG, under WhatsApp's 300 KB;
-  source `icons/og.webp`): absolute, as crawlers need, and versioned in its name because
-  `/web/` is served as immutable — a new image gets a new name. The legal pages carry the
-  same tags with their own `og:url` and canonical link.
+  image is `web/static/images/og-1.jpg` (1200×630 JPEG, under WhatsApp's 300 KB; source
+  `icons/og.webp`), linked by an absolute URL, as crawlers need, that carries its content hash:
+  `index.html` says `https://wonky.work{{{@/web/images/og-1.jpg}}}`, and the server answers
+  `https://wonky.work/web/images/og-1@<hash>.jpg`. `/web/` is cached as immutable for a year by
+  browsers and the CDN, and X and LinkedIn cache an image per URL, so a changed image must get a
+  new URL; the hash does that without renaming the file. The shell is a template:
+  `FlutterAppRoute` is Serverpod's `FlutterRoute` (the build's files, the SPA fallback, the WASM
+  headers) except that `/<app>/`, `/<app>/index.html` and the SPA fallback are `AppShellRoute`, a
+  `WidgetRoute` with `cacheBustingConfig`, like the legal pages. It parses the build's
+  `index.html` once (again when the file changes) and answers `private, no-cache` without an
+  ETag (the shell is about 5 KB). Under `flutter run` the placeholder is served as it is, which
+  only the crawlers would read; never write `{{` anywhere else in `index.html`. The build's own
+  files are served without cache busting, which would strip `@…` from asset names such as
+  `icon@2x.png`. The legal pages carry the same tags (`{{{@/web/images/og-1.jpg}}}` in their
+  templates) with their own `og:url` and canonical link.
+  Crawlers also cache each shared page's preview (LinkedIn about 7 days, X about as long): after
+  a change, re-scrape a URL with LinkedIn's Post Inspector; X refreshes on its own.
 - **No Grammarly**: the apps check spelling themselves (`wonky_spellcheck`), and Grammarly's
   overlays on Flutter's hidden text fields interfere with editing. Each app's `web/index.html`
   opts out: `data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"` on
