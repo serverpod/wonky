@@ -75,6 +75,11 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
   ViewportHint? viewportHint;
 
   late final RevFileSync sync;
+
+  /// Whether [RevFileSync.open] returned: its sync core exists. The outbox
+  /// applied while opening can make the session ready (and schedule
+  /// maintenance) before that.
+  bool _syncOpen = false;
   late final _SheetsPlan _plan = _SheetsPlan(this);
   Future<void> _opened = Future.value();
   bool _disposed = false;
@@ -107,6 +112,7 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
     sync.rejections.listen(_onRejected);
     sync.history.listen(_onOp);
     final loaded = await sync.open();
+    _syncOpen = true;
     if (_disposed) return;
     // A cache reopened viewport-first turns ready through the plan (small
     // files once every row is loaded).
@@ -193,10 +199,12 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
   /// Writes the `WorkbookMaintenance` repairs ("Repair spreadsheet", a
   /// `"repair": true` op that is not undoable) when the spreadsheet is
   /// settled: every row loaded, no remote group half applied and this
-  /// tab's outbox empty (06 §1.2). Returns the plan, or null.
+  /// tab's outbox empty (06 §1.2), and only once the sync has opened.
+  /// Returns the plan, or null.
   MutationPlan? runMaintenance() {
     if (_disposed || !_isReady || role.value < Role.editor) return null;
-    if (!rowLoading.complete ||
+    if (!_syncOpen ||
+        !rowLoading.complete ||
         _remoteGroupOpen ||
         sync.core.pendingChanges > 0) {
       _scheduleMaintenance();
