@@ -22,7 +22,7 @@ concurrency:
 
 env:
   FLUTTER_VERSION: '3.47.5'
-  VERSION: '4.1.0-beta.3'
+  VERSION: '4.1.0-rc.1'
 
 jobs:
   write-macos:

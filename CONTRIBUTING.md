@@ -36,10 +36,10 @@ Flutter, Dart and what Serverpod needs on your machine. You also need:
 ## 2. Install the Serverpod CLI
 
 ```bash
-dart install serverpod_cli 4.1.0-beta.3
+dart install serverpod_cli 4.1.0-rc.1
 ```
 
-This installs the CLI, or updates an existing install to the latest beta, which Wonky Work
+This installs the CLI, or updates an existing install to the release candidate Wonky Work
 needs (the version is `VERSION` in `.github/workflows/tests.yml`). `dart install` puts the
 executable in Dart's install directory; add it to your `PATH` if `serverpod` is not found.
 

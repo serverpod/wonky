@@ -67,7 +67,7 @@ dev_dependencies:
   flutter_test_robots: ^0.0.24
   # CPU profiles of the perf suite (test/perf/support/cpu_profile.dart).
   vm_service: ^15.0.0
-  serverpod_auth_core_client: 4.1.0-beta.3
+  serverpod_auth_core_client: 4.1.0-rc.1
   provider: ^6.1.5+1
   integration_test:
     sdk: flutter
