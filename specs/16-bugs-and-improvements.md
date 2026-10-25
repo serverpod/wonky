@@ -1437,7 +1437,7 @@ is opened for a change nobody has seen working. The frame is added when the task
   1. Prerequisites: the [Serverpod installation guide](https://docs.serverpod.dev/installation)
      (Flutter, Dart and what Serverpod needs), Flutter at least the CI version, and an AI coding
      agent (Claude Code recommended, any agent that reads `AGENTS.md` works).
-  2. Install or update the Serverpod CLI to the beta Wonky Work uses:
+  2. Install or update the Serverpod CLI to the version Wonky Work uses:
      `dart install serverpod_cli <VERSION>` (the version of the CI workflow).
   3. Fork the repository on GitHub (the in-app step links to `https://github.com/<repo>/fork`).
   4. Clone the fork and run `flutter pub get`.
