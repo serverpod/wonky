@@ -384,6 +384,9 @@ class _BoardTaskPageState extends State<BoardTaskPage> {
     if (!full && t.status != BoardTaskStatus.published) {
       return const SizedBox.shrink();
     }
+    // Step 1's sentence around its link (the {guide} placeholder).
+    const marker = '\u0000';
+    final setup = l.boardStepSetup(marker).split(marker);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -404,29 +407,33 @@ class _BoardTaskPageState extends State<BoardTaskPage> {
           children: [
             // Step 1: the setup is on How to contribute (same tab, under
             // the board's breadcrumb).
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 4,
-              children: [
-                Text(l.boardStepSetupNumber, style: theme.textTheme.small),
-                Flexible(
-                  child: BoardTextLink(
-                    key: const ValueKey<String>('board.task.setup'),
-                    label: l.boardStepSetupLink,
-                    onTap: () => boardOpenContribute(s),
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: setup.first),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
+                    child: BoardTextLink(
+                      key: const ValueKey<String>('board.task.setup'),
+                      label: l.boardStepSetupLink,
+                      onTap: () => boardOpenContribute(s),
+                    ),
                   ),
-                ),
-              ],
+                  if (setup.length > 1) TextSpan(text: setup.last),
+                ],
+              ),
+              style: theme.textTheme.small,
             ),
             if (!full) ...[
               // Not claimed by the viewer: the outline only (the Claim button
               // is in the header).
               Text(
-                l.boardStepPromptLocked,
+                l.boardStepClaim,
                 key: const ValueKey<String>('board.task.promptLocked'),
                 style: theme.textTheme.small,
               ),
-              Text(l.boardStepPr, style: theme.textTheme.small),
+              Text(l.boardStepPaste, style: theme.textTheme.small),
             ] else ...[
               Row(
                 children: [

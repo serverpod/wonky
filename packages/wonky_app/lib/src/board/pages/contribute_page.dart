@@ -31,8 +31,9 @@ const boardClaSignLine =
 /// The setup commands of `CONTRIBUTING.md` after the tools are installed
 /// (specs/16 §10.3), one per copy button: install (or update) the CLI,
 /// clone your fork of [repository] and get the packages, configure the
-/// server, run it. Forking has no command: it is done on GitHub. Serverpod starts the development database itself, so
-/// there is no Docker step.
+/// server. Forking has no command: it is done on GitHub. The agent starts
+/// the server (and with it the development database) through the
+/// `serverpod` MCP server, so there is no run or Docker step.
 List<String> boardSetupCommands(String repository) {
   final name = repository.split('/').last;
   return [
@@ -41,50 +42,11 @@ List<String> boardSetupCommands(String repository) {
     'cd $name && flutter pub get',
     'cd wonky_server',
     'cp config/passwords.example.yaml config/passwords.yaml',
-    'serverpod start',
   ];
 }
 
-/// *Install Flutter, Dart and the Serverpod CLI: Serverpod installation
-/// guide* — the first setup step, a link to [boardServerpodInstallUrl]
-/// through the external-link confirmation.
-class BoardInstallGuideLink extends StatelessWidget {
-  const BoardInstallGuideLink({
-    super.key,
-    required this.services,
-    required this.linkKey,
-  });
-
-  final ShellServices services;
-  final String linkKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = WonkyAppLocalizations.of(context);
-    final theme = ShadTheme.of(context);
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 4,
-      runSpacing: 2,
-      children: [
-        Text(l.boardInstallTools, style: theme.textTheme.small),
-        BoardTextLink(
-          key: ValueKey<String>(linkKey),
-          label: l.boardInstallGuide,
-          external: true,
-          onTap: () => confirmExternalLink(
-            context,
-            services,
-            url: boardServerpodInstallUrl,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// `/improvements/contribute` (specs/16 §10.3): the short version of
-/// `CONTRIBUTING.md` (steps 1–9) as app strings, so it works without
+/// `CONTRIBUTING.md` (steps 1–8) as app strings, so it works without
 /// GitHub, with copy buttons and a link to the full guide.
 class BoardContributePage extends StatefulWidget {
   const BoardContributePage({super.key, required this.services});
@@ -123,6 +85,20 @@ class _BoardContributePageState extends State<BoardContributePage> {
     final cmds = boardSetupCommands(repo);
     final security =
         BoardHub.of(s).me.value?.securityContact ?? 'security@serverpod.dev';
+    // The buttons under a step's text (Serverpod installation guide, Fork
+    // on GitHub, Up for grabs, View pull requests).
+    Widget button(String key, String label, VoidCallback onPressed) => Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: ShadButton.outline(
+        key: ValueKey<String>(key),
+        size: ShadButtonSize.sm,
+        onPressed: onPressed,
+        // Ellipsized on a narrow window rather than overflowing.
+        child: Flexible(
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ),
+    );
     Widget step(
       int n,
       String title,
@@ -175,26 +151,27 @@ class _BoardContributePageState extends State<BoardContributePage> {
           Text(l.boardContributeIntro, style: theme.textTheme.p),
           const SizedBox(height: 20),
           step(1, l.boardContribStep1Title, l.boardContribStep1, [
-            BoardInstallGuideLink(
-              services: s,
-              linkKey: 'board.contribute.installGuide',
+            button(
+              'board.contribute.installGuide',
+              l.boardInstallGuide,
+              () => confirmExternalLink(
+                context,
+                s,
+                url: boardServerpodInstallUrl,
+              ),
             ),
           ]),
           step(2, l.boardContribStep2Title, l.boardContribStep2, [
             BoardCopyLine(text: cmds[0], copyKey: 'board.contribute.copy.0'),
           ]),
           step(3, l.boardContribStep3Title, l.boardContribStep3, [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: BoardTextLink(
-                key: const ValueKey<String>('board.contribute.fork'),
-                label: l.boardContribForkLink,
-                external: true,
-                onTap: () => confirmExternalLink(
-                  context,
-                  s,
-                  url: 'https://github.com/$repo/fork',
-                ),
+            button(
+              'board.contribute.fork',
+              l.boardContribForkLink,
+              () => confirmExternalLink(
+                context,
+                s,
+                url: 'https://github.com/$repo/fork',
               ),
             ),
           ]),
@@ -207,26 +184,24 @@ class _BoardContributePageState extends State<BoardContributePage> {
               BoardCopyLine(text: cmds[i], copyKey: 'board.contribute.copy.$i'),
           ]),
           step(6, l.boardContribStep6Title, l.boardContribStep6, [
-            BoardCopyLine(text: cmds[5], copyKey: 'board.contribute.copy.5'),
+            button(
+              'board.contribute.tasks',
+              l.boardTabTasks,
+              () => boardOpenList(s, BoardTab.tasks),
+            ),
           ]),
           step(7, l.boardContribStep7Title, l.boardContribStep7, [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: ShadButton.outline(
-                key: const ValueKey<String>('board.contribute.tasks'),
-                size: ShadButtonSize.sm,
-                onPressed: () => boardOpenList(s, BoardTab.tasks),
-                child: Text(l.boardTabTasks),
+            button(
+              'board.contribute.pulls',
+              l.boardContribPullRequests,
+              () => confirmExternalLink(
+                context,
+                s,
+                url: 'https://github.com/$repo/pulls',
               ),
             ),
           ]),
           step(8, l.boardContribStep8Title, l.boardContribStep8, [
-            const BoardCopyLine(
-              text: 'Wonky-Task: T-12\nWonky-Claim: XXXX-XXXX',
-              copyKey: 'board.contribute.copy.prLines',
-            ),
-          ]),
-          step(9, l.boardContribStep9Title, l.boardContribStep9, [
             const BoardCopyLine(
               text: boardClaSignLine,
               copyKey: 'board.contribute.copy.cla',

@@ -354,7 +354,7 @@ The board routes are added to every app by `buildShellRouter`, next to `settings
   scrollbar stays at the window edge.
 - **Top bar actions (`BoardTopActions`):** *Report a bug* (Lucide `bug`), *Suggest an
   improvement* (`leaf`, the improvement icon everywhere; both `shell.board.report` with their kind) and *How to contribute*
-  (`git-pull-request`; not on the contribute page itself), all `ShadButton.outline` size `sm`
+  (`wrench`, like the home menu's *Contribute & build*; not on the contribute page itself), all `ShadButton.outline` size `sm`
   with their icons, after the breadcrumb (keys `board.reportBug`, `board.suggest`,
   `board.howToContribute`). The breadcrumb has priority: the buttons keep their labels only while
   the whole trail fits beside them, else they are outline icon buttons with tooltips; below a
@@ -516,10 +516,11 @@ task.
     claims expired without a pull request or an unclaim.*);
   - for the claimant: the **claim code** (`7Q4F-K2M9`) with *Copy*, and the time left.
 - **Linked issues**: one row per issue with its score and its screenshots.
-- **How to build it** (always shown, not collapsible; the claimant and admins see every step, others see an outline while the task is up for grabs — the setup link, "Give your coding agent the prompt (claim the task to get the prompt)." and "Open a pull request" without instructions — and nothing once someone else claimed it):
-  1. A single link, *Set up your development environment* (`board.task.setup`), that opens
-     *How to contribute* (`/improvements/contribute`, §10.3) in the same tab, under the board's
-     breadcrumb (Back returns to the task). The setup commands are only there.
+- **How to build it** (always shown, not collapsible; the claimant and admins see every step, others see an outline while the task is up for grabs — "1. Read the contribution guide and set up your development environment", "2. Claim the task to get a prompt" (`board.task.promptLocked`) and "3. Paste the prompt into your AI agent using a frontier model" — and nothing once someone else claimed it):
+  1. *Read the contribution guide and set up your development environment*, where *contribution
+     guide* (`board.task.setup`) is a link that opens *How to contribute*
+     (`/improvements/contribute`, §10.3) in the same tab, under the board's breadcrumb (Back
+     returns to the task). The setup commands are only there.
   2. **The prompt** — for the claimant and admins only: the prompt in a monospaced card with
      *Copy prompt*. Everyone else sees *Claim this task to get the prompt.*
      (`board.task.promptLocked`) with *Claim this task* while the task is up for grabs (*Sign in
@@ -1434,33 +1435,36 @@ is opened for a change nobody has seen working. The frame is added when the task
 
 - **`CONTRIBUTING.md`** (new, repository root, linked from the task page and
   `/improvements/contribute`) covers:
-  1. Prerequisites: the [Serverpod installation guide](https://docs.serverpod.dev/installation)
-     (Flutter, Dart and what Serverpod needs), Flutter at least the CI version, and an AI coding
-     agent (Claude Code recommended, any agent that reads `AGENTS.md` works).
-  2. Install or update the Serverpod CLI to the version Wonky Work uses:
-     `dart install serverpod_cli <VERSION>` (the version of the CI workflow).
+  1. Get the tools: Flutter, Serverpod and a frontier coding agent (Codex, Claude Code,
+     Antigravity, Cursor; any agent that reads `AGENTS.md` and uses MCP servers), with the
+     [Serverpod installation guide](https://docs.serverpod.dev/installation) and Flutter at least
+     the CI version.
+  2. Get the right version of Serverpod: `dart install serverpod_cli <VERSION>` (the version of
+     the CI workflow).
   3. Fork the repository on GitHub (the in-app step links to `https://github.com/<repo>/fork`).
   4. Clone the fork and run `flutter pub get`.
   5. In `wonky_server`, create `config/passwords.yaml` from `passwords.example.yaml` (development
      defaults only; AI keys are optional).
-  6. Run `serverpod start` in `wonky_server` (it also starts the development database) and start
-     an app from its UI. Point the agent at the
-     `serverpod` MCP server (`.mcp.json` is already in the repo).
-  7. Pick a task, paste its prompt into the agent, and review the result.
-  8. PR rules (§13.1): one task per PR, the `Wonky-Task:` and `Wonky-Claim:` lines, the
-     checks *Wonky task* and *Wonky task review*, and auto-close after 7 days without a valid
-     task.
-  9. Sign the CLA and follow up (B13): the Serverpod CLA is signed once, on GitHub, on the first
+  6. Pick a task: claim it, start the agent with the repository root as its working directory,
+     give it the prompt and review the result. There is no step to start the server: since
+     Serverpod 4.1.0-rc.1 the agent starts it (and the development database and the apps)
+     through the `serverpod` MCP server (`.mcp.json` and the other agents' configs are in the
+     repo); `serverpod start` in `wonky_server` attaches to it.
+  7. Open a pull request (the agent helps): PR rules (§13.1), one task per PR, the
+     `Wonky-Task:` and `Wonky-Claim:` lines, the checks *Wonky task* and *Wonky task review*, and
+     auto-close after 7 days without a valid task.
+  8. Sign the CLA and follow up (B13): the Serverpod CLA is signed once, on GitHub, on the first
      pull request, by replying to the CLA Assistant bot; then check back once the pull request is
      reviewed and fix what the review points out.
-  10. License (BSD-3-Clause) and security issues: email `security@serverpod.dev`, never an issue
-      or PR (`SECURITY.md`).
-- **In-app page** `/improvements/contribute`: a short version of steps 1–9 with copy buttons and
-  a link to the full file on GitHub. Step 1 (and the task page's *Set up Wonky Work locally*)
-  starts with *Install Flutter, Dart and the Serverpod CLI: Serverpod installation guide*, a link
-  through the external-link confirmation; the commands are `boardSetupCommands` (no Docker step);
-  step 9 has the CLA reply line (`boardClaSignLine`) to copy; under the steps, the license and
-  security lines. The text is part of the app's strings, not fetched, because the board must work
+  9. License (BSD-3-Clause) and security issues: email `security@serverpod.dev`, never an issue
+     or PR (`SECURITY.md`).
+- **In-app page** `/improvements/contribute`: a short version of steps 1–8 with copy buttons and
+  a link to the full file on GitHub. Links are small outline buttons under a step's text, through
+  the external-link confirmation where they leave the app: step 1 *Serverpod installation guide*,
+  step 3 *Fork on GitHub*, step 6 *Up for grabs* (the board's tab), step 7 *View pull requests*
+  (`https://github.com/<repo>/pulls`; the step has no PR lines to copy, the agent writes them from
+  the prompt). The commands are `boardSetupCommands` (no run or Docker step); step 8 has the CLA
+  reply line (`boardClaSignLine`) to copy; under the steps, the license and security lines. The text is part of the app's strings, not fetched, because the board must work
   offline from GitHub.
 - **`.github/ISSUE_TEMPLATE/config.yml`** adds a contact link *Report bugs and suggest
   improvements in Wonky Work* (`https://wonky.work/improvements`) and sets

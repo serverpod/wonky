@@ -4157,14 +4157,12 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardHowToBuild => 'How to build it';
 
   @override
-  String get boardStepSetupNumber => '1.';
+  String boardStepSetup(String guide) {
+    return '1. Read the $guide and set up your development environment';
+  }
 
   @override
-  String get boardStepSetupLink => 'Set up your development environment';
-
-  @override
-  String get boardInstallTools =>
-      'Install Flutter, Dart and the Serverpod CLI:';
+  String get boardStepSetupLink => 'contribution guide';
 
   @override
   String get boardInstallGuide => 'Serverpod installation guide';
@@ -4176,8 +4174,11 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get boardStepPr => '3. Open a pull request';
 
   @override
-  String get boardStepPromptLocked =>
-      '2. Give your coding agent the prompt (claim the task to get the prompt).';
+  String get boardStepClaim => '2. Claim the task to get a prompt';
+
+  @override
+  String get boardStepPaste =>
+      '3. Paste the prompt into your AI agent using a frontier model';
 
   @override
   String get boardPrRules =>
@@ -4220,14 +4221,14 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardContribStep1 =>
-      'Install Flutter, Dart and the Serverpod CLI, and an AI coding agent that reads AGENTS.md, such as Claude Code.';
+      'Install Flutter, Serverpod, and a frontier coding agent such as Codex, Claude Code, Antigravity, or Cursor.';
 
   @override
-  String get boardContribStep2Title => 'Install or update the Serverpod CLI';
+  String get boardContribStep2Title => 'Get the right version of Serverpod';
 
   @override
   String get boardContribStep2 =>
-      'It runs the server and the apps. The same command updates an installed CLI to this version. Add Dart\'s install directory to your PATH if serverpod is not found.';
+      'Use Dart\'s install command to make sure that we are using the right version of Serverpod.';
 
   @override
   String get boardContribStep3Title => 'Fork the repository';
@@ -4244,7 +4245,7 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get boardContribStep4 =>
-      'Clone your fork to your machine (replace <you> with your GitHub username) and get the packages.';
+      'Clone your fork to your local machine (replace <you> with your GitHub username) and get the code.';
 
   @override
   String get boardContribStep5Title => 'Configure the server';
@@ -4254,31 +4255,27 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
       'Create your passwords file in wonky_server. Its development values work as they are; AI keys are optional.';
 
   @override
-  String get boardContribStep6Title => 'Start the server';
+  String get boardContribStep6Title => 'Pick a task';
 
   @override
   String get boardContribStep6 =>
-      'Run it in wonky_server: it starts the development database, applies the migrations and hot reloads. Start an app from its UI or let your agent do it through the serverpod MCP server (.mcp.json is in the repository). Sign up with any email; in development the code is in the server log.';
+      'Claim a task under Up for grabs, make sure you have wonky as the agent\'s working directory, let the agent do its job and review the result.';
 
   @override
-  String get boardContribStep7Title => 'Pick a task';
+  String get boardContribStep7Title => 'Open a pull request';
 
   @override
   String get boardContribStep7 =>
-      'Claim a task under Up for grabs, paste its prompt into your agent and review the result.';
+      'Your agent will help you open a pull request towards Wonky\'s repository.';
 
   @override
-  String get boardContribStep8Title => 'Open a pull request';
+  String get boardContribPullRequests => 'View pull requests';
+
+  @override
+  String get boardContribStep8Title => 'Sign the CLA and follow up';
 
   @override
   String get boardContribStep8 =>
-      'One task per pull request. The description contains the Wonky-Task and Wonky-Claim lines from the task page. Pull requests without a valid task are closed after 7 days.';
-
-  @override
-  String get boardContribStep9Title => 'Sign the CLA and follow up';
-
-  @override
-  String get boardContribStep9 =>
       'If you haven\'t signed the Serverpod contributor license agreement (CLA) yet, sign it on GitHub: the CLA Assistant bot asks for it on your pull request, and you reply with the line below. You sign it once. Then check back once your pull request has been reviewed, and fix any issues the review points out.';
 
   @override
@@ -9246,15 +9243,12 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get boardHowToBuild => '[Ĥöŵ ţö ƀûîļð îţ one t]';
 
   @override
-  String get boardStepSetupNumber => '[1. o]';
+  String boardStepSetup(String guide) {
+    return '[1. Ŕéåð ţĥé $guide åñð šéţ ûþ ýöûŕ ðéṽéļöþɱéñţ éñṽîŕöñɱéñţ one two three fo]';
+  }
 
   @override
-  String get boardStepSetupLink =>
-      '[Šéţ ûþ ýöûŕ ðéṽéļöþɱéñţ éñṽîŕöñɱéñţ one two thr]';
-
-  @override
-  String get boardInstallTools =>
-      '[Îñšţåļļ Ƒļûţţéŕ, Ðåŕţ åñð ţĥé Šéŕṽéŕþöð ÇĻÎ: one two three]';
+  String get boardStepSetupLink => '[çöñţŕîƀûţîöñ ĝûîðé one tw]';
 
   @override
   String get boardInstallGuide => '[Šéŕṽéŕþöð îñšţåļļåţîöñ ĝûîðé one two th]';
@@ -9267,8 +9261,11 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get boardStepPr => '[3. Öþéñ å þûļļ ŕéǫûéšţ one two]';
 
   @override
-  String get boardStepPromptLocked =>
-      '[2. Ĝîṽé ýöûŕ çöðîñĝ åĝéñţ ţĥé þŕöɱþţ (çļåîɱ ţĥé ţåšķ ţö ĝéţ ţĥé þŕöɱþţ). one two three four fi]';
+  String get boardStepClaim => '[2. Çļåîɱ ţĥé ţåšķ ţö ĝéţ å þŕöɱþţ one two th]';
+
+  @override
+  String get boardStepPaste =>
+      '[3. Þåšţé ţĥé þŕöɱþţ îñţö ýöûŕ ÅÎ åĝéñţ ûšîñĝ å ƒŕöñţîéŕ ɱöðéļ one two three four]';
 
   @override
   String get boardPrRules =>
@@ -9312,15 +9309,15 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardContribStep1 =>
-      '[Îñšţåļļ Ƒļûţţéŕ, Ðåŕţ åñð ţĥé Šéŕṽéŕþöð ÇĻÎ, åñð åñ ÅÎ çöðîñĝ åĝéñţ ţĥåţ ŕéåðš ÅĜÉÑŢŠ.ɱð, šûçĥ åš Çļåûðé Çöðé. one two three four five six seven]';
+      '[Îñšţåļļ Ƒļûţţéŕ, Šéŕṽéŕþöð, åñð å ƒŕöñţîéŕ çöðîñĝ åĝéñţ šûçĥ åš Çöðéẋ, Çļåûðé Çöðé, Åñţîĝŕåṽîţý, öŕ Çûŕšöŕ. one two three four five six seven]';
 
   @override
   String get boardContribStep2Title =>
-      '[Îñšţåļļ öŕ ûþðåţé ţĥé Šéŕṽéŕþöð ÇĻÎ one two thr]';
+      '[Ĝéţ ţĥé ŕîĝĥţ ṽéŕšîöñ öƒ Šéŕṽéŕþöð one two thr]';
 
   @override
   String get boardContribStep2 =>
-      '[Îţ ŕûñš ţĥé šéŕṽéŕ åñð ţĥé åþþš. Ţĥé šåɱé çöɱɱåñð ûþðåţéš åñ îñšţåļļéð ÇĻÎ ţö ţĥîš ṽéŕšîöñ. Åðð Ðåŕţ\'š îñšţåļļ ðîŕéçţöŕý ţö ýöûŕ ÞÅŢĤ îƒ šéŕṽéŕþöð îš ñöţ ƒöûñð. one two three four five six seven eight nine te]';
+      '[Ûšé Ðåŕţ\'š îñšţåļļ çöɱɱåñð ţö ɱåķé šûŕé ţĥåţ ŵé åŕé ûšîñĝ ţĥé ŕîĝĥţ ṽéŕšîöñ öƒ Šéŕṽéŕþöð. one two three four five si]';
 
   @override
   String get boardContribStep3Title => '[Ƒöŕķ ţĥé ŕéþöšîţöŕý one tw]';
@@ -9337,7 +9334,7 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get boardContribStep4 =>
-      '[Çļöñé ýöûŕ ƒöŕķ ţö ýöûŕ ɱåçĥîñé (ŕéþļåçé <ýöû> ŵîţĥ ýöûŕ ĜîţĤûƀ ûšéŕñåɱé) åñð ĝéţ ţĥé þåçķåĝéš. one two three four five six]';
+      '[Çļöñé ýöûŕ ƒöŕķ ţö ýöûŕ ļöçåļ ɱåçĥîñé (ŕéþļåçé <ýöû> ŵîţĥ ýöûŕ ĜîţĤûƀ ûšéŕñåɱé) åñð ĝéţ ţĥé çöðé. one two three four five six s]';
 
   @override
   String get boardContribStep5Title => '[Çöñƒîĝûŕé ţĥé šéŕṽéŕ one two]';
@@ -9347,31 +9344,27 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
       '[Çŕéåţé ýöûŕ þåššŵöŕðš ƒîļé îñ ŵöñķý_šéŕṽéŕ. Îţš ðéṽéļöþɱéñţ ṽåļûéš ŵöŕķ åš ţĥéý åŕé; ÅÎ ķéýš åŕé öþţîöñåļ. one two three four five six seve]';
 
   @override
-  String get boardContribStep6Title => '[Šţåŕţ ţĥé šéŕṽéŕ one t]';
+  String get boardContribStep6Title => '[Þîçķ å ţåšķ one]';
 
   @override
   String get boardContribStep6 =>
-      '[Ŕûñ îţ îñ ŵöñķý_šéŕṽéŕ: îţ šţåŕţš ţĥé ðéṽéļöþɱéñţ ðåţåƀåšé, åþþļîéš ţĥé ɱîĝŕåţîöñš åñð ĥöţ ŕéļöåðš. Šţåŕţ åñ åþþ ƒŕöɱ îţš ÛÎ öŕ ļéţ ýöûŕ åĝéñţ ðö îţ ţĥŕöûĝĥ ţĥé šéŕṽéŕþöð ṀÇÞ šéŕṽéŕ (.ɱçþ.ĵšöñ îš îñ ţĥé ŕéþöšîţöŕý). Šîĝñ ûþ ŵîţĥ åñý éɱåîļ; îñ ðéṽéļöþɱéñţ ţĥé çöðé îš îñ ţĥé šéŕṽéŕ ļöĝ. one two three four five six seven eight nine ten one two three four five six seven]';
+      '[Çļåîɱ å ţåšķ ûñðéŕ Ûþ ƒöŕ ĝŕåƀš, ɱåķé šûŕé ýöû ĥåṽé ŵöñķý åš ţĥé åĝéñţ\'š ŵöŕķîñĝ ðîŕéçţöŕý, ļéţ ţĥé åĝéñţ ðö îţš ĵöƀ åñð ŕéṽîéŵ ţĥé ŕéšûļţ. one two three four five six seven eight]';
 
   @override
-  String get boardContribStep7Title => '[Þîçķ å ţåšķ one]';
+  String get boardContribStep7Title => '[Öþéñ å þûļļ ŕéǫûéšţ one tw]';
 
   @override
   String get boardContribStep7 =>
-      '[Çļåîɱ å ţåšķ ûñðéŕ Ûþ ƒöŕ ĝŕåƀš, þåšţé îţš þŕöɱþţ îñţö ýöûŕ åĝéñţ åñð ŕéṽîéŵ ţĥé ŕéšûļţ. one two three four five si]';
+      '[Ýöûŕ åĝéñţ ŵîļļ ĥéļþ ýöû öþéñ å þûļļ ŕéǫûéšţ ţöŵåŕðš Ŵöñķý\'š ŕéþöšîţöŕý. one two three four fiv]';
 
   @override
-  String get boardContribStep8Title => '[Öþéñ å þûļļ ŕéǫûéšţ one tw]';
+  String get boardContribPullRequests => '[Ṽîéŵ þûļļ ŕéǫûéšţš one tw]';
+
+  @override
+  String get boardContribStep8Title => '[Šîĝñ ţĥé ÇĻÅ åñð ƒöļļöŵ ûþ one two]';
 
   @override
   String get boardContribStep8 =>
-      '[Öñé ţåšķ þéŕ þûļļ ŕéǫûéšţ. Ţĥé ðéšçŕîþţîöñ çöñţåîñš ţĥé Ŵöñķý-Ţåšķ åñð Ŵöñķý-Çļåîɱ ļîñéš ƒŕöɱ ţĥé ţåšķ þåĝé. Þûļļ ŕéǫûéšţš ŵîţĥöûţ å ṽåļîð ţåšķ åŕé çļöšéð åƒţéŕ 7 ðåýš. one two three four five six seven eight nine ten o]';
-
-  @override
-  String get boardContribStep9Title => '[Šîĝñ ţĥé ÇĻÅ åñð ƒöļļöŵ ûþ one two]';
-
-  @override
-  String get boardContribStep9 =>
       '[Îƒ ýöû ĥåṽéñ\'ţ šîĝñéð ţĥé Šéŕṽéŕþöð çöñţŕîƀûţöŕ ļîçéñšé åĝŕééɱéñţ (ÇĻÅ) ýéţ, šîĝñ îţ öñ ĜîţĤûƀ: ţĥé ÇĻÅ Åššîšţåñţ ƀöţ åšķš ƒöŕ îţ öñ ýöûŕ þûļļ ŕéǫûéšţ, åñð ýöû ŕéþļý ŵîţĥ ţĥé ļîñé ƀéļöŵ. Ýöû šîĝñ îţ öñçé. Ţĥéñ çĥéçķ ƀåçķ öñçé ýöûŕ þûļļ ŕéǫûéšţ ĥåš ƀééñ ŕéṽîéŵéð, åñð ƒîẋ åñý îššûéš ţĥé ŕéṽîéŵ þöîñţš öûţ. one two three four five six seven eight nine ten one two three four five six seven eight]';
 
   @override

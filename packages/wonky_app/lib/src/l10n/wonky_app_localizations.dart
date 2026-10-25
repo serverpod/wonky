@@ -7198,23 +7198,17 @@ abstract class WonkyAppLocalizations {
   /// **'How to build it'**
   String get boardHowToBuild;
 
-  /// The number of the first step of How to build it, before the link boardStepSetupLink.
+  /// Step 1 of How to build it. {guide} is the link boardStepSetupLink to the How to contribute page.
   ///
   /// In en, this message translates to:
-  /// **'1.'**
-  String get boardStepSetupNumber;
+  /// **'1. Read the {guide} and set up your development environment'**
+  String boardStepSetup(String guide);
 
-  /// Step 1 of How to build it: a link to the How to contribute page.
+  /// The link in boardStepSetup: opens the How to contribute page.
   ///
   /// In en, this message translates to:
-  /// **'Set up your development environment'**
+  /// **'contribution guide'**
   String get boardStepSetupLink;
-
-  /// No description provided for @boardInstallTools.
-  ///
-  /// In en, this message translates to:
-  /// **'Install Flutter, Dart and the Serverpod CLI:'**
-  String get boardInstallTools;
 
   /// No description provided for @boardInstallGuide.
   ///
@@ -7234,11 +7228,17 @@ abstract class WonkyAppLocalizations {
   /// **'3. Open a pull request'**
   String get boardStepPr;
 
-  /// No description provided for @boardStepPromptLocked.
+  /// Step 2 of How to build it for everyone but the claimant and admins, while the task is up for grabs.
   ///
   /// In en, this message translates to:
-  /// **'2. Give your coding agent the prompt (claim the task to get the prompt).'**
-  String get boardStepPromptLocked;
+  /// **'2. Claim the task to get a prompt'**
+  String get boardStepClaim;
+
+  /// Step 3 of How to build it for everyone but the claimant and admins, while the task is up for grabs.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Paste the prompt into your AI agent using a frontier model'**
+  String get boardStepPaste;
 
   /// No description provided for @boardPrRules.
   ///
@@ -7309,19 +7309,19 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardContribStep1.
   ///
   /// In en, this message translates to:
-  /// **'Install Flutter, Dart and the Serverpod CLI, and an AI coding agent that reads AGENTS.md, such as Claude Code.'**
+  /// **'Install Flutter, Serverpod, and a frontier coding agent such as Codex, Claude Code, Antigravity, or Cursor.'**
   String get boardContribStep1;
 
   /// No description provided for @boardContribStep2Title.
   ///
   /// In en, this message translates to:
-  /// **'Install or update the Serverpod CLI'**
+  /// **'Get the right version of Serverpod'**
   String get boardContribStep2Title;
 
   /// No description provided for @boardContribStep2.
   ///
   /// In en, this message translates to:
-  /// **'It runs the server and the apps. The same command updates an installed CLI to this version. Add Dart\'s install directory to your PATH if serverpod is not found.'**
+  /// **'Use Dart\'s install command to make sure that we are using the right version of Serverpod.'**
   String get boardContribStep2;
 
   /// No description provided for @boardContribStep3Title.
@@ -7351,7 +7351,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardContribStep4.
   ///
   /// In en, this message translates to:
-  /// **'Clone your fork to your machine (replace <you> with your GitHub username) and get the packages.'**
+  /// **'Clone your fork to your local machine (replace <you> with your GitHub username) and get the code.'**
   String get boardContribStep4;
 
   /// No description provided for @boardContribStep5Title.
@@ -7369,50 +7369,44 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @boardContribStep6Title.
   ///
   /// In en, this message translates to:
-  /// **'Start the server'**
+  /// **'Pick a task'**
   String get boardContribStep6Title;
 
   /// No description provided for @boardContribStep6.
   ///
   /// In en, this message translates to:
-  /// **'Run it in wonky_server: it starts the development database, applies the migrations and hot reloads. Start an app from its UI or let your agent do it through the serverpod MCP server (.mcp.json is in the repository). Sign up with any email; in development the code is in the server log.'**
+  /// **'Claim a task under Up for grabs, make sure you have wonky as the agent\'s working directory, let the agent do its job and review the result.'**
   String get boardContribStep6;
 
   /// No description provided for @boardContribStep7Title.
   ///
   /// In en, this message translates to:
-  /// **'Pick a task'**
+  /// **'Open a pull request'**
   String get boardContribStep7Title;
 
   /// No description provided for @boardContribStep7.
   ///
   /// In en, this message translates to:
-  /// **'Claim a task under Up for grabs, paste its prompt into your agent and review the result.'**
+  /// **'Your agent will help you open a pull request towards Wonky\'s repository.'**
   String get boardContribStep7;
+
+  /// No description provided for @boardContribPullRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'View pull requests'**
+  String get boardContribPullRequests;
 
   /// No description provided for @boardContribStep8Title.
   ///
   /// In en, this message translates to:
-  /// **'Open a pull request'**
+  /// **'Sign the CLA and follow up'**
   String get boardContribStep8Title;
 
   /// No description provided for @boardContribStep8.
   ///
   /// In en, this message translates to:
-  /// **'One task per pull request. The description contains the Wonky-Task and Wonky-Claim lines from the task page. Pull requests without a valid task are closed after 7 days.'**
-  String get boardContribStep8;
-
-  /// No description provided for @boardContribStep9Title.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign the CLA and follow up'**
-  String get boardContribStep9Title;
-
-  /// No description provided for @boardContribStep9.
-  ///
-  /// In en, this message translates to:
   /// **'If you haven\'t signed the Serverpod contributor license agreement (CLA) yet, sign it on GitHub: the CLA Assistant bot asks for it on your pull request, and you reply with the line below. You sign it once. Then check back once your pull request has been reviewed, and fix any issues the review points out.'**
-  String get boardContribStep9;
+  String get boardContribStep8;
 
   /// No description provided for @boardContribLicense.
   ///
