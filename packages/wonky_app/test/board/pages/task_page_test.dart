@@ -196,7 +196,7 @@ void main() {
 
     expect(find.text('Set up your development environment'), findsOneWidget);
     for (final line in const [
-      'dart install serverpod_cli 4.1.0-beta.3',
+      'dart install serverpod_cli 4.1.0-rc.1',
       'serverpod start',
     ]) {
       expect(
@@ -212,10 +212,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(t().location, '/improvements/contribute');
-    expect(
-      find.text('dart install serverpod_cli 4.1.0-beta.3'),
-      findsOneWidget,
-    );
+    expect(find.text('dart install serverpod_cli 4.1.0-rc.1'), findsOneWidget);
     expect(byKey('board.crumb.contribute'), findsOneWidget);
     await settleTooltips(tester);
   });

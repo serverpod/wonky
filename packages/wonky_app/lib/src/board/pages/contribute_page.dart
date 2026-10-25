@@ -17,7 +17,7 @@ String boardRepository(ShellServices s) =>
 
 /// The Serverpod CLI version of `CONTRIBUTING.md` step 2 (the `VERSION` in
 /// `.github/workflows/tests.yml`).
-const boardServerpodCliVersion = '4.1.0-beta.3';
+const boardServerpodCliVersion = '4.1.0-rc.1';
 
 /// Serverpod's installation guide (Flutter, Dart and the Serverpod CLI):
 /// the first setup step of `CONTRIBUTING.md` (specs/16 §10.3).

@@ -115,6 +115,7 @@ final class SheetsDevice {
     String title = 'Test',
     int rows = 50,
     int columns = 10,
+    Duration maintenanceDelay = const Duration(milliseconds: 20),
   }) async {
     final plan = creationPlan(
       file,
@@ -133,7 +134,7 @@ final class SheetsDevice {
         summary: plan.summary.toJson(),
       ),
     );
-    return openFile(file, role: Role.owner);
+    return openFile(file, role: Role.owner, maintenanceDelay: maintenanceDelay);
   }
 
   /// Opens [file] and waits until it is ready.

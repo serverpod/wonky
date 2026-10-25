@@ -71,4 +71,18 @@ void main() {
     expect(s.repairs, 0);
     expect(hub.file(file.uuid).head, head + 1);
   });
+
+  test('Given a spreadsheet created offline, when it opens with its outbox '
+      'pending and maintenance due at once, then the check waits for the '
+      'sync to open instead of failing', () async {
+    final local = UuidValue.fromString('0190a000-0000-7000-8000-0000000000f4');
+    final a = await SheetsDevice.start(hub, anna);
+    a.online = false;
+
+    final s = await a.create(local, maintenanceDelay: Duration.zero);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(s.pendingChanges, greaterThan(0));
+    expect(s.repairs, 0);
+  });
 }
