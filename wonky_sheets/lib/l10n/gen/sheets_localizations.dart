@@ -12301,7 +12301,7 @@ abstract class SheetsLocalizations {
   /// No description provided for @imageRejectedFormat.
   ///
   /// In en, this message translates to:
-  /// **'Only PNG, JPEG, GIF, WebP and BMP images can be inserted'**
+  /// **'Only PNG, JPEG, GIF, WebP and SVG images can be inserted'**
   String get imageRejectedFormat;
 
   /// No description provided for @imageRejectedTooLarge.

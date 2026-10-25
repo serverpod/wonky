@@ -220,13 +220,18 @@ void main() {
         );
         final reserved = (await TestStorage.row(anna)).reservedBytes;
         await TestFiles.putBytes(bo.session, fileUuid, _png);
-        await endpoints.file.completeUpload(bo.endpointSession, fileUuid);
+        final done = await endpoints.file.completeUpload(
+          bo.endpointSession,
+          fileUuid,
+        );
 
         expect(reserved, _png.length);
-        expect((await _row(anna, doc.uuid)).attachmentBytes, _png.length);
+        // At the size of the re-encoded WebP (specs/12 §1.1).
+        expect(done.mimeType, 'image/webp');
+        expect((await _row(anna, doc.uuid)).attachmentBytes, done.sizeBytes);
         expect(
           (await TestStorage.usage(anna)).documentsBytes,
-          before + _png.length,
+          before + done.sizeBytes,
         );
         expect((await TestStorage.row(anna)).reservedBytes, 0);
         expect((await TestStorage.row(bo)).usedBytes, 0);
@@ -692,14 +697,19 @@ void main() {
         final mcp = await McpHarness.forUser(anna);
         final doc = await TestDrive.document(endpoints, anna, markdown: 'A.');
 
-        await mcp.call('write.insert_image', {
+        final r = await mcp.call('write.insert_image', {
           'document_uuid': docOf(doc),
           'at': {'type': 'end'},
           'source': {'base64': base64Encode(_png), 'mime': 'image/png'},
           'alt': 'A dot',
         });
+        final file = await FileService.byUuid(
+          anna.session,
+          UuidValue.fromString(r['file_uuid']! as String),
+        );
 
-        expect((await _row(anna, doc.uuid)).attachmentBytes, _png.length);
+        expect(file!.mimeType, 'image/webp');
+        expect((await _row(anna, doc.uuid)).attachmentBytes, file.sizeBytes);
       });
     });
 

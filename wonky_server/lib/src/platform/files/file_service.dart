@@ -10,11 +10,15 @@ import '../common/time.dart';
 import '../config/wonky_config.dart';
 import '../sharing/access_service.dart';
 import '../storage/storage_service.dart';
+import 'image_optimizer.dart';
 import 'storage_reads.dart';
 
 /// Files in cloud storage (suite 12 §1.1, specs/13 §1): upload descriptions
 /// for client uploads with a client-chosen, idempotent [StoredFile.fileUuid],
 /// type and size checks, signed download URLs and server-written files.
+/// Images of documents, avatars and board screenshots are re-encoded as
+/// WebP when they arrive ([ImageOptimizer], specs/12 §1.1 *Image
+/// optimization*).
 abstract final class FileService {
   static const signedUrlLifetime = Duration(minutes: 15);
   static const importLifetime = Duration(hours: 24);
@@ -30,7 +34,6 @@ abstract final class FileService {
     'image/jpeg',
     'image/gif',
     'image/webp',
-    'image/bmp',
   };
 
   static const importMimeTypes = {
@@ -88,8 +91,12 @@ abstract final class FileService {
     required String mimeType,
     required int size,
     StoredFileKind kind = StoredFileKind.image,
+    ImageProfile? imageProfile,
   }) async {
     final mime = mimeType.toLowerCase().split(';').first.trim();
+    if (imageProfile != null && kind != StoredFileKind.image) {
+      throw Errors.invalid('Only images of documents have an image profile.');
+    }
     switch (kind) {
       case StoredFileKind.image:
       case StoredFileKind.avatar:
@@ -166,6 +173,12 @@ abstract final class FileService {
           mimeType: mime,
           sizeBytes: size,
           status: StoredFileStatus.pending,
+          imageProfile: switch (kind) {
+            StoredFileKind.image => imageProfile ?? ImageProfile.content,
+            StoredFileKind.avatar => ImageProfile.avatar,
+            StoredFileKind.boardScreenshot => ImageProfile.content,
+            _ => null,
+          },
           createdAt: nowUtc(),
           expiresAt: switch (kind) {
             StoredFileKind.importSource => nowUtc().add(importLifetime),
@@ -210,7 +223,11 @@ abstract final class FileService {
         ),
       );
 
-  /// Verifies the upload and marks the file ready (idempotent).
+  /// Verifies the upload and marks the file ready (idempotent). Images
+  /// with a [StoredFile.imageProfile] (and images of documents created
+  /// before profiles existed) are re-encoded for it first:
+  /// the file then points at the WebP (path, name, type and size) and the
+  /// upload is deleted.
   static Future<FileUrlView> completeUpload(
     Session session,
     Actor actor,
@@ -231,6 +248,7 @@ abstract final class FileService {
       throw Errors.invalid('The upload has not finished yet.');
     }
     var status = StoredFileStatus.ready;
+    var failure = 'The file content does not match its type.';
     if (imageMimeTypes.contains(file.mimeType)) {
       // The magic bytes only (CQ-30): never the whole object.
       final size = await StorageReads.length(session, file) ?? 0;
@@ -249,19 +267,59 @@ abstract final class FileService {
         );
       }
     }
+    var done = file;
+    // Images of documents created before profiles existed are content.
+    final profile =
+        file.imageProfile ??
+        (file.kind == StoredFileKind.image ? ImageProfile.content : null);
+    if (status == StoredFileStatus.ready && profile != null) {
+      try {
+        final optimized = await ImageOptimizer.optimize(
+          session,
+          storageId: file.storageId,
+          path: file.path,
+          mimeType: file.mimeType,
+          profile: profile,
+        );
+        if (optimized != null) {
+          done = file.copyWith(
+            path: optimized.path,
+            fileName: optimized.fileName,
+            mimeType: 'image/webp',
+            sizeBytes: optimized.sizeBytes,
+          );
+        }
+      } on UnreadableImageException catch (e) {
+        session.log('Unreadable image ${file.fileUuid}: $e');
+        status = StoredFileStatus.failed;
+        failure = 'The image could not be read.';
+        await session.storage.deleteFile(
+          storageId: file.storageId,
+          path: file.path,
+        );
+      }
+    }
     final updated = await session.db.transaction((tx) async {
       final row = await StoredFile.db.updateRow(
         session,
-        file.copyWith(status: status, completedAt: nowUtc()),
-        columns: (t) => [t.status, t.completedAt],
+        done.copyWith(status: status, completedAt: nowUtc()),
+        columns: (t) => [
+          t.status,
+          t.completedAt,
+          t.path,
+          t.fileName,
+          t.mimeType,
+          t.sizeBytes,
+        ],
         transaction: tx,
       );
-      // (v2) Reserved → used (images), or released (Drive 03 §5).
+      // (v2) Reserved → used (images, at their re-encoded size), or
+      // released (Drive 03 §5).
       if (status == StoredFileStatus.ready) {
         await StorageService.instance.commitReservation(
           session,
           file.fileUuid,
-          file.sizeBytes,
+          done.sizeBytes,
           transaction: tx,
         );
       } else {
@@ -273,13 +331,18 @@ abstract final class FileService {
       }
       return row;
     });
+    if (done.path != file.path) {
+      // Only now: the row no longer points at the upload.
+      await _deleteObject(session, file.storageId, file.path);
+    }
     if (status == StoredFileStatus.failed) {
-      throw Errors.invalid('The file content does not match its type.');
+      throw Errors.invalid(failure);
     }
     return _view(session, updated);
   }
 
-  /// Detects the image type from magic bytes.
+  /// Detects the image type of documents from magic bytes (PNG, JPEG, GIF,
+  /// WebP; no BMP).
   static String? sniffImage(Uint8List b) {
     bool starts(List<int> sig, [int at = 0]) {
       if (b.length < at + sig.length) return false;
@@ -298,7 +361,6 @@ abstract final class FileService {
         starts([0x57, 0x45, 0x42, 0x50], 8)) {
       return 'image/webp';
     }
-    if (starts([0x42, 0x4D])) return 'image/bmp';
     return null;
   }
 
@@ -389,6 +451,10 @@ abstract final class FileService {
   // ------------------------------------------------------- server writes
 
   /// Stores bytes written by the server (exports, snapshots, bytecode).
+  /// With [optimize], an image ([StoredFileKind.image]) that enters a
+  /// document (imports, MCP inserts, copies of Drive image files) is
+  /// re-encoded like an upload ([ImageOptimizer], content profile); it is
+  /// kept as given when that fails or the bytes aren't a readable image.
   static Future<StoredFile> storeServerFile(
     Session session, {
     required int? ownerId,
@@ -399,6 +465,7 @@ abstract final class FileService {
     required Uint8List bytes,
     DateTime? expiresAt,
     UuidValue? fileUuid,
+    bool optimize = false,
   }) async {
     final uuid = fileUuid ?? const Uuid().v7obj();
     final path = 'files/${kind.name}/${uuid.uuid}/${_safeName(fileName)}';
@@ -407,6 +474,24 @@ abstract final class FileService {
       path: path,
       byteData: ByteData.sublistView(bytes),
     );
+    final profile = optimize && kind == StoredFileKind.image
+        ? ImageProfile.content
+        : null;
+    OptimizedImage? optimized;
+    if (profile != null) {
+      try {
+        optimized = await ImageOptimizer.optimize(
+          session,
+          storageId: 'private',
+          path: path,
+          mimeType: mimeType,
+          profile: profile,
+        );
+      } on UnreadableImageException catch (e) {
+        session.log('Unreadable image $uuid kept as given: $e');
+      }
+      if (optimized != null) await _deleteObject(session, 'private', path);
+    }
     final now = nowUtc();
     return StoredFile.db.insertRow(
       session,
@@ -416,11 +501,12 @@ abstract final class FileService {
         itemId: itemId,
         kind: kind,
         storageId: 'private',
-        path: path,
-        fileName: _safeName(fileName),
-        mimeType: mimeType,
-        sizeBytes: bytes.length,
+        path: optimized?.path ?? path,
+        fileName: optimized?.fileName ?? _safeName(fileName),
+        mimeType: optimized == null ? mimeType : 'image/webp',
+        sizeBytes: optimized?.sizeBytes ?? bytes.length,
         status: StoredFileStatus.ready,
+        imageProfile: profile,
         createdAt: now,
         completedAt: now,
         expiresAt: expiresAt,
@@ -517,6 +603,8 @@ abstract final class FileService {
       mimeType: source.mimeType,
       bytes: bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
       fileUuid: newFileUuid,
+      // Images of documents are WebP already; Drive files are as uploaded.
+      optimize: source.kind == StoredFileKind.driveFile,
     );
     try {
       await StorageService.instance.addAttachment(
@@ -539,20 +627,23 @@ abstract final class FileService {
   }
 
   static Future<void> _deleteStored(Session session, StoredFile file) async {
-    try {
-      await session.storage.deleteFile(
-        storageId: file.storageId,
-        path: file.path,
-      );
-    } on Exception catch (e) {
-      session.log(
-        'Could not delete ${file.path}: $e',
-        level: LogLevel.warning,
-      );
-    }
+    await _deleteObject(session, file.storageId, file.path);
     await StoredFile.db.deleteRow(session, file);
     // (v2) Abandoned uploads give their reserved quota back.
     await StorageService.instance.releaseReservation(session, file.fileUuid);
+  }
+
+  /// Deletes the object at [path] (logged when that fails).
+  static Future<void> _deleteObject(
+    Session session,
+    String storageId,
+    String path,
+  ) async {
+    try {
+      await session.storage.deleteFile(storageId: storageId, path: path);
+    } on Exception catch (e) {
+      session.log('Could not delete $path: $e', level: LogLevel.warning);
+    }
   }
 
   /// Deletes the stored files belonging to [itemIds] (before deleting the

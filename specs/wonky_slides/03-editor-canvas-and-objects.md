@@ -695,7 +695,7 @@ Text in shapes: double-click/Enter/typing edits; defaults `anchor: middle`, `ali
 
 | Source | Flow | Command |
 |--------|------|---------|
-| Upload | `file_picker` (png, jpg, jpeg, gif, webp, svg, bmp) → upload | `slides.insert.image {source: upload}` |
+| Upload | `file_picker` (png, jpg, jpeg, gif, webp, svg; no BMP) → upload | `slides.insert.image {source: upload}` |
 | Drag & drop | From the OS onto the canvas (web drop zone; `desktop_drop` deferred with desktop, suite 01 A13); several files insert cascaded | — |
 | Paste | Image data from the OS clipboard (§12.5) | `shell.edit.paste` |
 | Wonky Drive | Drive picker filtered to images (D2 `file` kind) → server copies the file into the deck | `slides.insert.image {source: drive, fileItemUuid}` |
@@ -709,7 +709,7 @@ Text in shapes: double-click/Enter/typing edits; defaults `anchor: middle`, `ali
 - Size: natural size at 1 px = 1 su, scaled down to fit 80 % of the slide; placed centered (or at
   the drop point). Images > 40 MP are downscaled client-side to 40 MP (JPEG q 0.9 / PNG); SVG is
   rasterized at 2× its intrinsic size (max 4096 px) and the SVG kept as the original (P2: vector
-  SVG rendering); BMP → PNG; animated GIFs animate in the editor and presenting (first frame in
+  SVG rendering); BMP isn't supported (the toast below); animated GIFs animate in the editor and presenting (first frame in
   PDF/thumbnails).
 - Unsupported/corrupt file → toast "Couldn't insert 'x.heic' — this image type isn't supported."
 
@@ -934,7 +934,7 @@ rules are normative for all renderers (canvas, thumbnails, presenting, PDF):
 ### 6.12 As built (SL-15): images and tables
 
 - **Code.** App `features/elements/image/` (`image_rules.dart` formats, sniffing,
-  `SlidesImagePrep` (SVG → PNG at 2× ≤ 4,096 px, BMP → PNG, > 40 MP downscaled to PNG),
+  `SlidesImagePrep` (SVG → PNG at 2× ≤ 4,096 px, > 40 MP downscaled to PNG),
   `SlidesImageIo` picker/save; `image_geometry.dart` `ImageGeometry` (placement, cover crop,
   reset height) and `CropState`; `crop_mode.dart` `ImageCropMode`; `image_canvas.dart`
   (`ImageDrops`, `ImageCanvasLayer`: web drop zone + out-of-storage badges); `image_dialogs.dart`

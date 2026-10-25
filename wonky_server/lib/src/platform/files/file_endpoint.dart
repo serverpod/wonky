@@ -15,7 +15,9 @@ class FileEndpoint extends Endpoint {
   bool get requireLogin => true;
 
   /// Upload description for `FileUploader`. [kind] defaults to image;
-  /// imports use `importSource` without an item.
+  /// imports use `importSource` without an item. Images are re-encoded as
+  /// WebP on completion for [imageProfile] (default `content`; a story's
+  /// cover uses `cover`).
   Future<FileUploadTicket> createUpload(
     Session session,
     UuidValue fileUuid,
@@ -24,6 +26,7 @@ class FileEndpoint extends Endpoint {
     String mimeType,
     int size, {
     StoredFileKind? kind,
+    ImageProfile? imageProfile,
   }) async => FileService.createUpload(
     session,
     await UserService.actorOf(session),
@@ -33,6 +36,7 @@ class FileEndpoint extends Endpoint {
     mimeType: mimeType,
     size: size,
     kind: kind ?? StoredFileKind.image,
+    imageProfile: imageProfile,
   );
 
   Future<FileUrlView> completeUpload(

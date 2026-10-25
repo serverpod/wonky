@@ -39,7 +39,7 @@ abstract final class SlidesImageRules {
   /// Bitmaps above 40 megapixels are downscaled to 40 MP.
   static const maxPixels = 40 * 1000 * 1000;
 
-  static const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+  static const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
 
   static const svgMime = 'image/svg+xml';
 
@@ -64,7 +64,6 @@ abstract final class SlidesImageRules {
     'jpg' || 'jpeg' => 'image/jpeg',
     'gif' => 'image/gif',
     'webp' => 'image/webp',
-    'bmp' => 'image/bmp',
     'svg' => svgMime,
     _ => null,
   };
@@ -77,7 +76,7 @@ abstract final class SlidesImageRules {
     return true;
   }
 
-  /// Sniffs PNG, JPEG, GIF, WebP, BMP and SVG.
+  /// Sniffs PNG, JPEG, GIF, WebP and SVG (BMP isn't supported).
   static String? sniff(Uint8List b) {
     if (b.length >= 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4e) {
       return 'image/png';
@@ -91,7 +90,6 @@ abstract final class SlidesImageRules {
         String.fromCharCodes(b.sublist(8, 12)) == 'WEBP') {
       return 'image/webp';
     }
-    if (_startsWith(b, 'BM')) return 'image/bmp';
     final n = b.length < 2048 ? b.length : 2048;
     final head = String.fromCharCodes(b.sublist(0, n)).trimLeft();
     final start = head.startsWith('﻿') ? head.substring(1) : head;
@@ -117,8 +115,8 @@ class PreparedImage {
 }
 
 /// Client-side processing of inserted images (03 §6.5.1): SVGs are
-/// rasterized at 2× their intrinsic size (≤ 4,096 px) to PNG, BMPs become
-/// PNGs, bitmaps above 40 MP are downscaled to 40 MP (PNG). Animated GIFs
+/// rasterized at 2× their intrinsic size (≤ 4,096 px) to PNG, bitmaps above
+/// 40 MP are downscaled to 40 MP (PNG). Animated GIFs
 /// are kept as they are (the stage draws their first frame).
 abstract final class SlidesImagePrep {
   /// Longest side of a rasterized SVG.
@@ -154,15 +152,6 @@ abstract final class SlidesImagePrep {
         PickedImage(name: _png(img.name), bytes: png, mimeType: 'image/png'),
         tw,
         th,
-      );
-    }
-    if (img.mimeType == 'image/bmp') {
-      final png = await _pngOf(frame.image);
-      frame.image.dispose();
-      return PreparedImage(
-        PickedImage(name: _png(img.name), bytes: png, mimeType: 'image/png'),
-        w,
-        h,
       );
     }
     frame.image.dispose();

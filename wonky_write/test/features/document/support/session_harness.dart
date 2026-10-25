@@ -82,7 +82,15 @@ class _FakeVersions extends _Unimplemented implements VersionRepository {}
 /// In-memory uploads (`FileRepository`): every upload is ready at once.
 class FakeFiles implements FileRepository {
   /// The uploads, in order.
-  final uploads = <({UuidValue fileUuid, UuidValue? itemUuid, String name})>[];
+  final uploads =
+      <
+        ({
+          UuidValue fileUuid,
+          UuidValue? itemUuid,
+          String name,
+          ImageProfile? imageProfile,
+        })
+      >[];
 
   FileUrlView _view(UuidValue fileUuid, String name, String mime, int size) =>
       FileUrlView(
@@ -101,8 +109,14 @@ class FakeFiles implements FileRepository {
     required String mimeType,
     required Uint8List bytes,
     StoredFileKind kind = StoredFileKind.image,
+    ImageProfile? imageProfile,
   }) async {
-    uploads.add((fileUuid: fileUuid, itemUuid: itemUuid, name: fileName));
+    uploads.add((
+      fileUuid: fileUuid,
+      itemUuid: itemUuid,
+      name: fileName,
+      imageProfile: imageProfile,
+    ));
     return _view(fileUuid, fileName, mimeType, bytes.length);
   }
 

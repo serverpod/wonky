@@ -24,9 +24,9 @@ class PreparedImage {
 }
 
 /// Client-side processing of inserted images (08 §10.1): SVGs are
-/// rasterized to PNG (at 2× their size for crisp zooming, ≤ 4000 px), BMPs
-/// become PNGs, and images above 25 megapixels are downscaled to fit (PNG)
-/// before the upload. Animated GIFs are kept as they are.
+/// rasterized to PNG (at 2× their size for crisp zooming, ≤ 4000 px), and
+/// images above 25 megapixels are downscaled to fit (PNG) before the
+/// upload. Animated GIFs are kept as they are.
 abstract final class SheetsImagePrep {
   /// Longest side of a rasterized SVG.
   static const maxSvgSide = 4000;
@@ -62,14 +62,6 @@ abstract final class SheetsImagePrep {
       return PreparedImage(
         PickedImage(name: _png(img.name), bytes: png, mimeType: 'image/png'),
         Size(tw.toDouble(), th.toDouble()),
-      );
-    }
-    if (img.mimeType == 'image/bmp') {
-      final png = await _pngOf(frame.image);
-      frame.image.dispose();
-      return PreparedImage(
-        PickedImage(name: _png(img.name), bytes: png, mimeType: 'image/png'),
-        Size(w.toDouble(), h.toDouble()),
       );
     }
     frame.image.dispose();

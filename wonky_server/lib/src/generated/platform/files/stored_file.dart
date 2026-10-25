@@ -12,6 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'package:serverpod/serverpod.dart' as _is;
+import '../../platform/files/image_profile.dart' as _ilodsldt;
 import '../../platform/files/stored_file_kind.dart' as _iytry1n5;
 import '../../platform/files/stored_file_status.dart' as _is8j7as8;
 
@@ -31,6 +32,7 @@ abstract class StoredFile
     required this.mimeType,
     required this.sizeBytes,
     required this.status,
+    this.imageProfile,
     required this.createdAt,
     this.completedAt,
     this.expiresAt,
@@ -48,6 +50,7 @@ abstract class StoredFile
     required String mimeType,
     required int sizeBytes,
     required _is8j7as8.StoredFileStatus status,
+    _ilodsldt.ImageProfile? imageProfile,
     required DateTime createdAt,
     DateTime? completedAt,
     DateTime? expiresAt,
@@ -72,6 +75,11 @@ abstract class StoredFile
       status: _is8j7as8.StoredFileStatus.fromJson(
         (jsonSerialization['status'] as String),
       ),
+      imageProfile: jsonSerialization['imageProfile'] == null
+          ? null
+          : _ilodsldt.ImageProfile.fromJson(
+              (jsonSerialization['imageProfile'] as String),
+            ),
       createdAt: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
       ),
@@ -114,6 +122,11 @@ abstract class StoredFile
 
   _is8j7as8.StoredFileStatus status;
 
+  /// (Images of documents, avatars, board screenshots) how the upload is
+  /// re-encoded on completion (specs/12 §1.1); null for other kinds and
+  /// older files.
+  _ilodsldt.ImageProfile? imageProfile;
+
   DateTime createdAt;
 
   DateTime? completedAt;
@@ -138,6 +151,7 @@ abstract class StoredFile
     String? mimeType,
     int? sizeBytes,
     _is8j7as8.StoredFileStatus? status,
+    _ilodsldt.ImageProfile? imageProfile,
     DateTime? createdAt,
     DateTime? completedAt = const _is.$UndefinedDateTime(),
     DateTime? expiresAt = const _is.$UndefinedDateTime(),
@@ -157,6 +171,7 @@ abstract class StoredFile
       'mimeType': mimeType,
       'sizeBytes': sizeBytes,
       'status': status.toJson(),
+      if (imageProfile != null) 'imageProfile': imageProfile?.toJson(),
       'createdAt': createdAt.toJson(),
       if (completedAt != null) 'completedAt': completedAt?.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
@@ -178,6 +193,7 @@ abstract class StoredFile
       'mimeType': mimeType,
       'sizeBytes': sizeBytes,
       'status': status.toJson(),
+      if (imageProfile != null) 'imageProfile': imageProfile?.toJson(),
       'createdAt': createdAt.toJson(),
       if (completedAt != null) 'completedAt': completedAt?.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
@@ -227,6 +243,7 @@ class _StoredFileImpl extends StoredFile {
     required String mimeType,
     required int sizeBytes,
     required _is8j7as8.StoredFileStatus status,
+    _ilodsldt.ImageProfile? imageProfile,
     required DateTime createdAt,
     DateTime? completedAt,
     DateTime? expiresAt,
@@ -242,6 +259,7 @@ class _StoredFileImpl extends StoredFile {
          mimeType: mimeType,
          sizeBytes: sizeBytes,
          status: status,
+         imageProfile: imageProfile,
          createdAt: createdAt,
          completedAt: completedAt,
          expiresAt: expiresAt,
@@ -263,6 +281,7 @@ class _StoredFileImpl extends StoredFile {
     String? mimeType,
     int? sizeBytes,
     _is8j7as8.StoredFileStatus? status,
+    Object? imageProfile = _Undefined,
     DateTime? createdAt,
     DateTime? completedAt = const _is.$UndefinedDateTime(),
     DateTime? expiresAt = const _is.$UndefinedDateTime(),
@@ -279,6 +298,9 @@ class _StoredFileImpl extends StoredFile {
       mimeType: mimeType ?? this.mimeType,
       sizeBytes: sizeBytes ?? this.sizeBytes,
       status: status ?? this.status,
+      imageProfile: imageProfile is _ilodsldt.ImageProfile?
+          ? imageProfile
+          : this.imageProfile,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt is _is.UndefinedSentinel
           ? this.completedAt
@@ -347,6 +369,13 @@ class StoredFileUpdateTable extends _is.UpdateTable<StoredFileTable> {
     value,
   );
 
+  _is.ColumnValue<_ilodsldt.ImageProfile, _ilodsldt.ImageProfile> imageProfile(
+    _ilodsldt.ImageProfile? value,
+  ) => _is.ColumnValue(
+    table.imageProfile,
+    value,
+  );
+
   _is.ColumnValue<DateTime, DateTime> createdAt(DateTime value) =>
       _is.ColumnValue(
         table.createdAt,
@@ -411,6 +440,11 @@ class StoredFileTable extends _is.Table<int?> {
       this,
       _is.EnumSerialization.byName,
     );
+    imageProfile = _is.ColumnEnum(
+      'imageProfile',
+      this,
+      _is.EnumSerialization.byName,
+    );
     createdAt = _is.ColumnDateTime(
       'createdAt',
       this,
@@ -448,6 +482,11 @@ class StoredFileTable extends _is.Table<int?> {
 
   late final _is.ColumnEnum<_is8j7as8.StoredFileStatus> status;
 
+  /// (Images of documents, avatars, board screenshots) how the upload is
+  /// re-encoded on completion (specs/12 §1.1); null for other kinds and
+  /// older files.
+  late final _is.ColumnEnum<_ilodsldt.ImageProfile> imageProfile;
+
   late final _is.ColumnDateTime createdAt;
 
   late final _is.ColumnDateTime completedAt;
@@ -467,6 +506,7 @@ class StoredFileTable extends _is.Table<int?> {
     mimeType,
     sizeBytes,
     status,
+    imageProfile,
     createdAt,
     completedAt,
     expiresAt,

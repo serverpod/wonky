@@ -35,7 +35,8 @@ class UserEndpoint extends Endpoint {
   );
 
   /// Starts an avatar upload (upload description flow); finish with
-  /// `file.completeUpload(fileUuid)` and [setAvatar].
+  /// `file.completeUpload(fileUuid)` (stores a 256 × 256 WebP) and
+  /// [setAvatar].
   Future<FileUploadTicket> uploadAvatar(
     Session session,
     UuidValue fileUuid,

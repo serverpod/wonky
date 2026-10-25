@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:image/image.dart' as img;
 import 'package:test/test.dart';
 import 'package:wonky_sheets_core/model.dart';
 import 'package:wonky_sheets_core/src/addressing/grid_geometry.dart';
@@ -15,6 +16,7 @@ WorkbookDocument _read(
   String workbookPr = '',
   String workbookExtra = '',
   Map<String, String> parts = const {},
+  Map<String, List<int>> binaryParts = const {},
   XlsxImportOptions options = const XlsxImportOptions(),
 }) => XlsxImporter.import(
   buildXlsx(
@@ -24,6 +26,7 @@ WorkbookDocument _read(
     workbookPr: workbookPr,
     workbookExtra: workbookExtra,
     parts: parts,
+    binaryParts: binaryParts,
   ),
   options,
 );
@@ -419,6 +422,57 @@ void main() {
         },
       );
       expect(_cell(doc, 'A1')!.note, 'Check this');
+    });
+  });
+
+  group('Given a picture in BMP format', () {
+    const rel =
+        'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const pkgRel =
+        'http://schemas.openxmlformats.org/package/2006/relationships';
+    WorkbookDocument withMedia(List<int> bmp) => _read(
+      [
+        const TestSheet(
+          'S',
+          data: '<row r="1"><c r="A1"><v>1</v></c></row>',
+          after: '<drawing r:id="rId1"/>',
+          rels: {'rId1': ('drawing', '../drawings/drawing1.xml', false)},
+        ),
+      ],
+      parts: {
+        'xl/drawings/drawing1.xml':
+            '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" '
+            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="$rel">'
+            '<xdr:oneCellAnchor><xdr:from><xdr:col>1</xdr:col><xdr:colOff>0</xdr:colOff>'
+            '<xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'
+            '<xdr:ext cx="95250" cy="95250"/><xdr:pic><xdr:nvPicPr>'
+            '<xdr:cNvPr id="1" name="Picture 1"/><xdr:cNvPicPr/></xdr:nvPicPr>'
+            '<xdr:blipFill><a:blip r:embed="rId1"/></xdr:blipFill><xdr:spPr/></xdr:pic>'
+            '<xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>',
+        'xl/drawings/_rels/drawing1.xml.rels':
+            '<Relationships xmlns="$pkgRel">'
+            '<Relationship Id="rId1" Type="$rel/image" Target="../media/image1.bmp"/>'
+            '</Relationships>',
+      },
+      binaryParts: {'xl/media/image1.bmp': bmp},
+    );
+
+    test('when importing then it becomes a PNG', () {
+      final bmp = img.encodeBmp(img.Image(width: 3, height: 2));
+
+      final image = withMedia(bmp).sheets.single.images.single;
+
+      expect(image.mimeType, 'image/png');
+      expect(image.name, 'image1.png');
+      final png = img.decodePng(image.bytes!)!;
+      expect((png.width, png.height), (3, 2));
+    });
+
+    test('when the BMP is unreadable then it is skipped with a warning', () {
+      final doc = withMedia(ascii.encode('BM not really a bitmap'));
+
+      expect(doc.sheets.single.images, isEmpty);
+      expect(doc.warnings.withCode('imageFormat'), isNotEmpty);
     });
   });
 

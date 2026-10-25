@@ -735,8 +735,8 @@ Wonky Drive), **Paste** from clipboard.
 
 Limits: PNG, JPEG, GIF (animated in the editor — first frame with reduced motion, in exports,
 print and in-cell images), WebP, SVG (rasterized at insert to a PNG at 2× its own size, ≤ 4000 px,
-with `flutter_svg`; the SVG's size is the natural size; the original SVG is not kept), BMP
-→ converted to PNG. Max 50 MB. Images above 25 megapixels are downscaled on the client to fit
+with `flutter_svg`; the SVG's size is the natural size; the original SVG is not kept). BMP is
+not supported ("Only PNG, JPEG, GIF, WebP and SVG images can be inserted"). Max 50 MB. Images above 25 megapixels are downscaled on the client to fit
 25 MP (as PNG) before upload (`SheetsImagePrep`).
 
 Default size: natural size scaled down to fit in 600×400 px, keeping the aspect ratio.

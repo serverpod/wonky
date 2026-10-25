@@ -164,6 +164,7 @@ void main() {
       final upload = h.session.files.uploads.single;
       expect(upload.itemUuid, uuid);
       expect(upload.name, 'cover.png');
+      expect(upload.imageProfile, ImageProfile.cover);
       expect(_key('dialog.submit.cover.preview'), findsOneWidget);
       expect(find.text('Replace'), findsOneWidget);
       expect(_key('dialog.submit.cover.remove'), findsOneWidget);

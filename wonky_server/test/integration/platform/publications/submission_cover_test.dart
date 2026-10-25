@@ -64,6 +64,9 @@ void main() {
     });
     tearDown(h.uninstall);
 
+    /// The last [uploadImage]'s ready file (a WebP, specs/12 §1.1).
+    late FileUrlView uploaded;
+
     /// Uploads [_png] as an image of [itemUuid], like the submit dialog.
     Future<UuidValue> uploadImage(UuidValue itemUuid) async {
       final fileUuid = const Uuid().v7obj();
@@ -74,9 +77,13 @@ void main() {
         'cover.png',
         'image/png',
         _png.length,
+        imageProfile: ImageProfile.cover,
       );
       await TestFiles.putBytes(sessionBuilder.build(), fileUuid, _png);
-      await endpoints.file.completeUpload(anna.endpointSession, fileUuid);
+      uploaded = await endpoints.file.completeUpload(
+        anna.endpointSession,
+        fileUuid,
+      );
       return fileUuid;
     }
 
@@ -102,9 +109,9 @@ void main() {
       expect((json['fields']! as Map)['coverImage'], assetId);
       final assets = (json['assets']! as List).cast<Map<String, Object?>>();
       expect(assets.single['id'], assetId);
-      expect(assets.single['name'], 'cover.png');
-      expect(assets.single['type'], 'image/png');
-      expect(assets.single['bytes'], _png.length);
+      expect(assets.single['name'], 'cover.webp');
+      expect(assets.single['type'], 'image/webp');
+      expect(assets.single['bytes'], uploaded.sizeBytes);
       // Not in the text: blogs that show the cover don't show it twice.
       expect(json['markdown'], isNot(contains(assetId)));
 
@@ -113,7 +120,8 @@ void main() {
       final res = await req.close();
       final bytes = await res.fold<List<int>>([], (a, b) => a..addAll(b));
       expect(res.statusCode, 200);
-      expect(bytes, _png);
+      expect(res.headers.contentType?.mimeType, 'image/webp');
+      expect(bytes, hasLength(uploaded.sizeBytes));
     });
 
     test('when submitting without a cover then it is refused', () async {

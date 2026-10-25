@@ -33,6 +33,7 @@ class FakeFiles implements FileRepository {
     required String mimeType,
     required Uint8List bytes,
     StoredFileKind kind = StoredFileKind.image,
+    ImageProfile? imageProfile,
   }) async {
     if (full) throw FakeStorage.quotaError(neededBytes: bytes.length);
     stored.add(fileUuid.uuid);

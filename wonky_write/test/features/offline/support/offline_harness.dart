@@ -289,6 +289,7 @@ class _Files implements FileRepository {
     required String mimeType,
     required Uint8List bytes,
     StoredFileKind kind = StoredFileKind.image,
+    ImageProfile? imageProfile,
   }) async {
     if (Api.simulatedOffline) throw const OfflineException('offline');
     backend.uploaded[fileUuid.uuid] = bytes;

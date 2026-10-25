@@ -7078,7 +7078,7 @@ class SheetsLocalizationsEn extends SheetsLocalizations {
 
   @override
   String get imageRejectedFormat =>
-      'Only PNG, JPEG, GIF, WebP and BMP images can be inserted';
+      'Only PNG, JPEG, GIF, WebP and SVG images can be inserted';
 
   @override
   String get imageRejectedTooLarge =>

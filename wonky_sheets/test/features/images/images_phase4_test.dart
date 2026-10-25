@@ -167,6 +167,17 @@ void main() {
       expect(await decodeImageSize(p.image.bytes), p.size);
     });
 
+    test('when a BMP is picked then it is refused', () {
+      final bmp = Uint8List.fromList([0x42, 0x4D, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+      expect(SheetsImageRules.sniff(bmp), isNull);
+      expect(
+        () => SheetsImageRules.validate('scan.bmp', bmp),
+        throwsA(isA<ImageRejected>()),
+      );
+      expect(SheetsImageRules.extensions, isNot(contains('bmp')));
+    });
+
     test('when an animated GIF is prepared then it keeps its frames', () async {
       final p = await SheetsImagePrep.prepare(
         PickedImage(

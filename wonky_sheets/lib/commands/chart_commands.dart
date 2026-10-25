@@ -373,7 +373,6 @@ List<Command<CommandArgs>> chartCommands(ShellServices s) => [
           'image/jpeg' => 'jpg',
           'image/gif' => 'gif',
           'image/webp' => 'webp',
-          'image/bmp' => 'bmp',
           _ => 'png',
         };
         final name = SheetsFileIo.safeName(o.title ?? 'Image', ext);

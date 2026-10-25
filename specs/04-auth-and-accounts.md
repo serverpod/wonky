@@ -283,7 +283,8 @@ key-wise setters (`setDriveDefault`, `setSlidesDefault`, `setSlidesPresenter`; n
 ## 5. Endpoints
 
 `UserEndpoint` (`user`): `getMe()`, `updateProfile(displayName, locale, timeZone)`,
-`uploadAvatar()` (upload description flow), `getPreferences()`, `updatePreferences(patch)`,
+`uploadAvatar()` (upload description flow; the avatar is stored as a 256 × 256 WebP, cropped to
+fill, 12 §1.1 *Image optimization*), `getPreferences()`, `updatePreferences(patch)`,
 `searchUsers(query, limit)` (for share dialog & @mentions; only returns users who share at least
 one item with the caller, or exact email matches), `deleteAccount(confirmation)`.
 

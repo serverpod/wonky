@@ -11,6 +11,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
+import '../../platform/files/image_profile.dart' as _ilodsldt;
 import '../../platform/files/stored_file_kind.dart' as _iytry1n5;
 import '../../platform/files/stored_file_status.dart' as _is8j7as8;
 
@@ -30,6 +31,7 @@ abstract class StoredFile
     required this.mimeType,
     required this.sizeBytes,
     required this.status,
+    this.imageProfile,
     required this.createdAt,
     this.completedAt,
     this.expiresAt,
@@ -47,6 +49,7 @@ abstract class StoredFile
     required String mimeType,
     required int sizeBytes,
     required _is8j7as8.StoredFileStatus status,
+    _ilodsldt.ImageProfile? imageProfile,
     required DateTime createdAt,
     DateTime? completedAt,
     DateTime? expiresAt,
@@ -71,6 +74,11 @@ abstract class StoredFile
       status: _is8j7as8.StoredFileStatus.fromJson(
         (jsonSerialization['status'] as String),
       ),
+      imageProfile: jsonSerialization['imageProfile'] == null
+          ? null
+          : _ilodsldt.ImageProfile.fromJson(
+              (jsonSerialization['imageProfile'] as String),
+            ),
       createdAt: _isc.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
       ),
@@ -111,6 +119,11 @@ abstract class StoredFile
 
   _is8j7as8.StoredFileStatus status;
 
+  /// (Images of documents, avatars, board screenshots) how the upload is
+  /// re-encoded on completion (specs/12 §1.1); null for other kinds and
+  /// older files.
+  _ilodsldt.ImageProfile? imageProfile;
+
   DateTime createdAt;
 
   DateTime? completedAt;
@@ -132,6 +145,7 @@ abstract class StoredFile
     String? mimeType,
     int? sizeBytes,
     _is8j7as8.StoredFileStatus? status,
+    _ilodsldt.ImageProfile? imageProfile,
     DateTime? createdAt,
     DateTime? completedAt = const _isc.$UndefinedDateTime(),
     DateTime? expiresAt = const _isc.$UndefinedDateTime(),
@@ -151,6 +165,7 @@ abstract class StoredFile
       'mimeType': mimeType,
       'sizeBytes': sizeBytes,
       'status': status.toJson(),
+      if (imageProfile != null) 'imageProfile': imageProfile?.toJson(),
       'createdAt': createdAt.toJson(),
       if (completedAt != null) 'completedAt': completedAt?.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
@@ -172,6 +187,7 @@ abstract class StoredFile
       'mimeType': mimeType,
       'sizeBytes': sizeBytes,
       'status': status.toJson(),
+      if (imageProfile != null) 'imageProfile': imageProfile?.toJson(),
       'createdAt': createdAt.toJson(),
       if (completedAt != null) 'completedAt': completedAt?.toJson(),
       if (expiresAt != null) 'expiresAt': expiresAt?.toJson(),
@@ -199,6 +215,7 @@ class _StoredFileImpl extends StoredFile {
     required String mimeType,
     required int sizeBytes,
     required _is8j7as8.StoredFileStatus status,
+    _ilodsldt.ImageProfile? imageProfile,
     required DateTime createdAt,
     DateTime? completedAt,
     DateTime? expiresAt,
@@ -214,6 +231,7 @@ class _StoredFileImpl extends StoredFile {
          mimeType: mimeType,
          sizeBytes: sizeBytes,
          status: status,
+         imageProfile: imageProfile,
          createdAt: createdAt,
          completedAt: completedAt,
          expiresAt: expiresAt,
@@ -235,6 +253,7 @@ class _StoredFileImpl extends StoredFile {
     String? mimeType,
     int? sizeBytes,
     _is8j7as8.StoredFileStatus? status,
+    Object? imageProfile = _Undefined,
     DateTime? createdAt,
     DateTime? completedAt = const _isc.$UndefinedDateTime(),
     DateTime? expiresAt = const _isc.$UndefinedDateTime(),
@@ -251,6 +270,9 @@ class _StoredFileImpl extends StoredFile {
       mimeType: mimeType ?? this.mimeType,
       sizeBytes: sizeBytes ?? this.sizeBytes,
       status: status ?? this.status,
+      imageProfile: imageProfile is _ilodsldt.ImageProfile?
+          ? imageProfile
+          : this.imageProfile,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt is _isc.UndefinedSentinel
           ? this.completedAt

@@ -39,7 +39,7 @@ final class TestSheet {
 ///
 /// [styles] is the inner XML of `<styleSheet>`; [sharedStrings] are `<si>`
 /// bodies; [workbookExtra] is inserted after `<sheets>` (defined names);
-/// [parts] adds arbitrary parts.
+/// [parts] adds arbitrary parts, [binaryParts] binary ones (media).
 Uint8List buildXlsx(
   List<TestSheet> sheets, {
   String? styles,
@@ -47,6 +47,7 @@ Uint8List buildXlsx(
   String workbookPr = '',
   String workbookExtra = '',
   Map<String, String> parts = const {},
+  Map<String, List<int>> binaryParts = const {},
 }) {
   final archive = Archive();
   void add(String path, String text) =>
@@ -114,6 +115,9 @@ Uint8List buildXlsx(
         '$workbookExtra</workbook>',
   );
   parts.forEach(add);
+  binaryParts.forEach(
+    (path, bytes) => archive.add(ArchiveFile.bytes(path, bytes)),
+  );
   return Uint8List.fromList(ZipEncoder().encodeBytes(archive));
 }
 
