@@ -457,7 +457,7 @@ class BoardTopActions extends StatelessWidget {
       if (showContribute)
         (
           'board.howToContribute',
-          LucideIcons.gitPullRequest,
+          LucideIcons.wrench,
           l.boardContributeLink,
           () => boardOpenContribute(s),
         ),

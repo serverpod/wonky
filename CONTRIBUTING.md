@@ -24,16 +24,18 @@ post it on the board first, where others can vote on it.
 
 ## 1. Prerequisites
 
-Follow the [Serverpod installation guide](https://docs.serverpod.dev/installation) to install
+Install Flutter, Serverpod, and a frontier coding agent such as Codex, Claude Code, Antigravity,
+or Cursor. The [Serverpod installation guide](https://docs.serverpod.dev/installation) covers
 Flutter, Dart and what Serverpod needs on your machine. You also need:
 
 - **Flutter** 3.47.5 (stable) or newer. The version CI uses is pinned in
   `.github/workflows/tests.yml`.
-- **An AI coding agent.** [Claude Code](https://claude.com/claude-code) is recommended; any agent
-  that reads `AGENTS.md` and can use MCP servers works.
+- **A frontier coding agent** that reads `AGENTS.md` and can use MCP servers.
 - Git and a GitHub account.
 
-## 2. Install the Serverpod CLI
+## 2. Get the right version of Serverpod
+
+Use Dart's install command to make sure that you are using the right version of Serverpod:
 
 ```bash
 dart install serverpod_cli 4.1.0-rc.1
@@ -50,7 +52,8 @@ page). The fork is your own copy: you push your changes to it and open the pull 
 
 ## 4. Clone the repository
 
-Clone your fork (replace `<you>` with your GitHub username) and get the packages:
+Clone your fork to your local machine (replace `<you>` with your GitHub username) and get the
+code:
 
 ```bash
 git clone https://github.com/<you>/wonky.git
@@ -69,38 +72,32 @@ Its values are development defaults that work as they are (they are not secrets;
 elsewhere). AI keys are optional: without them, the in-app assistant asks each user for their own
 key, and the board skips its AI checks.
 
-## 6. Run Wonky Work
+## 6. Pick a task
 
-```bash
-serverpod start
-```
-
-Run it in `wonky_server`. It starts the development database, the server, applies migrations, watches for changes and hot
-reloads. The apps are started on demand from its UI, or by your agent through the `serverpod` MCP
-server. The repository configures it, together with the `dart` MCP server and the Flutter and
-Serverpod skills, for Claude Code (`.mcp.json`, `.claude/`), Codex (`.codex/`, `.agents/`), Cursor
-(`.cursor/`) and Antigravity (`.agents/`).
-The apps run at http://localhost:8082/drive/ (and `/write/`, `/sheets/`, `/slides/`) once built,
-or on their own dev ports when started from `serverpod start`.
-
-Sign up with any email: in development the verification code is printed in the server log.
-
-## 7. Build the task
-
-1. On the task page, press **Claim this task**. Note your claim code (for example `7Q4F-K2M9`).
-2. Create a branch in your fork.
+1. Claim a task under [Up for grabs](https://wonky.work/improvements/tasks): on the task page,
+   press **Claim this task**. Note your claim code (for example `7Q4F-K2M9`).
+2. Start your agent with the `wonky` folder (the repository root) as its working directory.
 3. Copy the task's prompt (**Copy prompt**) and give it to your agent. The prompt points the agent
-   at `AGENTS.md` and the specs, which are the source of truth.
+   at `AGENTS.md` and the specs, which are the source of truth. Let the agent do its job.
 4. Review what the agent did, run the app, and check the acceptance criteria yourself.
-5. Run the checklist from `AGENTS.md`: `dart analyze`, `dart format`, and the tests of the
-   packages you changed.
+
+You don't need to start the server yourself: the agent starts it, together with the development
+database, through the `serverpod` MCP server, and starts the apps the same way. The repository
+configures it, together with the `dart` MCP server and the Flutter and Serverpod skills, for
+Claude Code (`.mcp.json`, `.claude/`), Codex (`.codex/`, `.agents/`), Cursor (`.cursor/`) and
+Antigravity (`.agents/`). To watch it or start an app by hand, run `serverpod start` in
+`wonky_server`; it attaches to the running server. Sign up with any email: in development the
+verification code is printed in the server log.
 
 You can **release** a claim at any time if you can't finish. Two active claims per person at a
 time.
 
-## 8. Open the pull request
+## 7. Open a pull request
 
-Open it against `main`. The description must contain exactly one of each line:
+Your agent will help you open a pull request towards
+[serverpod/wonky](https://github.com/serverpod/wonky/pulls), from a branch in your fork against
+`main`. Before it does, it runs the checklist from `AGENTS.md`: `dart analyze`, `dart format`, and
+the tests of the packages you changed. The description must contain exactly one of each line:
 
 ```
 Wonky-Task: T-12
@@ -116,7 +113,7 @@ Add a short summary of how each acceptance criterion is met (the PR template has
   advisory; maintainers make the call.
 - The normal CI (analyze, format, tests) must pass.
 
-## 9. Sign the CLA and follow up
+## 8. Sign the CLA and follow up
 
 If you haven't signed the Serverpod Contributor License Agreement (CLA) yet, sign it on GitHub:
 the CLA Assistant bot comments on your pull request, and you reply with the line from

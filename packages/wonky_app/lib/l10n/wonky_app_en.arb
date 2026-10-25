@@ -2805,19 +2805,30 @@
   "boardAddPosts": "Add issues…",
   "boardFieldPostNumbers": "Issue numbers",
   "boardHowToBuild": "How to build it",
-  "boardStepSetupNumber": "1.",
-  "@boardStepSetupNumber": {
-    "description": "The number of the first step of How to build it, before the link boardStepSetupLink."
+  "boardStepSetup": "1. Read the {guide} and set up your development environment",
+  "@boardStepSetup": {
+    "description": "Step 1 of How to build it. {guide} is the link boardStepSetupLink to the How to contribute page.",
+    "placeholders": {
+      "guide": {
+        "type": "String"
+      }
+    }
   },
-  "boardStepSetupLink": "Set up your development environment",
+  "boardStepSetupLink": "contribution guide",
   "@boardStepSetupLink": {
-    "description": "Step 1 of How to build it: a link to the How to contribute page."
+    "description": "The link in boardStepSetup: opens the How to contribute page."
   },
-  "boardInstallTools": "Install Flutter, Dart and the Serverpod CLI:",
   "boardInstallGuide": "Serverpod installation guide",
   "boardStepPrompt": "2. Give your coding agent the prompt",
   "boardStepPr": "3. Open a pull request",
-  "boardStepPromptLocked": "2. Give your coding agent the prompt (claim the task to get the prompt).",
+  "boardStepClaim": "2. Claim the task to get a prompt",
+  "@boardStepClaim": {
+    "description": "Step 2 of How to build it for everyone but the claimant and admins, while the task is up for grabs."
+  },
+  "boardStepPaste": "3. Paste the prompt into your AI agent using a frontier model",
+  "@boardStepPaste": {
+    "description": "Step 3 of How to build it for everyone but the claimant and admins, while the task is up for grabs."
+  },
   "boardPrRules": "One task per pull request, against main. Put these two lines in its description:",
   "boardPullRequest": "Pull request",
   "boardPrNumber": "Pull request #{number}",
@@ -2846,24 +2857,23 @@
   "boardContributeTitle": "How to contribute",
   "boardContributeIntro": "Anyone can build a task that is up for grabs. Claim it, let a coding agent do the work with the task's prompt, and open a pull request.",
   "boardContribStep1Title": "Get the tools",
-  "boardContribStep1": "Install Flutter, Dart and the Serverpod CLI, and an AI coding agent that reads AGENTS.md, such as Claude Code.",
-  "boardContribStep2Title": "Install or update the Serverpod CLI",
-  "boardContribStep2": "It runs the server and the apps. The same command updates an installed CLI to this version. Add Dart's install directory to your PATH if serverpod is not found.",
+  "boardContribStep1": "Install Flutter, Serverpod, and a frontier coding agent such as Codex, Claude Code, Antigravity, or Cursor.",
+  "boardContribStep2Title": "Get the right version of Serverpod",
+  "boardContribStep2": "Use Dart's install command to make sure that we are using the right version of Serverpod.",
   "boardContribStep3Title": "Fork the repository",
   "boardContribStep3": "Create your own copy of the repository on GitHub. You push your changes to your fork and open the pull request from there.",
   "boardContribForkLink": "Fork on GitHub",
   "boardContribStep4Title": "Clone the repository",
-  "boardContribStep4": "Clone your fork to your machine (replace <you> with your GitHub username) and get the packages.",
+  "boardContribStep4": "Clone your fork to your local machine (replace <you> with your GitHub username) and get the code.",
   "boardContribStep5Title": "Configure the server",
   "boardContribStep5": "Create your passwords file in wonky_server. Its development values work as they are; AI keys are optional.",
-  "boardContribStep6Title": "Start the server",
-  "boardContribStep6": "Run it in wonky_server: it starts the development database, applies the migrations and hot reloads. Start an app from its UI or let your agent do it through the serverpod MCP server (.mcp.json is in the repository). Sign up with any email; in development the code is in the server log.",
-  "boardContribStep7Title": "Pick a task",
-  "boardContribStep7": "Claim a task under Up for grabs, paste its prompt into your agent and review the result.",
-  "boardContribStep8Title": "Open a pull request",
-  "boardContribStep8": "One task per pull request. The description contains the Wonky-Task and Wonky-Claim lines from the task page. Pull requests without a valid task are closed after 7 days.",
-  "boardContribStep9Title": "Sign the CLA and follow up",
-  "boardContribStep9": "If you haven't signed the Serverpod contributor license agreement (CLA) yet, sign it on GitHub: the CLA Assistant bot asks for it on your pull request, and you reply with the line below. You sign it once. Then check back once your pull request has been reviewed, and fix any issues the review points out.",
+  "boardContribStep6Title": "Pick a task",
+  "boardContribStep6": "Claim a task under Up for grabs, make sure you have wonky as the agent's working directory, let the agent do its job and review the result.",
+  "boardContribStep7Title": "Open a pull request",
+  "boardContribStep7": "Your agent will help you open a pull request towards Wonky's repository.",
+  "boardContribPullRequests": "View pull requests",
+  "boardContribStep8Title": "Sign the CLA and follow up",
+  "boardContribStep8": "If you haven't signed the Serverpod contributor license agreement (CLA) yet, sign it on GitHub: the CLA Assistant bot asks for it on your pull request, and you reply with the line below. You sign it once. Then check back once your pull request has been reviewed, and fix any issues the review points out.",
   "boardContribLicense": "Contributions are accepted under the repository's BSD-3-Clause license.",
   "boardContribSecurity": "Found a security issue? Email {email}. Never post it on the board or in a pull request.",
   "@boardContribSecurity": {

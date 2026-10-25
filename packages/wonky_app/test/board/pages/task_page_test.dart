@@ -54,17 +54,24 @@ void main() {
       findsOneWidget,
     );
     expect(byKey('board.task.claimCode'), findsNothing);
-    // Before claiming, How to build it is the outline: the setup link, a
-    // one-line prompt step, and the PR step without its instructions.
+    // Before claiming, How to build it is the outline: the setup link,
+    // claiming for the prompt and pasting it into the agent, without the PR
+    // step.
     expect(byKey('board.task.setup'), findsOneWidget);
     expect(
-      find.text(
-        '2. Give your coding agent the prompt (claim the task to get the '
-        'prompt).',
+      find.textContaining(
+        '1. Read the \uFFFC and set up your development environment',
       ),
       findsOneWidget,
     );
-    expect(find.text('3. Open a pull request'), findsOneWidget);
+    expect(find.text('2. Claim the task to get a prompt'), findsOneWidget);
+    expect(
+      find.text(
+        '3. Paste the prompt into your AI agent using a frontier model',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('3. Open a pull request'), findsNothing);
     expect(byKey('board.task.prLines'), findsNothing);
     expect(find.textContaining('Wonky-Task: T-1'), findsNothing);
     expect(byKey('board.task.prompt'), findsNothing);
@@ -194,10 +201,10 @@ void main() {
       size: const Size(2400, 1000),
     );
 
-    expect(find.text('Set up your development environment'), findsOneWidget);
+    expect(find.text('contribution guide'), findsOneWidget);
     for (final line in const [
       'dart install serverpod_cli 4.1.0-rc.1',
-      'serverpod start',
+      'cp config/passwords.example.yaml config/passwords.yaml',
     ]) {
       expect(
         find.text(line),
@@ -246,10 +253,15 @@ void main() {
     }
     expect(find.text('Fork and clone the repository'), findsNothing);
     expect(byKey('board.contribute.fork'), findsOneWidget);
-    expect(find.text('9'), findsOneWidget);
+    expect(find.text('8'), findsOneWidget);
+    expect(find.text('9'), findsNothing);
+    // Starting the server is the agent's job: there is no step for it.
+    expect(find.text('Start the server'), findsNothing);
+    expect(find.text('serverpod start'), findsNothing);
     expect(tester.getTopLeft(fork).dy, lessThan(tester.getTopLeft(clone).dy));
+    expect(byKey('board.contribute.copy.prLines'), findsNothing);
     expect(
-      tester.getTopLeft(byKey('board.contribute.copy.prLines')).dy,
+      tester.getTopLeft(byKey('board.contribute.pulls')).dy,
       lessThan(tester.getTopLeft(cla).dy),
     );
     expect(find.text(boardClaSignLine), findsOneWidget);
