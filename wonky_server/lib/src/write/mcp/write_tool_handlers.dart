@@ -574,6 +574,7 @@ abstract final class WriteToolHandlers {
         fileName: 'image.$ext',
         mimeType: sniffed,
         bytes: bytes,
+        optimize: true,
       );
       await StorageHooks.chargeImage(ctx.session, target.item, file);
       fileUuid = file.fileUuid.uuid;

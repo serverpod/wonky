@@ -21,6 +21,7 @@ class _Files implements FileRepository {
     required String mimeType,
     required Uint8List bytes,
     StoredFileKind kind = StoredFileKind.image,
+    ImageProfile? imageProfile,
   }) async {
     if (fail) throw const SocketException('offline');
     uploaded.add(fileUuid.uuid);

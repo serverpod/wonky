@@ -131,5 +131,16 @@ void main() {
         throwsA(isA<ImageRejected>()),
       );
     });
+
+    test('when a BMP is picked then it is refused', () {
+      final bmp = Uint8List.fromList([0x42, 0x4D, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+      expect(SlidesImageRules.sniff(bmp), isNull);
+      expect(
+        () => SlidesImageRules.validate('scan.bmp', bmp),
+        throwsA(isA<ImageRejected>()),
+      );
+      expect(SlidesImageRules.extensions, isNot(contains('bmp')));
+    });
   });
 }

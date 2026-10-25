@@ -199,6 +199,7 @@ abstract final class SheetsImportService {
         mimeType: img.mimeType,
         bytes: img.bytes,
         fileUuid: UuidValue.fromString(img.fileUuid),
+        optimize: true,
       );
     }
     // RevLog spec 05 §8.3: the file is created with no rows, then the

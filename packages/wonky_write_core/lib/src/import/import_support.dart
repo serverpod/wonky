@@ -111,7 +111,6 @@ abstract final class ImageMime {
     'image/jpeg',
     'image/gif',
     'image/webp',
-    'image/bmp',
   };
 
   /// Sniffs the MIME type from magic bytes; `null` when unknown.
@@ -172,14 +171,16 @@ abstract final class ImageMime {
 }
 
 /// Returns embeddable image bytes and MIME type for [bytes] of type [mime]:
-/// PNG/JPEG/GIF/WebP/BMP are kept, TIFF is converted to PNG; anything else
-/// (EMF, WMF, SVG, unknown) yields `null`.
+/// PNG/JPEG/GIF/WebP are kept, TIFF and BMP are converted to PNG; anything
+/// else (EMF, WMF, SVG, unknown) yields `null`.
 (Uint8List, String)? embeddableImage(Uint8List bytes, String mime) {
   final m = mime.toLowerCase();
   if (ImageMime.embeddable.contains(m)) return (bytes, m);
-  if (m == 'image/tiff') {
+  if (m == 'image/tiff' || m == 'image/bmp') {
     try {
-      final decoded = img.decodeTiff(bytes);
+      final decoded = m == 'image/tiff'
+          ? img.decodeTiff(bytes)
+          : img.decodeBmp(bytes);
       if (decoded == null) return null;
       return (img.encodePng(decoded), 'image/png');
     } on Object {

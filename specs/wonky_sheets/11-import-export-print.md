@@ -461,7 +461,7 @@ under `third_party/` remains possible without touching code outside `io/xlsx/`.
 | Legacy notes (`comments*.xml`) | `Cell.note` | P0 | Author prefix "Author:\n" removed if it matches. |
 | Threaded comments | Comment threads | P1 | Authors mapped by email to users with access; otherwise body prefixed "[Name]". Requires online (comments in Postgres); offline imports convert them to notes. |
 | Hyperlinks | `linkUrl` / rich-text link | P0 | External → URL; internal `#Sheet2!A1` → `#sheet=<sheetId>&range=A1` internal link format ([06](06-formatting.md)). |
-| Images (drawing anchors) | `EmbeddedObject(kind=image)` | P1 | `twoCellAnchor`/`oneCellAnchor` from cell + EMU offsets (px = EMU / 9525); `absoluteAnchor` → A1 + offsets. EMF/WMF → skipped (warning). Images uploaded as `StoredFile` (server-side import) or queued uploads (client). |
+| Images (drawing anchors) | `EmbeddedObject(kind=image)` | P1 | `twoCellAnchor`/`oneCellAnchor` from cell + EMU offsets (px = EMU / 9525); `absoluteAnchor` → A1 + offsets. BMP → PNG; EMF/WMF → skipped (warning). Images uploaded as `StoredFile` (server-side import) or queued uploads (client). |
 | In-cell pictures (Excel 365 `IMAGE`, rich value images) | `=IMAGE()` / skipped | P2 | |
 | Charts | `EmbeddedObject(kind=chart)` | P1 | Via the OOXML chart parts (`c:chartSpace`): bar/col (clustered/stacked/percent), line (smooth), area, pie, doughnut, scatter, bubble, radar, stock → candlestick; titles, legend position, axis titles/min/max/log/number format, series colors, data labels (basic), trendlines. Unmappable → skipped with warning. |
 | Pivot tables | values only | P0 | Cells are already present in the sheet XML as cached values; definitions ignored (warning "imported as values"). |

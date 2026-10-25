@@ -140,6 +140,8 @@ import 'package:wonky_client/src/protocol/platform/files/file_upload_ticket.dart
     as _ilpm2pjc;
 import 'package:wonky_client/src/protocol/platform/files/file_url_view.dart'
     as _i4i1hokq;
+import 'package:wonky_client/src/protocol/platform/files/image_profile.dart'
+    as _i8mxqucd;
 import 'package:wonky_client/src/protocol/platform/files/stored_file_kind.dart'
     as _iaaducpz;
 import 'package:wonky_client/src/protocol/platform/mcp/ui_bridge/ui_bridge_message.dart'
@@ -920,8 +922,8 @@ class EndpointBoard extends _isc.EndpointRef {
         {},
       );
 
-  /// Where to upload a screenshot (PNG or JPEG, ≤ 5 MB); finish with
-  /// `file.completeUpload`, then pass the uuid to [createPost].
+  /// Where to upload a screenshot (PNG or JPEG, ≤ 5 MB; stored as WebP);
+  /// finish with `file.completeUpload`, then pass the uuid to [createPost].
   _ida.Future<_ilpm2pjc.FileUploadTicket> createScreenshotUpload(
     _isc.UuidValue fileUuid,
     String mimeType,
@@ -2113,7 +2115,9 @@ class EndpointFile extends _isc.EndpointRef {
   String get name => 'file';
 
   /// Upload description for `FileUploader`. [kind] defaults to image;
-  /// imports use `importSource` without an item.
+  /// imports use `importSource` without an item. Images are re-encoded as
+  /// WebP on completion for [imageProfile] (default `content`; a story's
+  /// cover uses `cover`).
   _ida.Future<_ilpm2pjc.FileUploadTicket> createUpload(
     _isc.UuidValue fileUuid,
     _isc.UuidValue? itemUuid,
@@ -2121,6 +2125,7 @@ class EndpointFile extends _isc.EndpointRef {
     String mimeType,
     int size, {
     _iaaducpz.StoredFileKind? kind,
+    _i8mxqucd.ImageProfile? imageProfile,
   }) => caller.callServerEndpoint<_ilpm2pjc.FileUploadTicket>(
     'file',
     'createUpload',
@@ -2131,6 +2136,7 @@ class EndpointFile extends _isc.EndpointRef {
       'mimeType': mimeType,
       'size': size,
       'kind': kind,
+      'imageProfile': imageProfile,
     },
   );
 
@@ -2785,7 +2791,8 @@ class EndpointUser extends _isc.EndpointRef {
   );
 
   /// Starts an avatar upload (upload description flow); finish with
-  /// `file.completeUpload(fileUuid)` and [setAvatar].
+  /// `file.completeUpload(fileUuid)` (stores a 256 × 256 WebP) and
+  /// [setAvatar].
   _ida.Future<_ilpm2pjc.FileUploadTicket> uploadAvatar(
     _isc.UuidValue fileUuid,
     String fileName,

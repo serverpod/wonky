@@ -155,7 +155,7 @@ database transaction** as the change itself:
 | Method | Called by |
 |--------|-----------|
 | `reserve(session, userId, fileUuid, itemId?, bytes)` → throws `quotaExceeded` | `drive.createFileUpload`, `file.createUpload(kind: image)` |
-| `commitReservation(session, fileUuid, actualBytes)` (reserved → used; the item's `sizeBytes`/`attachmentBytes` updated) | `drive.completeFileUpload`, `file.completeUpload` |
+| `commitReservation(session, fileUuid, actualBytes)` (reserved → used; the item's `sizeBytes`/`attachmentBytes` updated; images at their re-encoded WebP size, 12 §1.1) | `drive.completeFileUpload`, `file.completeUpload` |
 | `releaseReservation(session, fileUuid)` | cancel, failure, expiry |
 | `checkRoom(session, userId, bytes)` → throws `quotaExceeded` | copies, imports, conversions, template creations, ownership transfer |
 | `setItemSize(session, item, sizeBytes)` / `addAttachment(item, ±bytes)` (never throw) | OT size update, `SheetsSizeEstimator`, Slides estimator, orphan cleanup |

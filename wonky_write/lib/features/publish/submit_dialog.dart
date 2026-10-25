@@ -18,7 +18,8 @@ Future<PickedImage?> Function()? debugPickCoverImage;
 /// Picks an image and uploads it as the story's cover (specs/18 §4.2): an
 /// image file of the document (counted like its images, readable by the
 /// moderators) that is not inserted into the text, so blogs that show the
-/// cover above the post don't show it twice. Null when cancelled.
+/// cover above the post don't show it twice. The server stores it as a
+/// 1200 × 630 WebP. Null when cancelled.
 Future<ImageFieldPick?> uploadCoverImage(
   ShellServices s,
   WriteDocumentController doc,
@@ -43,6 +44,8 @@ Future<ImageFieldPick?> uploadCoverImage(
     fileName: picked.name,
     mimeType: picked.mimeType,
     bytes: picked.bytes,
+    // Re-encoded as a 1200 × 630 WebP, cropped to fill (specs/18 §4.2).
+    imageProfile: ImageProfile.cover,
   );
   return (value: fileUuid.uuid, preview: MemoryImage(picked.bytes));
 }

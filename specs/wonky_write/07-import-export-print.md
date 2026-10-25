@@ -265,7 +265,7 @@ Reads `word/document.xml`, `styles.xml` (style inheritance via `w:basedOn`), `nu
 | Run `w:b`, `w:i`, `w:strike`/`w:dstrike` (incl. via char style) | `bold`, `italic`, `strike` |
 | Run in monospace font | `code` |
 | `w:hyperlink` (r:id external) / `HYPERLINK` field | `link`; internal bookmarks → text only |
-| `w:drawing` inline/anchor `a:blip` | image embed (alt from `wp:docPr/@descr`, title from `@title`); EMF/WMF → placeholder + warning; anchored/floating images → inline at paragraph position |
+| `w:drawing` inline/anchor `a:blip` | image embed (alt from `wp:docPr/@descr`, title from `@title`); TIFF and BMP → PNG; EMF/WMF → placeholder + warning; anchored/floating images → inline at paragraph position |
 | `w:tbl` | table embed (cells → inline Markdown; multi-paragraph cells joined with U+2028 → exported `<br>`-free as spaces, warning; merged cells (`gridSpan`/`vMerge`) → first cell; nested tables → text) |
 | `w:br w:type=page`, section breaks, columns | dropped (warning once) |
 | `w:br` (text wrapping) | U+2028 |

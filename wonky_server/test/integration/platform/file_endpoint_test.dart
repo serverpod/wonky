@@ -85,6 +85,30 @@ void main() {
       );
     });
 
+    test('when uploading a BMP then it is refused', () async {
+      await expectLater(
+        endpoints.file.createUpload(
+          anna.endpointSession,
+          const Uuid().v7obj(),
+          doc.uuid,
+          'scan.bmp',
+          'image/bmp',
+          10,
+        ),
+        throwsA(
+          isA<WonkyException>().having(
+            (e) => e.message,
+            'message',
+            'Unsupported image type "image/bmp".',
+          ),
+        ),
+      );
+      expect(
+        FileService.sniffImage(Uint8List.fromList([0x42, 0x4D, 0, 0])),
+        isNull,
+      );
+    });
+
     test('when uploading a too large image then it is refused', () async {
       await expectLater(
         endpoints.file.createUpload(

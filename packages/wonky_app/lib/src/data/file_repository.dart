@@ -7,7 +7,9 @@ import 'api.dart';
 /// Uploads to the files service (suite 12 §1.1): idempotent on the
 /// client-supplied file uuid.
 abstract class FileRepository {
-  /// Uploads [bytes] and returns the ready file view.
+  /// Uploads [bytes] and returns the ready file view. The server re-encodes
+  /// images as WebP for [imageProfile] (default `content`), so the view's
+  /// type, name and size can differ from what was uploaded.
   Future<FileUrlView> upload({
     required UuidValue fileUuid,
     UuidValue? itemUuid,
@@ -15,6 +17,7 @@ abstract class FileRepository {
     required String mimeType,
     required Uint8List bytes,
     StoredFileKind kind = StoredFileKind.image,
+    ImageProfile? imageProfile,
   });
 
   Future<FileUrlView> getUrl(UuidValue fileUuid);
@@ -33,6 +36,7 @@ class ServerFileRepository implements FileRepository {
     required String mimeType,
     required Uint8List bytes,
     StoredFileKind kind = StoredFileKind.image,
+    ImageProfile? imageProfile,
   }) async {
     final ticket = await api.guard(
       (c) => c.file.createUpload(
@@ -42,6 +46,7 @@ class ServerFileRepository implements FileRepository {
         mimeType,
         bytes.length,
         kind: kind,
+        imageProfile: imageProfile,
       ),
     );
     if (ticket.status != StoredFileStatus.ready &&

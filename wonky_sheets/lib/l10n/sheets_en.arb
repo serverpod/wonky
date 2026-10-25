@@ -4301,7 +4301,7 @@
   "imageFetchFailed": "The image could not be loaded from that URL",
   "imageLoading": "Loading image…",
   "imagePickTitle": "Choose an image",
-  "imageRejectedFormat": "Only PNG, JPEG, GIF, WebP and BMP images can be inserted",
+  "imageRejectedFormat": "Only PNG, JPEG, GIF, WebP and SVG images can be inserted",
   "imageRejectedTooLarge": "The image is too large (max. 50 MB and 25 megapixels)",
   "imageUnavailable": "Image unavailable",
   "imageUploading": "Image uploading…",

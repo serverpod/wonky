@@ -162,6 +162,8 @@ import 'package:wonky_server/src/generated/platform/files/file_upload_ticket.dar
     as _i3u7lvch;
 import 'package:wonky_server/src/generated/platform/files/file_url_view.dart'
     as _i28n3m1r;
+import 'package:wonky_server/src/generated/platform/files/image_profile.dart'
+    as _idj3hxue;
 import 'package:wonky_server/src/generated/platform/files/stored_file_kind.dart'
     as _idhe6v6s;
 import 'package:wonky_server/src/generated/platform/mcp/ui_bridge/ui_bridge_message.dart'
@@ -5520,6 +5522,7 @@ class _FileEndpoint {
     String mimeType,
     int size, {
     _idhe6v6s.StoredFileKind? kind,
+    _idj3hxue.ImageProfile? imageProfile,
   }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -5539,6 +5542,7 @@ class _FileEndpoint {
             'mimeType': mimeType,
             'size': size,
             'kind': kind,
+            'imageProfile': imageProfile,
           }),
           serializationManager: _serializationManager,
         );

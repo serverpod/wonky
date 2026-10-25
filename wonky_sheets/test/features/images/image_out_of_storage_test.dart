@@ -29,6 +29,7 @@ class _Files implements FileRepository {
     required String mimeType,
     required Uint8List bytes,
     StoredFileKind kind = StoredFileKind.image,
+    ImageProfile? imageProfile,
   }) async {
     attempts.add(fileUuid.uuid);
     if (full) throw FakeStorage.quotaError(neededBytes: bytes.length);

@@ -60,6 +60,35 @@ reference `wonky-file://<fileUuid>` before the bytes arrive; clients render a pl
 `status == pending` (uploader's own client renders from local bytes). Uploads are retried from
 `LocalPendingUpload` with backoff when online.
 
+**Image optimization.** Images of documents (`StoredFileKind.image`: Write images and covers,
+images over cells, images on slides), avatars and Bugs & improvements screenshots are
+re-encoded as **WebP** with
+[Pixtronaut](https://pub.dev/packages/pixtronaut) (`platform/files/image_optimizer.dart`)
+before `completeUpload` marks them ready: EXIF rotation applied, sRGB, all metadata (EXIF incl.
+GPS) stripped, animated GIFs/WebPs stay animated, never upscaled; lossless for PNG and GIF
+sources (screenshots, diagrams), quality 80 otherwise. The profile is chosen at
+`createUpload(…, imageProfile)` and stored on the `StoredFile`: `content` (the default) fits
+2048 × 2048 (also board screenshots); `cover` (a story's cover, 18 §4.2) is 1200 × 630 and
+`avatar` (set by the server for `user.uploadAvatar`) 256 × 256, both cropped to fill (attention
+crop). Avatars and screenshots uploaded before this change stay PNG/JPEG. The WebP is written to `files/<kind>/<uuid>/web/<name>.webp`, the row is
+pointed at it (`path`, `fileName` `<name>.webp`, `mimeType`, `sizeBytes`; the quota is
+committed at the WebP's size) and the upload is deleted. A source Pixtronaut can't read
+(corrupt, over its pixel limits) fails the upload like a type mismatch ("The image could not be
+read."). Any other Pixtronaut failure (quota, outage, missing key) keeps the image as uploaded
+and logs an error, so uploads never depend on the service. **BMP is not an image type of
+documents**: uploads (`FileService.imageMimeTypes`), the Sheets and Slides pickers and
+`write.insert_image` refuse it, and BMPs inside imported DOCX/ODT/RTF/XLSX files become PNGs (then
+WebP). Wonky Drive still stores and previews BMP files; BMP images imported before this change
+still render and export.
+Server-written images that enter a document (Write and Sheets imports, `write.insert_image`,
+copies of Drive image files) are re-encoded the same way (`storeServerFile(optimize: true)`,
+`content`); copies of images of documents are already WebP and copied as they are. In
+production Pixtronaut is the hosted service, reading and writing the Serverpod Cloud bucket
+through signed URLs (password `pixtronautAccessKey`); in development and tests it runs libvips
+in the server process (`Pixtronaut.fromServerpod`). Clients keep showing the bytes they
+uploaded; other devices load the WebP. Renderers already scale images whose pixel size differs
+from a recorded natural size (Slides `naturalWidth`, crop fractions).
+
 ### 1.2 Behavior
 - Opening a document: render from `LocalDocument` immediately if present (stale-while-
   revalidate), then connect the stream; server sends ops since `snapshotRevision` (or a fresh

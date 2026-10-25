@@ -68,6 +68,8 @@ import 'package:wonky_server/src/generated/platform/drive/template_category.dart
     as _inlkiawi;
 import 'package:wonky_server/src/generated/platform/feedback/feedback_submission.dart'
     as _ira9srbn;
+import 'package:wonky_server/src/generated/platform/files/image_profile.dart'
+    as _idj3hxue;
 import 'package:wonky_server/src/generated/platform/files/stored_file_kind.dart'
     as _idhe6v6s;
 import 'package:wonky_server/src/generated/platform/mcp/ui_bridge/ui_bridge_message.dart'
@@ -3754,6 +3756,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<_idhe6v6s.StoredFileKind?>(),
               nullable: true,
             ),
+            'imageProfile': _is.ParameterDescription(
+              name: 'imageProfile',
+              type: _is.getType<_idj3hxue.ImageProfile?>(),
+              nullable: true,
+            ),
           },
           call:
               (
@@ -3768,6 +3775,7 @@ class Endpoints extends _is.EndpointDispatch {
                     params['mimeType'],
                     params['size'],
                     kind: params['kind'],
+                    imageProfile: params['imageProfile'],
                   ),
         ),
         'completeUpload': _is.MethodConnector(

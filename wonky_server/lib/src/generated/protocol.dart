@@ -227,6 +227,7 @@ import 'platform/feedback/feedback_report.dart' as _iu565i0a;
 import 'platform/feedback/feedback_submission.dart' as _ilhpki98;
 import 'platform/files/file_upload_ticket.dart' as _irrzp8p9;
 import 'platform/files/file_url_view.dart' as _itzt3x6d;
+import 'platform/files/image_profile.dart' as _iymtdptb;
 import 'platform/files/stored_file.dart' as _im8eh74x;
 import 'platform/files/stored_file_kind.dart' as _i45dmz4a;
 import 'platform/files/stored_file_status.dart' as _ik7q11oy;
@@ -591,6 +592,7 @@ export 'platform/feedback/feedback_report.dart';
 export 'platform/feedback/feedback_submission.dart';
 export 'platform/files/file_upload_ticket.dart';
 export 'platform/files/file_url_view.dart';
+export 'platform/files/image_profile.dart';
 export 'platform/files/stored_file.dart';
 export 'platform/files/stored_file_kind.dart';
 export 'platform/files/stored_file_status.dart';
@@ -973,6 +975,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ilhpki98.FeedbackSubmission>,
           _is.getType<_irrzp8p9.FileUploadTicket>,
           _is.getType<_itzt3x6d.FileUrlView>,
+          _is.getType<_iymtdptb.ImageProfile>,
           _is.getType<_im8eh74x.StoredFile>,
           _is.getType<_i45dmz4a.StoredFileKind>,
           _is.getType<_ik7q11oy.StoredFileStatus>,
@@ -1388,6 +1391,7 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ilhpki98.FeedbackSubmission?>,
           _is.getType<_irrzp8p9.FileUploadTicket?>,
           _is.getType<_itzt3x6d.FileUrlView?>,
+          _is.getType<_iymtdptb.ImageProfile?>,
           _is.getType<_im8eh74x.StoredFile?>,
           _is.getType<_i45dmz4a.StoredFileKind?>,
           _is.getType<_ik7q11oy.StoredFileStatus?>,
@@ -13762,6 +13766,12 @@ class Protocol extends _is.DatabaseSerializationManager
           dartType: 'protocol:StoredFileStatus',
         ),
         _isp.ColumnDefinition(
+          name: 'imageProfile',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'protocol:ImageProfile?',
+        ),
+        _isp.ColumnDefinition(
           name: 'createdAt',
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: false,
@@ -15696,6 +15706,9 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _itzt3x6d.FileUrlView) {
       return _itzt3x6d.FileUrlView.fromJson(data) as T;
     }
+    if (t == _iymtdptb.ImageProfile) {
+      return _iymtdptb.ImageProfile.fromJson(data) as T;
+    }
     if (t == _im8eh74x.StoredFile) {
       return _im8eh74x.StoredFile.fromJson(data) as T;
     }
@@ -17085,6 +17098,9 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (t == _is.getType<_itzt3x6d.FileUrlView?>()) {
       return (data != null ? _itzt3x6d.FileUrlView.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iymtdptb.ImageProfile?>()) {
+      return (data != null ? _iymtdptb.ImageProfile.fromJson(data) : null) as T;
     }
     if (t == _is.getType<_im8eh74x.StoredFile?>()) {
       return (data != null ? _im8eh74x.StoredFile.fromJson(data) : null) as T;
@@ -18976,6 +18992,7 @@ class Protocol extends _is.DatabaseSerializationManager
       _ilhpki98.FeedbackSubmission => 'FeedbackSubmission',
       _irrzp8p9.FileUploadTicket => 'FileUploadTicket',
       _itzt3x6d.FileUrlView => 'FileUrlView',
+      _iymtdptb.ImageProfile => 'ImageProfile',
       _im8eh74x.StoredFile => 'StoredFile',
       _i45dmz4a.StoredFileKind => 'StoredFileKind',
       _ik7q11oy.StoredFileStatus => 'StoredFileStatus',
@@ -19547,6 +19564,8 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'FileUploadTicket';
       case _itzt3x6d.FileUrlView():
         return 'FileUrlView';
+      case _iymtdptb.ImageProfile():
+        return 'ImageProfile';
       case _im8eh74x.StoredFile():
         return 'StoredFile';
       case _i45dmz4a.StoredFileKind():
@@ -20558,6 +20577,9 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (dataClassName == 'FileUrlView') {
       return deserialize<_itzt3x6d.FileUrlView>(data['data']);
+    }
+    if (dataClassName == 'ImageProfile') {
+      return deserialize<_iymtdptb.ImageProfile>(data['data']);
     }
     if (dataClassName == 'StoredFile') {
       return deserialize<_im8eh74x.StoredFile>(data['data']);

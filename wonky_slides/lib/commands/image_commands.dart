@@ -656,7 +656,7 @@ Future<_Obtained> _fromDrive(
     final prepared = await SlidesImagePrep.prepare(
       PickedImage(name: name, bytes: bytes, mimeType: mime),
     );
-    // A Drive image that had to be converted (SVG, BMP, > 40 MP) is
+    // A Drive image that had to be converted (SVG, > 40 MP) is
     // uploaded as converted; else the server copy is used as is.
     final same = identical(prepared.image.bytes, bytes);
     return (

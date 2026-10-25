@@ -646,7 +646,8 @@ task.
     callable signed out for visible issues);
   - not counted toward the 50 MB quota (added to the exempt list in
     [Drive 03](wonky_drive/03-storage-quota.md));
-  - PNG or JPEG only, max 5 MB, sniffed with `FileService.sniffImage`.
+  - PNG or JPEG only, max 5 MB, sniffed with `FileService.sniffImage`; stored as a WebP that fits
+    2048 × 2048 (`screenshot.webp`, 12 §1.1 *Image optimization*; older screenshots stay PNG/JPEG).
 - Upload:
   1. `board.createScreenshotUpload(fileUuid, mimeType, size)` (signed in) returns a
      `FileUploadTicket`; the file has no item and its owner is the user;

@@ -133,7 +133,9 @@ Documents with a submission show, left of *Share* (Write 05 §3.2):
   picker (png, jpg, gif, webp; Write 04 §17.1), runs the storage pre-check and uploads the file
   as an **image of the story's document** (`StoredFileKind.image`, the document's item: counted
   in its owner's quota, readable by its moderators, deleted with it) without inserting it into
-  the text. *Submit* waits for a running upload. A stored cover (also one picked from the
+  the text. It is uploaded with `imageProfile: cover`, so the server stores it as a **1200 × 630
+  WebP**, cropped to fill around the most salient region (12 §1.1 *Image optimization*); the
+  thumbnail shows the picked file. *Submit* waits for a running upload. A stored cover (also one picked from the
   document's images before T-19) shows as the thumbnail. A required cover without an image:
   toast "Pick a cover image."
 - Open suggestions are sent as the original text (Write 07 §4.1 `suggestions: original`); the

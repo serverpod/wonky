@@ -47,7 +47,7 @@ abstract final class SheetsImageRules {
   /// 25 megapixels.
   static const maxPixels = 25 * 1000 * 1000;
 
-  static const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
+  static const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
 
   /// SVG images are rasterized on insert (08 §10.1).
   static const svgMime = 'image/svg+xml';
@@ -73,7 +73,6 @@ abstract final class SheetsImageRules {
     'jpg' || 'jpeg' => 'image/jpeg',
     'gif' => 'image/gif',
     'webp' => 'image/webp',
-    'bmp' => 'image/bmp',
     'svg' => svgMime,
     _ => null,
   };
@@ -86,7 +85,7 @@ abstract final class SheetsImageRules {
     return true;
   }
 
-  /// Sniffs PNG, JPEG, GIF, WebP and BMP.
+  /// Sniffs PNG, JPEG, GIF, WebP and SVG (BMP isn't supported).
   static String? sniff(Uint8List b) {
     if (b.length >= 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4e) {
       return 'image/png';
@@ -100,7 +99,6 @@ abstract final class SheetsImageRules {
         String.fromCharCodes(b.sublist(8, 12)) == 'WEBP') {
       return 'image/webp';
     }
-    if (_startsWith(b, 'BM')) return 'image/bmp';
     if (_isSvg(b)) return svgMime;
     return null;
   }

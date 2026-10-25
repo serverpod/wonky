@@ -282,7 +282,11 @@ Ignore types you don't know; new ones may be added.
 - `fields` holds the fields you turned on; fields you didn't turn on are `null` (`tags` is then
   `[]`). `coverImage` is the id of one of the `assets`. The contributor uploads the cover in the
   Submit dialog, so it is usually **not** in the `markdown`: show it as the post's cover without
-  removing anything from the text.
+  removing anything from the text. Covers uploaded in the dialog are 1200 × 630 WebP images
+  (the Open Graph size, cropped to fill).
+- Images uploaded to Wonky are WebP (`image/webp`), at most 2048 px on their longest side, with
+  their metadata (EXIF, including GPS) removed. Older images can keep the type they were
+  uploaded with, so read the `type` of each asset.
 - `markdown` is CommonMark with GitHub tables and task lists. Open suggestions in the document are
   sent as the original text; comments are never included. There is no front matter: the title
   and the other fields are in `fields` (the Markdown usually starts with the title as a heading,

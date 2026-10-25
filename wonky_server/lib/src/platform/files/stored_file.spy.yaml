@@ -14,6 +14,10 @@ fields:
   mimeType: String
   sizeBytes: int
   status: StoredFileStatus
+  ### (Images of documents, avatars, board screenshots) how the upload is
+  ### re-encoded on completion (specs/12 §1.1); null for other kinds and
+  ### older files.
+  imageProfile: ImageProfile?
   createdAt: DateTime
   completedAt: DateTime?
   expiresAt: DateTime?

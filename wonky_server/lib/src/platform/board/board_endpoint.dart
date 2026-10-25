@@ -69,8 +69,8 @@ class BoardEndpoint extends Endpoint {
 
   // ----------------------------------------------------------------- write
 
-  /// Where to upload a screenshot (PNG or JPEG, ≤ 5 MB); finish with
-  /// `file.completeUpload`, then pass the uuid to [createPost].
+  /// Where to upload a screenshot (PNG or JPEG, ≤ 5 MB; stored as WebP);
+  /// finish with `file.completeUpload`, then pass the uuid to [createPost].
   Future<FileUploadTicket> createScreenshotUpload(
     Session session,
     UuidValue fileUuid,

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:image/image.dart' as img;
 import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
@@ -1434,17 +1435,32 @@ final class _Reader {
         );
         continue;
       }
-      final bytes = pkg.bytes(rel.target);
+      var bytes = pkg.bytes(rel.target);
       if (bytes == null) continue;
+      var name = rel.target.split('/').last;
+      if (mime == 'image/bmp') {
+        // Wonky has no BMP images: converted to PNG.
+        final decoded = _decodeBmp(bytes);
+        if (decoded == null) {
+          doc.warnings.add(
+            'imageFormat',
+            'Images in BMP format that could not be read were not imported',
+            sheet: sheet.name,
+          );
+          continue;
+        }
+        bytes = img.encodePng(decoded);
+        name = '${name.substring(0, name.length - ext.length)}png';
+      }
       final props = pic.child('nvPicPr')?.child('cNvPr');
       sheet.images.add(
         IrImage(
           bytes: bytes,
-          mimeType: mime,
+          mimeType: mime == 'image/bmp' ? 'image/png' : mime,
           anchor: _anchor(anchor, sheet, pic),
           altText: props?.attr('descr'),
           title: props?.attr('title'),
-          name: rel.target.split('/').last,
+          name: name,
         ),
       );
     }
@@ -1455,6 +1471,14 @@ final class _Reader {
         sheet: sheet.name,
         count: shapes,
       );
+    }
+  }
+
+  static img.Image? _decodeBmp(Uint8List bytes) {
+    try {
+      return img.decodeBmp(bytes);
+    } on Object {
+      return null;
     }
   }
 

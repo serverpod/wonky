@@ -132,7 +132,6 @@ abstract final class WriteImportService {
         'image/jpeg' => 'jpg',
         'image/gif' => 'gif',
         'image/webp' => 'webp',
-        'image/bmp' => 'bmp',
         _ => 'png',
       };
       final file = await FileService.storeServerFile(
@@ -143,6 +142,7 @@ abstract final class WriteImportService {
         fileName: 'imported-${stored.length + 1}.$ext',
         mimeType: image.mime,
         bytes: image.bytes,
+        optimize: true,
       );
       stored.add(file);
       return file.fileUuid.uuid;

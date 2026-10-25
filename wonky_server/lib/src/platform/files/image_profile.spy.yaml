@@ -1,0 +1,12 @@
+### How an uploaded image is re-encoded when its upload completes
+### (specs/12 §1.1 *Image optimization*): always WebP.
+enum: ImageProfile
+serialized: byName
+values:
+  ### Images in documents, over cells and on slides, and screenshots of
+  ### Bugs & improvements posts: fit within 2048 × 2048 (never upscaled).
+  - content
+  ### A story's cover image (specs/18 §4.2): 1200 × 630, cropped to fill.
+  - cover
+  ### A profile picture: 256 × 256, cropped to fill.
+  - avatar

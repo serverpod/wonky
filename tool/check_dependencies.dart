@@ -362,6 +362,8 @@ const rules = <String, PackageRule>{
       'yaml': 'reads the wonky/mcp/ai sections of the config files',
       'image': 'Drive upload previews and thumbnails (Drive 02 §6)',
       'mime': 'MIME sniffing of uploaded files (Drive 02 §5, suite 13 §6)',
+      'pixtronaut':
+          'WebP re-encoding of uploaded images (suite 12 §1.1 Image optimization)',
       'dart_jsonwebtoken': 'RS256 JWT of the GitHub App (specs/16 §13.3)',
       'whiskers': "app shell templates, Serverpod's template engine (§2.4)",
     },

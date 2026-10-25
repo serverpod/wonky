@@ -536,6 +536,7 @@ abstract final class SheetsImportJobs {
         mimeType: img.mimeType,
         bytes: img.bytes,
         fileUuid: UuidValue.fromString(img.fileUuid),
+        optimize: true,
       );
       await FileService.attachToItem(session, f, item);
       await StorageHooks.chargeImage(session, item, f);
