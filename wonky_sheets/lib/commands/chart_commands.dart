@@ -367,8 +367,8 @@ List<Command<CommandArgs>> chartCommands(ShellServices s) => [
             : (spec.sourceUrl ?? '');
         final bytes = await SheetsImageService.of(ed).bytesForDownload(src);
         if (bytes == null) return CommandResult.failed(l.imageUnavailable);
-        // By the bytes: the server stores images as WebP (suite 12 §1.1).
-        final mime = SheetsImageRules.sniff(bytes) ?? spec.mime;
+        final local = SheetsImageService.of(ed).localBytes(spec.fileUuid);
+        final mime = local != null ? spec.mime : 'image/png';
         final ext = switch (mime) {
           'image/jpeg' => 'jpg',
           'image/gif' => 'gif',

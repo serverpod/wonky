@@ -202,32 +202,35 @@ class ClientImageResolver implements ImageResolver {
   void dispose() => _http.close();
 }
 
-/// Describes [bytes] for the exporters (07 §4.4): PNG, JPEG, GIF and WebP
-/// pass through as they are, read from their header like on the server
-/// (`describeExportImage`); each exporter converts what its format can't
-/// hold, in pure Dart. Only other formats (e.g. SVG or AVIF from `https`
-/// images) are decoded by Flutter and re-encoded as PNG: Flutter web's
-/// `toByteData(format: png)` can return the image on a larger, transparent
-/// canvas when other images are rasterized at the same time.
+/// Decodes [bytes]; PNG/JPEG pass through, other formats are re-encoded as
+/// PNG (07 §4.4).
 Future<ResolvedImage?> decodeForExport(Uint8List bytes) async {
-  final described = describeExportImage(bytes);
-  if (described != null) return described;
   final codec = await ui.instantiateImageCodec(bytes);
   final frame = await codec.getNextFrame();
   final image = frame.image;
-  try {
+  final isPng =
+      bytes.length > 4 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4e;
+  final isJpeg = bytes.length > 3 && bytes[0] == 0xff && bytes[1] == 0xd8;
+  var out = bytes;
+  var mime = isPng ? 'image/png' : 'image/jpeg';
+  if (!isPng && !isJpeg) {
     final png = await image.toByteData(format: ui.ImageByteFormat.png);
     if (png == null) return null;
-    return ResolvedImage(
-      bytes: png.buffer.asUint8List(),
-      mime: 'image/png',
-      widthPx: image.width,
-      heightPx: image.height,
-    );
-  } finally {
-    image.dispose();
-    codec.dispose();
+    out = png.buffer.asUint8List();
+    mime = 'image/png';
   }
+  final result = ResolvedImage(
+    bytes: out,
+    mime: mime,
+    widthPx: image.width,
+    heightPx: image.height,
+  );
+  image.dispose();
+  codec.dispose();
+  return result;
 }
 
 /// Client-side exports with `wonky_write_core` exporters (07 §4.3: offline

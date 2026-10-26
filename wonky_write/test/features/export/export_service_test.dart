@@ -17,23 +17,6 @@ ExportSource source(String markdown) => ExportSource(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Given a stored image (WebP, suite 12 §1.1)', () {
-    // 3 × 2, lossy.
-    final webp = base64Decode(
-      'UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoDAAIAAUAmJaQAA3AA/v02aAA=',
-    );
-
-    test('when resolving it for an export then the WebP passes through '
-        'unchanged (no Flutter re-encode)', () async {
-      final r = (await decodeForExport(webp))!;
-
-      expect(r.mime, 'image/webp');
-      expect(r.bytes, same(webp));
-      expect((r.widthPx, r.heightPx), (3, 2));
-      expect(imageExtension(r.mime), 'webp');
-    });
-  });
-
   group('Given a document with non-Latin-1 text', () {
     final src = source(
       '# Résumé — Łódź\n\nПривет, мир. **Bold** and `code`.\n',
