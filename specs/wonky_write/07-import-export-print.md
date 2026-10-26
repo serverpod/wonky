@@ -376,7 +376,12 @@ other exporters still report progress only between phases. Threshold is configur
 checked on the document) and fetches remote `https` images with the SSRF-safe fetcher (cached 1
 h); **client** uses the image cache / signed URL fetch; on web, remote images blocked by CORS fall
 back to the server proxy `WriteExportEndpoint.fetchImage(documentUuid, src)` when online, else a
-placeholder box with alt text (+ warning). WebP/GIF/BMP are converted to PNG (`image` package);
+placeholder box with alt text (+ warning). Both resolvers pass PNG/JPEG/GIF/WebP through as they are
+(`describeExportImage`, header only; images of documents are WebP, suite 12 §1.1): Markdown
+(`images/<n>-<slug>.webp`) and HTML keep them, DOCX/ODT/RTF/EPUB convert to PNG/JPEG
+(`prepareOfficeImage`: opaque lossy WebP → JPEG q 90, other WebP → PNG) and PDF decodes them (`image` package). Only other formats (SVG, AVIF of
+`https` images) are re-encoded to PNG by the client (Flutter); never WebP, because Flutter web's
+`toByteData(format: png)` can put the image on a larger transparent canvas;
 SVG: PDF uses `pw.SvgImage`, DOCX/ODT/RTF rasterize to PNG at 2× (P2; v1 placeholder + warning).
 Images are downscaled to ≤ 2400 px on the long side for PDF/DOCX/EPUB (option *Keep original
 resolution*).
