@@ -263,8 +263,8 @@ Ignore types you don't know; new ones may be added.
   "assets": [
     {
       "id": "ast_0192a3b4-1111-7000-8000-000000000002",
-      "name": "build-times.png",
-      "type": "image/png",
+      "name": "build-times.webp",
+      "type": "image/webp",
       "bytes": 48213,
       "url": "https://wonky.work/api/pub/v1/assets/ast_0192a3b4-1111-7000-8000-000000000002"
     }
