@@ -193,10 +193,14 @@ Future<Map<String, OfficeImage>> resolveOfficeImages(
 }
 
 /// Converts [r] to PNG/JPEG within [maxSide] px; `null` when undecodable
-/// (SVG and unknown formats).
+/// (SVG and unknown formats). JPEGs and opaque lossy WebPs (photos; images
+/// of documents are WebP) become JPEG, everything else PNG.
 OfficeImage? prepareOfficeImage(ResolvedImage r, {int maxSide = 2400}) {
   final mime = r.mime.toLowerCase();
-  final isJpeg = mime == 'image/jpeg' || mime == 'image/jpg';
+  final isJpeg =
+      mime == 'image/jpeg' ||
+      mime == 'image/jpg' ||
+      (mime == 'image/webp' && _isOpaqueLossyWebp(r.bytes));
   final isPng = mime == 'image/png';
   if ((isJpeg || isPng) &&
       r.widthPx > 0 &&
@@ -227,7 +231,9 @@ OfficeImage? prepareOfficeImage(ResolvedImage r, {int maxSide = 2400}) {
       }
     } else if (isJpeg) {
       return OfficeImage(
-        bytes: r.bytes,
+        bytes: mime == 'image/webp'
+            ? img.encodeJpg(decoded, quality: 90)
+            : r.bytes,
         mime: 'image/jpeg',
         widthPx: decoded.width,
         heightPx: decoded.height,
@@ -242,6 +248,22 @@ OfficeImage? prepareOfficeImage(ResolvedImage r, {int maxSide = 2400}) {
   } on Object {
     return null;
   }
+}
+
+/// Whether the WebP [b] is lossy (`VP8 `) without an alpha channel (no
+/// `ALPH` chunk), from its RIFF chunks.
+bool _isOpaqueLossyWebp(Uint8List b) {
+  String tag(int at) => String.fromCharCodes(b.sublist(at, at + 4));
+  var lossy = false;
+  for (var at = 12; at + 8 <= b.length;) {
+    final t = tag(at);
+    if (t == 'ALPH' || t == 'VP8L') return false;
+    if (t == 'VP8 ') lossy = true;
+    final size =
+        b[at + 4] | (b[at + 5] << 8) | (b[at + 6] << 16) | (b[at + 7] << 24);
+    at += 8 + size + (size & 1);
+  }
+  return lossy;
 }
 
 /// A piece of a header/footer slot.

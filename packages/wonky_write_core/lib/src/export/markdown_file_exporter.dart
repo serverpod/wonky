@@ -145,6 +145,7 @@ String imageExtension(String mime) => switch (mime) {
   'image/jpeg' || 'image/jpg' => 'jpg',
   'image/gif' => 'gif',
   'image/webp' => 'webp',
+  'image/bmp' => 'bmp',
   'image/svg+xml' => 'svg',
   _ => 'png',
 };
