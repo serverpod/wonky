@@ -11,7 +11,6 @@ import 'package:wonky_write_core/wonky_write_core.dart'
         CellEditException,
         CellEdits,
         CellGrid,
-        CellIds,
         CellLines,
         DeltaUtils,
         GridBullets,
@@ -1003,7 +1002,7 @@ class WriteEditorCommands {
   /// 12 §3.5), the caret in its first cell. Returns the table's id.
   String? insertTable({int rows = 3, int columns = 3}) {
     if (isSuggesting || caretInCell) return null;
-    final id = CellIds.group();
+    final id = controller.newEmbedId();
     final lines = CellLines.table(
       id: id,
       rows: List.generate(
@@ -1704,10 +1703,23 @@ class WriteEditorCommands {
     int? end,
   }) {
     label ??= _l.undoPaste;
-    final s = selection;
+    var s = selection;
+    if (start == null &&
+        s != null &&
+        !s.isCollapsed &&
+        _selectionTouchesCells(s) &&
+        controller.mirror.blockAtOffset(s.start).id !=
+            controller.mirror.blockAtOffset(s.end).id) {
+      // Pasting over a selection across cells clears the cells first and
+      // pastes into the first (Write 12 §3.4).
+      deleteSelection();
+      s = selection;
+    }
     final from = start ?? s?.start;
     final to = end ?? s?.end ?? from;
     if (!canEdit || from == null || to == null || fragment.isEmpty) return null;
+    // A pasted table or grid is a new one (Write 12 §1.3).
+    fragment = CellLines.regenerateIds(fragment);
     var lines = splitDeltaIntoLines(fragment);
     if (lines.isEmpty) return null;
 
@@ -1718,6 +1730,30 @@ class WriteEditorCommands {
     final local = from - block.start;
     final blockAttributes = block.blockAttributes;
     final fragmentEndsWithNewline = _endsWithNewline(fragment);
+
+    if (isCellNode(block.node)) {
+      // A cell or grid item is one line: the pasted lines' text joined with
+      // spaces, inline formatting kept (Write 12 §3.4).
+      var first = true;
+      for (final line in lines) {
+        if (!first) change.insert(' ');
+        first = false;
+        for (final segment in line.segments) {
+          final data = segment.data;
+          if (data is! String) continue;
+          final text = data.replaceAll(DeltaKeys.softBreak, ' ');
+          if (text.isNotEmpty) {
+            change.insert(text, segment.attributes);
+          }
+        }
+      }
+      final inserted = _insertedLength(change);
+      return _apply(
+        change..trim(),
+        label,
+        selectionAfter: DeltaSelection.collapsed(from + inserted),
+      );
+    }
 
     if (block.isCode) {
       // Plain text; newlines stay code lines.
@@ -1778,6 +1814,15 @@ class WriteEditorCommands {
     final trailing = fragmentEndsWithNewline ? null : lines.last;
     for (var i = 0; i < complete.length; i += 1) {
       final line = complete[i];
+      if (_isCellLine(line)) {
+        // Cell and item lines stay whole lines (Write 12 §3.4).
+        if (i == 0 && local > 0) change.insert('\n', blockAttributes);
+        for (final segment in line.segments) {
+          change.insert(segment.data, segment.attributes);
+        }
+        change.insert('\n', line.endAttributes);
+        continue;
+      }
       if (line.isEmbedLine) {
         if (i == 0 && local > 0) change.insert('\n', blockAttributes);
         change
@@ -1812,6 +1857,14 @@ class WriteEditorCommands {
       selectionAfter: DeltaSelection.collapsed(from + inserted),
     );
   }
+
+  static bool _isCellLine(DeltaLine line) =>
+      line.endAttributes?[DeltaKeys.cell] != null ||
+      line.endAttributes?[DeltaKeys.gridItem] != null;
+
+  bool _selectionTouchesCells(DeltaSelection s) => controller.mirror
+      .blocksInSelection(s)
+      .any((block) => isCellNode(block.node));
 
   static Map<String, dynamic>? _mergeOverlays(
     Map<String, dynamic>? block,

@@ -5,6 +5,8 @@ import 'package:wonky_write/features/editor/commands/write_editor_commands.dart'
 import 'package:wonky_write/features/editor/controller/editor_types.dart';
 import 'package:wonky_write/features/editor/model/document_queries.dart';
 import 'package:wonky_write/features/editor/model/table_model.dart';
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show CellAlign, CellEdits, CellLines;
 
 import '../support/editor_harness.dart';
 
@@ -299,15 +301,14 @@ void main() {
       },
     );
 
-    test(
-      'when inserting a table then it is one step and the caret goes below',
-      () {
-        final id = commands.insertTable(rows: 2, columns: 2);
-        expect(id, 'embed-0');
-        expect(h.changes.single.label, 'Insert table');
-        expect(commands.tableOf(nodeId: id)!.rowCount, 2);
-      },
-    );
+    test('when inserting a table then it is one step and the caret goes into '
+        'its first cell', () {
+      final id = commands.insertTable(rows: 2, columns: 2);
+      expect(id, 'embed-0');
+      expect(h.changes.single.label, 'Insert table');
+      expect(commands.tableOf(nodeId: id)!.rowCount, 2);
+      expect(commands.caretCell(), (0, 0));
+    });
   });
 
   group('Given a caret mid-paragraph', () {
@@ -437,51 +438,84 @@ void main() {
     });
   });
 
-  group('Given a table', () {
+  group('Given a table of cell lines', () {
+    Map<String, dynamic> cell(String row) => {
+      'cell': {'table': 't1', 'row': row},
+    };
     final initial = Delta()
-      ..insert({
-        'table': {
-          'id': 't1',
-          'align': [null, null],
-          'rows': [
-            ['A', 'B'],
-            ['1', '2'],
-          ],
-        },
-      })
+      ..insert('A')
+      ..insert('\n', cell('r0'))
+      ..insert('B')
+      ..insert('\n', cell('r0'))
+      ..insert('1')
+      ..insert('\n', cell('r1'))
+      ..insert('2')
+      ..insert('\n', cell('r1'))
       ..insert('\n');
-    setUp(() => setUpWith(initial, base: 0, extent: 1));
+    setUp(() => setUpWith(initial, base: 0));
 
-    test(
-      'when editing a cell and adding a row then each is one undo step keeping the id',
-      () {
-        commands.editTable(
-          (t) => t.setCell(1, 1, 'a | b'),
-          label: 'Edit table',
-        );
-        commands.editTable((t) => t.insertRow(2), label: 'Insert row');
-        final table = commands.tableOf(nodeId: 't1')!;
-        expect(table.rows, [
-          ['A', 'B'],
-          ['1', 'a | b'],
-          ['', ''],
-        ]);
-        expect(h.changes.map((c) => c.label), ['Edit table', 'Insert row']);
-        h.undo(h.changes.last);
-        h.undo(h.changes[0]);
-        expect(h.delta, initial);
-      },
-    );
+    test('when editing a cell and adding a row then each is one undo step '
+        'keeping the id', () {
+      commands.editCells(
+        (run) => CellEdits.setCell(
+          run.doc,
+          run.id,
+          1,
+          1,
+          CellLines.markdown('a | b'),
+        ),
+        nodeId: 't1',
+        label: 'Edit table',
+      );
+      commands.editCells(
+        (run) => CellEdits.insertRow(run.doc, run.id, 2),
+        nodeId: 't1',
+        label: 'Insert row',
+      );
+      final table = commands.tableOf(nodeId: 't1')!;
+      expect(table.id, 't1');
+      expect(table.rows, [
+        ['A', 'B'],
+        ['1', r'a \| b'],
+        ['', ''],
+      ]);
+      expect(h.changes.map((c) => c.label), ['Edit table', 'Insert row']);
+      h.undo(h.changes.last);
+      h.undo(h.changes[0]);
+      expect(h.delta, initial);
+    });
 
-    test('when setting a column alignment then the embed changes', () {
-      commands.editTable(
-        (t) => t.setColumnAlignment(1, TableAlign.right),
+    test('when setting a column alignment then every cell of the column has '
+        'it', () {
+      commands.editCells(
+        (run) =>
+            CellEdits.setColumnAlignment(run.doc, run.id, 1, CellAlign.right),
+        nodeId: 't1',
         label: 'Align',
       );
       expect(commands.tableOf(nodeId: 't1')!.align, [
         TableAlign.none,
         TableAlign.right,
       ]);
+    });
+
+    test('when replacing the table from the editor then unchanged cells keep '
+        'their lines', () {
+      final edited = TableModel(
+        id: 't1',
+        align: const [TableAlign.none, TableAlign.none],
+        rows: const [
+          ['A', 'B'],
+          ['one', '2'],
+        ],
+      );
+      expect(commands.replaceTable(edited, nodeId: 't1'), isTrue);
+      final deletes = h.changes.last.delta
+          .toList()
+          .where((op) => op.isDelete)
+          .fold(0, (n, op) => n + op.length!);
+      expect(deletes, 1);
+      expect(commands.tableOf(nodeId: 't1')!.rows[1], ['one', '2']);
     });
   });
 

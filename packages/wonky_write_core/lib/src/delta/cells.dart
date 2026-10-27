@@ -442,6 +442,39 @@ abstract final class CellLines {
     return d;
   }
 
+  /// [fragment] with new table, row and grid ids (paste and import, Write
+  /// 12 §1.3): each table and grid gets a new id, each row a new row id, so
+  /// a pasted copy never joins the original.
+  static Delta regenerateIds(Delta fragment) {
+    final groups = <String, String>{};
+    final rows = <String, String>{};
+    final out = Delta();
+    for (final op in fragment.toList()) {
+      final attrs = op.attributes;
+      final cell = CellAttr.of(attrs);
+      final item = cell == null ? GridItemAttr.of(attrs) : null;
+      if (cell == null && item == null) {
+        out.push(op);
+        continue;
+      }
+      final next = {...attrs!};
+      if (cell != null) {
+        final table = groups.putIfAbsent('t:${cell.table}', CellIds.group);
+        final row = rows.putIfAbsent(
+          '${cell.table}/${cell.row}',
+          () => CellIds.row(),
+        );
+        next[WonkyAttr.cell] = cell.copyWith(table: table, row: row).toJson();
+      } else {
+        next[WonkyAttr.grid] = item!
+            .copyWith(id: groups.putIfAbsent('g:${item.id}', CellIds.group))
+            .toJson();
+      }
+      out.insert(op.data, next);
+    }
+    return out;
+  }
+
   static void _appendInline(Delta out, Delta inline) {
     for (final op in inline.toList()) {
       final data = op.data;

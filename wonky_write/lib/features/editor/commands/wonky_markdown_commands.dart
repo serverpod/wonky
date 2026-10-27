@@ -429,7 +429,7 @@ extension WonkyMarkdownCommands on WriteEditorCommands {
     GridBullets bullets = GridBullets.check,
   }) {
     if (isSuggesting || caretInCell) return null;
-    final id = CellIds.group();
+    final id = controller.newEmbedId();
     final lines = CellLines.grid(
       id: id,
       items: [Delta(), Delta(), Delta()],

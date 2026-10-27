@@ -146,10 +146,7 @@ List<EditReaction> wonkyReactions(
     WonkyTypingAttributesReaction(boundary: pillBoundary),
     marked(const LinkifyReaction(), 'Autolink', autolink),
     marked(
-      BlockPrefixConversionReaction(
-        newEmbedId: newEmbedId,
-        isWonky: isWonky,
-      ),
+      BlockPrefixConversionReaction(newEmbedId: newEmbedId, isWonky: isWonky),
       'Autoformat',
       markdown,
     ),

@@ -961,8 +961,9 @@ class WonkyEditorState extends State<WonkyEditor> {
         zoom: zoom,
         editable: editable,
         callbacks: widget.blockCallbacks,
-        frames: framed(const ParagraphComponentBuilder())
-            as BoxFrameComponentBuilder,
+        frames:
+            framed(const ParagraphComponentBuilder())
+                as BoxFrameComponentBuilder,
       );
     _cellPhase.layout = cells;
     _cellsInBuild = cells;

@@ -368,8 +368,12 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
       final top = geometry.rowEdges[r];
       final bottom = geometry.rowBottoms[r];
       canvas.drawRect(
-        Rect.fromLTRB(left + 0.5, top + 0.5, right - 0.5, bottom - 0.5)
-            .shift(offset),
+        Rect.fromLTRB(
+          left + 0.5,
+          top + 0.5,
+          right - 0.5,
+          bottom - 0.5,
+        ).shift(offset),
         line,
       );
       for (var c = 1; c < geometry.columnCount; c++) {

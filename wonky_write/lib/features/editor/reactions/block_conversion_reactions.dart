@@ -14,10 +14,7 @@ import 'wonky_shortcuts.dart';
 /// The prefix must be exactly the text before the caret, and the caret must be
 /// right after the space that was just typed. Never applies in code blocks.
 class BlockPrefixConversionReaction extends EditReaction {
-  BlockPrefixConversionReaction({
-    required this.newEmbedId,
-    this.isWonky,
-  });
+  BlockPrefixConversionReaction({required this.newEmbedId, this.isWonky});
 
   /// Creates ids for new embeds (UUIDv7).
   final String Function() newEmbedId;

@@ -6,6 +6,7 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wonky_write_core/wonky_write_core.dart'
     show
+        CellAttr,
         DocTreeBuilder,
         HtmlBodyWriter,
         HtmlImporter,
@@ -14,7 +15,8 @@ import 'package:wonky_write_core/wonky_write_core.dart'
         SuggestionView,
         SuggestionViewMode,
         WonkyDeltaNormalizer,
-        WonkyDeltaValidator;
+        WonkyDeltaValidator,
+        WonkyDocument;
 
 import '../mapping/wonky_schema.dart';
 
@@ -94,61 +96,64 @@ class ClipboardCodec {
   }
 
   /// Readable plain text: bullets `• `, numbers, tasks `☐ `/`☑ `, tables as
-  /// TSV, images as `[image: alt]`.
+  /// TSV (cells of a row joined with tabs, Write 12 §3.4), images as
+  /// `[image: alt]`.
   static String readablePlainText(Delta document) {
-    final out = StringBuffer();
-    final line = StringBuffer();
+    final out = <String>[];
     var ordinal = 0;
-    for (final op in document.operations) {
-      final data = op.data;
-      if (data is Map) {
-        final type = data.keys.first;
-        final value = data[type];
+    CellAttr? previousCell;
+    for (final line in WonkyDocument(document).lines) {
+      final text = StringBuffer();
+      for (final segment in line.segments) {
+        final data = segment.data;
+        if (data is String) {
+          text.write(data.replaceAll(DeltaKeys.softBreak, '\n'));
+          continue;
+        }
+        final map = data as Map;
+        final type = map.keys.first;
+        final value = map[type];
         if (type == DeltaKeys.imageEmbed && value is Map) {
-          line.write('[image: ${value['alt'] ?? ''}]');
+          text.write('[image: ${value['alt'] ?? ''}]');
         } else if (type == DeltaKeys.dividerEmbed) {
-          line.write('---');
+          text.write('---');
         } else if (type == DeltaKeys.tableEmbed && value is Map) {
           final rows = (value['rows'] as List? ?? const []).map(
             (r) => (r as List).join('\t'),
           );
-          line.write(rows.join('\n'));
+          text.write(rows.join('\n'));
         }
+      }
+      final attrs = line.attributes;
+      final cell = CellAttr.of(attrs);
+      if (cell != null) {
+        final sameRow =
+            previousCell != null &&
+            previousCell.table == cell.table &&
+            previousCell.row == cell.row;
+        if (sameRow) {
+          out.last = '${out.last}\t$text';
+        } else {
+          out.add('$text');
+        }
+        previousCell = cell;
+        ordinal = 0;
         continue;
       }
-      final text = data as String;
-      var start = 0;
-      while (true) {
-        final nl = text.indexOf('\n', start);
-        if (nl < 0) {
-          line.write(
-            text.substring(start).replaceAll(DeltaKeys.softBreak, '\n'),
-          );
-          break;
-        }
-        line.write(
-          text.substring(start, nl).replaceAll(DeltaKeys.softBreak, '\n'),
-        );
-        final attrs = op.attributes;
-        final list = attrs?[DeltaKeys.list];
-        final indent = '  ' * ((attrs?[DeltaKeys.indent] as int?) ?? 0);
-        final prefix = switch (list) {
-          'bullet' => '$indent• ',
-          'ordered' => '$indent${++ordinal}. ',
-          'checked' => '$indent☑ ',
-          'unchecked' => '$indent☐ ',
-          _ => '',
-        };
-        if (list != 'ordered') ordinal = 0;
-        out
-          ..write(prefix)
-          ..writeln(line);
-        line.clear();
-        start = nl + 1;
-      }
+      previousCell = null;
+      final list = attrs[DeltaKeys.list];
+      final indent = '  ' * ((attrs[DeltaKeys.indent] as int?) ?? 0);
+      final prefix = switch (list) {
+        'bullet' => '$indent• ',
+        'ordered' => '$indent${++ordinal}. ',
+        'checked' => '$indent☑ ',
+        'unchecked' => '$indent☐ ',
+        _ => '',
+      };
+      if (list != 'ordered') ordinal = 0;
+      out.add('$prefix$text');
     }
-    if (line.isNotEmpty) out.write(line);
-    return out.toString().trimRight();
+    return out.join('\n').trimRight();
   }
 
   /// Decodes pasted content (§23.3): Wonky Delta → HTML → plain text
