@@ -20,6 +20,7 @@ final class OutlineEntry {
     required this.sectionStart,
     required this.sectionLength,
     required this.anchorId,
+    this.step,
   });
 
   /// 0-based index among headings.
@@ -47,6 +48,12 @@ final class OutlineEntry {
   /// Unique anchor id (`h-<slug>-<n>`).
   final String anchorId;
 
+  /// The number of a numbered heading (Wonky Markdown, Write 11 §2.3).
+  final int? step;
+
+  /// [text] as shown in outlines: `(n) ` before a numbered heading.
+  String get label => step == null ? text : '($step) $text';
+
   /// JSON form (snake_case, as used by MCP).
   Map<String, dynamic> toJson() => {
     'index': index,
@@ -56,6 +63,7 @@ final class OutlineEntry {
     'section_start': sectionStart,
     'section_length': sectionLength,
     'anchor_id': anchorId,
+    'step': ?step,
   };
 
   @override
@@ -74,15 +82,15 @@ final class OutlineExtractor {
   /// Headings of a parsed document.
   List<OutlineEntry> outlineOf(WonkyDocument doc) {
     final anchors = AnchorIdGenerator();
-    final raw = <(DocumentLine, int, String)>[];
+    final raw = <(DocumentLine, int, String, int?)>[];
     for (final line in doc.lines) {
       final f = line.format;
       if (f.type != BlockType.heading) continue;
-      raw.add((line, f.level, headingText(line.text)));
+      raw.add((line, f.level, headingText(line.text), f.step));
     }
     final result = <OutlineEntry>[];
     for (var i = 0; i < raw.length; i++) {
-      final (line, level, text) = raw[i];
+      final (line, level, text, step) = raw[i];
       var end = doc.length;
       for (var j = i + 1; j < raw.length; j++) {
         if (raw[j].$2 <= level) {
@@ -100,6 +108,7 @@ final class OutlineExtractor {
           sectionStart: line.start,
           sectionLength: end - line.start,
           anchorId: anchors.next(text),
+          step: step,
         ),
       );
     }

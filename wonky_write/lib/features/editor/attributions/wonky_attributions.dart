@@ -139,6 +139,72 @@ class MentionAttribution implements Attribution {
   String toString() => '[MentionAttribution]: $userUuid';
 }
 
+/// The Wonky Markdown look of a link: Delta `linkStyle: arrow | button |
+/// buttonSecondary` (Write 11 §2.1); always paired with a [LinkAttribution].
+class LinkStyleAttribution implements Attribution {
+  const LinkStyleAttribution(this.style);
+
+  /// An arrow link (`:link[…](…)`).
+  static const arrow = LinkStyleAttribution('arrow');
+
+  /// A primary button (`:button[…](…)`).
+  static const button = LinkStyleAttribution('button');
+
+  /// A secondary button (`:button[…](…){variant=secondary}`).
+  static const buttonSecondary = LinkStyleAttribution('buttonSecondary');
+
+  /// `arrow`, `button` or `buttonSecondary`.
+  final String style;
+
+  /// Whether this is a button (primary or secondary).
+  bool get isButton => style != 'arrow';
+
+  @override
+  String get id => 'linkStyle';
+
+  @override
+  bool canMergeWith(Attribution other) => this == other;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LinkStyleAttribution && other.style == style;
+
+  @override
+  int get hashCode => style.hashCode;
+
+  @override
+  String toString() => '[LinkStyleAttribution]: $style';
+}
+
+/// A Wonky Markdown chip: Delta `chip: true | <icon>` (Write 11 §2.1). The
+/// icon is kept, not shown (WM10).
+class ChipAttribution implements Attribution {
+  const ChipAttribution([this.icon]);
+
+  /// A chip without an icon.
+  static const plain = ChipAttribution();
+
+  /// The icon name, or `null`.
+  final String? icon;
+
+  @override
+  String get id => 'chip';
+
+  @override
+  bool canMergeWith(Attribution other) => this == other;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ChipAttribution && other.icon == icon;
+
+  @override
+  int get hashCode => icon.hashCode;
+
+  @override
+  String toString() => '[ChipAttribution]: ${icon ?? '-'}';
+}
+
 /// Presentation-only syntax highlighting token (Write 04 §15.4). Never part of
 /// the document Delta.
 class CodeTokenAttribution implements Attribution {
@@ -163,6 +229,41 @@ class CodeTokenAttribution implements Attribution {
 
   @override
   String toString() => '[CodeTokenAttribution]: $tokenClass';
+}
+
+/// Presentation-only extra space after a character (`em` of the font size,
+/// as letter spacing): around chips and buttons so their pills never touch,
+/// and after an arrow link for its arrow (Write 11 §7.2). Never part of the
+/// document Delta.
+class PillGapAttribution implements Attribution {
+  const PillGapAttribution(this.em);
+
+  /// After a pill's last character (its right padding).
+  static const pill = PillGapAttribution(0.45);
+
+  /// A space next to a pill (room for the pill's left padding).
+  static const space = PillGapAttribution(0.6);
+
+  /// After an arrow link (room for the arrow).
+  static const arrow = PillGapAttribution(1.05);
+
+  final double em;
+
+  @override
+  String get id => 'pill-gap';
+
+  @override
+  bool canMergeWith(Attribution other) => this == other;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is PillGapAttribution && other.em == em;
+
+  @override
+  int get hashCode => em.hashCode;
+
+  @override
+  String toString() => '[PillGapAttribution]: $em';
 }
 
 /// Presentation-only marker for text that is hidden or shown differently by a

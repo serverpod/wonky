@@ -7,6 +7,10 @@ enum ImportWarningKind {
   /// Nested blockquotes flattened to one level.
   nestedQuoteFlattened,
 
+  /// A Wonky Markdown directive was not closed, held lines it cannot keep
+  /// (a grid's non-item lines) or nested too deep (Write 11 §4).
+  directiveFlattened,
+
   /// A list inside a blockquote was flattened to quote lines.
   listInQuoteFlattened,
 

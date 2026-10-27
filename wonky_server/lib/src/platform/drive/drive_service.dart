@@ -3,7 +3,13 @@ import 'dart:convert';
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show Delta, DeltaUtils, PageLayoutMode, PageSetup;
+    show
+        Delta,
+        DeltaUtils,
+        MarkdownFlavor,
+        PageLayoutMode,
+        PageSetup,
+        looksLikeWonkyMarkdown;
 
 import '../../sheets/spaces/space_copier.dart';
 import '../../slides/decks/slides_decks.dart';
@@ -295,6 +301,7 @@ abstract final class DriveService {
     String? initialMarkdown,
     UuidValue? documentUuid,
     UuidValue? itemUuid,
+    MarkdownFlavor? markdownFlavor,
   }) async {
     if (documentUuid != null) {
       final existing = await DocumentStore.byUuid(session, documentUuid);
@@ -312,6 +319,7 @@ abstract final class DriveService {
     var pageSetup = '{}';
     String? frontMatter;
     String? language;
+    var flavor = markdownFlavor ?? MarkdownFlavor.gfm;
     var activitySummary = <String, Object?>{};
     if (templateUuid != null) {
       final builtin = BuiltinTemplates.byUuid(templateUuid);
@@ -342,10 +350,19 @@ abstract final class DriveService {
         pageSetup = tplDoc.pageSetupJson;
         frontMatter = tplDoc.frontMatter;
         language = tplDoc.language;
+        flavor = markdownFlavor ?? MarkdownFlavor.parse(tplDoc.markdownFlavor);
         activitySummary = {'template': tplItem.uuid.uuid};
       }
     } else if (initialMarkdown != null && initialMarkdown.isNotEmpty) {
-      content = WriteContent.fromMarkdown(initialMarkdown).delta;
+      // Markdown with Wonky directives makes a Wonky document (Write 11
+      // §5.1).
+      if (markdownFlavor == null && looksLikeWonkyMarkdown(initialMarkdown)) {
+        flavor = MarkdownFlavor.wonky;
+      }
+      content = WriteContent.fromMarkdown(
+        initialMarkdown,
+        flavor: flavor,
+      ).delta;
     }
     // New documents (blank, built-in templates, the welcome document and
     // templates without a page setup) open in the user's default layout:
@@ -395,6 +412,7 @@ abstract final class DriveService {
         pageSetupJson: pageSetup,
         frontMatter: frontMatter,
         language: language,
+        markdownFlavor: flavor,
         transaction: tx,
       );
       if (content case final content?) {
@@ -945,6 +963,7 @@ abstract final class DriveService {
     required Delta content,
     Document? source,
     String? frontMatter,
+    MarkdownFlavor? markdownFlavor,
     Map<String, Object?> activitySummary = const {},
     String? quotaReason = QuotaReason.import,
   }) async {
@@ -985,6 +1004,8 @@ abstract final class DriveService {
         pageSetupJson: source?.pageSetupJson ?? '{}',
         language: source?.language,
         frontMatter: frontMatter ?? source?.frontMatter,
+        markdownFlavor:
+            markdownFlavor ?? MarkdownFlavor.parse(source?.markdownFlavor),
         transaction: tx,
       );
       await DriveItem.db.updateRow(

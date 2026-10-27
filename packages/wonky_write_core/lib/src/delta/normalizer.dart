@@ -4,6 +4,7 @@ library;
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import 'attributes.dart';
+import 'boxes.dart';
 import 'delta_utils.dart';
 import 'document.dart';
 import 'embeds.dart';
@@ -53,6 +54,13 @@ enum NormalizationFix {
 
   /// Suggestion timestamps stamped with server time.
   stampedSuggestion,
+
+  /// Chip or link style exclusions applied (Write 11 §2.4 rule 10).
+  styledTextExclusion,
+
+  /// Invalid container frames removed or canonicalized (Write 11 §2.4
+  /// rule 11).
+  normalizedBox,
 }
 
 /// Result of [WonkyDeltaNormalizer.normalize].
@@ -265,6 +273,7 @@ final class WonkyDeltaNormalizer {
       endsDocument: end == docLength,
       prevListIndent: listIndent(before),
       prevListQuoted: BlockFormat.fromAttributes(before).quoted,
+      prevListBox: Boxes.of(before),
     );
 
     // The change within the window.
@@ -299,8 +308,13 @@ final class WonkyDeltaNormalizer {
     );
     // A list indent clamped differently from here on (the change removed or
     // re-indented a list item) cascades to the next lines.
+    // So does a change of the last line's list kind or containers.
+    final lastOut = r.document.operations.last.attributes;
     if (!window.endsDocument &&
-        listIndent(r.document.operations.last.attributes) != listIndent(last)) {
+        (listIndent(lastOut) != listIndent(last) ||
+            BlockFormat.fromAttributes(lastOut).quoted !=
+                BlockFormat.fromAttributes(last).quoted ||
+            !Boxes.samePath(Boxes.of(lastOut), Boxes.of(last)))) {
       return whole();
     }
     final fixup = Delta()..retain(start);
@@ -344,6 +358,7 @@ final class WonkyDeltaNormalizer {
 
     int? prevListIndent = window.prevListIndent;
     var prevListQuoted = window.prevListQuoted;
+    var prevListBox = window.prevListBox;
     for (final line in doc.lines) {
       final isLast = window.endsDocument && line.index == doc.lines.length - 1;
       final blockIn = line.attributes;
@@ -389,13 +404,26 @@ final class WonkyDeltaNormalizer {
       if (hasEmbed && live.length > 1) fixes.add(NormalizationFix.movedEmbed);
 
       // Indent clamping uses the output state at each emitted line end.
-      Map<String, dynamic> clamped() =>
-          _clampIndent(blockOut, prevListIndent, prevListQuoted, fixes);
+      Map<String, dynamic> clamped() => _clampIndent(
+        blockOut,
+        prevListIndent,
+        prevListQuoted,
+        prevListBox,
+        fixes,
+      );
       void track(Map<String, dynamic> attrs) {
         final f = BlockFormat.fromAttributes(attrs);
         prevListIndent = f.isList ? f.indent : null;
         prevListQuoted = f.quoted;
+        prevListBox = Boxes.of(attrs);
       }
+
+      // The attributes an embed's line end keeps: overlays and the box.
+      Map<String, dynamic> embedLineAttrs(Map<String, dynamic> overlaysOf) => {
+        ...Attributes.overlays(overlaysOf),
+        if (blockOut.containsKey(WonkyAttr.box))
+          WonkyAttr.box: blockOut[WonkyAttr.box],
+      };
 
       for (var gi = 0; gi < groups.length; gi++) {
         final g = groups[gi];
@@ -422,7 +450,7 @@ final class WonkyDeltaNormalizer {
             b.keep(s.data, s.attributes, attrsOut);
           }
           if (!isFinal) {
-            b.insert('\n', null);
+            b.insert('\n', Attributes.orNull(embedLineAttrs(const {})));
           }
           prevListIndent = null;
         } else {
@@ -454,10 +482,9 @@ final class WonkyDeltaNormalizer {
         continue;
       }
       final endsWithEmbed = live.isNotEmpty && live.last.isEmbed;
-      var finalAttrs = endsWithEmbed
-          ? Attributes.overlays(blockOut)
-          : clamped();
-      if (endsWithEmbed && Attributes.block(blockIn).isNotEmpty) {
+      var finalAttrs = endsWithEmbed ? embedLineAttrs(blockOut) : clamped();
+      if (endsWithEmbed &&
+          Attributes.block(blockIn).keys.any((k) => k != WonkyAttr.box)) {
         fixes.add(NormalizationFix.movedEmbed);
       }
       if (live.isEmpty && line.segments.isNotEmpty) {
@@ -628,8 +655,40 @@ final class WonkyDeltaNormalizer {
           } else {
             fixes.add(NormalizationFix.removedAttributes);
           }
+        case WonkyAttr.linkStyle:
+          if (WonkyAttr.linkStyles.contains(v)) {
+            out[key] = v;
+          } else {
+            fixes.add(NormalizationFix.removedAttributes);
+          }
+        case WonkyAttr.chip:
+          if (v == true ||
+              (v is String && WonkyDeltaValidator.chipIcon.hasMatch(v))) {
+            out[key] = v;
+          } else {
+            fixes.add(NormalizationFix.removedAttributes);
+          }
         default:
           fixes.add(NormalizationFix.removedAttributes);
+      }
+    }
+    // A chip and a styled link are plain-text labels (Write 11 §2.1).
+    if (out.containsKey(WonkyAttr.chip)) {
+      for (final k in WonkyAttr.chipExcludedKeys) {
+        if (out.remove(k) != null) {
+          fixes.add(NormalizationFix.styledTextExclusion);
+        }
+      }
+    } else if (out.containsKey(WonkyAttr.linkStyle)) {
+      if (!out.containsKey(WonkyAttr.link)) {
+        out.remove(WonkyAttr.linkStyle);
+        fixes.add(NormalizationFix.styledTextExclusion);
+      } else {
+        for (final k in WonkyAttr.linkStyleExcludedKeys) {
+          if (out.remove(k) != null) {
+            fixes.add(NormalizationFix.styledTextExclusion);
+          }
+        }
       }
     }
     if (out.containsKey(WonkyAttr.code)) {
@@ -702,6 +761,29 @@ final class WonkyDeltaNormalizer {
       type = key;
       out[key] = value;
     }
+    if (attrs.containsKey(WonkyAttr.step)) {
+      final v = attrs[WonkyAttr.step];
+      final level = out[WonkyAttr.header];
+      if (v is int &&
+          v >= 0 &&
+          v <= WonkyAttr.maxStep &&
+          (level == 2 || level == 3)) {
+        out[WonkyAttr.step] = v;
+      } else {
+        fixes.add(NormalizationFix.removedAttributes);
+      }
+    }
+    if (attrs.containsKey(WonkyAttr.box)) {
+      final box = _normalizeBox(attrs[WonkyAttr.box]);
+      if (box == null) {
+        fixes.add(NormalizationFix.normalizedBox);
+      } else {
+        if (!_deepEquals(box, attrs[WonkyAttr.box])) {
+          fixes.add(NormalizationFix.normalizedBox);
+        }
+        out[WonkyAttr.box] = box;
+      }
+    }
     if (attrs.containsKey(WonkyAttr.indent)) {
       final v = attrs[WonkyAttr.indent];
       final n = v is int ? v : (v is num ? v.round() : null);
@@ -729,18 +811,45 @@ final class WonkyDeltaNormalizer {
     return out;
   }
 
+  /// The canonical `box` value of [value]: valid frames only (Write 11
+  /// §2.4 rule 11), distinct ids, at most [BoxFrame.maxDepth] (the
+  /// outermost), canonical titles; `null` when none is left.
+  static List<Map<String, dynamic>>? _normalizeBox(Object? value) {
+    if (value is! List) return null;
+    final frames = <BoxFrame>[];
+    final ids = <String>{};
+    for (final v in value) {
+      final f = BoxFrame.tryParse(v);
+      if (f == null || !ids.add(f.id)) continue;
+      frames.add(
+        f.title == null
+            ? f
+            : (BoxFrame.canonicalTitle(f.title) == null
+                  ? f.copyWith(clearTitle: true)
+                  : f.copyWith(title: BoxFrame.canonicalTitle(f.title))),
+      );
+      if (frames.length == BoxFrame.maxDepth) break;
+    }
+    return Boxes.toValue(frames);
+  }
+
   /// Clamps a list line's indent to one deeper than the previous list line
-  /// of the same run; a quoted and an unquoted list are two runs.
+  /// of the same run; a quoted and an unquoted list, and lists in different
+  /// containers, are two runs.
   Map<String, dynamic> _clampIndent(
     Map<String, dynamic> block,
     int? prevListIndent,
     bool prevListQuoted,
+    List<BoxFrame> prevListBox,
     Set<NormalizationFix> fixes,
   ) {
     if (!block.containsKey(WonkyAttr.list)) return block;
     final indent = (block[WonkyAttr.indent] as int?) ?? 0;
     final quoted = block[WonkyAttr.blockquote] == true;
-    final maxAllowed = prevListIndent == null || prevListQuoted != quoted
+    final maxAllowed =
+        prevListIndent == null ||
+            prevListQuoted != quoted ||
+            !Boxes.samePath(prevListBox, Boxes.of(block))
         ? 0
         : prevListIndent + 1;
     if (indent <= maxAllowed) return block;
@@ -840,6 +949,25 @@ final class WonkyDeltaNormalizer {
         );
       case DividerEmbed():
         return embed;
+      case YouTubeEmbed(:final title):
+        final canonical = YouTubeEmbed.canonicalTitle(title);
+        return canonical == title
+            ? embed
+            : embed.copyWith(title: canonical, clearTitle: canonical == null);
+      case GridEmbed():
+        final normalizeCell = tableCellNormalizer;
+        final items = [
+          for (final c in embed.items.take(GridEmbed.maxItems))
+            normalizeCell == null
+                ? _singleLine(c)
+                : normalizeCell(_singleLine(c)),
+        ];
+        return GridEmbed(
+          id: embed.id,
+          columns: GridEmbed.canonicalColumns(embed.columns),
+          bullets: embed.bullets,
+          items: items.isEmpty ? const [''] : items,
+        );
       case TableEmbed():
         final padded = embed.padded();
         final normalizeCell = tableCellNormalizer;
@@ -969,13 +1097,15 @@ final class _Window {
     required this.endsDocument,
     required this.prevListIndent,
     required this.prevListQuoted,
+    required this.prevListBox,
   });
 
   const _Window.whole()
     : startsDocument = true,
       endsDocument = true,
       prevListIndent = null,
-      prevListQuoted = false;
+      prevListQuoted = false,
+      prevListBox = const [];
 
   /// Whether the first line is the document's first.
   final bool startsDocument;
@@ -988,4 +1118,7 @@ final class _Window {
 
   /// Whether the line before the first is a quoted list item.
   final bool prevListQuoted;
+
+  /// The containers of the line before the first.
+  final List<BoxFrame> prevListBox;
 }

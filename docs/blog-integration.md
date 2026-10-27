@@ -229,7 +229,7 @@ Every body has these fields:
 | `type` | When | Other fields |
 |--------|------|--------------|
 | `publication.ping` | You choose *Send test*, or save a new webhook URL | — |
-| `submission.submitted` | Every Submit, Resubmit and Submit update | `submission`, `sequence`, `revision`, `fields`, `markdown`, `assets`, `submittedBy` |
+| `submission.submitted` | Every Submit, Resubmit and Submit update | `submission`, `sequence`, `revision`, `fields`, `markdown`, `markdownFlavor`, `assets`, `submittedBy` |
 | `submission.withdrawn` | The contributor withdraws the story, or moves the document to the trash | `submission`, `reason`: `author` or `trashed` |
 | `submission.disconnected` | The contributor disconnects the document from your blog. No more updates will come for this submission | `submission` |
 | `comment.created` | Someone replies in the document's thread of your blog's messages (§6.2) | `submission`, `comment` |
@@ -260,6 +260,7 @@ Ignore types you don't know; new ones may be added.
     "note": "Fixed the code samples, thanks!"
   },
   "markdown": "# How we sped up our CI three times\n\n…\n\n![Build times](https://wonky.work/api/pub/v1/assets/ast_0192a3b4-1111-7000-8000-000000000002)\n",
+  "markdownFlavor": "gfm",
   "assets": [
     {
       "id": "ast_0192a3b4-1111-7000-8000-000000000002",
@@ -287,6 +288,26 @@ Ignore types you don't know; new ones may be added.
 - Images uploaded to Wonky are WebP (`image/webp`), at most 2048 px on their longest side, with
   their metadata (EXIF, including GPS) removed. Older images can keep the type they were
   uploaded with, so read the `type` of each asset.
+- `markdownFlavor` is `gfm` or `wonky`. A publication set to **Wonky Markdown** (in its settings)
+  starts new stories as Wonky documents, and their `markdown` can use the Serverpod blog
+  directives: callouts (`:::warning[Title]` … `:::`), `:::details`, `:::card`,
+  `:::grid{columns=3 bullets=check}`, `:button[…](…)`, `:link[…](…)`, `:chip[…]` and numbered
+  headings (`## (1) Title`); see `specs/wonky_write/11-wonky-markdown.md` §4. A `gfm` story
+  never contains them.
+- Wonky stories can also hold **YouTube videos**, a Wonky extension your renderer has to add:
+  a line `::youtube[Title]{id=AGAQ_N56wCs start=90}` (the title and `start`, in seconds, are
+  optional; the id is always the 11-character video id). Render it like this, escaping the
+  title:
+
+  ```html
+  <iframe src="https://www.youtube.com/embed/AGAQ_N56wCs?start=90" title="Title"
+    style="width: 100%; aspect-ratio: 16 / 9; border: 0;"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowfullscreen></iframe>
+  ```
+
+  The pattern is `^::youtube(?:\[([^\]]*)\])?(?:\s*\{([^}]*)\})?\s*$`, with the options read like
+  the other directives' (`{key=value key=value}`).
 - `markdown` is CommonMark with GitHub tables and task lists. Open suggestions in the document are
   sent as the original text; comments are never included. There is no front matter: the title
   and the other fields are in `fields` (the Markdown usually starts with the title as a heading,

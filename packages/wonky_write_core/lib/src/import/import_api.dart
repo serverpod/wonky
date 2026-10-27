@@ -5,10 +5,15 @@ import 'dart:typed_data';
 
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:uuid/uuid.dart';
-import 'package:wonky_rich_text/wonky_rich_text.dart' show ImportWarning;
+import 'package:wonky_rich_text/wonky_rich_text.dart'
+    show ImportWarning, MarkdownFlavor;
 
 export 'package:wonky_rich_text/wonky_rich_text.dart'
-    show ImportWarning, ImportWarningKind;
+    show
+        ImportWarning,
+        ImportWarningKind,
+        MarkdownFlavor,
+        looksLikeWonkyMarkdown;
 
 /// Import source formats.
 enum ImportFormat {
@@ -99,6 +104,7 @@ final class ImportResult {
     this.language,
     this.images = const [],
     this.pageSetup,
+    this.markdownFlavor = MarkdownFlavor.gfm,
   });
 
   /// The imported, normalized and valid document delta.
@@ -121,6 +127,10 @@ final class ImportResult {
 
   /// Page geometry from the source, when present.
   final ImportedPageSetup? pageSetup;
+
+  /// The flavor Markdown was read in (Write 11 §5.1); `wonky` when the
+  /// source had Wonky directives and [ImportOptions.detectFlavor] was set.
+  final MarkdownFlavor markdownFlavor;
 }
 
 /// Options shared by importers.
@@ -131,12 +141,31 @@ final class ImportOptions {
     this.txtLineBreaks = TxtLineBreaks.paragraph,
     this.baseUrl,
     this.fileName,
+    this.flavor = MarkdownFlavor.gfm,
+    this.detectFlavor = false,
   }) : idGenerator = idGenerator ?? _uuidV7;
 
   static String _uuidV7() => const Uuid().v7();
 
-  /// Generates embed ids (UUIDv7 by default; inject for determinism).
+  /// Generates embed and container ids (UUIDv7 by default; inject for
+  /// determinism).
   final String Function() idGenerator;
+
+  /// The Markdown flavor Markdown sources are read in (Write 11 §5.1).
+  final MarkdownFlavor flavor;
+
+  /// Read Markdown that contains Wonky directives as Wonky Markdown (new
+  /// documents from a file, Write 11 §5.1).
+  final bool detectFlavor;
+
+  /// Copy with [flavor] changed.
+  ImportOptions withFlavor(MarkdownFlavor flavor) => ImportOptions(
+    idGenerator: idGenerator,
+    txtLineBreaks: txtLineBreaks,
+    baseUrl: baseUrl,
+    fileName: fileName,
+    flavor: flavor,
+  );
 
   /// Plain-text line break handling.
   final TxtLineBreaks txtLineBreaks;

@@ -7,4 +7,6 @@ fields:
   templateItemUuid: UuidValue?
   termsUrl: String?
   fields: PublicationFields
+  ### `gfm` (default) or `wonky` (Write 11 §3.3).
+  markdownFlavor: String?
   enabled: bool

@@ -5956,6 +5956,13 @@ class Protocol extends _is.DatabaseSerializationManager
           dartType: 'String?',
         ),
         _isp.ColumnDefinition(
+          name: 'markdownFlavor',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+          columnDefault: '\'gfm\'',
+        ),
+        _isp.ColumnDefinition(
           name: 'charCount',
           columnType: _isp.ColumnType.bigint,
           isNullable: false,
@@ -8776,6 +8783,13 @@ class Protocol extends _is.DatabaseSerializationManager
           columnType: _isp.ColumnType.json,
           isNullable: false,
           dartType: 'protocol:PublicationFields',
+        ),
+        _isp.ColumnDefinition(
+          name: 'markdownFlavor',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+          columnDefault: '\'gfm\'',
         ),
         _isp.ColumnDefinition(
           name: 'signingSecret',

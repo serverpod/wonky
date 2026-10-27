@@ -310,6 +310,7 @@ final class _Resolution {
       rule: _rule(),
       image: _image(),
       table: _table(),
+      wonky: _wonky(),
       header: _headerFooter(ThemeElement.header),
       footer: _headerFooter(ThemeElement.footer),
       syntax: Map.unmodifiable(_syntax()),
@@ -318,6 +319,172 @@ final class _Resolution {
       contentHash: sha256
           .convert(utf8.encode('${theme.canonicalJson}\n${variant.name}'))
           .toString(),
+    );
+  }
+
+  // Wonky Markdown elements (Write 11 §8).
+
+  ResolvedWonkyElements _wonky() => ResolvedWonkyElements(
+    callout: _callout(),
+    details: _details(),
+    card: _card(),
+    grid: _grid(),
+    button: _button(),
+    chip: _chip(),
+    stepBadge: _stepBadge(),
+  );
+
+  int get _pageColor =>
+      colors[PaletteKey.page] ?? (_dark ? 0xff111111 : 0xffffffff);
+
+  /// [a] mixed into [b] by [t] (0 = [b], 1 = [a]) in Oklab.
+  static int _mix(int a, int b, double t) {
+    final x = Oklab.fromArgb(a);
+    final y = Oklab.fromArgb(b);
+    return Oklab(
+      y.l + (x.l - y.l) * t,
+      y.a + (x.a - y.a) * t,
+      y.b + (x.b - y.b) * t,
+    ).toArgb();
+  }
+
+  ResolvedCallout _callout() {
+    final bag = layered(ThemeElement.callout);
+    final page = _pageColor;
+    final variants = <String, ResolvedCalloutColors>{};
+    for (final v in const ['info', 'tip', 'note', 'warning', 'danger']) {
+      final vb = bag.bag(v) ?? PropertyBag.empty;
+      final hue = color(vb.color('color')) ?? colors[PaletteKey.accent] ?? 0;
+      final title = Oklch.fromArgb(hue);
+      variants[v] = ResolvedCalloutColors(
+        color: hue,
+        background:
+            fill(vb.color('background')) ??
+            _mix(hue, page, _dark ? 0.16 : 0.07),
+        border:
+            color(vb.color('border')) ?? _mix(hue, page, _dark ? 0.45 : 0.32),
+        title:
+            color(vb.color('titleColor')) ??
+            title
+                .copyWith(l: _dark ? 0.85 : 0.42, c: title.c.clamp(0, 0.16))
+                .toArgb(),
+      );
+    }
+    return ResolvedCallout(
+      spaceBefore: pt(bag.length('spaceBefore'), bodySize),
+      spaceAfter: pt(bag.length('spaceAfter'), bodySize),
+      padding: edges(bag.lengthEdges('padding'), bodySize),
+      borderRadius: pt(bag.length('borderRadius'), bodySize),
+      borderWidth: pt(bag.length('borderWidth'), bodySize, 0.75),
+      titleCase: enumValue(
+        CaseTransform.values,
+        bag.string('titleCaseTransform'),
+        CaseTransform.uppercase,
+      ),
+      titleSizeRatio: bag.number('titleSizeRatio') ?? 0.75,
+      titleWeight: FontRegistry.snapWeight(
+        bodyStyle.fontFamily,
+        bag.integer('titleWeight') ?? 600,
+      ),
+      variants: Map.unmodifiable(variants),
+    );
+  }
+
+  ResolvedDetails _details() {
+    final bag = layered(ThemeElement.details);
+    return ResolvedDetails(
+      spaceBefore: pt(bag.length('spaceBefore'), bodySize),
+      spaceAfter: pt(bag.length('spaceAfter'), bodySize),
+      padding: edges(bag.lengthEdges('padding'), bodySize),
+      background: fill(bag.color('background')),
+      border: border(bag.border('border'), bodySize) ?? BorderPt.none,
+      borderRadius: pt(bag.length('borderRadius'), bodySize),
+      summaryWeight: FontRegistry.snapWeight(
+        bodyStyle.fontFamily,
+        bag.integer('summaryWeight') ?? 600,
+      ),
+      chevronColor:
+          color(bag.color('chevronColor')) ??
+          colors[PaletteKey.muted] ??
+          bodyStyle.color,
+    );
+  }
+
+  ResolvedCard _card() {
+    final bag = layered(ThemeElement.card);
+    return ResolvedCard(
+      spaceBefore: pt(bag.length('spaceBefore'), bodySize),
+      spaceAfter: pt(bag.length('spaceAfter'), bodySize),
+      padding: edges(bag.lengthEdges('padding'), bodySize),
+      background: fill(bag.color('background')),
+      borderRadius: pt(bag.length('borderRadius'), bodySize),
+      shadow: bag.string('shadow') != 'none',
+    );
+  }
+
+  ResolvedGrid _grid() {
+    final bag = layered(ThemeElement.grid);
+    return ResolvedGrid(
+      spaceBefore: pt(bag.length('spaceBefore'), bodySize),
+      spaceAfter: pt(bag.length('spaceAfter'), bodySize),
+      bulletColor:
+          color(bag.color('bulletColor')) ??
+          colors[PaletteKey.accent] ??
+          bodyStyle.color,
+      columnGap: pt(bag.length('columnGap'), bodySize, 24),
+      rowGap: pt(bag.length('rowGap'), bodySize, 9),
+    );
+  }
+
+  ResolvedButton _button() {
+    final bag = layered(ThemeElement.button);
+    final accent = colors[PaletteKey.accent] ?? bodyStyle.color;
+    return ResolvedButton(
+      background: color(bag.color('background')) ?? accent,
+      color: color(bag.color('color')) ?? _pageColor,
+      secondaryBackground:
+          color(bag.color('secondaryBackground')) ??
+          colors[PaletteKey.muted] ??
+          bodyStyle.color,
+      secondaryColor: color(bag.color('secondaryColor')) ?? _pageColor,
+      borderRadius: pt(bag.length('borderRadius'), bodySize),
+      fontWeight: FontRegistry.snapWeight(
+        bodyStyle.fontFamily,
+        bag.integer('fontWeight') ?? 600,
+      ),
+      arrowColor: color(bag.color('arrowColor')) ?? accent,
+      arrowWeight: FontRegistry.snapWeight(
+        bodyStyle.fontFamily,
+        bag.integer('arrowWeight') ?? 600,
+      ),
+    );
+  }
+
+  ResolvedChip _chip() {
+    final bag = layered(ThemeElement.chip);
+    return ResolvedChip(
+      background:
+          color(bag.color('background')) ??
+          colors[PaletteKey.codeBg] ??
+          _pageColor,
+      color: color(bag.color('color')) ?? bodyStyle.color,
+      borderRadius: pt(bag.length('borderRadius'), bodySize, 200),
+      fontWeight: FontRegistry.snapWeight(
+        bodyStyle.fontFamily,
+        bag.integer('fontWeight') ?? 500,
+      ),
+    );
+  }
+
+  ResolvedStepBadge _stepBadge() {
+    final bag = layered(ThemeElement.stepBadge);
+    return ResolvedStepBadge(
+      background:
+          color(bag.color('background')) ??
+          colors[PaletteKey.accent] ??
+          bodyStyle.color,
+      color: color(bag.color('color')) ?? _pageColor,
+      sizeRatio: bag.number('sizeRatio') ?? 1.1,
     );
   }
 

@@ -10,6 +10,9 @@ defined there, §40). Shared shell structure is in
 [suite 03](../03-app-shell-and-navigation.md); components in
 [suite 02](../02-design-system.md). **No widget may call business logic directly** —
 every control is a `CommandButton`/`CommandMenuItem` bound to a command id (suite 08 §1.1).
+The Wonky Markdown items (*File › Markdown flavor*, the Insert/Format groups, the *Insert
+element* toolbar dropdown and the slash group, shown only in Wonky documents) are in
+[11-wonky-markdown.md](11-wonky-markdown.md) §7.5.
 
 ## 1. Conventions
 

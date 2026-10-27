@@ -9,6 +9,7 @@ import '../../delta/embeds.dart';
 import 'package:wonky_fonts/wonky_fonts.dart';
 import '../../import/import_support.dart' show MonospaceFonts;
 import '../../ir/doc_tree.dart';
+import '../../markdown/wonky_to_gfm.dart';
 import '../../layout/page_setup.dart';
 import '../../markdown/inline_reader.dart' show mentionTitlePrefix;
 import '../../theme/model/style_enums.dart';
@@ -50,7 +51,8 @@ final class RtfExporter implements DocumentExporter<RtfExportOptions> {
     RtfExportOptions options,
   ) async {
     input.cancel?.throwIfCancelled();
-    final tree = exportTree(input, options);
+    // Wonky elements in their GFM form (Write 11 §9).
+    final tree = WonkyToGfm.tree(exportTree(input, options));
     final warnings = <ExportWarning>[];
     if (input.variant == ThemeVariant.dark) {
       warnings.add(
@@ -530,6 +532,9 @@ final class _RtfWriter {
         if (b is! ListItemBlock && b is! TaskBlock) orderedLs.clear();
       }
       switch (b) {
+        case ContainerBlock() || GridBlock() || YouTubeBlock():
+          // Converted to their GFM form above.
+          break;
         case ParagraphBlock(:final runs):
           final box = theme.body.box;
           final after = prev is HeadingBlock;

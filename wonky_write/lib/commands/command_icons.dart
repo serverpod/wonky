@@ -1,6 +1,19 @@
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 
+/// The icon of the Write command [id] invoked with [args]: the callout
+/// types have their own (Write 11 §7.5).
+IconData? commandIconFor(String id, Map<String, Object?> args) => switch ((
+  id,
+  args['variant'],
+)) {
+  ('write.insert.callout', 'tip') => LucideIcons.lightbulb,
+  ('write.insert.callout', 'note') => LucideIcons.messageSquareMore,
+  ('write.insert.callout', 'warning' || 'caution') => LucideIcons.triangleAlert,
+  ('write.insert.callout', 'danger') => LucideIcons.octagonAlert,
+  _ => commandIcons[id],
+};
+
 /// Lucide icons of Write commands (menus, palette, toolbar).
 const Map<String, IconData> commandIcons = {
   'write.edit.copy': LucideIcons.copy,
@@ -35,6 +48,25 @@ const Map<String, IconData> commandIcons = {
   'write.insert.image': LucideIcons.imagePlus,
   'write.insert.imageFromUrl': LucideIcons.imageUp,
   'write.insert.table': LucideIcons.table,
+  // Wonky Markdown (Write 11 §7.5).
+  'write.insert.callout': LucideIcons.info,
+  'write.insert.details': LucideIcons.listCollapse,
+  'write.insert.card': LucideIcons.panelTop,
+  'write.insert.grid': LucideIcons.layoutGrid,
+  'write.insert.youtube': LucideIcons.squarePlay,
+  'write.youtube.edit': LucideIcons.pencil,
+  'write.youtube.open': LucideIcons.externalLink,
+  'write.youtube.delete': LucideIcons.trash2,
+  'write.insert.button': LucideIcons.mousePointerClick,
+  'write.insert.arrowLink': LucideIcons.arrowUpRight,
+  'write.format.chip': LucideIcons.tag,
+  'write.link.setStyle': LucideIcons.link2,
+  'write.heading.toggleStep': LucideIcons.listOrdered,
+  'write.heading.renumberSteps': LucideIcons.arrowDown01,
+  'write.box.unwrap': LucideIcons.squareDashed,
+  'write.details.toggleCollapsed': LucideIcons.chevronsUpDown,
+  'write.box.delete': LucideIcons.trash2,
+  'write.doc.setMarkdownFlavor': LucideIcons.fileCode,
   'write.insert.tableDialog': LucideIcons.table2,
   'write.insert.mentionTrigger': LucideIcons.atSign,
   'write.insert.fromFile': LucideIcons.fileInput,

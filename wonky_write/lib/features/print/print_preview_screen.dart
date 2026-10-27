@@ -108,6 +108,7 @@ class _PrintPreviewScreenState extends State<PrintPreviewScreen> {
           description: item.description,
           createdAt: item.createdAt,
           modifiedAt: item.modifiedAt,
+          markdownFlavor: meta.markdownFlavor,
         );
       });
       await _render();

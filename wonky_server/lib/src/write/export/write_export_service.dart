@@ -410,6 +410,7 @@ abstract final class WriteExportService {
         description: item.description,
         createdAt: doc.createdAt,
         modifiedAt: doc.updatedAt,
+        markdownFlavor: core.MarkdownFlavor.parse(doc.markdownFlavor),
       ),
       theme: theme,
       variant: options['variant'] == 'dark'
@@ -558,9 +559,10 @@ abstract final class WriteExportService {
     );
     final options = decodeObject(optionsJson);
     DriveItem? target;
+    core.MarkdownFlavor? flavor;
     final targetUuid = options['documentUuid'] ?? options['document_uuid'];
     if (targetUuid is String) {
-      final (_, item, role) = await DocumentService.require(
+      final (doc, item, role) = await DocumentService.require(
         session,
         actor,
         UuidValue.withValidation(targetUuid),
@@ -569,6 +571,7 @@ abstract final class WriteExportService {
         throw Errors.forbidden('Inserting files requires edit access.');
       }
       target = item;
+      flavor = core.MarkdownFlavor.parse(doc.markdownFlavor);
     }
     final data = await FileService.readBytes(session, file);
     final converted = await WriteImportService.convert(
@@ -576,6 +579,7 @@ abstract final class WriteExportService {
       fileName: file.fileName,
       format: format.isEmpty ? null : format,
       options: Map<String, dynamic>.from(options),
+      flavor: flavor,
     );
     final (result, _) = await WriteImportService.storeImages(
       session,

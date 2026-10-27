@@ -2,11 +2,14 @@
 /// (07 §5.3, §5.8).
 library;
 
+import '../../delta/boxes.dart';
 import '../../delta/delta_utils.dart';
+import '../../delta/embeds.dart';
 import '../../highlight/syntax_highlighter.dart';
 import '../../ir/doc_tree.dart';
 import '../../markdown/inline_reader.dart' show mentionTitlePrefix;
 import '../export_api.dart';
+import '../wonky_icons.dart';
 
 /// Options of [HtmlBodyWriter].
 final class HtmlBodyOptions {
@@ -198,8 +201,17 @@ final class HtmlBodyWriter {
     switch (block) {
       case ParagraphBlock(:final runs):
         return runs.isEmpty ? '<p>$_br</p>' : '<p>${inline(runs)}</p>';
-      case HeadingBlock(:final level, :final runs, :final anchorId):
-        return '<h$level id="${attr(anchorId)}">${runs.isEmpty ? _br : inline(runs)}</h$level>';
+      case HeadingBlock(
+        :final level,
+        :final runs,
+        :final anchorId,
+        :final step,
+      ):
+        final badge = step == null
+            ? ''
+            : '<span class="wonky-step-number">$step</span>';
+        final cls = step == null ? '' : ' class="wonky-step"';
+        return '<h$level id="${attr(anchorId)}"$cls>$badge${runs.isEmpty ? _br : inline(runs)}</h$level>';
       case QuoteBlock(:final lines):
         return '<blockquote>${_quoteLines(lines)}</blockquote>';
       case CodeBlock(:final language, :final text):
@@ -252,6 +264,57 @@ final class HtmlBodyWriter {
         return b.toString();
       case ListItemBlock() || TaskBlock():
         return blocks([block]);
+      case ContainerBlock():
+        return _container(block);
+      case YouTubeBlock(:final embed):
+        // EPUB readers can't play it: a link (Write 11 §9).
+        if (options.xhtml) return this.block(block.asLink);
+        final title = escape(embed.title ?? 'YouTube video');
+        return '<div class="wonky-youtube"><iframe '
+            'src="${escape(embed.embedUrl)}" title="$title" '
+            'style="width: 100%; aspect-ratio: 16 / 9; border: 0;" '
+            'allow="accelerometer; autoplay; clipboard-write; '
+            'encrypted-media; gyroscope; picture-in-picture" '
+            'allowfullscreen></iframe></div>';
+      case GridBlock(:final columns, :final bullets, :final items):
+        final bullet = switch (bullets) {
+          GridBullets.check => WonkyIcons.check(cls: 'wonky-grid-bullet'),
+          GridBullets.circle => WonkyIcons.circle(cls: 'wonky-grid-bullet'),
+          GridBullets.none => '',
+        };
+        final b = StringBuffer('<div class="wonky-grid wonky-grid-$columns">');
+        for (final item in items) {
+          b.write(
+            '<div class="wonky-grid-item">$bullet'
+            '<span class="wonky-grid-text">${inline(item)}</span></div>',
+          );
+        }
+        b.write('</div>');
+        return b.toString();
+    }
+  }
+
+  /// A Wonky Markdown container (Write 11 §9).
+  String _container(ContainerBlock block) {
+    final frame = block.frame;
+    switch (frame.type) {
+      case BoxType.callout:
+        final variant = (frame.variant ?? CalloutVariant.info).value;
+        return '<div class="wonky-callout wonky-callout-$variant">'
+            '<div class="wonky-callout-title">'
+            '${WonkyIcons.callout(variant, cls: 'wonky-callout-icon')}'
+            '${escape(frame.calloutLabel)}</div>'
+            '${blocks(block.children)}</div>';
+      case BoxType.details:
+        final summary = block.summary;
+        return '<details class="wonky-details" open>'
+            '<summary class="wonky-details-summary"><span>'
+            '${summary == null || summary.runs.isEmpty ? '' : inline(summary.runs)}'
+            '</span>${WonkyIcons.chevron(cls: 'wonky-details-chevron')}</summary>'
+            '<div class="wonky-details-body">${blocks(block.body)}</div>'
+            '</details>';
+      case BoxType.card:
+        return '<div class="wonky-card">${blocks(block.children)}</div>';
     }
   }
 
@@ -278,10 +341,42 @@ final class HtmlBodyWriter {
     var i = 0;
     while (i < runs.length) {
       final r = runs[i];
+      if (r.chip) {
+        b.write('<span class="wonky-chip">${escape(r.text)}</span>');
+        i++;
+        continue;
+      }
+      if (r.link != null && r.linkStyle != null) {
+        var j = i;
+        final label = StringBuffer();
+        while (j < runs.length &&
+            runs[j].link == r.link &&
+            runs[j].linkStyle == r.linkStyle) {
+          label.write(runs[j].text);
+          j++;
+        }
+        final href = attr(options.links.resolve(r.link!));
+        final text = escape(label.toString().replaceAll(softBreak, ' '));
+        b.write(switch (r.linkStyle) {
+          'arrow' =>
+            '<a class="wonky-link" href="$href" rel="noopener noreferrer">'
+                '$text${WonkyIcons.arrow(cls: 'wonky-link-arrow')}</a>',
+          'buttonSecondary' =>
+            '<a class="wonky-button wonky-button-secondary" href="$href" '
+                'rel="noopener noreferrer">$text</a>',
+          _ =>
+            '<a class="wonky-button" href="$href" rel="noopener noreferrer">'
+                '$text</a>',
+        });
+        i = j;
+        continue;
+      }
       if (r.link != null) {
         var j = i;
         while (j < runs.length &&
             runs[j].link == r.link &&
+            runs[j].linkStyle == null &&
+            !runs[j].chip &&
             runs[j].mentionUserUuid == r.mentionUserUuid) {
           j++;
         }

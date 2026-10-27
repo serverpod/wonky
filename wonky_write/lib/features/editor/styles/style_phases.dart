@@ -115,7 +115,9 @@ class CodeHighlightStylePhase extends SingleColumnLayoutStylePhase {
     if (spans.isEmpty) return model;
 
     final memo = _outputs[node.id];
-    if (memo != null && identical(memo.spans, spans) && memo.input == model) {
+    if (memo != null &&
+        identical(memo.spans, spans) &&
+        _sameInput(memo.input, model)) {
       return memo.output;
     }
     final copy = model.copy();
@@ -167,6 +169,86 @@ class _Highlighted {
   final List<(int, int, String)> spans;
 }
 
+/// Adds presentation-only [PillGapAttribution]s around chips and buttons
+/// and after arrow links (Write 11 §7.2), so the pills and arrows the pill
+/// layer paints have room. The document is never changed.
+class PillSpacingStylePhase extends SingleColumnLayoutStylePhase {
+  /// The last output per node and the input it was made from (an equal
+  /// input gets the same output, so components aren't rebuilt).
+  final _outputs =
+      <
+        String,
+        ({
+          SingleColumnLayoutComponentViewModel input,
+          SingleColumnLayoutComponentViewModel output,
+        })
+      >{};
+
+  @override
+  SingleColumnLayoutViewModel style(
+    Document document,
+    SingleColumnLayoutViewModel viewModel,
+  ) {
+    final seen = <String>{};
+    final result = SingleColumnLayoutViewModel(
+      padding: viewModel.padding,
+      componentViewModels: [
+        for (final model in viewModel.componentViewModels) _space(model, seen),
+      ],
+    );
+    _outputs.removeWhere((id, _) => !seen.contains(id));
+    return result;
+  }
+
+  static bool _isPill(Attribution a) =>
+      a is ChipAttribution || (a is LinkStyleAttribution && a.isButton);
+
+  SingleColumnLayoutComponentViewModel _space(
+    SingleColumnLayoutComponentViewModel model,
+    Set<String> seen,
+  ) {
+    if (model is! TextComponentViewModel) return model;
+    final text = model.text;
+    final spans = text.getAttributionSpansInRange(
+      attributionFilter: (a) => _isPill(a) || a is LinkStyleAttribution,
+      range: SpanRange(0, text.length),
+    );
+    if (spans.isEmpty) return model;
+    seen.add(model.nodeId);
+    final memo = _outputs[model.nodeId];
+    if (memo != null && _sameInput(memo.input, model)) return memo.output;
+    final plain = text.toPlainText(includePlaceholders: false);
+    bool isSpace(int i) => i >= 0 && i < plain.length && plain[i] == ' ';
+    // The gap of each character (the largest one asked for).
+    final gaps = <int, PillGapAttribution>{};
+    void gap(int i, PillGapAttribution g) {
+      final existing = gaps[i];
+      if (existing == null || existing.em < g.em) gaps[i] = g;
+    }
+
+    for (final span in spans) {
+      if (_isPill(span.attribution)) {
+        // The space before and after the pill, and its last character
+        // (room for its right padding).
+        for (final i in [span.start - 1, span.end + 1]) {
+          if (isSpace(i)) gap(i, PillGapAttribution.space);
+        }
+        gap(span.end, PillGapAttribution.pill);
+      } else {
+        gap(span.end, PillGapAttribution.arrow);
+      }
+    }
+    final spaced = text.copy();
+    for (final e in gaps.entries) {
+      spaced.addAttribution(e.value, SpanRange(e.key, e.key), autoMerge: false);
+    }
+    final copy = model.copy();
+    (copy as TextComponentViewModel).text = spaced;
+    _outputs[model.nodeId] = (input: model, output: copy);
+    return copy;
+  }
+}
+
 /// Lays out right-to-left paragraphs right-to-left (Write 04 §38): direction
 /// from the first strong character; nothing is stored in the Delta.
 class TextDirectionStylePhase extends SingleColumnLayoutStylePhase {
@@ -207,3 +289,13 @@ class TextDirectionStylePhase extends SingleColumnLayoutStylePhase {
     return copy;
   }
 }
+
+/// Whether a memoized style phase output still fits [model]: view model
+/// equality ignores the text style builder, which changes with the theme
+/// (light/dark), so it is compared too.
+bool _sameInput(
+  SingleColumnLayoutComponentViewModel memo,
+  TextComponentViewModel model,
+) =>
+    memo == model &&
+    (memo as TextComponentViewModel).textStyleBuilder == model.textStyleBuilder;

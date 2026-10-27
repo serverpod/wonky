@@ -1,12 +1,15 @@
 /// [DocTree] → Markdown (02 §2.2, 07 §5.1).
 library;
 
+import '../delta/boxes.dart';
 import '../delta/delta_utils.dart';
 import '../import/import_api.dart';
+import '../delta/embeds.dart';
 import '../ir/doc_tree.dart';
 import 'front_matter.dart';
 import 'inline_writer.dart';
 import 'markdown_importer.dart';
+import 'wonky_to_gfm.dart';
 
 /// Options of [MarkdownExporter].
 final class MarkdownExportOptions {
@@ -16,6 +19,7 @@ final class MarkdownExportOptions {
     this.imageSource,
     this.omitImages = false,
     this.linkRewriter,
+    this.flavor = MarkdownFlavor.gfm,
   });
 
   /// Emit [DocMeta.frontMatter] when present.
@@ -30,9 +34,13 @@ final class MarkdownExportOptions {
 
   /// Rewrites link targets (internal `wonky://` links → https / `#slug`).
   final String Function(String link)? linkRewriter;
+
+  /// The flavor to write (Write 11 §5.2). GFM export writes Wonky elements
+  /// in their GFM form ([WonkyToGfm]).
+  final MarkdownFlavor flavor;
 }
 
-/// Serializes the IR to GFM with context-aware escaping.
+/// Serializes the IR to GFM (or Wonky Markdown) with context-aware escaping.
 ///
 /// Every paragraph-like block is verified by parsing it back; when delimiter
 /// flanking rules cannot express the formatting, `_`-delimiters and finally
@@ -57,23 +65,37 @@ final class MarkdownExporter {
       b.write(FrontMatter.wrap(fm));
     }
     final positions = <({int start, int length})>[];
+    final blocks = _wonky ? tree.blocks : WonkyToGfm.blocks(tree.blocks);
+    _writeBlocks(blocks, b, positions: positions, top: true);
+    b.write('\n');
+    return (markdown: b.toString(), blocks: positions);
+  }
+
+  bool get _wonky => options.flavor == MarkdownFlavor.wonky;
+
+  /// Writes [blocks] separated per [_separator]; [positions] gets the range
+  /// of each block.
+  void _writeBlocks(
+    List<DocBlock> blocks,
+    StringBuffer b, {
+    List<({int start, int length})>? positions,
+    required bool top,
+  }) {
     DocBlock? prev;
     var first = true;
     final cols = _ListColumns();
-    for (final block in tree.blocks) {
+    for (final block in blocks) {
       if (block is ImageBlock && options.omitImages) {
-        positions.add((start: b.length, length: 0));
+        positions?.add((start: b.length, length: 0));
         continue;
       }
-      final text = _block(block, isFirst: first, cols: cols);
+      final text = _block(block, isFirst: first && top, cols: cols);
       if (!first) b.write(_separator(prev, block));
-      positions.add((start: b.length, length: text.length));
+      positions?.add((start: b.length, length: text.length));
       b.write(text);
       prev = block;
       first = false;
     }
-    b.write('\n');
-    return (markdown: b.toString(), blocks: positions);
   }
 
   static bool _isListLike(DocBlock? b) => b is ListItemBlock || b is TaskBlock;
@@ -99,10 +121,12 @@ final class MarkdownExporter {
     switch (block) {
       case ParagraphBlock(:final runs):
         return _verified(runs, marker: '', cont: '', kind: _Kind.paragraph);
-      case HeadingBlock(:final level, :final runs):
+      case HeadingBlock(:final level, :final runs, :final step):
         return _verified(
           runs,
-          marker: '${'#' * level} ',
+          marker:
+              '${'#' * level} '
+              '${step != null && _wonky && (level == 2 || level == 3) ? '($step) ' : ''}',
           cont: '',
           kind: _Kind.heading,
           level: level,
@@ -134,8 +158,66 @@ final class MarkdownExporter {
         return isFirst ? '***' : '---';
       case TableBlock():
         return _table(block);
+      case GridBlock():
+        return _grid(block);
+      case YouTubeBlock(:final embed):
+        return _youtube(embed);
+      case ContainerBlock():
+        return _container(block);
     }
   }
+
+  /// `::youtube[title]{id=… start=…}` (Write 11 §5.2).
+  String _youtube(YouTubeEmbed video) =>
+      '::youtube${video.title == null ? '' : '[${video.title}]'}'
+      '{id=${video.videoId}'
+      '${video.start == null ? '' : ' start=${video.start}'}}';
+
+  /// `:::type` … `:::` around the container's blocks (Write 11 §5.2).
+  String _container(ContainerBlock block) {
+    final frame = block.frame;
+    final open = switch (frame.type) {
+      BoxType.callout =>
+        ':::${(frame.variant ?? CalloutVariant.info).value}'
+            '${frame.title == null ? '' : '[${frame.title}]'}',
+      BoxType.details => ':::details',
+      BoxType.card => ':::card',
+    };
+    final b = StringBuffer('$open\n\n');
+    _writeBlocks(block.children, b, top: false);
+    b.write('\n\n:::');
+    return b.toString();
+  }
+
+  /// `:::grid{…}` with one `- item` line per item (Write 11 §5.2).
+  String _grid(GridBlock grid) {
+    final lines = [
+      ':::grid{columns=${grid.columns} bullets=${grid.bullets.value}}',
+      '',
+      for (final item in grid.items)
+        switch (InlineMarkdownWriter.write(
+          _rewriteLinks(item),
+          context: InlineContext.tableCell,
+          flavor: options.flavor,
+        )) {
+          '' => '- <!-- -->',
+          final text => '- $text',
+        },
+      '',
+      ':::',
+    ];
+    return lines.join('\n');
+  }
+
+  List<InlineRun> _rewriteLinks(List<InlineRun> runs) =>
+      options.linkRewriter == null
+      ? runs
+      : [
+          for (final r in runs)
+            r.link == null
+                ? r
+                : r.copyWith(link: options.linkRewriter!(r.link!)),
+        ];
 
   String _listItem(DocBlock block, _ListColumns cols) {
     final (indent, runs, marker) = switch (block) {
@@ -173,15 +255,7 @@ final class MarkdownExporter {
     int level = 1,
     bool nested = false,
   }) {
-    final rewritten = options.linkRewriter == null
-        ? runs
-        : [
-            for (final r in runs)
-              r.link == null
-                  ? r
-                  : r.copyWith(link: options.linkRewriter!(r.link!)),
-          ];
-    final merged = InlineRun.merge(rewritten);
+    final merged = InlineRun.merge(_rewriteLinks(runs));
     if (merged.isEmpty && (kind == _Kind.list || kind == _Kind.task)) {
       // Top level: a bare marker. Nested: an empty item cannot interrupt the
       // parent's paragraph, and a `<br>` HTML block would swallow the next
@@ -205,6 +279,7 @@ final class MarkdownExporter {
         merged,
         context: context,
         style: style,
+        flavor: options.flavor,
       );
       final lines = inline.split('\n');
       final text = [
@@ -212,14 +287,21 @@ final class MarkdownExporter {
         for (final l in lines.skip(1)) cont + l,
       ].join('\n');
       fallback ??= text;
-      if (_readBack(text, kind, level) case final back?
-          when _sameRuns(back, merged)) {
+      if (_readBack(text, kind, level, options.flavor) case final back?
+          when _sameRuns(back, _written(merged))) {
         return text;
       }
       if (style == EmphasisStyle.html) return text;
     }
     return fallback!;
   }
+
+  /// [runs] as the flavor writes them (GFM drops chips and link styles).
+  List<InlineRun> _written(List<InlineRun> runs) => _wonky
+      ? runs
+      : InlineRun.merge([
+          for (final r in runs) r.copyWith(clearLinkStyle: true, chip: false),
+        ]);
 
   static bool _sameRuns(List<InlineRun> a, List<InlineRun> b) {
     if (a.length != b.length) return false;
@@ -231,8 +313,15 @@ final class MarkdownExporter {
 
   /// Parses a single written block back to runs; `null` when the structure is
   /// not the expected single block.
-  static List<InlineRun>? _readBack(String markdown, _Kind kind, int level) {
-    final importer = MarkdownImporter(ImportOptions(idGenerator: () => 'x'));
+  static List<InlineRun>? _readBack(
+    String markdown,
+    _Kind kind,
+    int level,
+    MarkdownFlavor flavor,
+  ) {
+    final importer = MarkdownImporter(
+      ImportOptions(idGenerator: () => 'x', flavor: flavor),
+    );
     final tree = importer.parseTree(markdown);
     if (tree.blocks.length != 1) return null;
     final b = tree.blocks.single;

@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:wonky_core/wonky_core.dart' show UuidV7Generator;
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show SuggestionContext, SuggestionRewriter;
+    show MarkdownFlavor, SuggestionContext, SuggestionRewriter;
 
 import '../../../l10n/write_l10n.dart';
 import '../applier/delta_applier.dart';
@@ -17,6 +17,9 @@ import '../mapping/document_mirror.dart';
 import '../mapping/mirror_overlays.dart';
 import '../requests/block_editing_handlers.dart';
 import '../setup/editor_factory.dart';
+import '../components/box_frames.dart' show BoxFrameLayout;
+import '../grid/inline_grid_editing.dart' show InlineGridEditing;
+import '../reactions/pill_boundary.dart';
 import '../view/editor_view_state.dart';
 import 'editor_pipeline.dart';
 import 'editor_types.dart';
@@ -73,6 +76,10 @@ class WriteEditorController extends ChangeNotifier {
         preferences: () => _preferences,
         mode: () => _mode,
         newEmbedId: this.newEmbedId,
+        isWonky: () => markdownFlavor() == MarkdownFlavor.wonky,
+        // A new grid gets the caret in its first item (Write 11 §7.5).
+        onGridInserted: (id) => gridEditing?.activateSoon(id, 0),
+        pillBoundary: pillBoundary,
       ),
       onTransaction: _onTransaction,
     );
@@ -117,6 +124,28 @@ class WriteEditorController extends ChangeNotifier {
   /// View state (zoom, layout, find matches, remote cursors, comments).
   final EditorViewState view = EditorViewState();
 
+  /// Container frame state: collapsed details (Write 11 §7.3), a per-user
+  /// view state kept for the session.
+  /// Inside or outside the chip or button at the caret (Write 11 §7.4).
+  final PillBoundary pillBoundary = PillBoundary();
+
+  /// Moves a caret at the end of a chip or button out of it, so typing
+  /// goes after it (a new element; → does the same).
+  void leavePillAtCaret() {
+    final s = composer.selection;
+    if (s == null || !s.isCollapsed) return;
+    final node = document.getNodeById(s.extent.nodeId);
+    final p = s.extent.nodePosition;
+    if (node is! TextNode || p is! TextNodePosition) return;
+    final pill = PillBoundary.endingAt(node.text, p.offset);
+    if (pill.isEmpty) return;
+    pillBoundary.leaveAt(s.extent);
+    composer.preferences.removeStyles(pill);
+  }
+
+  late final BoxFrameLayout boxFrames = BoxFrameLayout()
+    ..collapseByDefault = _mode == EditorMode.viewing;
+
   /// Focus node of the editor widget.
   final FocusNode focusNode = FocusNode(debugLabel: 'write-editor');
 
@@ -125,9 +154,17 @@ class WriteEditorController extends ChangeNotifier {
     debugLabel: 'write-document-layout',
   );
 
+  /// The document's Markdown flavor (Write 11 §5): clipboard Markdown and
+  /// pasted fragments follow it. Set by the document session.
+  MarkdownFlavor Function() markdownFlavor = () => MarkdownFlavor.gfm;
+
   /// In-place table cell editing of the mounted editor widget (SE-4,
   /// Write 04 §18.4); `null` while no editor is mounted.
   InlineTableEditingHandle? tableEditing;
+
+  /// In-place grid item editing of the mounted editor widget (Write 11
+  /// §7.4); `null` while no editor is mounted.
+  InlineGridEditing? gridEditing;
 
   /// The document layout, once the editor is laid out.
   DocumentLayout? get documentLayout =>
@@ -469,6 +506,7 @@ class WriteEditorController extends ChangeNotifier {
   set mode(EditorMode value) {
     if (value == _mode) return;
     _mode = value;
+    boxFrames.collapseByDefault = value == EditorMode.viewing;
     if (value == EditorMode.viewing) {
       editor.execute([const ClearComposingRegionRequest()]);
     }
@@ -694,6 +732,8 @@ class WriteEditorController extends ChangeNotifier {
     _events.close();
     focusNode.dispose();
     view.dispose();
+    boxFrames.dispose();
+    pillBoundary.dispose();
     _pipeline.dispose();
     super.dispose();
   }

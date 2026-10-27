@@ -12,6 +12,8 @@ fields:
   pageSetupJson: String, default='{}'
   language: String?
   frontMatter: String?
+  ### `gfm` or `wonky` (Write 11 §3.1).
+  markdownFlavor: String, default='gfm'
   charCount: int, default=0
   wordCount: int, default=0
   createdAt: DateTime

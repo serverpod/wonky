@@ -4845,6 +4845,414 @@ class WriteLocalizationsEn extends WriteLocalizations {
 
   @override
   String get withdrawButton => 'Withdraw';
+
+  @override
+  String get themeElementCallout => 'Callout';
+
+  @override
+  String get themeElementDetails => 'Details';
+
+  @override
+  String get themeElementCard => 'Card';
+
+  @override
+  String get themeElementGrid => 'Grid';
+
+  @override
+  String get themeElementButton => 'Button and arrow link';
+
+  @override
+  String get themeElementChip => 'Chip';
+
+  @override
+  String get themeElementStepBadge => 'Numbered heading badge';
+
+  @override
+  String get themeEditorTreeWonky => 'Wonky Markdown';
+
+  @override
+  String get editorDetailsExpand => 'Expand';
+
+  @override
+  String get editorDetailsCollapse => 'Collapse';
+
+  @override
+  String get editorContainerMenu => 'More container actions';
+
+  @override
+  String get editorCalloutType => 'Change callout type';
+
+  @override
+  String get editorCalloutEditTitle => 'Edit title';
+
+  @override
+  String get editorStepNumber => 'Change the step number';
+
+  @override
+  String get cmdBoxConvert => 'Change container type';
+
+  @override
+  String get cmdBoxDelete => 'Delete container';
+
+  @override
+  String get cmdBoxEditTitle => 'Edit callout title';
+
+  @override
+  String get cmdBoxLeave => 'Leave container';
+
+  @override
+  String get cmdBoxSetVariant => 'Change callout type';
+
+  @override
+  String get cmdBoxUnwrap => 'Remove container';
+
+  @override
+  String get cmdFormatChip => 'Chip';
+
+  @override
+  String get cmdGridAddItem => 'Add grid item';
+
+  @override
+  String get cmdGridRemoveItem => 'Remove grid item';
+
+  @override
+  String get cmdGridSetBullets => 'Grid bullets';
+
+  @override
+  String get cmdGridSetColumns => 'Grid columns';
+
+  @override
+  String get cmdHeadingRenumberSteps => 'Renumber steps';
+
+  @override
+  String get cmdHeadingSetStepNumber => 'Change step number';
+
+  @override
+  String get cmdHeadingToggleStep => 'Numbered heading';
+
+  @override
+  String get cmdInsertCallout => 'Callout';
+
+  @override
+  String get cmdInsertCard => 'Card';
+
+  @override
+  String get cmdInsertDetails => 'Details (expandable)';
+
+  @override
+  String get cmdInsertGrid => 'Grid';
+
+  @override
+  String get cmdLinkSetStyle => 'Link style';
+
+  @override
+  String get editorChipPlaceholder => 'Tag';
+
+  @override
+  String get editorDetailsSummaryPlaceholder => 'Summary';
+
+  @override
+  String get undoEditGrid => 'Edit grid';
+
+  @override
+  String editorGridColumns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count columns',
+      one: '1 column',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get editorGridMenu => 'More grid actions';
+
+  @override
+  String editorGridLabel(int items, int columns) {
+    return 'Grid of $items items in $columns columns';
+  }
+
+  @override
+  String get editorGridItemPlaceholder => 'Item';
+
+  @override
+  String get cmdDocSetMarkdownFlavor => 'Markdown flavor';
+
+  @override
+  String get flavorConvertNeedsEditing =>
+      'Switch to Editing mode to convert the Wonky Markdown elements.';
+
+  @override
+  String get flavorConvertTitle => 'Convert to GitHub Markdown?';
+
+  @override
+  String flavorConvertBody(String elements) {
+    return 'This document has $elements, which GitHub Markdown doesn\'t support. They become their closest GitHub form: callouts become quotes, buttons and arrow links plain links, chips text, grids lists and numbered headings text. You can undo this.';
+  }
+
+  @override
+  String get flavorConvertButton => 'Convert';
+
+  @override
+  String flavorCountCallouts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count callouts',
+      one: '1 callout',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flavorCountDetails(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count details blocks',
+      one: '1 details block',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flavorCountCards(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cards',
+      one: '1 card',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flavorCountGrids(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count grids',
+      one: '1 grid',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flavorCountButtons(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count buttons',
+      one: '1 button',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flavorCountArrowLinks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count arrow links',
+      one: '1 arrow link',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flavorCountChips(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count chips',
+      one: '1 chip',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flavorCountSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count numbered headings',
+      one: '1 numbered heading',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flavorListJoin(String first, String last) {
+    return '$first and $last';
+  }
+
+  @override
+  String get menuMarkdownFlavor => 'Markdown flavor';
+
+  @override
+  String get menuMarkdownGfm => 'GitHub Markdown';
+
+  @override
+  String get menuMarkdownWonky => 'Wonky Markdown';
+
+  @override
+  String get linkStyle => 'Style';
+
+  @override
+  String get linkStylePlain => 'Link';
+
+  @override
+  String get linkStyleArrow => 'Arrow link';
+
+  @override
+  String get linkStyleButton => 'Button';
+
+  @override
+  String get linkStyleButtonSecondary => 'Secondary button';
+
+  @override
+  String get cmdInsertButton => 'Button';
+
+  @override
+  String get cmdInsertArrowLink => 'Arrow link';
+
+  @override
+  String get menuButtonEllipsis => 'Button…';
+
+  @override
+  String get menuSecondaryButtonEllipsis => 'Secondary button…';
+
+  @override
+  String get menuArrowLinkEllipsis => 'Arrow link…';
+
+  @override
+  String get calloutInfo => 'Info';
+
+  @override
+  String get calloutTip => 'Tip';
+
+  @override
+  String get calloutNote => 'Note';
+
+  @override
+  String get calloutWarning => 'Warning';
+
+  @override
+  String get calloutCaution => 'Caution';
+
+  @override
+  String get calloutDanger => 'Danger';
+
+  @override
+  String get menuContainer => 'Container';
+
+  @override
+  String get menuCalloutType => 'Callout type';
+
+  @override
+  String get menuEditTitleEllipsis => 'Edit title…';
+
+  @override
+  String get menuChangeTo => 'Change to';
+
+  @override
+  String get menuColumns => 'Columns';
+
+  @override
+  String get menuBullets => 'Bullets';
+
+  @override
+  String get gridBulletsCheck => 'Check marks';
+
+  @override
+  String get gridBulletsCircle => 'Circles';
+
+  @override
+  String get gridBulletsNone => 'None';
+
+  @override
+  String get menuDeleteGrid => 'Delete grid';
+
+  @override
+  String get toolbarInsertElement => 'Insert element';
+
+  @override
+  String slashCallout(String type) {
+    return '$type callout';
+  }
+
+  @override
+  String get boxTitleLabel => 'Callout title';
+
+  @override
+  String get stepNumberLabel => 'Step number';
+
+  @override
+  String get cmdDetailsToggleCollapsed => 'Collapse or expand details';
+
+  @override
+  String submitFlavorWantsGfm(String publication) {
+    return '$publication expects GitHub-style Markdown, but this document uses Wonky Markdown extensions, which the blog may not render. Switch with File › Markdown flavor.';
+  }
+
+  @override
+  String submitFlavorWantsWonky(String publication) {
+    return '$publication supports Wonky Markdown extensions (callouts, buttons and more); this document uses GitHub style. Switch with File › Markdown flavor to use them.';
+  }
+
+  @override
+  String get cmdInsertYouTube => 'YouTube video…';
+
+  @override
+  String get cmdYouTubeEdit => 'Edit video…';
+
+  @override
+  String get cmdYouTubeOpen => 'Open on YouTube';
+
+  @override
+  String get cmdYouTubeDelete => 'Delete video';
+
+  @override
+  String get editorYouTubeMenu => 'Video actions';
+
+  @override
+  String editorYouTubeLabel(String title) {
+    return 'YouTube video: $title';
+  }
+
+  @override
+  String get youtubeDialogInsertTitle => 'Insert YouTube video';
+
+  @override
+  String get youtubeDialogEditTitle => 'Edit YouTube video';
+
+  @override
+  String get youtubeFieldUrl => 'YouTube link';
+
+  @override
+  String get youtubeFieldUrlHint => 'https://www.youtube.com/watch?v=…';
+
+  @override
+  String get youtubeDialogDescription =>
+      'Paste the video\'s link. A start time in it (like &t=90) is kept. Wonky Write shows the thumbnail; the published page plays the video.';
+
+  @override
+  String get youtubeFieldTitle => 'Title (optional)';
+
+  @override
+  String get youtubeInvalidUrl => 'This isn\'t a YouTube video link.';
+
+  @override
+  String flavorCountVideos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count YouTube videos',
+      one: '1 YouTube video',
+    );
+    return '$_temp0';
+  }
 }
 
 /// The translations for English (`en_XA`).
@@ -9751,4 +10159,415 @@ class WriteLocalizationsEnXa extends WriteLocalizationsEn {
 
   @override
   String get withdrawButton => '[Ŵîţĥðŕåŵ one]';
+
+  @override
+  String get themeElementCallout => '[Çåļļöûţ one]';
+
+  @override
+  String get themeElementDetails => '[Ðéţåîļš one]';
+
+  @override
+  String get themeElementCard => '[Çåŕð on]';
+
+  @override
+  String get themeElementGrid => '[Ĝŕîð on]';
+
+  @override
+  String get themeElementButton => '[Ɓûţţöñ åñð åŕŕöŵ ļîñķ one two]';
+
+  @override
+  String get themeElementChip => '[Çĥîþ on]';
+
+  @override
+  String get themeElementStepBadge => '[Ñûɱƀéŕéð ĥéåðîñĝ ƀåðĝé one two]';
+
+  @override
+  String get themeEditorTreeWonky => '[Ŵöñķý Ṁåŕķðöŵñ one t]';
+
+  @override
+  String get editorDetailsExpand => '[Éẋþåñð one]';
+
+  @override
+  String get editorDetailsCollapse => '[Çöļļåþšé one]';
+
+  @override
+  String get editorContainerMenu => '[Ṁöŕé çöñţåîñéŕ åçţîöñš one two]';
+
+  @override
+  String get editorCalloutType => '[Çĥåñĝé çåļļöûţ ţýþé one tw]';
+
+  @override
+  String get editorCalloutEditTitle => '[Éðîţ ţîţļé one]';
+
+  @override
+  String get editorStepNumber => '[Çĥåñĝé ţĥé šţéþ ñûɱƀéŕ one two]';
+
+  @override
+  String get cmdBoxConvert => '[Çĥåñĝé çöñţåîñéŕ ţýþé one two]';
+
+  @override
+  String get cmdBoxDelete => '[Ðéļéţé çöñţåîñéŕ one tw]';
+
+  @override
+  String get cmdBoxEditTitle => '[Éðîţ çåļļöûţ ţîţļé one tw]';
+
+  @override
+  String get cmdBoxLeave => '[Ļéåṽé çöñţåîñéŕ one t]';
+
+  @override
+  String get cmdBoxSetVariant => '[Çĥåñĝé çåļļöûţ ţýþé one tw]';
+
+  @override
+  String get cmdBoxUnwrap => '[Ŕéɱöṽé çöñţåîñéŕ one tw]';
+
+  @override
+  String get cmdFormatChip => '[Çĥîþ on]';
+
+  @override
+  String get cmdGridAddItem => '[Åðð ĝŕîð îţéɱ one]';
+
+  @override
+  String get cmdGridRemoveItem => '[Ŕéɱöṽé ĝŕîð îţéɱ one t]';
+
+  @override
+  String get cmdGridSetBullets => '[Ĝŕîð ƀûļļéţš one]';
+
+  @override
+  String get cmdGridSetColumns => '[Ĝŕîð çöļûɱñš one]';
+
+  @override
+  String get cmdHeadingRenumberSteps => '[Ŕéñûɱƀéŕ šţéþš one t]';
+
+  @override
+  String get cmdHeadingSetStepNumber => '[Çĥåñĝé šţéþ ñûɱƀéŕ one tw]';
+
+  @override
+  String get cmdHeadingToggleStep => '[Ñûɱƀéŕéð ĥéåðîñĝ one tw]';
+
+  @override
+  String get cmdInsertCallout => '[Çåļļöûţ one]';
+
+  @override
+  String get cmdInsertCard => '[Çåŕð on]';
+
+  @override
+  String get cmdInsertDetails => '[Ðéţåîļš (éẋþåñðåƀļé) one two]';
+
+  @override
+  String get cmdInsertGrid => '[Ĝŕîð on]';
+
+  @override
+  String get cmdLinkSetStyle => '[Ļîñķ šţýļé one]';
+
+  @override
+  String get editorChipPlaceholder => '[Ţåĝ on]';
+
+  @override
+  String get editorDetailsSummaryPlaceholder => '[Šûɱɱåŕý one]';
+
+  @override
+  String get undoEditGrid => '[Éðîţ ĝŕîð one]';
+
+  @override
+  String editorGridColumns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count çöļûɱñš',
+      one: '1 çöļûɱñ',
+    );
+    return '[$_temp0 one t]';
+  }
+
+  @override
+  String get editorGridMenu => '[Ṁöŕé ĝŕîð åçţîöñš one tw]';
+
+  @override
+  String editorGridLabel(int items, int columns) {
+    return '[Ĝŕîð öƒ $items îţéɱš îñ $columns çöļûɱñš one two]';
+  }
+
+  @override
+  String get editorGridItemPlaceholder => '[Îţéɱ on]';
+
+  @override
+  String get cmdDocSetMarkdownFlavor => '[Ṁåŕķðöŵñ ƒļåṽöŕ one t]';
+
+  @override
+  String get flavorConvertNeedsEditing =>
+      '[Šŵîţçĥ ţö Éðîţîñĝ ɱöðé ţö çöñṽéŕţ ţĥé Ŵöñķý Ṁåŕķðöŵñ éļéɱéñţš. one two three four]';
+
+  @override
+  String get flavorConvertTitle => '[Çöñṽéŕţ ţö ĜîţĤûƀ Ṁåŕķðöŵñ? one two t]';
+
+  @override
+  String flavorConvertBody(String elements) {
+    return '[Ţĥîš ðöçûɱéñţ ĥåš $elements, ŵĥîçĥ ĜîţĤûƀ Ṁåŕķðöŵñ ðöéšñ\'ţ šûþþöŕţ. Ţĥéý ƀéçöɱé ţĥéîŕ çļöšéšţ ĜîţĤûƀ ƒöŕɱ: çåļļöûţš ƀéçöɱé ǫûöţéš, ƀûţţöñš åñð åŕŕöŵ ļîñķš þļåîñ ļîñķš, çĥîþš ţéẋţ, ĝŕîðš ļîšţš åñð ñûɱƀéŕéð ĥéåðîñĝš ţéẋţ. Ýöû çåñ ûñðö ţĥîš. one two three four five six seven eight nine ten one two three four]';
+  }
+
+  @override
+  String get flavorConvertButton => '[Çöñṽéŕţ one]';
+
+  @override
+  String flavorCountCallouts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count çåļļöûţš',
+      one: '1 çåļļöûţ',
+    );
+    return '[$_temp0 one tw]';
+  }
+
+  @override
+  String flavorCountDetails(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ðéţåîļš ƀļöçķš',
+      one: '1 ðéţåîļš ƀļöçķ',
+    );
+    return '[$_temp0 one two th]';
+  }
+
+  @override
+  String flavorCountCards(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count çåŕðš',
+      one: '1 çåŕð',
+    );
+    return '[$_temp0 one]';
+  }
+
+  @override
+  String flavorCountGrids(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ĝŕîðš',
+      one: '1 ĝŕîð',
+    );
+    return '[$_temp0 one]';
+  }
+
+  @override
+  String flavorCountButtons(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ƀûţţöñš',
+      one: '1 ƀûţţöñ',
+    );
+    return '[$_temp0 one t]';
+  }
+
+  @override
+  String flavorCountArrowLinks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count åŕŕöŵ ļîñķš',
+      one: '1 åŕŕöŵ ļîñķ',
+    );
+    return '[$_temp0 one two]';
+  }
+
+  @override
+  String flavorCountChips(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count çĥîþš',
+      one: '1 çĥîþ',
+    );
+    return '[$_temp0 one]';
+  }
+
+  @override
+  String flavorCountSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ñûɱƀéŕéð ĥéåðîñĝš',
+      one: '1 ñûɱƀéŕéð ĥéåðîñĝ',
+    );
+    return '[$_temp0 one two thre]';
+  }
+
+  @override
+  String flavorListJoin(String first, String last) {
+    return '[$first åñð $last on]';
+  }
+
+  @override
+  String get menuMarkdownFlavor => '[Ṁåŕķðöŵñ ƒļåṽöŕ one t]';
+
+  @override
+  String get menuMarkdownGfm => '[ĜîţĤûƀ Ṁåŕķðöŵñ one t]';
+
+  @override
+  String get menuMarkdownWonky => '[Ŵöñķý Ṁåŕķðöŵñ one t]';
+
+  @override
+  String get linkStyle => '[Šţýļé on]';
+
+  @override
+  String get linkStylePlain => '[Ļîñķ on]';
+
+  @override
+  String get linkStyleArrow => '[Åŕŕöŵ ļîñķ one]';
+
+  @override
+  String get linkStyleButton => '[Ɓûţţöñ one]';
+
+  @override
+  String get linkStyleButtonSecondary => '[Šéçöñðåŕý ƀûţţöñ one tw]';
+
+  @override
+  String get cmdInsertButton => '[Ɓûţţöñ one]';
+
+  @override
+  String get cmdInsertArrowLink => '[Åŕŕöŵ ļîñķ one]';
+
+  @override
+  String get menuButtonEllipsis => '[Ɓûţţöñ… one]';
+
+  @override
+  String get menuSecondaryButtonEllipsis => '[Šéçöñðåŕý ƀûţţöñ… one tw]';
+
+  @override
+  String get menuArrowLinkEllipsis => '[Åŕŕöŵ ļîñķ… one]';
+
+  @override
+  String get calloutInfo => '[Îñƒö on]';
+
+  @override
+  String get calloutTip => '[Ţîþ on]';
+
+  @override
+  String get calloutNote => '[Ñöţé on]';
+
+  @override
+  String get calloutWarning => '[Ŵåŕñîñĝ one]';
+
+  @override
+  String get calloutCaution => '[Çåûţîöñ one]';
+
+  @override
+  String get calloutDanger => '[Ðåñĝéŕ one]';
+
+  @override
+  String get menuContainer => '[Çöñţåîñéŕ one]';
+
+  @override
+  String get menuCalloutType => '[Çåļļöûţ ţýþé one]';
+
+  @override
+  String get menuEditTitleEllipsis => '[Éðîţ ţîţļé… one]';
+
+  @override
+  String get menuChangeTo => '[Çĥåñĝé ţö one]';
+
+  @override
+  String get menuColumns => '[Çöļûɱñš one]';
+
+  @override
+  String get menuBullets => '[Ɓûļļéţš one]';
+
+  @override
+  String get gridBulletsCheck => '[Çĥéçķ ɱåŕķš one]';
+
+  @override
+  String get gridBulletsCircle => '[Çîŕçļéš one]';
+
+  @override
+  String get gridBulletsNone => '[Ñöñé on]';
+
+  @override
+  String get menuDeleteGrid => '[Ðéļéţé ĝŕîð one]';
+
+  @override
+  String get toolbarInsertElement => '[Îñšéŕţ éļéɱéñţ one t]';
+
+  @override
+  String slashCallout(String type) {
+    return '[$type çåļļöûţ one]';
+  }
+
+  @override
+  String get boxTitleLabel => '[Çåļļöûţ ţîţļé one t]';
+
+  @override
+  String get stepNumberLabel => '[Šţéþ ñûɱƀéŕ one]';
+
+  @override
+  String get cmdDetailsToggleCollapsed =>
+      '[Çöļļåþšé öŕ éẋþåñð ðéţåîļš one two t]';
+
+  @override
+  String submitFlavorWantsGfm(String publication) {
+    return '[$publication éẋþéçţš ĜîţĤûƀ-šţýļé Ṁåŕķðöŵñ, ƀûţ ţĥîš ðöçûɱéñţ ûšéš Ŵöñķý Ṁåŕķðöŵñ éẋţéñšîöñš, ŵĥîçĥ ţĥé ƀļöĝ ɱåý ñöţ ŕéñðéŕ. Šŵîţçĥ ŵîţĥ Ƒîļé › Ṁåŕķðöŵñ ƒļåṽöŕ. one two three four five six seven eight nine]';
+  }
+
+  @override
+  String submitFlavorWantsWonky(String publication) {
+    return '[$publication šûþþöŕţš Ŵöñķý Ṁåŕķðöŵñ éẋţéñšîöñš (çåļļöûţš, ƀûţţöñš åñð ɱöŕé); ţĥîš ðöçûɱéñţ ûšéš ĜîţĤûƀ šţýļé. Šŵîţçĥ ŵîţĥ Ƒîļé › Ṁåŕķðöŵñ ƒļåṽöŕ ţö ûšé ţĥéɱ. one two three four five six seven eight nine]';
+  }
+
+  @override
+  String get cmdInsertYouTube => '[ÝöûŢûƀé ṽîðéö… one t]';
+
+  @override
+  String get cmdYouTubeEdit => '[Éðîţ ṽîðéö… one]';
+
+  @override
+  String get cmdYouTubeOpen => '[Öþéñ öñ ÝöûŢûƀé one t]';
+
+  @override
+  String get cmdYouTubeDelete => '[Ðéļéţé ṽîðéö one]';
+
+  @override
+  String get editorYouTubeMenu => '[Ṽîðéö åçţîöñš one t]';
+
+  @override
+  String editorYouTubeLabel(String title) {
+    return '[ÝöûŢûƀé ṽîðéö: $title one t]';
+  }
+
+  @override
+  String get youtubeDialogInsertTitle => '[Îñšéŕţ ÝöûŢûƀé ṽîðéö one two]';
+
+  @override
+  String get youtubeDialogEditTitle => '[Éðîţ ÝöûŢûƀé ṽîðéö one tw]';
+
+  @override
+  String get youtubeFieldUrl => '[ÝöûŢûƀé ļîñķ one]';
+
+  @override
+  String get youtubeFieldUrlHint =>
+      '[ĥţţþš://ŵŵŵ.ýöûţûƀé.çöɱ/ŵåţçĥ?ṽ=… one two thre]';
+
+  @override
+  String get youtubeDialogDescription =>
+      '[Þåšţé ţĥé ṽîðéö\'š ļîñķ. Å šţåŕţ ţîɱé îñ îţ (ļîķé &ţ=90) îš ķéþţ. Ŵöñķý Ŵŕîţé šĥöŵš ţĥé ţĥûɱƀñåîļ; ţĥé þûƀļîšĥéð þåĝé þļåýš ţĥé ṽîðéö. one two three four five six seven eight]';
+
+  @override
+  String get youtubeFieldTitle => '[Ţîţļé (öþţîöñåļ) one tw]';
+
+  @override
+  String get youtubeInvalidUrl =>
+      '[Ţĥîš îšñ\'ţ å ÝöûŢûƀé ṽîðéö ļîñķ. one two th]';
+
+  @override
+  String flavorCountVideos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ÝöûŢûƀé ṽîðéöš',
+      one: '1 ÝöûŢûƀé ṽîðéö',
+    );
+    return '[$_temp0 one two th]';
+  }
 }

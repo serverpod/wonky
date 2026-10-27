@@ -1,4 +1,5 @@
 import 'package:super_editor/super_editor.dart';
+import 'package:wonky_write_core/wonky_write_core.dart' show BoxFrame, Boxes;
 
 /// Delta attribute keys of the Wonky Delta Schema v1 used by the editor
 /// mapping (Write 02 §1). Mirrors `WonkyAttr` of `wonky_write_core`.
@@ -9,12 +10,16 @@ abstract final class DeltaKeys {
   static const code = 'code';
   static const link = 'link';
   static const mention = 'mention';
+  static const linkStyle = 'linkStyle';
+  static const chip = 'chip';
 
   static const header = 'header';
   static const blockquote = 'blockquote';
   static const codeBlock = 'code-block';
   static const list = 'list';
   static const indent = 'indent';
+  static const step = 'step';
+  static const box = 'box';
 
   static const commentPrefix = 'cmt_';
   static const suggestionPrefix = 'sug_';
@@ -23,10 +28,27 @@ abstract final class DeltaKeys {
   static const formattingKeys = {bold, italic, strike, code};
 
   /// All inline keys.
-  static const inlineKeys = {bold, italic, strike, code, link, mention};
+  static const inlineKeys = {
+    bold,
+    italic,
+    strike,
+    code,
+    link,
+    mention,
+    linkStyle,
+    chip,
+  };
 
   /// Block attribute keys.
-  static const blockKeys = {header, blockquote, codeBlock, list, indent};
+  static const blockKeys = {
+    header,
+    blockquote,
+    codeBlock,
+    list,
+    indent,
+    step,
+    box,
+  };
 
   static bool isComment(String key) =>
       key.startsWith(commentPrefix) && key.length > commentPrefix.length;
@@ -40,6 +62,8 @@ abstract final class DeltaKeys {
   static const imageEmbed = 'image';
   static const dividerEmbed = 'divider';
   static const tableEmbed = 'table';
+  static const gridEmbed = 'grid';
+  static const youtubeEmbed = 'youtube';
 
   /// The soft line break character inside a line (Shift+Enter).
   static const softBreak = ' ';
@@ -65,6 +89,33 @@ abstract final class WonkyNodeMetadata {
 
   /// `true` on a list or task item inside a quote (Write 04 §14).
   static const quoted = 'wonkyQuoted';
+
+  /// The Wonky Markdown containers of a node (Write 11 §7.1): the raw `box`
+  /// value (a list of frame maps, outermost first). Absent on nodes made by
+  /// super_editor commands until the box guard sets it; an empty list means
+  /// "in no container".
+  static const box = 'wonkyBox';
+
+  /// The number of a numbered heading (`step`, Write 11 §2.2).
+  static const step = 'wonkyStep';
+}
+
+/// The container frames of [node] (outermost first; empty when none).
+List<BoxFrame> boxOf(DocumentNode? node) => node == null
+    ? const []
+    : Boxes.parse(node.getMetadataValue(WonkyNodeMetadata.box));
+
+/// The raw `box` value of [node] for its line ends, or `null` when it is in
+/// no container.
+List<dynamic>? boxValueOf(DocumentNode node) {
+  final value = node.getMetadataValue(WonkyNodeMetadata.box);
+  return value is List && value.isNotEmpty ? value : null;
+}
+
+/// The step number of a numbered heading node, or `null`.
+int? stepOf(DocumentNode? node) {
+  final value = node?.getMetadataValue(WonkyNodeMetadata.step);
+  return value is int ? value : null;
 }
 
 /// Heading block type attributions by level (index 0 = level 1).

@@ -336,13 +336,47 @@ class WriteInlineStyler {
           backgroundColor: theme.inlineCodeBackground,
         );
       } else if (attribution is LinkAttribution) {
-        if (!attributions.any((a) => a is MentionAttribution)) {
+        // Mentions, buttons and arrow links have their own look.
+        if (!attributions.any(
+          (a) => a is MentionAttribution || a is LinkStyleAttribution,
+        )) {
           style = style.copyWith(color: theme.linkColor);
           if (theme.linkUnderline) {
             decorations.add(TextDecoration.underline);
             decorationColor ??= theme.linkColor;
           }
         }
+      } else if (attribution is LinkStyleAttribution) {
+        final w = theme.wonky;
+        style = switch (attribution.style) {
+          'arrow' => style.copyWith(
+            color: w.arrowColor,
+            fontWeight: w.arrowWeight,
+          ),
+          // A taller line box: room for the pill around the label.
+          'buttonSecondary' => style.copyWith(
+            color: w.secondaryButtonColor,
+            fontWeight: w.buttonWeight,
+            height: 2.3,
+          ),
+          _ => style.copyWith(
+            color: w.buttonColor,
+            fontWeight: w.buttonWeight,
+            height: 2.3,
+          ),
+        };
+      } else if (attribution is ChipAttribution) {
+        style = style.copyWith(
+          color: theme.wonky.chipColor,
+          fontWeight: theme.wonky.chipWeight,
+          height: 1.8,
+        );
+      } else if (attribution is PillGapAttribution) {
+        style = style.copyWith(
+          letterSpacing:
+              (style.letterSpacing ?? 0) +
+              attribution.em * (style.fontSize ?? 14.67),
+        );
       } else if (attribution is MentionAttribution) {
         style = style.copyWith(
           color: theme.mentionColor,

@@ -7,6 +7,8 @@ import 'package:wonky_write/features/editor/attributions/wonky_attributions.dart
 import 'package:wonky_write/features/editor/mapping/delta_document_mapper.dart';
 import 'package:wonky_write/features/editor/mapping/wonky_schema.dart';
 
+import 'package:wonky_write_core/testing.dart' as core;
+
 import '../support/delta_gen.dart';
 
 void main() {
@@ -88,6 +90,48 @@ void main() {
       'a mention': Delta()
         ..insert('@Anna', {'mention': 'u1', 'link': 'mailto:anna@x.dev'})
         ..insert(' hi\n'),
+      'Wonky containers, steps, grids and pills (Write 11)': Delta()
+        ..insert('Install')
+        ..insert('\n', {'header': 2, 'step': 1})
+        ..insert('Careful')
+        ..insert('\n', {
+          'box': [
+            {'id': 'w', 'type': 'callout', 'variant': 'warning', 'title': 'T'},
+          ],
+        })
+        ..insert('More')
+        ..insert('\n', {
+          'box': [
+            {'id': 'w', 'type': 'callout', 'variant': 'warning', 'title': 'T'},
+            {'id': 'c', 'type': 'card'},
+          ],
+        })
+        ..insert({
+          'grid': {
+            'id': 'g',
+            'columns': 2,
+            'bullets': 'check',
+            'items': ['**a**', 'b'],
+          },
+        })
+        ..insert('\n', {
+          'box': [
+            {'id': 'd', 'type': 'details'},
+          ],
+        })
+        ..insert('fn main', {'code': true})
+        ..insert('\n', {
+          'code-block': 'rust',
+          'box': [
+            {'id': 'd', 'type': 'details'},
+          ],
+        })
+        ..insert('New', {'chip': 'star'})
+        ..insert(' ')
+        ..insert('Go', {'link': 'https://x.dev', 'linkStyle': 'button'})
+        ..insert(' ')
+        ..insert('Docs', {'link': 'https://x.dev', 'linkStyle': 'arrow'})
+        ..insert('\n'),
     };
 
     for (final MapEntry(key: name, value: delta) in cases.entries) {
@@ -166,6 +210,28 @@ void main() {
         expect(mapper.deltaFromDocument(document), Delta()..insert('\n'));
       },
     );
+  });
+
+  group('Given random valid Wonky Markdown documents', () {
+    for (final seed in propertySeeds()) {
+      test(
+        'when round-tripping through the mapper (seed $seed) then every Delta is unchanged',
+        () {
+          final gen = core.DeltaGen(
+            Random(seed),
+            options: const core.DeltaGenOptions(wonky: true),
+          );
+          for (var run = 0; run < propertyRuns(); run += 1) {
+            final delta = gen.document();
+            expect(
+              roundTrip(delta),
+              delta,
+              reason: 'seed $seed run $run: $delta',
+            );
+          }
+        },
+      );
+    }
   });
 
   group('Given random valid documents', () {

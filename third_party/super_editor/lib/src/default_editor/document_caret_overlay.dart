@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:super_editor/src/core/document_composer.dart';
+import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/infrastructure/documents/document_layers.dart';
 import 'package:super_editor/src/infrastructure/flutter/empty_box.dart';
@@ -22,6 +23,8 @@ class CaretDocumentOverlay extends DocumentLayoutLayerStatefulWidget {
     this.displayOnAllPlatforms = false,
     this.displayCaretWithExpandedSelection = true,
     this.blinkTimingMode = BlinkTimingMode.timer,
+    this.adjustCaretRect,
+    this.caretRectListenable,
   }) : super(key: key);
 
   /// The editor's [DocumentComposer], which reports the current selection.
@@ -52,6 +55,14 @@ class CaretDocumentOverlay extends DocumentLayoutLayerStatefulWidget {
   /// `Timer`s are not expected to work in tests.
   final BlinkTimingMode blinkTimingMode;
 
+  // WONKY PATCH SE-12: the app can move the caret of a collapsed selection.
+  /// Adjusts the caret rectangle of a collapsed selection at [position] (for
+  /// example, next to a glyph instead of after its letter spacing).
+  final Rect Function(DocumentPosition position, Rect caretRect, DocumentLayout layout)? adjustCaretRect;
+
+  /// Notifies when [adjustCaretRect] would answer differently.
+  final Listenable? caretRectListenable;
+
   @override
   DocumentLayoutLayerState<CaretDocumentOverlay, Rect?> createState() => CaretDocumentOverlayState();
 }
@@ -73,6 +84,7 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
     }
 
     widget.composer.selectionNotifier.addListener(_onSelectionChange);
+    widget.caretRectListenable?.addListener(_onSelectionChange);
 
     _startOrStopBlinking();
   }
@@ -87,11 +99,16 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
 
       _startOrStopBlinking();
     }
+    if (widget.caretRectListenable != oldWidget.caretRectListenable) {
+      oldWidget.caretRectListenable?.removeListener(_onSelectionChange);
+      widget.caretRectListenable?.addListener(_onSelectionChange);
+    }
   }
 
   @override
   void dispose() {
     widget.composer.selectionNotifier.removeListener(_onSelectionChange);
+    widget.caretRectListenable?.removeListener(_onSelectionChange);
 
     _blinkController.dispose();
 
@@ -178,8 +195,12 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
       return null;
     }
 
-    Rect caretRect =
-        documentLayout.getEdgeForPosition(documentSelection.extent)!.translate(-widget.caretStyle.width / 2, 0.0);
+    var edge = documentLayout.getEdgeForPosition(documentSelection.extent)!;
+    final adjust = widget.adjustCaretRect;
+    if (adjust != null && documentSelection.isCollapsed) {
+      edge = adjust(documentSelection.extent, edge, documentLayout);
+    }
+    Rect caretRect = edge.translate(-widget.caretStyle.width / 2, 0.0);
 
     final overlayBox = context.findRenderObject() as RenderBox?;
     if (overlayBox != null && overlayBox.hasSize && caretRect.left + widget.caretStyle.width >= overlayBox.size.width) {

@@ -1,5 +1,8 @@
 import 'package:flutter/widgets.dart';
 
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show BoxType, CalloutVariant;
+
 import '../../../l10n/write_l10n.dart';
 import '../commands/write_editor_commands.dart';
 import '../controller/editor_types.dart';
@@ -7,7 +10,7 @@ import '../controller/write_editor_controller.dart';
 import 'trigger_queries.dart';
 
 /// Groups of the slash menu (Write 04 §21.2).
-enum SlashGroup { basic, media, insert }
+enum SlashGroup { basic, media, insert, wonky }
 
 /// One slash menu item. [run] executes the command (the `/query` text has
 /// already been removed in the same undo step).
@@ -55,7 +58,16 @@ class SlashHost {
     this.onContinueWriting,
     this.onEmoji,
     this.onSpecialCharacter,
+    this.isWonky,
+    this.onCommand,
   });
+
+  /// Whether the document is in Wonky Markdown (shows the Wonky items,
+  /// Write 11 §7.5).
+  final bool Function()? isWonky;
+
+  /// Runs a (screen) command, e.g. `write.insert.button`.
+  final void Function(String commandId, Map<String, Object?> args)? onCommand;
 
   final VoidCallback? onInsertImage;
   final VoidCallback? onInsertImageFromUrl;
@@ -238,11 +250,108 @@ List<SlashItem> defaultSlashItems([WriteLocalizations? strings]) {
       aliases: const ['ai continue', 'continue', 'ai'],
       run: (c, h) => h.onContinueWriting?.call(),
     ),
+    // Wonky Markdown (Write 11 §7.5).
+    for (final (variant, name, aliases) in [
+      ('info', l.calloutInfo, const ['callout', 'admonition', 'alert']),
+      ('tip', l.calloutTip, const ['hint']),
+      ('note', l.calloutNote, const <String>[]),
+      ('warning', l.calloutWarning, const ['heads up']),
+      ('caution', l.calloutCaution, const <String>[]),
+      ('danger', l.calloutDanger, const ['error']),
+    ])
+      SlashItem(
+        id: 'callout.$variant',
+        title: l.slashCallout(name),
+        group: SlashGroup.wonky,
+        commandId: 'write.insert.callout',
+        aliases: [variant, 'callout $variant', ...aliases],
+        run: (c, h) => c.insertContainer(
+          BoxType.callout,
+          variant: CalloutVariant.tryParse(variant),
+        ),
+      ),
+    SlashItem(
+      id: 'details',
+      title: l.cmdInsertDetails,
+      group: SlashGroup.wonky,
+      commandId: 'write.insert.details',
+      aliases: const ['faq', 'toggle', 'collapsible', 'expandable'],
+      run: (c, h) => c.insertContainer(BoxType.details),
+    ),
+    SlashItem(
+      id: 'card',
+      title: l.cmdInsertCard,
+      group: SlashGroup.wonky,
+      commandId: 'write.insert.card',
+      aliases: const ['box', 'panel'],
+      run: (c, h) => c.insertContainer(BoxType.card),
+    ),
+    SlashItem(
+      id: 'grid',
+      title: l.cmdInsertGrid,
+      group: SlashGroup.wonky,
+      commandId: 'write.insert.grid',
+      aliases: const ['features', 'columns', 'checklist grid'],
+      suggestable: false,
+      run: (c, h) => c.insertGrid(),
+    ),
+    SlashItem(
+      id: 'youtube',
+      title: l.cmdInsertYouTube.replaceAll('…', ''),
+      group: SlashGroup.wonky,
+      commandId: 'write.insert.youtube',
+      aliases: const ['video', 'embed', 'movie'],
+      suggestable: false,
+      run: (c, h) => h.onCommand?.call('write.insert.youtube', const {}),
+    ),
+    SlashItem(
+      id: 'button',
+      title: l.cmdInsertButton,
+      group: SlashGroup.wonky,
+      commandId: 'write.insert.button',
+      aliases: const ['cta', 'call to action'],
+      run: (c, h) => h.onCommand?.call('write.insert.button', const {}),
+    ),
+    SlashItem(
+      id: 'buttonSecondary',
+      title: l.linkStyleButtonSecondary,
+      group: SlashGroup.wonky,
+      commandId: 'write.insert.button',
+      aliases: const ['button secondary'],
+      run: (c, h) => h.onCommand?.call('write.insert.button', const {
+        'variant': 'secondary',
+      }),
+    ),
+    SlashItem(
+      id: 'arrowLink',
+      title: l.cmdInsertArrowLink,
+      group: SlashGroup.wonky,
+      commandId: 'write.insert.arrowLink',
+      aliases: const ['link arrow', 'more link'],
+      run: (c, h) => h.onCommand?.call('write.insert.arrowLink', const {}),
+    ),
+    SlashItem(
+      id: 'chip',
+      title: l.cmdFormatChip,
+      group: SlashGroup.wonky,
+      commandId: 'write.format.chip',
+      aliases: const ['tag', 'pill', 'badge'],
+      run: (c, h) => c.toggleChip(),
+    ),
+    SlashItem(
+      id: 'step',
+      title: l.cmdHeadingToggleStep,
+      group: SlashGroup.wonky,
+      commandId: 'write.heading.toggleStep',
+      aliases: const ['step', 'numbered heading'],
+      run: (c, h) => c.toggleStep(),
+    ),
   ];
 }
 
 /// Whether [item] is available with [host] (AI items need AI).
 bool slashItemAvailable(SlashItem item, SlashHost? host) => switch (item.id) {
+  _ when item.group == SlashGroup.wonky => host?.isWonky?.call() ?? false,
   'ai' => host?.onAskAi != null,
   'aiContinue' => host?.onContinueWriting != null,
   'emoji' => host?.onEmoji != null,

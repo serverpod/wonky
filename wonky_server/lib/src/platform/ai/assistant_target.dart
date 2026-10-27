@@ -4,6 +4,8 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart'
     show McpScope, McpToolDefinition, Role;
 
+import 'package:wonky_write_core/wonky_write_core.dart' show MarkdownFlavor;
+
 import '../../sheets/ai/sheets_assistant_target.dart';
 import '../../slides/ai/slides_assistant_target.dart';
 import '../../write/ai/write_context_builder.dart';
@@ -192,7 +194,10 @@ class WriteAssistantTarget extends AssistantTarget {
   Set<String> get scopes => {McpScope.writeRead, McpScope.writeEdit};
 
   @override
-  String get system => WritePrompts.assistant;
+  String get system => WritePrompts.forFlavor(
+    WritePrompts.assistant,
+    MarkdownFlavor.parse(target.document.markdownFlavor),
+  );
 
   @override
   AiApplyMode applyMode(AiApplyMode requested) =>

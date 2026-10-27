@@ -8,6 +8,7 @@ import '../links.dart';
 import '../import_warning.dart';
 import '../inline_run.dart';
 import 'md_syntax.dart';
+import 'wonky_syntax.dart';
 
 /// Title prefix that marks a mailto link as a mention:
 /// `[@Anna](mailto:anna@x.com "wonky-mention:<userUuid>")`.
@@ -60,6 +61,9 @@ final class InlineReader {
   var _code = 0;
   String? _link;
   String? _mention;
+  String? _linkStyle;
+  var _chip = false;
+  String? _chipIcon;
   var _warnedHtml = false;
   var _warnedLink = false;
 
@@ -118,16 +122,22 @@ final class InlineReader {
   void _emit(String text) {
     if (text.isEmpty) return;
     final code = _code > 0;
+    if (_chip) {
+      _pieces.add(RunPiece(InlineRun(text, chip: true, chipIcon: _chipIcon)));
+      return;
+    }
+    final styled = _linkStyle != null && _link != null;
     _pieces.add(
       RunPiece(
         InlineRun(
           text,
-          bold: _bold > 0 && !code,
-          italic: _italic > 0 && !code,
-          strike: _strike > 0 && !code,
-          code: code,
+          bold: _bold > 0 && !code && !styled,
+          italic: _italic > 0 && !code && !styled,
+          strike: _strike > 0 && !code && !styled,
+          code: code && !styled,
           link: _link,
-          mentionUserUuid: _link != null ? _mention : null,
+          mentionUserUuid: _link != null && !styled ? _mention : null,
+          linkStyle: styled ? _linkStyle : null,
         ),
       ),
     );
@@ -178,6 +188,17 @@ final class InlineReader {
       case 'input':
         // Task checkbox; handled by the block importer.
         break;
+      case WonkyMdTags.button || WonkyMdTags.arrowLink:
+        _styledLink(node);
+      case WonkyMdTags.chip:
+        final prevChip = _chip;
+        final prevIcon = _chipIcon;
+        _chip = true;
+        final icon = node.attributes[WonkyMdTags.icon];
+        _chipIcon = icon != null && _iconName.hasMatch(icon) ? icon : null;
+        _children(node);
+        _chip = prevChip;
+        _chipIcon = prevIcon;
       default:
         _children(node);
     }
@@ -187,6 +208,42 @@ final class InlineReader {
     for (final c in e.children ?? const <md.Node>[]) {
       _visit(c);
     }
+  }
+
+  static final _iconName = RegExp(r'^[a-z0-9-]{1,32}$');
+
+  /// `:button[…](…)` / `:link[…](…)` (Write 11 §4): a link with a
+  /// `linkStyle`; an unsupported URL keeps the label as text.
+  void _styledLink(md.Element node) {
+    final href = node.attributes[WonkyMdTags.href] ?? '';
+    final normalized = LinkPolicy.normalizeLink(href);
+    if (normalized == null) {
+      if (!_warnedLink) {
+        warnings.add(
+          ImportWarning(
+            ImportWarningKind.unsupportedLink,
+            'Link "$href" is not supported; text kept',
+          ),
+        );
+        _warnedLink = true;
+      }
+      _children(node);
+      return;
+    }
+    final prevLink = _link;
+    final prevMention = _mention;
+    final prevStyle = _linkStyle;
+    _link = normalized;
+    _mention = null;
+    _linkStyle = node.tag == WonkyMdTags.arrowLink
+        ? 'arrow'
+        : node.attributes[WonkyMdTags.variant] == 'secondary'
+        ? 'buttonSecondary'
+        : 'button';
+    _children(node);
+    _link = prevLink;
+    _mention = prevMention;
+    _linkStyle = prevStyle;
   }
 
   void _anchor(md.Element node) {

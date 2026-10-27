@@ -5,6 +5,7 @@ import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_ui/wonky_ui.dart';
 
 import '../../commands/command_icons.dart';
+import '../../config/write_menus.dart' show calloutVariantLabels;
 import '../editor/commands/write_editor_commands.dart';
 import '../editor/controller/editor_types.dart';
 import '../../l10n/write_l10n.dart';
@@ -124,7 +125,7 @@ class CommandUi {
     return WonkyMenuItem(
       key: k,
       label: l,
-      icon: icon ?? commandIcons[id],
+      icon: icon ?? commandIconFor(id, args),
       shortcut: sc,
       enabled: st.enabled,
       disabledReason: st.disabledReason,
@@ -323,7 +324,14 @@ class WriteToolbar extends StatelessWidget {
             tooltip: l.toolbarStyles,
             minWidth: 96,
             enabled: styleState.enabled,
-            entries: () => paragraphStyleEntries(ui, kind),
+            entries: () => [
+              ...paragraphStyleEntries(ui, kind),
+              // Wonky Markdown (Write 11 §7.5).
+              if (doc.isWonky) ...[
+                const WonkyMenuSeparator(),
+                ui.item('write.heading.toggleStep'),
+              ],
+            ],
           ),
         ], id: 'style'),
         ToolbarGroup([
@@ -385,6 +393,7 @@ class WriteToolbar extends StatelessWidget {
               ],
             ),
           ),
+          if (doc.isWonky) _wonkyInsert(ui),
           ui.button(
             'write.insert.divider',
             priority: 6,
@@ -418,6 +427,55 @@ class WriteToolbar extends StatelessWidget {
         ], id: 'theme'),
       ],
       trailing: [_commentsItem(ui), _modeItem(context, ui)],
+    );
+  }
+
+  /// *Insert element*: the Wonky Markdown elements (Write 11 §7.5).
+  ToolbarItem _wonkyInsert(CommandUi ui) {
+    final l = ui.l;
+    return LabeledToolbarItem(
+      label: l.toolbarInsertElement,
+      ToolbarDropdownButton(
+        id: 'write.toolbar.wonky',
+        priority: 2,
+        label: '',
+        icon: LucideIcons.layoutTemplate,
+        tooltip: l.toolbarInsertElement,
+        enabled: ui.state('write.insert.card').enabled,
+        entries: () => [
+          WonkyMenuSubmenu(
+            key: const ValueKey<String>('menu.toolbar.callout'),
+            label: l.cmdInsertCallout,
+            icon: LucideIcons.info,
+            enabled: ui.state('write.insert.callout').enabled,
+            children: [
+              for (final (variant, name) in calloutVariantLabels(l))
+                ui.item(
+                  'write.insert.callout',
+                  args: {'variant': variant},
+                  label: name,
+                  keyName: 'toolbar.callout.$variant',
+                ),
+            ],
+          ),
+          ui.item('write.insert.details'),
+          ui.item('write.insert.card'),
+          ui.item('write.insert.grid'),
+          ui.item('write.insert.youtube', label: l.cmdInsertYouTube),
+          const WonkyMenuSeparator(),
+          ui.item('write.insert.button', label: l.menuButtonEllipsis),
+          ui.item(
+            'write.insert.button',
+            args: {'variant': 'secondary'},
+            label: l.menuSecondaryButtonEllipsis,
+            keyName: 'toolbar.buttonSecondary',
+          ),
+          ui.item('write.insert.arrowLink', label: l.menuArrowLinkEllipsis),
+          ui.item('write.format.chip'),
+          const WonkyMenuSeparator(),
+          ui.item('write.heading.toggleStep'),
+        ],
+      ),
     );
   }
 

@@ -26,6 +26,7 @@ abstract class Document
     String? pageSetupJson,
     this.language,
     this.frontMatter,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     required this.createdAt,
@@ -33,6 +34,7 @@ abstract class Document
   }) : headRevision = headRevision ?? 0,
        latestSnapshotRevision = latestSnapshotRevision ?? 0,
        pageSetupJson = pageSetupJson ?? '{}',
+       markdownFlavor = markdownFlavor ?? 'gfm',
        charCount = charCount ?? 0,
        wordCount = wordCount ?? 0;
 
@@ -46,6 +48,7 @@ abstract class Document
     String? pageSetupJson,
     String? language,
     String? frontMatter,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     required DateTime createdAt,
@@ -66,6 +69,7 @@ abstract class Document
       pageSetupJson: jsonSerialization['pageSetupJson'] as String?,
       language: jsonSerialization['language'] as String?,
       frontMatter: jsonSerialization['frontMatter'] as String?,
+      markdownFlavor: jsonSerialization['markdownFlavor'] as String?,
       charCount: jsonSerialization['charCount'] as int?,
       wordCount: jsonSerialization['wordCount'] as int?,
       createdAt: _is.DateTimeJsonExtension.fromJson(
@@ -102,6 +106,9 @@ abstract class Document
 
   String? frontMatter;
 
+  /// `gfm` or `wonky` (Write 11 §3.1).
+  String markdownFlavor;
+
   int charCount;
 
   int wordCount;
@@ -126,6 +133,7 @@ abstract class Document
     String? pageSetupJson,
     String? language,
     String? frontMatter,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     DateTime? createdAt,
@@ -144,6 +152,7 @@ abstract class Document
       'pageSetupJson': pageSetupJson,
       if (language != null) 'language': language,
       if (frontMatter != null) 'frontMatter': frontMatter,
+      'markdownFlavor': markdownFlavor,
       'charCount': charCount,
       'wordCount': wordCount,
       'createdAt': createdAt.toJson(),
@@ -164,6 +173,7 @@ abstract class Document
       'pageSetupJson': pageSetupJson,
       if (language != null) 'language': language,
       if (frontMatter != null) 'frontMatter': frontMatter,
+      'markdownFlavor': markdownFlavor,
       'charCount': charCount,
       'wordCount': wordCount,
       'createdAt': createdAt.toJson(),
@@ -212,6 +222,7 @@ class _DocumentImpl extends Document {
     String? pageSetupJson,
     String? language,
     String? frontMatter,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     required DateTime createdAt,
@@ -226,6 +237,7 @@ class _DocumentImpl extends Document {
          pageSetupJson: pageSetupJson,
          language: language,
          frontMatter: frontMatter,
+         markdownFlavor: markdownFlavor,
          charCount: charCount,
          wordCount: wordCount,
          createdAt: createdAt,
@@ -246,6 +258,7 @@ class _DocumentImpl extends Document {
     String? pageSetupJson,
     Object? language = _Undefined,
     Object? frontMatter = _Undefined,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     DateTime? createdAt,
@@ -262,6 +275,7 @@ class _DocumentImpl extends Document {
       pageSetupJson: pageSetupJson ?? this.pageSetupJson,
       language: language is String? ? language : this.language,
       frontMatter: frontMatter is String? ? frontMatter : this.frontMatter,
+      markdownFlavor: markdownFlavor ?? this.markdownFlavor,
       charCount: charCount ?? this.charCount,
       wordCount: wordCount ?? this.wordCount,
       createdAt: createdAt ?? this.createdAt,
@@ -316,6 +330,12 @@ class DocumentUpdateTable extends _is.UpdateTable<DocumentTable> {
     table.frontMatter,
     value,
   );
+
+  _is.ColumnValue<String, String> markdownFlavor(String value) =>
+      _is.ColumnValue(
+        table.markdownFlavor,
+        value,
+      );
 
   _is.ColumnValue<int, int> charCount(int value) => _is.ColumnValue(
     table.charCount,
@@ -378,6 +398,11 @@ class DocumentTable extends _is.Table<int?> {
       'frontMatter',
       this,
     );
+    markdownFlavor = _is.ColumnString(
+      'markdownFlavor',
+      this,
+      hasDefault: true,
+    );
     charCount = _is.ColumnInt(
       'charCount',
       this,
@@ -418,6 +443,9 @@ class DocumentTable extends _is.Table<int?> {
 
   late final _is.ColumnString frontMatter;
 
+  /// `gfm` or `wonky` (Write 11 §3.1).
+  late final _is.ColumnString markdownFlavor;
+
   late final _is.ColumnInt charCount;
 
   late final _is.ColumnInt wordCount;
@@ -437,6 +465,7 @@ class DocumentTable extends _is.Table<int?> {
     pageSetupJson,
     language,
     frontMatter,
+    markdownFlavor,
     charCount,
     wordCount,
     createdAt,

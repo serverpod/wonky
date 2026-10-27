@@ -6,6 +6,8 @@ setup** model, the shared **pagination engine** (used by PDF/print and by the ed
 mode), and **print preview / printing**.
 
 Related: canonical Delta schema and Markdown codec [02-document-model.md](02-document-model.md);
+Wonky Markdown import/export and how every exporter renders its elements
+[11-wonky-markdown.md](11-wonky-markdown.md) §5, §9;
 themes [06-themes.md](06-themes.md) (every exporter renders through `ResolvedWriteTheme`);
 editor Pages/Pageless rendering and paste handling [04-editor.md](04-editor.md); menus
 [05-screens-menus-toolbar.md](05-screens-menus-toolbar.md); drive import/export

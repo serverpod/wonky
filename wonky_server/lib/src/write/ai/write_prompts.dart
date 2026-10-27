@@ -1,8 +1,33 @@
 /// System prompts of the Write AI features (Write 09 §5.7). Versioned,
 /// frozen constants: no timestamps or per-user data (prompt caching).
 /// Volatile context goes at the end of the latest user turn.
+library;
+
+import 'package:wonky_write_core/wonky_write_core.dart' show MarkdownFlavor;
+
+/// The Write system prompts.
 abstract final class WritePrompts {
-  static const version = 'write-2026-10-13';
+  static const version = 'write-2026-10-26b';
+
+  /// [system] for a document in [flavor]: Wonky documents get the Wonky
+  /// Markdown reference appended (Write 11 §10), GitHub ones a reminder not
+  /// to use it. Two frozen variants per prompt (prompt caching).
+  static String forFlavor(String system, MarkdownFlavor flavor) =>
+      flavor == MarkdownFlavor.wonky ? '$system\n\n$wonkyMarkdown' : system;
+
+  /// The Wonky Markdown reference for documents in that flavor.
+  static const wonkyMarkdown = '''
+<wonky_markdown>
+This document uses Wonky Markdown: GitHub-flavored Markdown plus these directives (use them when they fit the content; never in other documents):
+- Callouts: a line `:::info`, `:::tip`, `:::note`, `:::warning`, `:::caution` or `:::danger`, optionally with a title `:::warning[Heads up]`, then the content, then a line `:::`.
+- Expandable details: `:::details`, then `### Summary`, then the body, then `:::`. Stack several for an FAQ.
+- Card (a promo box): `:::card` … `:::`.
+- Grid of short items: `:::grid{columns=3 bullets=check}` (columns 1–4, bullets check, circle or none), then one `- item` line per item, then `:::`.
+- Containers can nest. Leave a blank line after the opening line and before `:::`.
+- Inline: `:button[Label](https://…)`, `:button[Label](https://…){variant=secondary}`, `:link[Label](https://…)` (a link with an arrow) and `:chip[Label]`. Labels are plain text without `]`.
+- Numbered headings: `## (1) Title` or `### (2) Title`.
+- YouTube videos, on their own line: `::youtube[Title]{id=AGAQ_N56wCs}`, optionally with `start=90` (seconds); the id is the `v=` value of the video's link. The title is optional plain text.
+</wonky_markdown>''';
 
   /// The assistant panel (agent with document tools).
   static const assistant = '''

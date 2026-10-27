@@ -6,6 +6,7 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:uuid/uuid.dart';
 
 import '../delta/attributes.dart';
+import '../delta/boxes.dart';
 import '../delta/delta_diff.dart';
 import '../delta/delta_utils.dart';
 import '../delta/document.dart';
@@ -343,11 +344,16 @@ final class EditResult {
 /// Builds change Deltas for document edits. All builders are pure: they take
 /// the current document and return a normalized change.
 final class DocumentEdits {
-  /// Creates the builders. [idGenerator] creates embed ids (UUIDv7).
+  /// Creates the builders. [idGenerator] creates embed ids (UUIDv7);
+  /// Markdown input is read in [flavor] (the document's, Write 11 §5.1).
   DocumentEdits({
     String Function()? idGenerator,
     this.maxDocumentChars = WonkyDeltaValidator.defaultMaxDocumentChars,
+    this.flavor = MarkdownFlavor.gfm,
   }) : idGenerator = idGenerator ?? (() => const Uuid().v7());
+
+  /// The Markdown flavor input is read in.
+  final MarkdownFlavor flavor;
 
   /// Embed id generator.
   final String Function() idGenerator;
@@ -373,14 +379,15 @@ final class DocumentEdits {
     }
     return const MarkdownCodec().importMarkdown(
       markdown,
-      options: ImportOptions(idGenerator: idGenerator),
+      options: ImportOptions(idGenerator: idGenerator, flavor: flavor),
     );
   }
 
   static bool _isSingleParagraph(WonkyDocument f) =>
       f.lines.length == 1 &&
       !f.lines.first.isEmbedLine &&
-      f.lines.first.format.type == BlockType.paragraph;
+      f.lines.first.format.type == BlockType.paragraph &&
+      Boxes.of(f.lines.first.attributes).isEmpty;
 
   // ---------------------------------------------------------------------
   // Insertion
@@ -421,6 +428,29 @@ final class DocumentEdits {
     );
   }
 
+  /// [fragment] with the containers [host] put around every line (the
+  /// fragment's own containers nest inside, up to [BoxFrame.maxDepth]).
+  static Delta _nestIn(Delta fragment, List<BoxFrame> host) {
+    if (host.isEmpty) return fragment;
+    final out = Delta();
+    for (final line in WonkyDocument(fragment).lines) {
+      for (final s in line.segments) {
+        out.insert(s.data, s.attributes);
+      }
+      if (!line.hasNewline) continue;
+      final path = [...host, ...Boxes.of(line.attributes)];
+      out.insert('\n', {
+        ...line.attributes,
+        WonkyAttr.box: Boxes.toValue(
+          path.length > BoxFrame.maxDepth
+              ? path.sublist(0, BoxFrame.maxDepth)
+              : path,
+        ),
+      });
+    }
+    return DeltaUtils.canonical(out);
+  }
+
   /// Returns (change, start of inserted content).
   (Delta, int) _insertChange(
     WonkyDocument doc,
@@ -429,11 +459,13 @@ final class DocumentEdits {
     required InsertAs as,
   }) {
     AddressResolver.of(doc).checkOffset(at);
-    final frag = WonkyDocument(DeltaUtils.canonical(fragment));
     final line = doc.lineAt(at);
+    final canonical = DeltaUtils.canonical(fragment);
+    final single = _isSingleParagraph(WonkyDocument(canonical));
+    // Blocks inserted in a container go into it (Write 11 §7.4).
+    final frag = WonkyDocument(_nestIn(canonical, Boxes.of(line.attributes)));
     final fragLen = frag.length;
     final withoutLastNewline = frag.delta.slice(0, fragLen - 1);
-    final single = _isSingleParagraph(frag);
     final inline =
         !line.isEmbedLine &&
         single &&
@@ -448,7 +480,8 @@ final class DocumentEdits {
     }
     final lastNewline = frag.lines.last.attributes;
     final lineBlock = Attributes.block(line.attributes);
-    final isEmptyPlain = line.isEmpty && lineBlock.isEmpty;
+    final isEmptyPlain =
+        line.isEmpty && lineBlock.keys.every((k) => k == WonkyAttr.box);
     if (isEmptyPlain) {
       // Fill the empty paragraph.
       for (final op in withoutLastNewline.operations) {
@@ -808,7 +841,7 @@ final class DocumentEdits {
       };
       final runs = format == ReplaceFormat.markdownInline
           ? [
-              for (final r in InlineMarkdown.parse(text))
+              for (final r in InlineMarkdown.parse(text, flavor: flavor))
                 (
                   r.text,
                   {...Attributes.overlays(firstAttrs), ...?r.toAttributes()},

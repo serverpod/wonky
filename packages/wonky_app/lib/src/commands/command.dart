@@ -32,6 +32,10 @@ abstract class Command<A extends CommandArgs> {
 
   IconData? get icon => null;
 
+  /// The icon of a menu item that invokes the command with [args] (a
+  /// command with a choice argument can show one icon per choice).
+  IconData? iconFor(Map<String, Object?> args) => icon;
+
   /// Extra search terms for the palette.
   List<String> aliases(BuildContext context) => const [];
 
@@ -70,6 +74,10 @@ abstract class Command<A extends CommandArgs> {
 
   /// Whether the command can run now (drives disabled state everywhere).
   bool isEnabled(CommandContext ctx, A args) => true;
+
+  /// Whether menus, the palette and toolbars show the command at all (Write
+  /// hides its Wonky Markdown commands in GitHub Markdown documents).
+  bool isVisible(CommandContext ctx, A args) => true;
 
   /// Tooltip for the disabled state ("You have view access").
   String? disabledReason(CommandContext ctx, A args) => null;

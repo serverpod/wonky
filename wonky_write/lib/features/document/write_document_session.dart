@@ -46,6 +46,8 @@
 /// copy instead (best effort, restored only onto the identical document).
 library;
 
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show MarkdownExportOptions, MarkdownFlavor;
 import 'dart:async';
 import 'dart:convert';
 
@@ -56,7 +58,13 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 import 'package:wonky_ui/wonky_ui.dart' show SyncState, SyncStatus;
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show DeltaSelection, DeltaUtils, MarkdownCodec, PageSetup, documentHash;
+    show
+        DeltaSelection,
+        DeltaUtils,
+        MarkdownCodec,
+        MarkdownFlavor,
+        PageSetup,
+        documentHash;
 
 import '../../l10n/write_l10n.dart';
 import '../ai/ai_undo_grouping.dart';
@@ -96,6 +104,7 @@ class WriteDocumentMeta {
     this.themeUuid,
     this.language,
     this.frontMatter,
+    this.markdownFlavor = MarkdownFlavor.gfm,
   });
 
   static final empty = WriteDocumentMeta(
@@ -113,6 +122,9 @@ class WriteDocumentMeta {
 
   /// YAML front matter (round-tripped through Markdown).
   final String? frontMatter;
+
+  /// The Markdown flavor (Write 11 §3.1).
+  final MarkdownFlavor markdownFlavor;
 
   static WriteDocumentMeta fromView(DocumentMetaView? v) {
     if (v == null) return empty;
@@ -132,6 +144,7 @@ class WriteDocumentMeta {
       themeUuid: v.themeId?.uuid,
       language: v.language,
       frontMatter: v.frontMatter,
+      markdownFlavor: MarkdownFlavor.parse(v.markdownFlavor),
     );
   }
 
@@ -141,10 +154,12 @@ class WriteDocumentMeta {
       other.pageSetup == pageSetup &&
       other.themeUuid == themeUuid &&
       other.language == language &&
-      other.frontMatter == frontMatter;
+      other.frontMatter == frontMatter &&
+      other.markdownFlavor == markdownFlavor;
 
   @override
-  int get hashCode => Object.hash(pageSetup, themeUuid, language, frontMatter);
+  int get hashCode =>
+      Object.hash(pageSetup, themeUuid, language, frontMatter, markdownFlavor);
 }
 
 /// One open Write document: content sync, undo, presence, comments,
@@ -169,11 +184,14 @@ class WriteDocumentSession extends ChangeNotifier {
        keeper =
            keeper ??
            ShellConnectionKeeper(services.supervisor, services.connectivity) {
-    editor = WriteEditorController(
-      documentUuid: itemUuid,
-      userUuid: services.me?.uuid.uuid ?? '',
-      mode: EditorMode.viewing,
-    )..strings = () => writeL10nOf(services);
+    editor =
+        WriteEditorController(
+            documentUuid: itemUuid,
+            userUuid: services.me?.uuid.uuid ?? '',
+            mode: EditorMode.viewing,
+          )
+          ..strings = (() => writeL10nOf(services))
+          ..markdownFlavor = (() => meta.value.markdownFlavor);
     _host = _SessionHost(this);
     presence = RemotePresenceController(this);
     comments = WriteComments(this);
@@ -667,12 +685,15 @@ class WriteDocumentSession extends ChangeNotifier {
         (m?.pageSetupJson.isNotEmpty ?? false) ? m!.pageSetupJson : '{}',
       'language' => jsonEncode(m?.language),
       'frontMatter' => jsonEncode(m?.frontMatter),
+      'markdownFlavor' => jsonEncode(
+        MarkdownFlavor.parse(m?.markdownFlavor).value,
+      ),
       _ => 'null',
     };
   }
 
   /// Changes a document property (`themeId`, `pageSetup`, `language`,
-  /// `frontMatter`) and records a `write.meta` undo entry — in the open
+  /// `frontMatter`, `markdownFlavor`) and records a `write.meta` undo entry — in the open
   /// command transaction, or as its own step labelled [label].
   Future<void> setMeta(String field, String valueJson, {String? label}) async {
     final doc = _documentUuid;
@@ -1040,7 +1061,12 @@ class WriteDocumentSession extends ChangeNotifier {
           : await services.drive.createDocument(
               parentUuid: _item?.parentUuid,
               name: name,
-              initialMarkdown: const MarkdownCodec().exportMarkdown(document),
+              initialMarkdown: const MarkdownCodec().exportMarkdown(
+                document,
+                options: MarkdownExportOptions(
+                  flavor: meta.value.markdownFlavor,
+                ),
+              ),
             );
       services.toasts.show(
         l.sessionCopySaved,

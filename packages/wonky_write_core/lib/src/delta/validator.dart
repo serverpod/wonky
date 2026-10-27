@@ -5,6 +5,7 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:wonky_rich_text/wonky_rich_text.dart' show TextRules;
 
 import 'attributes.dart';
+import 'boxes.dart';
 import 'embeds.dart';
 import 'links.dart';
 
@@ -44,6 +45,17 @@ enum ValidationCode {
 
   /// `mention` without a `mailto:` link.
   mentionWithoutMailto,
+
+  /// `linkStyle` without a plain link, `chip` with a link, or either with
+  /// formatting their plain-text label excludes (Write 11 §2.4 rule 10).
+  styledTextFormatting,
+
+  /// An invalid `box` value (Write 11 §2.4 rule 11).
+  invalidBox,
+
+  /// `step` on a line that is not a level 2–3 heading (Write 11 §2.4
+  /// rule 12).
+  invalidStep,
 
   /// An embed that is not on its own line, or followed by a `"\n"` with block
   /// attributes.
@@ -173,6 +185,7 @@ final class WonkyDeltaValidator {
     // (A quoted and an unquoted list next to each other are two runs.)
     int? prevListIndent;
     var prevListQuoted = false;
+    var prevListBox = const <BoxFrame>[];
     Operation? prev;
     var prevWasEmbed = false;
 
@@ -247,7 +260,7 @@ final class WonkyDeltaValidator {
           final nlOffset = offset + j;
           final format = _checkBlockAttributes(attrs, nlOffset, add);
           if (lineHasEmbed) {
-            if (Attributes.block(attrs).isNotEmpty) {
+            if (Attributes.block(attrs).keys.any((k) => k != WonkyAttr.box)) {
               add(
                 ValidationCode.embedPlacement,
                 nlOffset,
@@ -284,8 +297,11 @@ final class WonkyDeltaValidator {
           pendingInline.clear();
           // Indent rules.
           if (format != null && format.isList) {
+            final box = Boxes.of(attrs);
             final maxAllowed =
-                prevListIndent == null || prevListQuoted != format.quoted
+                prevListIndent == null ||
+                    prevListQuoted != format.quoted ||
+                    !Boxes.samePath(prevListBox, box)
                 ? 0
                 : prevListIndent + 1;
             if (format.indent > maxAllowed) {
@@ -297,6 +313,7 @@ final class WonkyDeltaValidator {
             }
             prevListIndent = format.indent;
             prevListQuoted = format.quoted;
+            prevListBox = box;
           } else {
             prevListIndent = null;
           }
@@ -418,7 +435,40 @@ final class WonkyDeltaValidator {
               'Invalid mention',
             );
           }
+        case WonkyAttr.linkStyle:
+          if (!WonkyAttr.linkStyles.contains(v)) {
+            add(
+              ValidationCode.invalidAttributeValue,
+              offset,
+              'Invalid link style "$v"',
+            );
+          }
+        case WonkyAttr.chip:
+          if (v != true && (v is! String || !chipIcon.hasMatch(v))) {
+            add(
+              ValidationCode.invalidAttributeValue,
+              offset,
+              'Invalid chip "$v"',
+            );
+          }
       }
+    }
+    if (attrs.containsKey(WonkyAttr.linkStyle) &&
+        (attrs[WonkyAttr.link] is! String ||
+            WonkyAttr.linkStyleExcludedKeys.any(attrs.containsKey))) {
+      add(
+        ValidationCode.styledTextFormatting,
+        offset,
+        '"linkStyle" needs a plain link and excludes formatting',
+      );
+    }
+    if (attrs.containsKey(WonkyAttr.chip) &&
+        WonkyAttr.chipExcludedKeys.any(attrs.containsKey)) {
+      add(
+        ValidationCode.styledTextFormatting,
+        offset,
+        '"chip" excludes other formatting and links',
+      );
     }
     if (attrs[WonkyAttr.code] == true &&
         WonkyAttr.codeExcludedKeys.any(attrs.containsKey)) {
@@ -439,6 +489,27 @@ final class WonkyDeltaValidator {
       }
     }
     _checkOverlays(attrs, offset, add, block: false);
+  }
+
+  /// Valid chip icon names (Write 11 §2.1).
+  static final chipIcon = RegExp(r'^[a-z0-9-]{1,32}$');
+
+  /// Whether [value] is a valid `box` value (Write 11 §2.4 rule 11).
+  static bool isValidBox(Object? value) {
+    if (value is! List || value.isEmpty || value.length > BoxFrame.maxDepth) {
+      return false;
+    }
+    final ids = <String>{};
+    for (final v in value) {
+      final frame = BoxFrame.tryParse(v);
+      if (frame == null || !ids.add(frame.id)) return false;
+      if (frame.toJson().length != (v as Map).length) return false;
+      if (frame.title != null &&
+          BoxFrame.canonicalTitle(frame.title) != frame.title) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Returns the line's format if its block attributes are valid enough to
@@ -513,6 +584,22 @@ final class WonkyDeltaValidator {
               offset,
               '"indent" without "list"',
             );
+          }
+        case WonkyAttr.step:
+          final header = attrs[WonkyAttr.header];
+          if (v is! int ||
+              v < 0 ||
+              v > WonkyAttr.maxStep ||
+              (header != 2 && header != 3)) {
+            add(
+              ValidationCode.invalidStep,
+              offset,
+              '"step" must be 0–${WonkyAttr.maxStep} on a level 2–3 heading',
+            );
+          }
+        case WonkyAttr.box:
+          if (!isValidBox(v)) {
+            add(ValidationCode.invalidBox, offset, 'Invalid "box" value');
           }
       }
     }
@@ -597,6 +684,26 @@ final class WonkyDeltaValidator {
         }
       case DividerEmbed():
         break;
+      case YouTubeEmbed(:final title):
+        if (title != null && title != YouTubeEmbed.canonicalTitle(title)) {
+          add(
+            ValidationCode.invalidEmbed,
+            offset,
+            'YouTube title must be trimmed single-line text without "]"',
+          );
+        }
+      case GridEmbed(:final columns, :final items):
+        if (columns != GridEmbed.canonicalColumns(columns) ||
+            items.isEmpty ||
+            items.length > GridEmbed.maxItems ||
+            items.any((c) => !_isSingleLineText(c))) {
+          add(
+            ValidationCode.invalidEmbed,
+            offset,
+            'Grid must have 1–4 columns and 1–${GridEmbed.maxItems} '
+            'single-line items',
+          );
+        }
       case TableEmbed(:final rows, :final align):
         final cols = rows.first.length;
         if (cols == 0 ||

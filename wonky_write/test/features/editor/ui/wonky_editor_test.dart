@@ -203,4 +203,36 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
   });
+
+  _styledLinkCardTests();
+}
+
+void _styledLinkCardTests() {
+  testWidgets(
+    'Given a one-character button when the caret is at its end then the link '
+    'card is shown, and hidden once → moves the caret out',
+    (tester) async {
+      final h = await pumpEditor(
+        tester,
+        Delta()
+          ..insert('Go ')
+          ..insert('A', {'link': 'https://x.dev', 'linkStyle': 'button'})
+          ..insert(' now\n'),
+      );
+      final id = h.controller.document.first.id;
+      await tester.placeCaretInParagraph(id, 4);
+      await tester.pump();
+      expect(find.byKey(LinkHoverCard.cardKey), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(
+        h.controller.composer.selection?.extent.nodePosition,
+        const TextNodePosition(offset: 4),
+      );
+      expect(find.byKey(LinkHoverCard.cardKey), findsNothing);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
 }

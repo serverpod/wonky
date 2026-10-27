@@ -515,7 +515,204 @@ final class ThemeCssWriter {
       if (colors) 'color': c(t.body.style.color),
       if (layout) 'font-style': 'italic',
     });
+    _wonkyRules(t.wonky, rule, len: len, c: c, colors: colors, layout: layout);
     return b.toString();
+  }
+
+  /// The Wonky Markdown elements (Write 11 §8–9): the classes the HTML
+  /// writer emits, modeled on the Serverpod blog's `markdown.css`.
+  void _wonkyRules(
+    ResolvedWonkyElements w,
+    void Function(String, Map<String, String?>) rule, {
+    required String Function(double) len,
+    required String Function(int) c,
+    required bool colors,
+    required bool layout,
+  }) {
+    const s = '.wonky-doc';
+    String edges(EdgesPt e) =>
+        '${len(e.top)} ${len(e.right)} ${len(e.bottom)} ${len(e.left)}';
+    // Callouts.
+    final co = w.callout;
+    rule('$s .wonky-callout', {
+      if (layout) 'margin': '${len(co.spaceBefore)} 0 ${len(co.spaceAfter)}',
+      if (layout) 'padding': edges(co.padding),
+      if (layout) 'border': '${_n(co.borderWidth)}pt solid',
+      if (layout) 'border-radius': len(co.borderRadius),
+    });
+    rule('$s .wonky-callout > :last-child', {if (layout) 'margin-bottom': '0'});
+    rule('$s .wonky-callout-title', {
+      if (layout) 'display': 'flex',
+      if (layout) 'align-items': 'center',
+      if (layout) 'gap': '0.375em',
+      if (layout) 'margin-bottom': '0.5em',
+      if (layout) 'font-size': '${_n(co.titleSizeRatio)}em',
+      if (layout) 'font-weight': '${co.titleWeight}',
+      if (layout && co.titleCase != CaseTransform.none)
+        co.titleCase == CaseTransform.smallCaps
+            ? 'font-variant'
+            : 'text-transform': co.titleCase == CaseTransform.smallCaps
+            ? 'small-caps'
+            : co.titleCase.name,
+      if (layout) 'letter-spacing': '0.025em',
+    });
+    rule('$s .wonky-callout-icon', {
+      if (layout) 'width': '1.4em',
+      if (layout) 'height': '1.4em',
+      if (layout) 'flex-shrink': '0',
+    });
+    for (final v in const [
+      'info',
+      'tip',
+      'note',
+      'warning',
+      'caution',
+      'danger',
+    ]) {
+      final cc = co.colorsFor(v);
+      rule('$s .wonky-callout-$v', {
+        if (colors) 'background-color': c(cc.background),
+        if (colors) 'border-color': c(cc.border),
+      });
+      rule('$s .wonky-callout-$v .wonky-callout-title', {
+        if (colors) 'color': c(cc.title),
+      });
+    }
+    // Details.
+    final de = w.details;
+    rule('$s .wonky-details', {
+      if (layout) 'margin': '${len(de.spaceBefore)} 0 ${len(de.spaceAfter)}',
+      if (layout) 'padding': edges(de.padding),
+      if (colors && de.background != null)
+        'background-color': c(de.background!),
+      if (de.border.isVisible)
+        'border':
+            '${_n(de.border.width)}pt solid ${colors ? c(de.border.color) : 'currentColor'}',
+      if (layout) 'border-radius': len(de.borderRadius),
+    });
+    rule('$s .wonky-details-summary', {
+      if (layout) 'display': 'flex',
+      if (layout) 'align-items': 'center',
+      if (layout) 'justify-content': 'space-between',
+      if (layout) 'cursor': 'pointer',
+      if (layout) 'list-style': 'none',
+      if (layout) 'font-weight': '${de.summaryWeight}',
+    });
+    rule('$s .wonky-details-summary::-webkit-details-marker', {
+      if (layout) 'display': 'none',
+    });
+    rule('$s .wonky-details-chevron', {
+      if (layout) 'width': '1.25em',
+      if (layout) 'height': '1.25em',
+      if (layout) 'margin-left': '1em',
+      if (layout) 'flex-shrink': '0',
+      if (colors) 'color': c(de.chevronColor),
+      if (layout) 'transition': 'transform 150ms ease',
+    });
+    rule('$s .wonky-details:not([open]) .wonky-details-chevron', {
+      if (layout) 'transform': 'rotate(-90deg)',
+    });
+    rule('$s .wonky-details-body', {if (layout) 'margin-top': '0.75em'});
+    rule('$s .wonky-details-body > :last-child', {
+      if (layout) 'margin-bottom': '0',
+    });
+    // Cards.
+    final ca = w.card;
+    rule('$s .wonky-card', {
+      if (layout) 'margin': '${len(ca.spaceBefore)} 0 ${len(ca.spaceAfter)}',
+      if (layout) 'padding': edges(ca.padding),
+      if (colors && ca.background != null)
+        'background-color': c(ca.background!),
+      if (layout) 'border-radius': len(ca.borderRadius),
+      if (layout && ca.shadow) 'box-shadow': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+    });
+    rule('$s .wonky-card > :first-child', {if (layout) 'margin-top': '0'});
+    rule('$s .wonky-card > :last-child', {if (layout) 'margin-bottom': '0'});
+    // Grids.
+    final g = w.grid;
+    rule('$s .wonky-grid', {
+      if (layout) 'display': 'grid',
+      if (layout) 'margin': '${len(g.spaceBefore)} 0 ${len(g.spaceAfter)}',
+      if (layout) 'column-gap': len(g.columnGap),
+      if (layout) 'row-gap': len(g.rowGap),
+      if (layout) 'grid-template-columns': 'minmax(0, 1fr)',
+    });
+    for (final n in const [2, 3, 4]) {
+      rule('$s .wonky-grid-$n', {
+        if (layout) 'grid-template-columns': 'repeat($n, minmax(0, 1fr))',
+      });
+    }
+    rule('$s .wonky-grid-item', {
+      if (layout) 'display': 'flex',
+      if (layout) 'align-items': 'flex-start',
+      if (layout) 'gap': '0.6em',
+    });
+    rule('$s .wonky-grid-bullet', {
+      if (layout) 'width': '1.25em',
+      if (layout) 'height': '1.25em',
+      if (layout) 'margin-top': '0.1em',
+      if (layout) 'flex-shrink': '0',
+      if (colors) 'color': c(g.bulletColor),
+    });
+    // Buttons, arrow links and chips.
+    final bt = w.button;
+    rule('$s a.wonky-button', {
+      if (layout) 'display': 'inline-flex',
+      if (layout) 'align-items': 'center',
+      if (layout) 'padding': '0.6em 1.2em',
+      if (layout) 'margin': '0.15em 0',
+      if (layout) 'border-radius': len(bt.borderRadius),
+      if (layout) 'font-weight': '${bt.fontWeight}',
+      if (layout) 'text-decoration': 'none',
+      if (colors) 'color': c(bt.color),
+      if (colors) 'background-color': c(bt.background),
+    });
+    rule('$s a.wonky-button-secondary', {
+      if (colors) 'color': c(bt.secondaryColor),
+      if (colors) 'background-color': c(bt.secondaryBackground),
+    });
+    rule('$s a.wonky-link', {
+      if (layout) 'display': 'inline-flex',
+      if (layout) 'align-items': 'center',
+      if (layout) 'font-weight': '${bt.arrowWeight}',
+      if (layout) 'text-decoration': 'none',
+      if (colors) 'color': c(bt.arrowColor),
+    });
+    rule('$s .wonky-link-arrow', {
+      if (layout) 'width': '1em',
+      if (layout) 'height': '1em',
+      if (layout) 'margin-left': '0.25em',
+    });
+    final ch = w.chip;
+    rule('$s .wonky-chip', {
+      if (layout) 'display': 'inline-flex',
+      if (layout) 'align-items': 'center',
+      if (layout) 'padding': '0.2em 0.8em',
+      if (layout) 'margin': '0.1em 0',
+      if (layout) 'border-radius': len(ch.borderRadius),
+      if (layout) 'font-weight': '${ch.fontWeight}',
+      if (colors) 'color': c(ch.color),
+      if (colors) 'background-color': c(ch.background),
+    });
+    // Numbered headings.
+    final sb = w.stepBadge;
+    rule('$s .wonky-step', {
+      if (layout) 'display': 'flex',
+      if (layout) 'align-items': 'center',
+      if (layout) 'gap': '0.45em',
+    });
+    rule('$s .wonky-step-number', {
+      if (layout) 'display': 'inline-flex',
+      if (layout) 'align-items': 'center',
+      if (layout) 'justify-content': 'center',
+      if (layout) 'flex-shrink': '0',
+      if (layout) 'width': '${_n(sb.sizeRatio / 0.66)}em',
+      if (layout) 'height': '${_n(sb.sizeRatio / 0.66)}em',
+      if (layout) 'border-radius': '50%',
+      if (layout) 'font-size': '0.66em',
+      if (colors) 'color': c(sb.color),
+      if (colors) 'background-color': c(sb.background),
+    });
   }
 
   void _numbering(

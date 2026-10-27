@@ -3,6 +3,8 @@ library;
 
 import 'package:markdown/markdown.dart' as md;
 
+import 'wonky_syntax.dart';
+
 /// GFM block/inline syntaxes without footnotes (kept as literal text, 02 §2.1).
 final md.ExtensionSet wonkyGfm = md.ExtensionSet(
   const <md.BlockSyntax>[
@@ -19,9 +21,21 @@ final md.ExtensionSet wonkyGfm = md.ExtensionSet(
 );
 
 /// Parses [source] into an AST with HTML encoding on, so literal `<`/`&`
-/// arrive as entities and raw inline HTML stays raw.
-List<md.Node> parseMarkdownAst(String source) {
-  final doc = md.Document(extensionSet: wonkyGfm, encodeHtml: true);
+/// arrive as entities and raw inline HTML stays raw. The [MarkdownFlavor.wonky]
+/// flavor adds the Wonky directives (Write 11 §4, [WonkyMdTags]); without
+/// [blocks] only the inline ones.
+List<md.Node> parseMarkdownAst(
+  String source, {
+  MarkdownFlavor flavor = MarkdownFlavor.gfm,
+  bool blocks = true,
+}) {
+  final wonky = flavor == MarkdownFlavor.wonky;
+  final doc = md.Document(
+    extensionSet: wonkyGfm,
+    encodeHtml: true,
+    blockSyntaxes: wonky && blocks ? wonkyBlockSyntaxes : const [],
+    inlineSyntaxes: wonky ? wonkyInlineSyntaxes : const [],
+  );
   return doc.parseLines(source.split('\n'));
 }
 

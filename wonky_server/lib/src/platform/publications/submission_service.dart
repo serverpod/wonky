@@ -133,6 +133,7 @@ abstract final class SubmissionService {
       accepting: p.enabled && !blocked,
       fields: p.fields,
       termsUrl: p.termsUrl,
+      markdownFlavor: p.markdownFlavor,
       consentNeeded: await Publications.consentNeeded(
         session,
         p,
@@ -212,9 +213,12 @@ abstract final class SubmissionService {
       (await DocumentStore.requireByItem(session, item.id!)),
       revision,
     );
+    // In the document's flavor (Write 11 §3.3).
+    final flavor = core.MarkdownFlavor.parse(doc.markdownFlavor);
     var markdown = const core.MarkdownCodec().exportMarkdown(
       content,
       view: core.SuggestionViewMode.original,
+      options: core.MarkdownExportOptions(flavor: flavor),
     );
     final assets = await _assets(session, actor, markdown);
     markdown = markdown.replaceAllMapped(_wonkyFile, (m) {
@@ -276,6 +280,7 @@ abstract final class SubmissionService {
         'note': stored.note,
       },
       'markdown': markdown,
+      'markdownFlavor': flavor.value,
       'assets': [
         for (final f in assets.values)
           {

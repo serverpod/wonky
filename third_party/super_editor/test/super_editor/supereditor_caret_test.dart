@@ -424,7 +424,9 @@ Future<TestDocumentContext> _pumpScaffold(
 Offset _computeExpectedMobileCaretOffsetInDocumentLayout(
     WidgetTester tester, GlobalKey docKey, DocumentPosition documentPosition) {
   final docLayout = docKey.currentState as DocumentLayout;
-  final extentRect = docLayout.getRectForPosition(documentPosition)!;
+  // WONKY PATCH SE-11: the caret is the position's edge (as tall as the text
+  // beside it), not the full line rectangle.
+  final extentRect = docLayout.getEdgeForPosition(documentPosition)!;
   return Offset(extentRect.left, extentRect.top);
 }
 

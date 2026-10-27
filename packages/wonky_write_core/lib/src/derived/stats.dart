@@ -143,6 +143,8 @@ final class DocumentStatsCalculator {
               tables++;
             case DividerEmbed():
               dividers++;
+            case GridEmbed() || YouTubeEmbed():
+              break;
             case null:
               break;
           }

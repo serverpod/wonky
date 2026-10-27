@@ -338,6 +338,27 @@ enum ThemeElement implements JsonEnum {
   /// Tables.
   table,
 
+  /// Wonky Markdown callouts (Write 11 §8).
+  callout,
+
+  /// Wonky Markdown details.
+  details,
+
+  /// Wonky Markdown cards.
+  card,
+
+  /// Wonky Markdown grids.
+  grid,
+
+  /// Wonky Markdown buttons and arrow links (inline).
+  button,
+
+  /// Wonky Markdown chips (inline).
+  chip,
+
+  /// Wonky Markdown numbered heading badges.
+  stepBadge,
+
   /// Page header (overrides `page.headerFooter`).
   header,
 

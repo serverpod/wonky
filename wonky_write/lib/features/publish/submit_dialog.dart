@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' show UuidV7Generator;
+import 'package:wonky_write_core/wonky_write_core.dart' show MarkdownFlavor;
 
 import '../../l10n/write_l10n.dart';
 import '../images/image_dialogs.dart';
@@ -102,6 +103,13 @@ Future<SubmissionView?> showSubmitDialog(
             ? l.submitHostVerified(v.shownHost)
             : l.submitHostUnverified(v.shownHost),
         if (suggestions > 0) l.submitOpenSuggestions(suggestions),
+        // The document's flavor differs from the publication's (Write 11
+        // §3.3).
+        if (v.markdownFlavor != null &&
+            MarkdownFlavor.parse(v.markdownFlavor) != doc.markdownFlavor)
+          doc.isWonky
+              ? l.submitFlavorWantsGfm(v.publicationName)
+              : l.submitFlavorWantsWonky(v.publicationName),
         l.submitCommentsStay,
       ].join('\n\n'),
       dialogKey: 'dialog.submit',

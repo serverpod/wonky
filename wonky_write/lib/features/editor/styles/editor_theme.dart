@@ -3,6 +3,8 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart' show Brightness;
 import 'package:wonky_core/wonky_core.dart' show presenceColorIndex;
 
+import 'wonky_style.dart';
+
 /// Visual style of the document surface, in logical pixels at 100 % zoom
 /// (Write 06 §6). Built from the document's resolved Write theme
 /// (`ResolvedWriteTheme`, `wonky_write_core`) for the current variant, or from
@@ -59,6 +61,7 @@ class EditorTheme {
     required this.pagelessMaxWidth,
     required this.pagelessPadding,
     this.contentHash = 'fallback',
+    this._wonky,
   });
 
   /// Wonky Default, used until the document's theme is resolved.
@@ -167,6 +170,11 @@ class EditorTheme {
       pagelessPadding: const EdgeInsets.fromLTRB(32, 48, 32, 96),
     );
   }
+
+  final WonkyEditorStyle? _wonky;
+
+  /// The Wonky Markdown elements (Write 11 §7.2).
+  WonkyEditorStyle get wonky => _wonky ?? WonkyEditorStyle.fallback(brightness);
 
   final Brightness brightness;
   final Color paperColor;

@@ -71,6 +71,7 @@ class ConvertedImport {
   String get markdown => const MarkdownCodec().exportMarkdown(
     result.delta,
     frontMatter: result.frontMatter,
+    options: MarkdownExportOptions(flavor: result.markdownFlavor),
   );
 
   List<String> get warnings => [for (final w in result.warnings) w.message];
@@ -87,10 +88,18 @@ Future<ConvertedImport> convertImport(
   Uint8List bytes, {
   ImportImageUploader? uploadImage,
   WriteLocalizations? l,
+  MarkdownFlavor? flavor,
 }) async {
-  final raw = await const WonkyImporters(
-    limits: ImportLimits.client,
-  ).import(bytes, ImportOptions(fileName: fileName));
+  // Into a document: its flavor; a new document: Markdown with directives
+  // makes a Wonky document (Write 11 §5.1).
+  final raw = await const WonkyImporters(limits: ImportLimits.client).import(
+    bytes,
+    ImportOptions(
+      fileName: fileName,
+      flavor: flavor ?? MarkdownFlavor.gfm,
+      detectFlavor: flavor == null,
+    ),
+  );
   final result = await ImportPostProcessor.process(
     raw,
     uploadImage ?? (_) async => null,

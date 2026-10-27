@@ -68,6 +68,7 @@ abstract final class WriteImportService {
     required String fileName,
     String? format,
     Map<String, dynamic> options = const {},
+    core.MarkdownFlavor? flavor,
   }) async {
     final explicit = format == null || format == 'auto' || format == 'zip'
         ? null
@@ -95,6 +96,10 @@ abstract final class WriteImportService {
                 txtLineBreaks: soft
                     ? core.TxtLineBreaks.soft
                     : core.TxtLineBreaks.paragraph,
+                // Into a document: its flavor. A new document: Markdown with
+                // directives makes it a Wonky document (Write 11 §5.1).
+                flavor: flavor ?? core.MarkdownFlavor.gfm,
+                detectFlavor: flavor == null,
               ),
               format: explicit,
             ),
@@ -227,6 +232,7 @@ abstract final class WriteImportService {
         pageSetupJson: setup == null ? '{}' : jsonEncode(setup.toJson()),
         language: result.language,
         frontMatter: result.frontMatter,
+        markdownFlavor: result.markdownFlavor.value,
         createdAt: now,
         updatedAt: now,
       ),

@@ -2,8 +2,9 @@ import 'package:super_editor/super_editor.dart';
 
 import 'wonky_schema.dart';
 
-/// A block embed the editor can't render (an unknown embed type). It keeps the
-/// raw embed value in its metadata so that it round-trips unchanged.
+/// A block embed without a node class of its own: a Wonky Markdown grid
+/// (Write 11 §7.1) or an embed type the editor can't render. It keeps the raw
+/// embed value in its metadata so that it round-trips unchanged.
 class WonkyEmbedNode extends BlockNode {
   WonkyEmbedNode({required this.id, super.metadata}) {
     initAddToMetadata({

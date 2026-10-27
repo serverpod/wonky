@@ -1,3 +1,5 @@
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show MarkdownExportOptions, MarkdownFlavor;
 import 'dart:convert';
 
 import 'package:dart_quill_delta/dart_quill_delta.dart';
@@ -48,10 +50,16 @@ class PastedFragment {
 
 /// Encodes copied fragments and decodes pasted content (Write 04 §23).
 class ClipboardCodec {
-  const ClipboardCodec({this.newEmbedId});
+  const ClipboardCodec({this.newEmbedId, this.flavor});
 
   /// Ids for embeds in pasted Wonky fragments (avoids identity collisions).
   final String Function()? newEmbedId;
+
+  /// The document's Markdown flavor (copy and paste as Markdown, Write 11
+  /// §5).
+  final MarkdownFlavor Function()? flavor;
+
+  MarkdownFlavor get _flavor => flavor?.call() ?? MarkdownFlavor.gfm;
 
   static const _deltaAttribute = 'data-wonky-delta';
   static final _url = RegExp(r'^(https?://|mailto:|wonky://)\S+$');
@@ -63,7 +71,12 @@ class ClipboardCodec {
       _ensureTrailingNewline(fragment),
       stripComments: true,
     );
-    final markdown = const MarkdownCodec().exportMarkdown(accepted).trimRight();
+    final markdown = const MarkdownCodec()
+        .exportMarkdown(
+          accepted,
+          options: MarkdownExportOptions(flavor: _flavor),
+        )
+        .trimRight();
     final tree = const DocTreeBuilder().fromDelta(
       accepted,
       view: SuggestionViewMode.raw,
@@ -146,7 +159,7 @@ class ClipboardCodec {
     bool plainOnly = false,
     bool forceMarkdown = false,
   }) {
-    final options = ImportOptions(idGenerator: newEmbedId);
+    final options = ImportOptions(idGenerator: newEmbedId, flavor: _flavor);
     if (!plainOnly && content.html != null) {
       final embedded = _embeddedDelta(content.html!);
       if (embedded != null) return PastedFragment(embedded);

@@ -3,6 +3,7 @@ library;
 
 import 'dart:math' as math;
 
+import '../../delta/boxes.dart';
 import '../../delta/embeds.dart';
 import 'package:wonky_fonts/wonky_fonts.dart';
 import '../../ir/doc_tree.dart';
@@ -43,7 +44,7 @@ final class OdtExporter implements DocumentExporter<OfficeExportOptions> {
   ) async {
     input.cancel?.throwIfCancelled();
     input.progress?.call(ExportPhase.loading, 0);
-    final tree = exportTree(input, options);
+    final tree = exportTree(input, options).withVideosAsLinks;
     final theme = ThemeResolver.instance.resolve(input.theme, input.variant);
     final warnings = <ExportWarning>[];
     final images = await resolveOfficeImages(input, tree, warnings);
@@ -308,7 +309,23 @@ final class _OdtWriter {
 
   String contentXml() {
     if (options.includeToc) _toc();
-    final blocks = tree.blocks;
+    _blocks(tree.blocks);
+    if (tree.blocks.isEmpty && !options.includeToc) {
+      _body.write('<text:p text:style-name="${_p('Standard')}"/>');
+    }
+    input.progress?.call(ExportPhase.layout, 1);
+    return '$_xmlDecl<office:document-content $_nsDecl office:version="1.3">'
+        '${fontFaceDecls()}'
+        '<office:automatic-styles>${_auto.out}</office:automatic-styles>'
+        '<office:body><office:text>$_body</office:text></office:body>'
+        '</office:document-content>';
+  }
+
+  /// Paragraph properties of the Wonky container being written (Write 11
+  /// §9): shading, left border and nesting indent; empty outside one.
+  var _boxProps = const <String, String>{};
+
+  void _blocks(List<DocBlock> blocks) {
     var i = 0;
     while (i < blocks.length) {
       if (i % 64 == 0) {
@@ -329,6 +346,13 @@ final class _OdtWriter {
         continue;
       }
       switch (b) {
+        case ContainerBlock():
+          _container(b);
+        case YouTubeBlock():
+          // Links ([DocTree.withVideosAsLinks]).
+          break;
+        case GridBlock():
+          _grid(b);
         case ParagraphBlock(:final runs):
           _paragraph(_p('Standard'), runs);
         case HeadingBlock():
@@ -348,15 +372,128 @@ final class _OdtWriter {
       }
       i++;
     }
-    if (blocks.isEmpty && !options.includeToc) {
-      _body.write('<text:p text:style-name="${_p('Standard')}"/>');
+  }
+
+  /// A Wonky container: a callout's title or a details summary as a bold
+  /// paragraph, then the content, all with the container's shading.
+  void _container(ContainerBlock c) {
+    final w = t.wonky;
+    final frame = c.frame;
+    final saved = _boxProps;
+    final depth =
+        (saved['wonky-depth'] == null ? 0 : int.parse(saved['wonky-depth']!)) +
+        1;
+    int? background;
+    BorderPt? border;
+    switch (frame.type) {
+      case BoxType.callout:
+        final cc = w.callout.colorsFor(
+          (frame.variant ?? CalloutVariant.info).value,
+        );
+        background = cc.background;
+        border = BorderPt(
+          width: math.max(w.callout.borderWidth, 1.5) * 2,
+          style: LineStyle.solid,
+          color: cc.border,
+        );
+      case BoxType.details:
+        background = w.details.background;
+        border = w.details.border;
+      case BoxType.card:
+        background = w.card.background;
     }
-    input.progress?.call(ExportPhase.layout, 1);
-    return '$_xmlDecl<office:document-content $_nsDecl office:version="1.3">'
-        '${fontFaceDecls()}'
-        '<office:automatic-styles>${_auto.out}</office:automatic-styles>'
-        '<office:body><office:text>$_body</office:text></office:body>'
-        '</office:document-content>';
+    _boxProps = {
+      'wonky-depth': '$depth',
+      if (background != null) 'fo:background-color': _color(background),
+      if (border != null && border.isVisible) ...{
+        'fo:border-left': '${_pt(border.width)} solid ${_color(border.color)}',
+        'fo:padding-left': _pt(6),
+      },
+      if (depth > 1) 'fo:margin-left': _pt(12.0 * (depth - 1)),
+    };
+    switch (frame.type) {
+      case BoxType.callout:
+        final cc = w.callout.colorsFor(
+          (frame.variant ?? CalloutVariant.info).value,
+        );
+        final span = _textStyle({
+          'fo:font-weight': 'bold',
+          'fo:color': _color(cc.title),
+        });
+        _body
+          ..write(
+            '<text:p text:style-name="${_p('Standard', {'fo:keep-with-next': 'always'})}">',
+          )
+          ..write('<text:span text:style-name="$span">')
+          ..write(xmlText(frame.calloutLabel))
+          ..write('</text:span></text:p>');
+      case BoxType.details:
+        _paragraph(_p('Standard', {'fo:keep-with-next': 'always'}), [
+          for (final r in c.summary?.runs ?? const <InlineRun>[])
+            r.code ? r : r.copyWith(bold: true),
+        ]);
+      case BoxType.card:
+        break;
+    }
+    _blocks(c.body);
+    _boxProps = saved;
+  }
+
+  /// A Wonky grid as a borderless table (Write 11 §9).
+  void _grid(GridBlock g) {
+    _tables++;
+    final cols = g.columns.clamp(1, 4);
+    final tableStyle = _auto.add(
+      'Ta',
+      'table',
+      null,
+      '<style:table-properties${_attrs({'style:width': _pt(contentWidth), 'table:align': 'margins', 'fo:margin-top': _pt(t.wonky.grid.spaceBefore), 'fo:margin-bottom': _pt(t.wonky.grid.spaceAfter)})}/>',
+    );
+    final colStyle = _auto.add(
+      'Co',
+      'table-column',
+      null,
+      '<style:table-column-properties${_attrs({'style:column-width': _pt(contentWidth / cols), 'style:rel-column-width': '1000*'})}/>',
+    );
+    final glyph = switch (g.bullets) {
+      GridBullets.check => '✓ ',
+      GridBullets.circle => '• ',
+      GridBullets.none => '',
+    };
+    final bullet = _textStyle({
+      'fo:font-weight': 'bold',
+      'fo:color': _color(t.wonky.grid.bulletColor),
+    });
+    final para = _p('Standard', {'fo:margin-bottom': _pt(t.wonky.grid.rowGap)});
+    _body
+      ..write(
+        '<table:table table:name="Table$_tables" table:style-name="$tableStyle">',
+      )
+      ..write(
+        '<table:table-column table:style-name="$colStyle"'
+        '${cols > 1 ? ' table:number-columns-repeated="$cols"' : ''}/>',
+      );
+    for (var r = 0; r * cols < g.items.length; r++) {
+      _body.write('<table:table-row>');
+      for (var c = 0; c < cols; c++) {
+        final k = r * cols + c;
+        _body.write('<table:table-cell office:value-type="string">');
+        if (k < g.items.length) {
+          _paragraph(
+            para,
+            g.items[k],
+            lead: glyph.isEmpty
+                ? ''
+                : '<text:span text:style-name="$bullet">$glyph</text:span>',
+          );
+        } else {
+          _body.write('<text:p text:style-name="$para"/>');
+        }
+        _body.write('</table:table-cell>');
+      }
+      _body.write('</table:table-row>');
+    }
+    _body.write('</table:table>');
   }
 
   String metaXml() {
@@ -439,7 +576,13 @@ final class _OdtWriter {
   /// the page number start.
   String _p(String parent, [Map<String, String> para = const {}]) {
     var attrs = const <String, String>{};
-    var props = para;
+    var props = _boxProps.isEmpty
+        ? para
+        : {
+            for (final e in _boxProps.entries)
+              if (e.key != 'wonky-depth') e.key: e.value,
+            ...para,
+          };
     if (_firstPending) {
       _firstPending = false;
       attrs = const {'style:master-page-name': 'Standard'};
@@ -531,6 +674,15 @@ final class _OdtWriter {
 
   String? _runStyle(InlineRun r) {
     if (r.code) return 'Source_20_Text';
+    if (r.chip) {
+      return _textStyle({
+        'fo:background-color': _color(t.wonky.chip.background),
+        'fo:color': _color(t.wonky.chip.color),
+      });
+    }
+    if (r.linkStyle != null) {
+      return _textStyle({'fo:font-weight': 'bold'});
+    }
     final parent = r.mentionUserUuid != null ? _mentionStyle : null;
     if (!r.bold && !r.italic && !r.strike) return parent;
     final props = <String, String>{
@@ -560,9 +712,11 @@ final class _OdtWriter {
   void _heading(HeadingBlock h) {
     final level = h.level.clamp(1, 6);
     final style = _p('Heading_20_$level');
-    final bookmark = h.anchorId.isEmpty
-        ? ''
-        : '<text:bookmark text:name="${xmlAttr(h.anchorId)}"/>';
+    final bookmark =
+        (h.anchorId.isEmpty
+            ? ''
+            : '<text:bookmark text:name="${xmlAttr(h.anchorId)}"/>') +
+        (h.step == null ? '' : xmlText('${h.step}. '));
     _paragraph(
       style,
       h.runs,
@@ -905,7 +1059,7 @@ final class _OdtWriter {
   // Table of contents
 
   void _toc() {
-    final labels = headingLabels(tree, t);
+    final labels = allHeadingLabels(tree, t);
     const title = 'Contents';
     _body
       ..write(
@@ -934,10 +1088,13 @@ final class _OdtWriter {
       ..write('<text:index-title text:name="Table of Contents1_Head">');
     _paragraph(_p('Contents_20_Heading'), const [InlineRun(title)]);
     _body.write('</text:index-title>');
-    for (var i = 0; i < tree.blocks.length; i++) {
-      final b = tree.blocks[i];
-      if (b is! HeadingBlock || b.level > _tocDepth) continue;
-      final text = '${labels[i] ?? ''}${runsPlainText(b.runs)}';
+    // Details summaries are bold paragraphs, not headings.
+    final summaries = {
+      for (final c in tree.allBlocks.whereType<ContainerBlock>()) ?c.summary,
+    };
+    for (final b in tree.allBlocks.whereType<HeadingBlock>()) {
+      if (b.level > _tocDepth || summaries.contains(b)) continue;
+      final text = '${labels[b] ?? ''}${runsPlainText(b.runs)}';
       if (text.trim().isEmpty) continue;
       _body.write('<text:p text:style-name="Contents_20_${b.level}">');
       final o = _TextOut(_body);

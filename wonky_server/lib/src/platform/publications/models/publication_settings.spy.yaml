@@ -11,6 +11,8 @@ fields:
   templateName: String?
   termsUrl: String?
   fields: PublicationFields
+  ### `gfm` or `wonky` (Write 11 §3.3).
+  markdownFlavor: String?
   moderators: List<PublicationModeratorView>
   hasApiKey: bool
   apiKeyLast4: String?

@@ -1,7 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart'
+    show kDoubleTapSlop, kDoubleTapTimeout, kPrimaryButton;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show BoxHitTestResult, RenderProxyBox;
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/super_editor.dart';
 
@@ -127,6 +131,24 @@ class WonkyImageComponentBuilder implements ComponentBuilder {
     SingleColumnLayoutComponentViewModel viewModel,
   ) {
     if (viewModel is! WonkyImageViewModel) return null;
+    Widget imageGestures(String nodeId, {required Widget child}) {
+      if (editable) {
+        // A click selects the image (the interactor), a double click opens
+        // its dialog.
+        final onDoubleTap = callbacks.onImageDoubleTap;
+        return EditorBlockContent(
+          onDoubleTap: onDoubleTap == null ? null : () => onDoubleTap(nodeId),
+          ignoreChild: false,
+          child: child,
+        );
+      }
+      final onTap = callbacks.onImageTap;
+      return GestureDetector(
+        onTap: onTap == null ? null : () => onTap(nodeId),
+        child: child,
+      );
+    }
+
     final selection =
         viewModel.selection?.nodeSelection as UpstreamDownstreamNodeSelection?;
     final isSelected = selection != null && !selection.isCollapsed;
@@ -135,36 +157,39 @@ class WonkyImageComponentBuilder implements ComponentBuilder {
       label: viewModel.alt.isEmpty
           ? writeL10n(componentContext.context).editorImageNoDescription
           : viewModel.alt,
-      child: GestureDetector(
-        onTap: editable || callbacks.onImageTap == null
-            ? null
-            : () => callbacks.onImageTap!(viewModel.nodeId),
-        onDoubleTap: !editable || callbacks.onImageDoubleTap == null
-            ? null
-            : () => callbacks.onImageDoubleTap!(viewModel.nodeId),
+      child: imageGestures(
+        viewModel.nodeId,
         child: Center(
-          child: DecoratedBox(
-            position: DecorationPosition.foreground,
-            decoration: BoxDecoration(
-              border: isSelected
-                  ? Border.all(color: theme.ringColor, width: 2)
-                  : null,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: BoxComponent(
-              key: componentContext.componentKey,
-              opacity: viewModel.opacity,
-              child: _WonkyImage(
-                nodeId: viewModel.nodeId,
-                src: viewModel.src,
-                alt: viewModel.alt,
-                title: viewModel.title,
-                services: services,
-                theme: theme,
-                callbacks: callbacks,
-                maxHeight: maxHeight,
+          // The selection ring is no hit target (a decoration is one).
+          child: Stack(
+            children: [
+              BoxComponent(
+                key: componentContext.componentKey,
+                opacity: viewModel.opacity,
+                child: _WonkyImage(
+                  nodeId: viewModel.nodeId,
+                  src: viewModel.src,
+                  alt: viewModel.alt,
+                  title: viewModel.title,
+                  services: services,
+                  theme: theme,
+                  callbacks: callbacks,
+                  maxHeight: maxHeight,
+                ),
               ),
-            ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: isSelected
+                          ? Border.all(color: theme.ringColor, width: 2)
+                          : null,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -363,25 +388,29 @@ class _WonkyImageState extends State<_WonkyImage> {
                   maxWidth: maxWidth,
                   maxHeight: maxHeight ?? double.infinity,
                 ),
-                child: Image(
-                  image: provider,
-                  fit: BoxFit.contain,
-                  semanticLabel: widget.alt,
-                  errorBuilder: (context, error, stack) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted && !_broken) setState(() => _broken = true);
-                    });
-                    return _placeholder(
-                      maxWidth,
-                      icon: Icons.broken_image_outlined,
-                      label: widget.alt,
-                      retry: true,
-                    );
-                  },
-                  frameBuilder: (context, child, frame, sync) =>
-                      frame == null && !sync
-                      ? _placeholder(maxWidth, size: _loadingSize(maxWidth))
-                      : child,
+                // No hit target: a click reaches the editor, which selects
+                // the image.
+                child: IgnorePointer(
+                  child: Image(
+                    image: provider,
+                    fit: BoxFit.contain,
+                    semanticLabel: widget.alt,
+                    errorBuilder: (context, error, stack) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && !_broken) setState(() => _broken = true);
+                      });
+                      return _placeholder(
+                        maxWidth,
+                        icon: Icons.broken_image_outlined,
+                        label: widget.alt,
+                        retry: true,
+                      );
+                    },
+                    frameBuilder: (context, child, frame, sync) =>
+                        frame == null && !sync
+                        ? _placeholder(maxWidth, size: _loadingSize(maxWidth))
+                        : child,
+                  ),
                 ),
               );
             }
@@ -390,7 +419,11 @@ class _WonkyImageState extends State<_WonkyImage> {
               alignment: Alignment.center,
               children: [
                 if (title != null && title.isNotEmpty)
-                  Tooltip(message: title, child: content)
+                  // The tooltip still sees the pointer; the click goes on
+                  // to the editor.
+                  _HitTransparent(
+                    child: Tooltip(message: title, child: content),
+                  )
                 else
                   content,
                 if (upload != null &&
@@ -443,39 +476,55 @@ class _WonkyImageState extends State<_WonkyImage> {
           width,
           widget.maxHeight,
         );
+    // Only Retry is a hit target: a click elsewhere reaches the editor.
     return SizedBox(
       width: box.width,
       height: box.height,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: theme.mutedColor.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Center(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) Icon(icon, color: theme.mutedColor, size: 32),
-                if (label != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      label,
-                      style: TextStyle(color: theme.mutedColor, fontSize: 13),
-                    ),
-                  ),
-                if (retry)
-                  TextButton(
-                    key: const ValueKey(WonkyEditorKeys.imageRetry),
-                    onPressed: _retry,
-                    child: Text(writeL10n(context).imageRetry),
-                  ),
-              ],
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.mutedColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
-        ),
+          Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null)
+                    IgnorePointer(
+                      child: Icon(icon, color: theme.mutedColor, size: 32),
+                    ),
+                  if (label != null)
+                    IgnorePointer(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: theme.mutedColor,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (retry)
+                    TextButton(
+                      key: const ValueKey(WonkyEditorKeys.imageRetry),
+                      onPressed: _retry,
+                      child: Text(writeL10n(context).imageRetry),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -659,11 +708,11 @@ class WonkyTableComponentBuilder implements ComponentBuilder {
             !editable || inline != null || callbacks.onEditTable == null
             ? null
             : () => callbacks.onEditTable!(viewModel.nodeId),
-        child: _HoverChrome(
+        child: EditorHoverChrome(
           showAlways: isSelected,
           chrome: !editable || callbacks.onEditTable == null
               ? null
-              : _ChromeButton(
+              : EditorChromeButton(
                   key: ValueKey(
                     '${WonkyEditorKeys.tableEdit}.${viewModel.nodeId}',
                   ),
@@ -815,22 +864,122 @@ class WonkyParagraphComponentBuilder implements ComponentBuilder {
       );
     }
     if (blockType == codeAttribution) {
-      final node = document.getNodeById(viewModel.nodeId);
-      return _CodeBlockChrome(
+      return EditorNodeWatcher(
+        document: document,
         nodeId: viewModel.nodeId,
-        node: node,
-        theme: theme,
-        zoom: zoom,
-        callbacks: callbacks,
-        editable: editable,
-        child: component,
+        builder: (_) => _CodeBlockChrome(
+          nodeId: viewModel.nodeId,
+          node: document.getNodeById(viewModel.nodeId),
+          theme: theme,
+          zoom: zoom,
+          callbacks: callbacks,
+          editable: editable,
+          child: component,
+        ),
       );
     }
     final level = headingLevelOf(blockType);
     if (level != null) {
-      return Semantics(header: true, headingLevel: level, child: component);
+      return Semantics(
+        header: true,
+        headingLevel: level,
+        // The step changes no view model.
+        child: EditorNodeWatcher(
+          document: document,
+          nodeId: viewModel.nodeId,
+          builder: (_) {
+            final step = level == 2 || level == 3
+                ? stepOf(document.getNodeById(viewModel.nodeId))
+                : null;
+            return step == null
+                ? component
+                : _StepHeading(
+                    nodeId: viewModel.nodeId,
+                    step: step,
+                    fontSize: (theme.headings[level - 1].fontSize ?? 20) * zoom,
+                    theme: theme,
+                    onTap: editable ? callbacks.onStepTap : null,
+                    child: component,
+                  );
+          },
+        ),
+      );
     }
     return component;
+  }
+}
+
+/// A numbered heading (Write 11 §7.2): the step number in a badge before
+/// the heading text; tapping it edits the number.
+class _StepHeading extends StatelessWidget {
+  const _StepHeading({
+    required this.nodeId,
+    required this.step,
+    required this.fontSize,
+    required this.theme,
+    required this.onTap,
+    required this.child,
+  });
+
+  final String nodeId;
+  final int step;
+  final double fontSize;
+  final EditorTheme theme;
+  final void Function(String nodeId, Rect globalRect)? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = theme.wonky;
+    final size = fontSize * style.stepSizeRatio;
+    Widget badge = Container(
+      key: ValueKey('write.editor.step.$nodeId'),
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: style.stepBackground,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        '$step',
+        style: TextStyle(
+          fontSize: size * (step >= 100 ? 0.4 : 0.55),
+          fontWeight: FontWeight.w700,
+          color: style.stepColor,
+          height: 1,
+        ),
+      ),
+    );
+    if (onTap != null) {
+      badge = Tooltip(
+        message: writeL10n(context).editorStepNumber,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              final box = context.findRenderObject() as RenderBox?;
+              onTap!(
+                nodeId,
+                box == null
+                    ? Rect.zero
+                    : box.localToGlobal(Offset.zero) & box.size,
+              );
+            },
+            child: badge,
+          ),
+        ),
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        badge,
+        SizedBox(width: fontSize * 0.45),
+        Expanded(child: child),
+      ],
+    );
   }
 }
 
@@ -893,12 +1042,12 @@ class _CodeBlockChrome extends StatelessWidget {
     final label = CodeLanguages.displayName(language);
     return Semantics(
       label: writeL10n(context).editorCodeBlockLabel(label),
-      child: _HoverChrome(
+      child: EditorHoverChrome(
         chrome: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Builder(
-              builder: (chipContext) => _ChromeButton(
+              builder: (chipContext) => EditorChromeButton(
                 key: ValueKey('${WonkyEditorKeys.codeLanguageChip}.$nodeId'),
                 label: label,
                 tooltip: writeL10n(context).editorCodeLanguage,
@@ -908,7 +1057,7 @@ class _CodeBlockChrome extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            _ChromeButton(
+            EditorChromeButton(
               key: ValueKey('${WonkyEditorKeys.codeCopy}.$nodeId'),
               icon: Icons.copy_outlined,
               tooltip: writeL10n(context).editorCopyCode,
@@ -972,29 +1121,226 @@ class _CodeBlockChrome extends StatelessWidget {
   }
 }
 
-/// Shows [chrome] at the top-right corner while hovered (or [showAlways]).
-class _HoverChrome extends StatefulWidget {
-  const _HoverChrome({
+/// The visible content of a block (an image, a video thumbnail) that is not
+/// a hit target, so clicks reach the editor's interactor below the
+/// document content (which selects the block); a double click calls
+/// [onDoubleTap], detected from raw pointer events (no gesture arena).
+class EditorBlockContent extends StatefulWidget {
+  const EditorBlockContent({
+    super.key,
+    this.onDoubleTap,
+    this.ignoreChild = true,
+    required this.child,
+  });
+
+  final VoidCallback? onDoubleTap;
+
+  /// `false` when [child] keeps its own buttons (an image's Retry) and
+  /// leaves pointers to the editor elsewhere itself.
+  final bool ignoreChild;
+  final Widget child;
+
+  @override
+  State<EditorBlockContent> createState() => _EditorBlockContentState();
+}
+
+class _EditorBlockContentState extends State<EditorBlockContent> {
+  Duration? _lastDown;
+  Offset? _lastPosition;
+
+  void _onDown(PointerDownEvent e) {
+    if (e.buttons != kPrimaryButton) return;
+    final last = _lastDown;
+    final lastPosition = _lastPosition;
+    if (last != null &&
+        lastPosition != null &&
+        e.timeStamp - last <= kDoubleTapTimeout &&
+        (e.position - lastPosition).distance <= kDoubleTapSlop) {
+      _lastDown = null;
+      widget.onDoubleTap?.call();
+      return;
+    }
+    _lastDown = e.timeStamp;
+    _lastPosition = e.position;
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    // Translucent over an ignored child: gets the events, not a hit target.
+    behavior: HitTestBehavior.translucent,
+    onPointerDown: widget.onDoubleTap == null ? null : _onDown,
+    child: widget.ignoreChild
+        ? IgnorePointer(child: widget.child)
+        : widget.child,
+  );
+}
+
+/// Rebuilds [builder] when the document changes the node [nodeId]: for
+/// what a component reads from its node besides its view model (a numbered
+/// heading's step, a code block's language, a container's frames). Such a
+/// change alone changes no view model, so the layout would keep showing the
+/// old component until something else rebuilt it.
+class EditorNodeWatcher extends StatefulWidget {
+  const EditorNodeWatcher({
+    super.key,
+    required this.document,
+    required this.nodeId,
+    required this.builder,
+  });
+
+  final Document document;
+  final String nodeId;
+  final WidgetBuilder builder;
+
+  @override
+  State<EditorNodeWatcher> createState() => _EditorNodeWatcherState();
+}
+
+class _EditorNodeWatcherState extends State<EditorNodeWatcher> {
+  @override
+  void initState() {
+    super.initState();
+    widget.document.addListener(_onChange);
+  }
+
+  @override
+  void didUpdateWidget(EditorNodeWatcher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.document != widget.document) {
+      oldWidget.document.removeListener(_onChange);
+      widget.document.addListener(_onChange);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.document.removeListener(_onChange);
+    super.dispose();
+  }
+
+  void _onChange(DocumentChangeLog log) {
+    if (!mounted ||
+        !log.changes.any(
+          (c) => c is NodeDocumentChange && c.nodeId == widget.nodeId,
+        )) {
+      return;
+    }
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
+}
+
+/// Lets [child] see the pointer (hover, a tooltip) without being a hit
+/// target, so the hit test goes on below it (to the editor's interactor).
+class _HitTransparent extends SingleChildRenderObjectWidget {
+  const _HitTransparent({required Widget super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderHitTransparent();
+}
+
+class _RenderHitTransparent extends RenderProxyBox {
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    super.hitTest(result, position: position);
+    return false;
+  }
+}
+
+/// Shows [chrome] at the top-right corner while hovered (or [showAlways]);
+/// [above] puts it just above the block instead (a block without padding
+/// of its own, like a grid, whose first row it would cover).
+class EditorHoverChrome extends StatefulWidget {
+  const EditorHoverChrome({
+    super.key,
     required this.child,
     this.chrome,
     this.showAlways = false,
+    this.above = false,
   });
 
   final Widget child;
   final Widget? chrome;
   final bool showAlways;
+  final bool above;
 
   @override
-  State<_HoverChrome> createState() => _HoverChromeState();
+  State<EditorHoverChrome> createState() => EditorHoverChromeState();
 }
 
-class _HoverChromeState extends State<_HoverChrome> {
+class EditorHoverChromeState extends State<EditorHoverChrome> {
   bool _hovered = false;
+
+  /// The pointer is over the chrome (outside the block when [above]).
+  bool _chromeHovered = false;
+  final _link = LayerLink();
+  final _portal = OverlayPortalController();
+
+  bool get _visible => _hovered || _chromeHovered || widget.showAlways;
+
+  @override
+  void initState() {
+    super.initState();
+    // Shown all the time, faded out while hidden (no layout jump).
+    if (widget.above) _portal.show();
+  }
+
+  Widget _fading(Widget chrome) => AnimatedOpacity(
+    duration: const Duration(milliseconds: 120),
+    opacity: _visible ? 1 : 0,
+    child: IgnorePointer(ignoring: !_visible, child: chrome),
+  );
 
   @override
   Widget build(BuildContext context) {
     final chrome = widget.chrome;
     if (chrome == null) return widget.child;
+    if (widget.above) {
+      return MouseRegion(
+        opaque: false,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: CompositedTransformTarget(
+          link: _link,
+          child: OverlayPortal(
+            controller: _portal,
+            // In the overlay: outside the block, the chrome still gets taps.
+            overlayChildBuilder: (_) => Positioned(
+              left: 0,
+              top: 0,
+              child: CompositedTransformFollower(
+                link: _link,
+                showWhenUnlinked: false,
+                targetAnchor: Alignment.topRight,
+                followerAnchor: Alignment.bottomRight,
+                // Overlaps the block by a pixel: no gap that drops the hover.
+                offset: const Offset(0, 1),
+                child: MouseRegion(
+                  opaque: false,
+                  onEnter: (_) => setState(() => _chromeHovered = true),
+                  onExit: (_) => setState(() => _chromeHovered = false),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: _fading(chrome),
+                  ),
+                ),
+              ),
+            ),
+            child: widget.child,
+          ),
+        ),
+      );
+    }
     return MouseRegion(
       // Not opaque: an opaque region is a hit target in the document content
       // layer, which hides the pointer from the editor's interactor below
@@ -1006,26 +1352,16 @@ class _HoverChromeState extends State<_HoverChrome> {
         clipBehavior: Clip.none,
         children: [
           widget.child,
-          Positioned(
-            top: 4,
-            right: 4,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 120),
-              opacity: _hovered || widget.showAlways ? 1 : 0,
-              child: IgnorePointer(
-                ignoring: !(_hovered || widget.showAlways),
-                child: chrome,
-              ),
-            ),
-          ),
+          Positioned(top: 4, right: 4, child: _fading(chrome)),
         ],
       ),
     );
   }
 }
 
-class _ChromeButton extends StatelessWidget {
-  const _ChromeButton({
+/// A small button of block chrome (code language, copy, edit table, …).
+class EditorChromeButton extends StatelessWidget {
+  const EditorChromeButton({
     super.key,
     this.icon,
     this.label,

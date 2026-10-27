@@ -13,7 +13,7 @@ import '../markdown/inline_markdown.dart';
 abstract final class PlainTextRenderer {
   /// Plain text of [document]: one line per line, soft breaks as `"\n"`,
   /// images as `[image: alt]`, dividers as `---`, tables as TSV (cells as
-  /// plain text). Suggestions rendered per [view].
+  /// plain text), grid items one per line. Suggestions rendered per [view].
   static String render(
     Delta document, {
     SuggestionViewMode view = SuggestionViewMode.accepted,
@@ -37,11 +37,17 @@ abstract final class PlainTextRenderer {
                 row
                     .map(
                       (c) =>
-                          InlineMarkdown.toPlainText(c).replaceAll('\t', ' '),
+                          InlineMarkdown.cellPlainText(c).replaceAll('\t', ' '),
                     )
                     .join('\t'),
               );
             }
+          case GridEmbed(:final items):
+            for (final item in items) {
+              out.add(InlineMarkdown.cellPlainText(item));
+            }
+          case YouTubeEmbed(:final title):
+            out.add(title == null ? '[video]' : '[video: $title]');
           case null:
             break;
         }

@@ -8,6 +8,8 @@ shortcuts, undo behaviour, MCP exposure and acceptance criteria. The chrome arou
 [02-document-model.md](02-document-model.md) and sync and undo internals from
 [03-sync-protocol.md](03-sync-protocol.md). Both are authoritative; this spec never contradicts
 them. Where this spec needs something they do not define, it says so in §44 *Open points*.
+The editing of Wonky Markdown elements (containers, grids, steps, buttons, chips, their
+shortcuts and chrome) is in [11-wonky-markdown.md](11-wonky-markdown.md) §7.
 
 ## 1. Conventions
 
@@ -361,6 +363,15 @@ the current block (§22.3).
 undo step.
 
 ## 5. Caret navigation
+
+The caret is as tall as the text beside it (1.2 em of the character before it, else after it,
+on its baseline), not the whole line box with its leading or a taller run's line height
+(super_editor patch SE-11): the same in plain text, in chips and buttons and at the end of a
+line; remote carets match. At the end of a Wonky Markdown chip, button or arrow link → and ←
+move the caret out of and back into the element without moving it; inside one it is drawn
+right after the last glyph, before the pill's padding or the arrow (Write 11 §7.4). No caret is
+drawn with an expanded selection (like desktop editors): a block selected while a grid or table
+is edited in place showed a block-high caret beside it.
 
 | Action | macOS | Win/Linux |
 |--------|-------|-----------|
@@ -1088,7 +1099,21 @@ selectable only as a whole.
 **In-place editing** (patch **SE-4**, `features/editor/tables/inline_table_editing.dart`,
 `write.table.editCell {nodeId?, row?, col?}`): clicking a cell (or Enter / F2 on a selected
 table) turns it into a text field holding the cell's **inline Markdown source**; other cells keep
-their rendering. While a cell is edited the local selection (presence) is the table embed.
+their rendering. While a cell is edited the local selection (presence) is the table embed, set
+once the field has the focus: set while the document editor still had it (the field is built a
+frame later), the editor took the text input back, so typing went to the editor, which moved its
+caret before or after the table. Cells (rendered and edited) opt out of the editor's own
+gestures (`DocumentGestureOptOut`, super_editor SE-14): its interactor wraps the document, so
+without that a click in a cell also took the editor's focus and put its caret before or after
+the table.
+The cells share the field's tap region group, so pressing another cell is not a tap outside the
+field (which would end editing and show the editor's selection for a moment): editing moves
+straight to it. The click puts the field's caret where it was (the rendered offset mapped to the
+source, skipping markup: `FieldClicks`), a double click selects the word there and a triple
+click the text, counted from raw pointer events on the rendered cell and the field alike (the
+field misses the click that created it, and on the web its own double click doesn't fire), the
+selection kept against the field's late single click; the field uses the editor's selection
+color.
 - Tab / Shift+Tab: next / previous cell (Tab selects the cell's text; Tab in the last cell appends
   a row). Enter: cell below; in the last row it appends a row. Shift+Enter: cell above. ↑ ↓: row
   above / below; ← → at the text edges: previous / next cell. Leaving the first or last cell (or

@@ -1428,6 +1428,8 @@ class DefaultCaretOverlayBuilder implements SuperEditorLayerBuilder {
     this.displayOnAllPlatforms = false,
     this.displayCaretWithExpandedSelection = true,
     this.blinkTimingMode = BlinkTimingMode.timer,
+    this.adjustCaretRect,
+    this.caretRectListenable,
   });
 
   /// Styles applied to the caret that's painted by this caret overlay.
@@ -1451,6 +1453,12 @@ class DefaultCaretOverlayBuilder implements SuperEditorLayerBuilder {
   /// `Timer`s are not expected to work in tests.
   final BlinkTimingMode blinkTimingMode;
 
+  /// WONKY PATCH SE-12: see [CaretDocumentOverlay.adjustCaretRect].
+  final Rect Function(DocumentPosition position, Rect caretRect, DocumentLayout layout)? adjustCaretRect;
+
+  /// See [CaretDocumentOverlay.caretRectListenable].
+  final Listenable? caretRectListenable;
+
   @override
   ContentLayerWidget build(BuildContext context, SuperEditorContext editContext) {
     return CaretDocumentOverlay(
@@ -1461,6 +1469,8 @@ class DefaultCaretOverlayBuilder implements SuperEditorLayerBuilder {
       displayOnAllPlatforms: displayOnAllPlatforms,
       displayCaretWithExpandedSelection: displayCaretWithExpandedSelection,
       blinkTimingMode: blinkTimingMode,
+      adjustCaretRect: adjustCaretRect,
+      caretRectListenable: caretRectListenable,
     );
   }
 }

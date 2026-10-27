@@ -38,6 +38,7 @@ abstract class SubmissionView
     required this.accepting,
     required this.fields,
     this.termsUrl,
+    this.markdownFlavor,
     required this.consentNeeded,
     required this.values,
     this.publicUrl,
@@ -61,6 +62,7 @@ abstract class SubmissionView
     required bool accepting,
     required _i1a71r29.PublicationFields fields,
     String? termsUrl,
+    String? markdownFlavor,
     required bool consentNeeded,
     required _igthguer.SubmissionValues values,
     String? publicUrl,
@@ -95,6 +97,7 @@ abstract class SubmissionView
         jsonSerialization['fields'],
       ),
       termsUrl: jsonSerialization['termsUrl'] as String?,
+      markdownFlavor: jsonSerialization['markdownFlavor'] as String?,
       consentNeeded: _is.BoolJsonExtension.fromJson(
         jsonSerialization['consentNeeded'],
       ),
@@ -148,6 +151,9 @@ abstract class SubmissionView
 
   String? termsUrl;
 
+  /// The publication's Markdown flavor, `gfm` or `wonky` (Write 11 §3.3).
+  String? markdownFlavor;
+
   /// The caller still has to agree to the terms before submitting.
   bool consentNeeded;
 
@@ -184,6 +190,7 @@ abstract class SubmissionView
     bool? accepting,
     _i1a71r29.PublicationFields? fields,
     String? termsUrl,
+    String? markdownFlavor,
     bool? consentNeeded,
     _igthguer.SubmissionValues? values,
     String? publicUrl,
@@ -209,6 +216,7 @@ abstract class SubmissionView
       'accepting': accepting,
       'fields': fields.toJson(),
       if (termsUrl != null) 'termsUrl': termsUrl,
+      if (markdownFlavor != null) 'markdownFlavor': markdownFlavor,
       'consentNeeded': consentNeeded,
       'values': values.toJson(),
       if (publicUrl != null) 'publicUrl': publicUrl,
@@ -238,6 +246,7 @@ abstract class SubmissionView
       'accepting': accepting,
       'fields': fields.toJsonForProtocol(),
       if (termsUrl != null) 'termsUrl': termsUrl,
+      if (markdownFlavor != null) 'markdownFlavor': markdownFlavor,
       'consentNeeded': consentNeeded,
       'values': values.toJsonForProtocol(),
       if (publicUrl != null) 'publicUrl': publicUrl,
@@ -273,6 +282,7 @@ class _SubmissionViewImpl extends SubmissionView {
     required bool accepting,
     required _i1a71r29.PublicationFields fields,
     String? termsUrl,
+    String? markdownFlavor,
     required bool consentNeeded,
     required _igthguer.SubmissionValues values,
     String? publicUrl,
@@ -294,6 +304,7 @@ class _SubmissionViewImpl extends SubmissionView {
          accepting: accepting,
          fields: fields,
          termsUrl: termsUrl,
+         markdownFlavor: markdownFlavor,
          consentNeeded: consentNeeded,
          values: values,
          publicUrl: publicUrl,
@@ -321,6 +332,7 @@ class _SubmissionViewImpl extends SubmissionView {
     bool? accepting,
     _i1a71r29.PublicationFields? fields,
     Object? termsUrl = _Undefined,
+    Object? markdownFlavor = _Undefined,
     bool? consentNeeded,
     _igthguer.SubmissionValues? values,
     Object? publicUrl = _Undefined,
@@ -345,6 +357,9 @@ class _SubmissionViewImpl extends SubmissionView {
       accepting: accepting ?? this.accepting,
       fields: fields ?? this.fields.copyWith(),
       termsUrl: termsUrl is String? ? termsUrl : this.termsUrl,
+      markdownFlavor: markdownFlavor is String?
+          ? markdownFlavor
+          : this.markdownFlavor,
       consentNeeded: consentNeeded ?? this.consentNeeded,
       values: values ?? this.values.copyWith(),
       publicUrl: publicUrl is String? ? publicUrl : this.publicUrl,

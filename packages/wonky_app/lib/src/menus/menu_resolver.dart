@@ -84,6 +84,7 @@ class MenuResolver {
       return null;
     }
     final state = services.dispatcher.stateOf(commandId, args);
+    if (!state.visible) return null;
     final title = label ?? command.title(context);
     // Drive-scope shortcuts (F2, Del, S…) only apply on the home screen.
     final driveOnly =
@@ -133,7 +134,7 @@ class MenuResolver {
     return WonkyMenuItem(
       key: k,
       label: title,
-      icon: command.icon,
+      icon: command.iconFor(args),
       shortcut: shortcut,
       enabled: state.enabled,
       disabledReason: state.disabledReason,
@@ -165,6 +166,7 @@ class MenuResolver {
           return {
             'title': c.label ?? command?.title(context) ?? c.commandId,
             'enabled': state.enabled,
+            if (!state.visible) 'hidden': true,
             if (state.checked != null) 'checked': state.checked,
             if (services.keymap.shortcutTextOf(c.commandId) != null)
               'shortcut': services.keymap.shortcutTextOf(c.commandId),

@@ -8,6 +8,7 @@ import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
 import '../mapping/wonky_schema.dart' show isQuotedListNode;
 import '../model/document_queries.dart';
+import '../reactions/pill_boundary.dart';
 
 /// Handles a key event before the editor; returns `true` when handled.
 typedef EditorKeyHandler = bool Function(KeyEvent event);
@@ -75,6 +76,9 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
     if (keymap != null && keymap(keyEvent)) {
       return ExecutionInstruction.haltExecution;
     }
+    if (_pillBoundaryArrow(keyEvent, controller)) {
+      return ExecutionInstruction.haltExecution;
+    }
     if (builtInShortcuts &&
         _builtInShortcut(keyEvent, controller, commands, callbacks)) {
       return ExecutionInstruction.haltExecution;
@@ -103,6 +107,46 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
     _backspaceInQuotedListItem,
     ...defaults.where((action) => !removed.contains(action)),
   ];
+}
+
+/// → at the end of a chip, button or arrow link moves the caret out of it
+/// without moving it (typing goes after the element); ← there moves it back
+/// in (Write 11 §7.4).
+bool _pillBoundaryArrow(KeyEvent event, WriteEditorController controller) {
+  if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+  final key = event.logicalKey;
+  if (key != LogicalKeyboardKey.arrowRight &&
+      key != LogicalKeyboardKey.arrowLeft) {
+    return false;
+  }
+  final keyboard = HardwareKeyboard.instance;
+  if (keyboard.isShiftPressed ||
+      keyboard.isAltPressed ||
+      keyboard.isMetaPressed ||
+      keyboard.isControlPressed) {
+    return false;
+  }
+  final selection = controller.composer.selection;
+  if (selection == null || !selection.isCollapsed) return false;
+  final node = controller.document.getNodeById(selection.extent.nodeId);
+  final position = selection.extent.nodePosition;
+  if (node is! TextNode || position is! TextNodePosition) return false;
+  final pill = PillBoundary.endingAt(node.text, position.offset);
+  if (pill.isEmpty) return false;
+  final boundary = controller.pillBoundary;
+  final outside = boundary.isOutsideAt(selection.extent);
+  final preferences = controller.composer.preferences;
+  if (key == LogicalKeyboardKey.arrowRight && !outside) {
+    boundary.leaveAt(selection.extent);
+    preferences.removeStyles(pill);
+    return true;
+  }
+  if (key == LogicalKeyboardKey.arrowLeft && outside) {
+    boundary.clear();
+    preferences.addStyles(pill);
+    return true;
+  }
+  return false;
 }
 
 /// Backspace at the start of a list or task item inside a quote: through

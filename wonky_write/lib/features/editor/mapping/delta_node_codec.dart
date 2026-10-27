@@ -43,9 +43,13 @@ class WonkyDeltaSerializer implements DeltaSerializer {
       node.getMetadataValue(WonkyNodeMetadata.embedAttributes),
     );
     deltas.insert(embed, embedAttributes);
+    final box = boxValueOf(node);
     deltas.insert(
       '\n',
-      _mapOf(node.getMetadataValue(WonkyNodeMetadata.lineAttributes)),
+      _merge(
+        box == null ? null : {DeltaKeys.box: box},
+        _mapOf(node.getMetadataValue(WonkyNodeMetadata.lineAttributes)),
+      ),
     );
     return true;
   }
@@ -102,8 +106,16 @@ class WonkyDeltaSerializer implements DeltaSerializer {
     out.insert('\n', _merge(blockAttributes, lineAttributes));
   }
 
-  /// The block attributes of a text node, or `null` for a plain paragraph.
+  /// The block attributes of a text node, or `null` for a plain paragraph:
+  /// its block type attributes plus its containers (Write 11 §7.1).
   static Map<String, dynamic>? blockAttributesOf(DocumentNode node) {
+    final type = _blockTypeAttributesOf(node);
+    final box = boxValueOf(node);
+    if (box == null) return type;
+    return {...?type, DeltaKeys.box: box};
+  }
+
+  static Map<String, dynamic>? _blockTypeAttributesOf(DocumentNode node) {
     if (node is ListItemNode) {
       return {
         DeltaKeys.list: node.type == ListItemType.ordered
@@ -130,7 +142,11 @@ class WonkyDeltaSerializer implements DeltaSerializer {
       }
       final level = headingLevelOf(blockType);
       if (level != null) {
-        return {DeltaKeys.header: level};
+        final step = stepOf(node);
+        return {
+          DeltaKeys.header: level,
+          if (step != null && (level == 2 || level == 3)) DeltaKeys.step: step,
+        };
       }
     }
     return null;
@@ -299,7 +315,8 @@ class WonkyDeltaParser {
         var j = i + 1;
         while (j < lines.length &&
             !lines[j].isEmbedLine &&
-            lines[j].codeLanguage == language) {
+            lines[j].codeLanguage == language &&
+            _sameBox(lines[j], line)) {
           j += 1;
         }
         nodes.add(
@@ -313,6 +330,14 @@ class WonkyDeltaParser {
     }
     return nodes;
   }
+
+  static final _boxEquality = const DeepCollectionEquality();
+
+  /// Whether two lines are in the same containers.
+  static bool _sameBox(DeltaLine a, DeltaLine b) => _boxEquality.equals(
+    a.endAttributes?[DeltaKeys.box],
+    b.endAttributes?[DeltaKeys.box],
+  );
 
   String _takeId(String Function() newNodeId, bool Function(String id) claim) {
     var id = newNodeId();
@@ -341,8 +366,10 @@ class WonkyDeltaParser {
     final text = builder.build();
     final end = line.endAttributes;
     final overlays = AttributionMapping.overlaysOf(end);
+    final box = end?[DeltaKeys.box];
     final metadata = <String, dynamic>{
       WonkyNodeMetadata.lineAttributes: ?overlays,
+      if (box is List && box.isNotEmpty) WonkyNodeMetadata.box: box,
     };
 
     final list = end?[DeltaKeys.list];
@@ -383,10 +410,16 @@ class WonkyDeltaParser {
     } else if (end?[DeltaKeys.blockquote] == true) {
       blockType = blockquoteAttribution;
     }
+    final step = end?[DeltaKeys.step];
     return ParagraphNode(
       id: id,
       text: text,
-      metadata: {...metadata, NodeMetadata.blockType: blockType},
+      metadata: {
+        ...metadata,
+        NodeMetadata.blockType: blockType,
+        if (step is int && (header == 2 || header == 3))
+          WonkyNodeMetadata.step: step,
+      },
     );
   }
 
@@ -414,6 +447,7 @@ class WonkyDeltaParser {
       }
     }
     final overlays = AttributionMapping.overlaysOf(lines.last.endAttributes);
+    final box = lines.first.endAttributes?[DeltaKeys.box];
     return ParagraphNode(
       id: id,
       text: builder.build(),
@@ -421,6 +455,7 @@ class WonkyDeltaParser {
         NodeMetadata.blockType: codeAttribution,
         WonkyNodeMetadata.codeLanguage: language,
         WonkyNodeMetadata.lineAttributes: ?overlays,
+        if (box is List && box.isNotEmpty) WonkyNodeMetadata.box: box,
       },
     );
   }
@@ -432,12 +467,15 @@ class WonkyDeltaParser {
   ) {
     final segment = line.segments.single;
     final embed = (segment.data as Map).cast<String, dynamic>();
+    final lineAttributes = {...?line.endAttributes};
+    final box = lineAttributes.remove(DeltaKeys.box);
     final metadata = <String, dynamic>{
       WonkyNodeMetadata.embed: embed,
       if (segment.attributes != null && segment.attributes!.isNotEmpty)
         WonkyNodeMetadata.embedAttributes: segment.attributes,
-      if (line.endAttributes != null && line.endAttributes!.isNotEmpty)
-        WonkyNodeMetadata.lineAttributes: line.endAttributes,
+      if (lineAttributes.isNotEmpty)
+        WonkyNodeMetadata.lineAttributes: lineAttributes,
+      if (box is List && box.isNotEmpty) WonkyNodeMetadata.box: box,
     };
 
     final type = embed.keys.isEmpty ? null : embed.keys.first;

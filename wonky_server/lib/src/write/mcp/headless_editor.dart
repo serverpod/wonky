@@ -220,6 +220,7 @@ abstract final class HeadlessDocumentEditor {
 
       final edits = DocumentEdits(
         maxDocumentChars: WonkyConfig.current.maxDocumentChars,
+        flavor: MarkdownFlavor.parse(target.document.markdownFlavor),
       );
       final result = build(headDelta, edits);
       final warnings = [
@@ -592,6 +593,7 @@ abstract final class HeadlessDocumentEditor {
     'pageSetup' => doc.pageSetupJson,
     'language' => jsonEncode(doc.language),
     'frontMatter' => jsonEncode(doc.frontMatter),
+    'markdownFlavor' => jsonEncode(doc.markdownFlavor),
     _ => 'null',
   };
 }

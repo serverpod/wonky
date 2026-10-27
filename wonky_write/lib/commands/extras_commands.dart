@@ -521,6 +521,7 @@ Future<void> handleDroppedFiles(
         f.bytes,
         uploadImage: importImageUploader(s, itemUuid: d.itemUuid),
         l: writeL10nOf(s),
+        flavor: d.markdownFlavor,
       );
       var delta = converted.result.delta;
       final last = delta.isEmpty ? null : delta.last.data;

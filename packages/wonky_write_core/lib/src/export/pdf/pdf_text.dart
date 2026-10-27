@@ -108,6 +108,11 @@ final class PdfFontBook {
     });
   }
 
+  /// Whether [rune] can be drawn with [primary] or a fallback face.
+  bool supports(int rune, PdfFont primary) =>
+      primary.isRuneSupported(rune) ||
+      _fallbacks.any((f) => f.isRuneSupported(rune));
+
   /// Splits [text] into segments renderable with [primary] or a fallback;
   /// unsupported characters become `?` (with a warning).
   List<(String, PdfFont)> segments(String text, PdfFont primary) {

@@ -9,6 +9,7 @@ import '../delta/delta_utils.dart';
 import '../delta/document.dart';
 import '../derived/outline.dart';
 import '../derived/plain_text.dart';
+import '../import/import_api.dart' show MarkdownFlavor;
 import '../ir/doc_tree.dart';
 import '../ir/doc_tree_builder.dart';
 import '../markdown/markdown_exporter.dart';
@@ -72,8 +73,11 @@ final class ReadResult {
 
 /// Reads documents in agent-friendly formats.
 final class DocumentReader {
-  /// Creates a reader.
-  const DocumentReader();
+  /// Creates a reader writing Markdown in [flavor] (Write 11 §5.2).
+  const DocumentReader({this.flavor = MarkdownFlavor.gfm});
+
+  /// The flavor of Markdown content.
+  final MarkdownFlavor flavor;
 
   /// Reads [document] (head, raw with overlays).
   ///
@@ -151,6 +155,7 @@ final class DocumentReader {
           slice,
           mode,
           frontMatter: range == null ? frontMatter : null,
+          flavor: flavor,
         );
         return _page(md, format, doc.length, maxChars, cursor, blocks);
     }
@@ -161,6 +166,7 @@ final class DocumentReader {
     Delta document,
     SuggestionViewMode mode, {
     String? frontMatter,
+    MarkdownFlavor flavor = MarkdownFlavor.gfm,
   }) {
     final source = mode == SuggestionViewMode.raw
         ? _criticMarkup(document)
@@ -170,7 +176,9 @@ final class DocumentReader {
       view: mode == SuggestionViewMode.raw ? SuggestionViewMode.raw : mode,
       meta: DocMeta(frontMatter: frontMatter),
     );
-    return const MarkdownExporter().export(tree);
+    return MarkdownExporter(
+      options: MarkdownExportOptions(flavor: flavor),
+    ).export(tree);
   }
 
   /// Wraps `ins`/`del` suggestion text in CriticMarkup markers.
@@ -247,7 +255,9 @@ final class DocumentReader {
         doc.delta,
         view: SuggestionViewMode.raw,
       );
-      final export = const MarkdownExporter().exportWithPositions(tree);
+      final export = MarkdownExporter(
+        options: MarkdownExportOptions(flavor: flavor),
+      ).exportWithPositions(tree);
       if (export.blocks.length == infos.length) mdPositions = export.blocks;
     }
     final result = <Map<String, dynamic>>[];

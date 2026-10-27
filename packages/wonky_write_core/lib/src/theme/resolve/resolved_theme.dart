@@ -1286,6 +1286,7 @@ final class ResolvedWriteTheme with ResolvedValue {
     required this.rule,
     required this.image,
     required this.table,
+    required this.wonky,
     required this.header,
     required this.footer,
     required this.syntax,
@@ -1360,6 +1361,9 @@ final class ResolvedWriteTheme with ResolvedValue {
   /// Tables.
   final ResolvedTable table;
 
+  /// Wonky Markdown elements (Write 11 §8).
+  final ResolvedWonkyElements wonky;
+
   /// Page header.
   final ResolvedHeaderFooter header;
 
@@ -1427,6 +1431,10 @@ final class ResolvedWriteTheme with ResolvedValue {
       ),
     );
     faces.add(FontFaceKey(body.style.fontFamily, mention.fontWeight));
+    faces.add(FontFaceKey(body.style.fontFamily, wonky.button.fontWeight));
+    faces.add(FontFaceKey(body.style.fontFamily, wonky.button.arrowWeight));
+    faces.add(FontFaceKey(body.style.fontFamily, wonky.chip.fontWeight));
+    faces.add(FontFaceKey(body.style.fontFamily, wonky.details.summaryWeight));
     add(table.style);
     faces.add(table.headerStyle.faceKey);
     faces.add(image.caption.style.faceKey);
@@ -1459,6 +1467,7 @@ final class ResolvedWriteTheme with ResolvedValue {
     'rule': rule.toJson(),
     'image': image.toJson(),
     'table': table.toJson(),
+    'wonky': wonky.toJson(),
     'header': header.toJson(),
     'footer': footer.toJson(),
     'syntax': {for (final e in syntax.entries) e.key.name: e.value.toJson()},
@@ -1473,4 +1482,380 @@ final class ResolvedWriteTheme with ResolvedValue {
 
   @override
   int get hashCode => contentHash.hashCode;
+}
+
+// ---------------------------------------------------------------------------
+// Wonky Markdown elements (Write 11 §8).
+
+/// The colors of one callout type.
+final class ResolvedCalloutColors with ResolvedValue {
+  /// Creates callout colors.
+  const ResolvedCalloutColors({
+    required this.color,
+    required this.background,
+    required this.border,
+    required this.title,
+  });
+
+  /// The type's hue (icon).
+  final int color;
+
+  /// ARGB box fill.
+  final int background;
+
+  /// ARGB border.
+  final int border;
+
+  /// ARGB title (label and icon) color.
+  final int title;
+
+  @override
+  JsonMap toJson() => {
+    'color': _hex(color),
+    'background': _hex(background),
+    'border': _hex(border),
+    'titleColor': _hex(title),
+  };
+}
+
+/// Callouts.
+final class ResolvedCallout with ResolvedValue {
+  /// Creates a callout style.
+  const ResolvedCallout({
+    required this.spaceBefore,
+    required this.spaceAfter,
+    required this.padding,
+    required this.borderRadius,
+    required this.borderWidth,
+    required this.titleCase,
+    required this.titleSizeRatio,
+    required this.titleWeight,
+    required this.variants,
+  });
+
+  /// Space before in pt.
+  final double spaceBefore;
+
+  /// Space after in pt.
+  final double spaceAfter;
+
+  /// Inner padding in pt.
+  final EdgesPt padding;
+
+  /// Corner radius in pt.
+  final double borderRadius;
+
+  /// Border width in pt.
+  final double borderWidth;
+
+  /// Case transform of the title.
+  final CaseTransform titleCase;
+
+  /// Title size relative to the body size.
+  final double titleSizeRatio;
+
+  /// Title weight.
+  final int titleWeight;
+
+  /// Colors per type (`info`, `tip`, `note`, `warning`, `danger`).
+  final Map<String, ResolvedCalloutColors> variants;
+
+  /// The colors of callout type [variant] (`caution` uses `warning`).
+  ResolvedCalloutColors colorsFor(String variant) =>
+      variants[variant == 'caution' ? 'warning' : variant] ?? variants['note']!;
+
+  @override
+  JsonMap toJson() => {
+    'spaceBefore': _n(spaceBefore),
+    'spaceAfter': _n(spaceAfter),
+    'padding': padding.toJson(),
+    'borderRadius': _n(borderRadius),
+    'borderWidth': _n(borderWidth),
+    'titleCaseTransform': titleCase.json,
+    'titleSizeRatio': _n(titleSizeRatio),
+    'titleWeight': titleWeight,
+    for (final e in variants.entries) e.key: e.value.toJson(),
+  };
+}
+
+/// Details.
+final class ResolvedDetails with ResolvedValue {
+  /// Creates a details style.
+  const ResolvedDetails({
+    required this.spaceBefore,
+    required this.spaceAfter,
+    required this.padding,
+    required this.background,
+    required this.border,
+    required this.borderRadius,
+    required this.summaryWeight,
+    required this.chevronColor,
+  });
+
+  /// Space before in pt.
+  final double spaceBefore;
+
+  /// Space after in pt.
+  final double spaceAfter;
+
+  /// Inner padding in pt.
+  final EdgesPt padding;
+
+  /// ARGB fill, or `null`.
+  final int? background;
+
+  /// Border.
+  final BorderPt border;
+
+  /// Corner radius in pt.
+  final double borderRadius;
+
+  /// Summary weight.
+  final int summaryWeight;
+
+  /// ARGB chevron color.
+  final int chevronColor;
+
+  @override
+  JsonMap toJson() => {
+    'spaceBefore': _n(spaceBefore),
+    'spaceAfter': _n(spaceAfter),
+    'padding': padding.toJson(),
+    'background': _hex(background),
+    'border': border.toJson(),
+    'borderRadius': _n(borderRadius),
+    'summaryWeight': summaryWeight,
+    'chevronColor': _hex(chevronColor),
+  };
+}
+
+/// Cards.
+final class ResolvedCard with ResolvedValue {
+  /// Creates a card style.
+  const ResolvedCard({
+    required this.spaceBefore,
+    required this.spaceAfter,
+    required this.padding,
+    required this.background,
+    required this.borderRadius,
+    required this.shadow,
+  });
+
+  /// Space before in pt.
+  final double spaceBefore;
+
+  /// Space after in pt.
+  final double spaceAfter;
+
+  /// Inner padding in pt.
+  final EdgesPt padding;
+
+  /// ARGB fill, or `null`.
+  final int? background;
+
+  /// Corner radius in pt.
+  final double borderRadius;
+
+  /// Whether the card casts a soft shadow.
+  final bool shadow;
+
+  @override
+  JsonMap toJson() => {
+    'spaceBefore': _n(spaceBefore),
+    'spaceAfter': _n(spaceAfter),
+    'padding': padding.toJson(),
+    'background': _hex(background),
+    'borderRadius': _n(borderRadius),
+    'shadow': shadow ? 'soft' : 'none',
+  };
+}
+
+/// Grids.
+final class ResolvedGrid with ResolvedValue {
+  /// Creates a grid style.
+  const ResolvedGrid({
+    required this.spaceBefore,
+    required this.spaceAfter,
+    required this.bulletColor,
+    required this.columnGap,
+    required this.rowGap,
+  });
+
+  /// Space before in pt.
+  final double spaceBefore;
+
+  /// Space after in pt.
+  final double spaceAfter;
+
+  /// ARGB bullet color.
+  final int bulletColor;
+
+  /// Gap between columns in pt.
+  final double columnGap;
+
+  /// Gap between rows in pt.
+  final double rowGap;
+
+  @override
+  JsonMap toJson() => {
+    'spaceBefore': _n(spaceBefore),
+    'spaceAfter': _n(spaceAfter),
+    'bulletColor': _hex(bulletColor),
+    'columnGap': _n(columnGap),
+    'rowGap': _n(rowGap),
+  };
+}
+
+/// Buttons and arrow links.
+final class ResolvedButton with ResolvedValue {
+  /// Creates a button style.
+  const ResolvedButton({
+    required this.background,
+    required this.color,
+    required this.secondaryBackground,
+    required this.secondaryColor,
+    required this.borderRadius,
+    required this.fontWeight,
+    required this.arrowColor,
+    required this.arrowWeight,
+  });
+
+  /// ARGB primary fill.
+  final int background;
+
+  /// ARGB primary label color.
+  final int color;
+
+  /// ARGB secondary fill.
+  final int secondaryBackground;
+
+  /// ARGB secondary label color.
+  final int secondaryColor;
+
+  /// Corner radius in pt.
+  final double borderRadius;
+
+  /// Label weight (snapped for the body family).
+  final int fontWeight;
+
+  /// ARGB arrow link color.
+  final int arrowColor;
+
+  /// Arrow link weight (snapped for the body family).
+  final int arrowWeight;
+
+  @override
+  JsonMap toJson() => {
+    'background': _hex(background),
+    'color': _hex(color),
+    'secondaryBackground': _hex(secondaryBackground),
+    'secondaryColor': _hex(secondaryColor),
+    'borderRadius': _n(borderRadius),
+    'fontWeight': fontWeight,
+    'arrowColor': _hex(arrowColor),
+    'arrowWeight': arrowWeight,
+  };
+}
+
+/// Chips.
+final class ResolvedChip with ResolvedValue {
+  /// Creates a chip style.
+  const ResolvedChip({
+    required this.background,
+    required this.color,
+    required this.borderRadius,
+    required this.fontWeight,
+  });
+
+  /// ARGB fill.
+  final int background;
+
+  /// ARGB label color.
+  final int color;
+
+  /// Corner radius in pt.
+  final double borderRadius;
+
+  /// Label weight (snapped for the body family).
+  final int fontWeight;
+
+  @override
+  JsonMap toJson() => {
+    'background': _hex(background),
+    'color': _hex(color),
+    'borderRadius': _n(borderRadius),
+    'fontWeight': fontWeight,
+  };
+}
+
+/// Numbered heading badges.
+final class ResolvedStepBadge with ResolvedValue {
+  /// Creates a badge style.
+  const ResolvedStepBadge({
+    required this.background,
+    required this.color,
+    required this.sizeRatio,
+  });
+
+  /// ARGB fill.
+  final int background;
+
+  /// ARGB number color.
+  final int color;
+
+  /// Badge diameter relative to the heading's font size.
+  final double sizeRatio;
+
+  @override
+  JsonMap toJson() => {
+    'background': _hex(background),
+    'color': _hex(color),
+    'sizeRatio': _n(sizeRatio),
+  };
+}
+
+/// The Wonky Markdown element styles of a theme (Write 11 §8).
+final class ResolvedWonkyElements with ResolvedValue {
+  /// Creates the styles.
+  const ResolvedWonkyElements({
+    required this.callout,
+    required this.details,
+    required this.card,
+    required this.grid,
+    required this.button,
+    required this.chip,
+    required this.stepBadge,
+  });
+
+  /// Callouts.
+  final ResolvedCallout callout;
+
+  /// Details.
+  final ResolvedDetails details;
+
+  /// Cards.
+  final ResolvedCard card;
+
+  /// Grids.
+  final ResolvedGrid grid;
+
+  /// Buttons and arrow links.
+  final ResolvedButton button;
+
+  /// Chips.
+  final ResolvedChip chip;
+
+  /// Numbered heading badges.
+  final ResolvedStepBadge stepBadge;
+
+  @override
+  JsonMap toJson() => {
+    'callout': callout.toJson(),
+    'details': details.toJson(),
+    'card': card.toJson(),
+    'grid': grid.toJson(),
+    'button': button.toJson(),
+    'chip': chip.toJson(),
+    'stepBadge': stepBadge.toJson(),
+  };
 }

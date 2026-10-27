@@ -16,11 +16,16 @@ sealed class LinkEdit {
   const LinkEdit();
 }
 
-/// Apply [url] (and replace the text with [text] when given).
+/// Apply [url] (and replace the text with [text] when given), with the Wonky
+/// Markdown link [style] when the editor showed the style control.
 class ApplyLink extends LinkEdit {
-  const ApplyLink(this.url, {this.text});
+  const ApplyLink(this.url, {this.text, this.style});
   final String url;
   final String? text;
+
+  /// `plain`, `arrow`, `button` or `buttonSecondary` (Write 11 §7.4), or
+  /// `null` when not chosen.
+  final String? style;
 }
 
 /// Remove the link.
@@ -49,7 +54,11 @@ class LinkEditor extends StatefulWidget {
     this.initialText,
     this.showText = true,
     this.searchDocuments,
+    this.initialStyle,
   });
+
+  /// The link style (Wonky Markdown documents): shows the style control.
+  final String? initialStyle;
 
   final LinkUrlPolicy policy;
   final List<OutlineEntry> headings;
@@ -87,6 +96,7 @@ class _LinkEditorState extends State<LinkEditor> {
   int _highlight = -1;
   Timer? _debounce;
   int _request = 0;
+  late String? _style = widget.initialStyle;
 
   bool get _editing => widget.initialUrl != null;
 
@@ -181,6 +191,7 @@ class _LinkEditorState extends State<LinkEditor> {
           ApplyLink(
             url,
             text: text != null && text != widget.initialText ? text : null,
+            style: _style,
           ),
         );
     }
@@ -260,6 +271,42 @@ class _LinkEditorState extends State<LinkEditor> {
                     : _apply(),
               ),
             ),
+            if (_style != null) ...[
+              const SizedBox(height: 10),
+              ExcludeSemantics(
+                child: Text(l.linkStyle, style: theme.textTheme.small),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final (style, label) in [
+                    ('plain', l.linkStylePlain),
+                    ('arrow', l.linkStyleArrow),
+                    ('button', l.linkStyleButton),
+                    ('buttonSecondary', l.linkStyleButtonSecondary),
+                  ])
+                    _style == style
+                        ? ShadButton.secondary(
+                            key: ValueKey<String>(
+                              'write.popover.link.style.$style',
+                            ),
+                            size: ShadButtonSize.sm,
+                            onPressed: () {},
+                            child: Text(label),
+                          )
+                        : ShadButton.ghost(
+                            key: ValueKey<String>(
+                              'write.popover.link.style.$style',
+                            ),
+                            size: ShadButtonSize.sm,
+                            onPressed: () => setState(() => _style = style),
+                            child: Text(label),
+                          ),
+                ],
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 6),
               Text(

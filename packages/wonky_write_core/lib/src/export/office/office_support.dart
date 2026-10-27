@@ -414,6 +414,30 @@ Map<int, String> headingLabels(DocTree tree, ResolvedWriteTheme theme) {
   return out;
 }
 
+/// Heading number labels of every heading of [tree], containers included
+/// (details summaries are not numbered, Write 11 §9), by heading.
+Map<HeadingBlock, String> allHeadingLabels(
+  DocTree tree,
+  ResolvedWriteTheme theme,
+) {
+  final out = Map<HeadingBlock, String>.identity();
+  if (!theme.headingNumbering.enabled) return out;
+  final numberer = HeadingNumberer(theme.headingNumbering);
+  void walk(List<DocBlock> blocks, {HeadingBlock? summary}) {
+    for (final b in blocks) {
+      if (b is HeadingBlock && !identical(b, summary)) {
+        final label = numberer.next(b.level);
+        if (label != null) out[b] = label;
+      } else if (b is ContainerBlock) {
+        walk(b.children, summary: b.summary);
+      }
+    }
+  }
+
+  walk(tree.blocks);
+  return out;
+}
+
 /// Applies a theme case transform to [text] for formats without a native
 /// equivalent.
 String applyCase(String text, CaseTransform transform) => switch (transform) {

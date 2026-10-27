@@ -4,6 +4,7 @@ library;
 import '../delta_utils.dart';
 import '../inline_run.dart';
 import 'inline_reader.dart';
+import 'wonky_syntax.dart';
 
 /// How emphasis is written.
 enum EmphasisStyle {
@@ -57,23 +58,48 @@ final class _Break extends _Tok {
 abstract final class InlineMarkdownWriter {
   /// Writes [runs] in [context] using [style]. Visual lines (after hard
   /// breaks) are separated by `"\n"`; callers add container prefixes.
+  ///
+  /// Chips and styled links are written as Wonky directives (Write 11 §4)
+  /// in the [MarkdownFlavor.wonky] flavor (the default: table cells and grid
+  /// items store them so) and as plain text and plain links in
+  /// [MarkdownFlavor.gfm].
   static String write(
     List<InlineRun> runs, {
     InlineContext context = InlineContext.block,
     EmphasisStyle style = EmphasisStyle.asterisk,
+    MarkdownFlavor flavor = MarkdownFlavor.wonky,
   }) {
-    final merged = InlineRun.merge(runs);
+    final wonky = flavor == MarkdownFlavor.wonky;
+    final merged = InlineRun.merge([
+      for (final r in runs)
+        wonky || (!r.chip && r.linkStyle == null)
+            ? r
+            : r.copyWith(clearLinkStyle: true, chip: false),
+    ]);
     final toks = <_Tok>[];
     _writeSequence(merged, toks, style, context);
     _markTrailingBreaks(toks, context);
-    return _render(toks, context);
+    return _render(toks, context, wonky: wonky);
   }
 
   /// Escapes plain [text] (no formatting) for [context].
   static String escapePlain(
     String text, {
     InlineContext context = InlineContext.plain,
-  }) => write([InlineRun(text)], context: context);
+    MarkdownFlavor flavor = MarkdownFlavor.wonky,
+  }) => write([InlineRun(text)], context: context, flavor: flavor);
+
+  /// A chip or styled link label as the blog reads it: plain text without
+  /// `]` (written as `)`) and without line breaks (Write 11 §2.1).
+  static String directiveLabel(String text) => text
+      .replaceAll(']', ')')
+      .replaceAll(softBreak, ' ')
+      .replaceAll('\n', ' ');
+
+  /// A styled link URL as the blog reads it (`\(([^)]*)\)`): no `(`, `)`
+  /// or whitespace.
+  static String directiveUrl(String url) =>
+      url.replaceAll('(', '%28').replaceAll(')', '%29').replaceAll(' ', '%20');
 
   // ---------------------------------------------------------------------
   // Structure
@@ -94,11 +120,43 @@ abstract final class InlineMarkdownWriter {
     var i = 0;
     while (i < runs.length) {
       final r = runs[i];
+      if (r.chip) {
+        _closeUntil(active, out, style, (_) => false);
+        final icon = r.chipIcon == null ? '' : '{icon=${r.chipIcon}}';
+        out.add(_Markup(':chip[${directiveLabel(r.text)}]$icon'));
+        i++;
+        continue;
+      }
+      if (r.link != null && r.linkStyle != null) {
+        _closeUntil(active, out, style, (_) => false);
+        final label = StringBuffer();
+        var j = i;
+        while (j < runs.length &&
+            runs[j].link == r.link &&
+            runs[j].linkStyle == r.linkStyle &&
+            !runs[j].chip) {
+          label.write(runs[j].text);
+          j++;
+        }
+        final text = directiveLabel(label.toString());
+        final url = directiveUrl(r.link!);
+        out.add(
+          _Markup(switch (r.linkStyle) {
+            'arrow' => ':link[$text]($url)',
+            'buttonSecondary' => ':button[$text]($url){variant=secondary}',
+            _ => ':button[$text]($url)',
+          }),
+        );
+        i = j;
+        continue;
+      }
       if (r.link != null) {
         // Link group: consecutive runs with the same link + mention.
         var j = i;
         while (j < runs.length &&
             runs[j].link == r.link &&
+            runs[j].linkStyle == null &&
+            !runs[j].chip &&
             runs[j].mentionUserUuid == r.mentionUserUuid) {
           j++;
         }
@@ -262,7 +320,8 @@ abstract final class InlineMarkdownWriter {
           trailing: !textAfter || context != InlineContext.block,
         );
       } else if (t is _Char ||
-          (t is _Markup && (t.s.startsWith('`') || t.s == '['))) {
+          (t is _Markup &&
+              (t.s.startsWith('`') || t.s == '[' || t.s.startsWith(':')))) {
         textAfter = true;
       }
     }
@@ -276,7 +335,11 @@ abstract final class InlineMarkdownWriter {
   static final _asciiAlnum = RegExp('[A-Za-z0-9]');
   static final _alnum = RegExp(r'[\p{L}\p{N}]', unicode: true);
 
-  static String _render(List<_Tok> toks, InlineContext context) {
+  static String _render(
+    List<_Tok> toks,
+    InlineContext context, {
+    required bool wonky,
+  }) {
     final b = StringBuffer();
     // Split into visual lines at hard breaks.
     var lineStart = 0;
@@ -284,7 +347,7 @@ abstract final class InlineMarkdownWriter {
       final isEnd = i == toks.length;
       final t = isEnd ? null : toks[i];
       if (!isEnd && !(t is _Break && !t.trailing)) continue;
-      _renderLine(toks, lineStart, i, b, context);
+      _renderLine(toks, lineStart, i, b, context, wonky: wonky);
       if (!isEnd) b.write('\\\n');
       lineStart = i + 1;
     }
@@ -302,8 +365,9 @@ abstract final class InlineMarkdownWriter {
     int from,
     int to,
     StringBuffer b,
-    InlineContext context,
-  ) {
+    InlineContext context, {
+    required bool wonky,
+  }) {
     // Digit-list rule: a line starting with 1–9 digits then "." or ")".
     var escapeIndex = -1;
     if (from < to && toks[from] is _Char) {
@@ -354,6 +418,7 @@ abstract final class InlineMarkdownWriter {
             rest: i + 1 < to ? _restText(toks, i + 1, to) : '',
             recent: recent,
             context: context,
+            wonky: wonky,
           );
           // package:markdown does not decode a character reference right
           // after a backtick; an empty HTML comment separates them.
@@ -394,6 +459,7 @@ abstract final class InlineMarkdownWriter {
     required String rest,
     required String recent,
     required InlineContext context,
+    required bool wonky,
   }) {
     if ((atLineStart || atLineEnd) && _ws.hasMatch(ch)) return _entity(ch);
     if (forceEscape) return '\\$ch';
@@ -426,7 +492,21 @@ abstract final class InlineMarkdownWriter {
       case '&':
         return _entityLike.hasMatch('&$rest') ? '&amp;' : '&';
       case ':':
-        return rest.startsWith('//') ? r'\:' : ch;
+        // `://` would become an autolink, a line starting with `::` a
+        // Wonky directive (`:::type`, `::youtube`; escaped in both flavors,
+        // Write 11 §5.3; `[` is always escaped, so `:chip[` in text never
+        // reads as a chip).
+        return rest.startsWith('//') || (atLineStart && rest.startsWith(':'))
+            ? r'\:'
+            : ch;
+      case '(':
+        // `## (1) Title` is a numbered heading in Wonky Markdown.
+        return wonky &&
+                atLineStart &&
+                context == InlineContext.heading &&
+                _stepPrefix.hasMatch(rest)
+            ? r'\('
+            : ch;
       case '@':
         final emailish =
             prev != null &&
@@ -444,6 +524,8 @@ abstract final class InlineMarkdownWriter {
     if (atLineStart && ch == '\t') return _entity(ch);
     return ch;
   }
+
+  static final _stepPrefix = RegExp(r'^\d+\)\s');
 
   static bool _alnumOrDot(String c) =>
       _alnum.hasMatch(c) || c == '.' || c == '_' || c == '-' || c == '+';

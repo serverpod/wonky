@@ -269,13 +269,15 @@ check the signature, reject timestamps more than 5 minutes off and drop repeated
               "coverImage": "ast_0192…" },
   "note": "Fixed the code samples, thanks!",
   "markdown": "# How we sped up our CI ×3\n\n…![Build graph](https://wonky.work/api/pub/v1/assets/ast_0192…)…",
+  "markdownFlavor": "gfm",
   "assets": [{ "id": "ast_0192…", "name": "build-graph.webp", "type": "image/webp", "bytes": 48213,
                "url": "https://wonky.work/api/pub/v1/assets/ast_0192…" }],
   "submittedBy": { "name": "Anna Berg", "wonkyUserId": "0191…" }
 }
 ```
 
-- `markdown` is the Write Markdown export (Write 07 §4) with suggestions as original, no front
+- `markdown` is the Write Markdown export (Write 07 §4) in the document's flavor
+  (`markdownFlavor`: `gfm` or `wonky`, Write 11 §3.3) with suggestions as original, no front
   matter and no comments; `wonky-file://` images become asset URLs, `https://` images stay.
 - `fields.coverImage` is the asset id of the cover, which is always in `assets` (and a
   `submission_asset`, so the API key may download it). The cover is accepted when it is an

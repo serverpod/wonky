@@ -114,6 +114,29 @@ String? editorCommandTitle(WriteLocalizations l, String id) => switch (id) {
   'write.mode.set' => l.cmdModeSet,
   'write.nav.documentStart' => l.cmdNavDocumentStart,
   'write.nav.documentEnd' => l.cmdNavDocumentEnd,
+  'write.insert.callout' => l.cmdInsertCallout,
+  'write.insert.details' => l.cmdInsertDetails,
+  'write.insert.card' => l.cmdInsertCard,
+  'write.insert.grid' => l.cmdInsertGrid,
+  'write.insert.youtube' => l.cmdInsertYouTube,
+  'write.youtube.edit' => l.cmdYouTubeEdit,
+  'write.youtube.delete' => l.cmdYouTubeDelete,
+  'write.box.setVariant' => l.cmdBoxSetVariant,
+  'write.box.editTitle' => l.cmdBoxEditTitle,
+  'write.box.convert' => l.cmdBoxConvert,
+  'write.box.unwrap' => l.cmdBoxUnwrap,
+  'write.details.toggleCollapsed' => l.cmdDetailsToggleCollapsed,
+  'write.box.delete' => l.cmdBoxDelete,
+  'write.grid.setColumns' => l.cmdGridSetColumns,
+  'write.grid.setBullets' => l.cmdGridSetBullets,
+  'write.grid.addItem' => l.cmdGridAddItem,
+  'write.grid.removeItem' => l.cmdGridRemoveItem,
+  'write.grid.delete' => l.menuDeleteGrid,
+  'write.link.setStyle' => l.cmdLinkSetStyle,
+  'write.format.chip' => l.cmdFormatChip,
+  'write.heading.toggleStep' => l.cmdHeadingToggleStep,
+  'write.heading.setStepNumber' => l.cmdHeadingSetStepNumber,
+  'write.heading.renumberSteps' => l.cmdHeadingRenumberSteps,
   _ => null,
 };
 
@@ -144,6 +167,7 @@ WriteCommand _wrap(EditorCommandSpec spec, WriteRun? override) {
     isUndoable: spec.isUndoable,
     argsSchema: spec.argsSchema,
     needsEditable: content,
+    wonkyOnly: spec.wonkyOnly,
     enabled: (d, a) => roleAllows(d) && spec.isEnabled(d.target, a),
     checked: spec.checked == null ? null : (d, a) => spec.checked!(d.target, a),
     reason: (l, d, a) {
@@ -157,12 +181,13 @@ WriteCommand _wrap(EditorCommandSpec spec, WriteRun? override) {
       }
       return null;
     },
-    run:
-        override ??
-        (ctx, d, a) async {
-          final r = await spec.run(d.target, a);
-          return r;
-        },
+    run: (ctx, d, a) async {
+      if (spec.radio && spec.checked?.call(d.target, a) == true) {
+        return const CommandResult.ok();
+      }
+      if (override != null) return override(ctx, d, a);
+      return spec.run(d.target, a);
+    },
   );
 }
 

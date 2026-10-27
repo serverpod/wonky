@@ -131,6 +131,7 @@ class ExportSource {
     this.description,
     this.createdAt,
     this.modifiedAt,
+    this.markdownFlavor = MarkdownFlavor.gfm,
   });
 
   final String documentUuid;
@@ -145,6 +146,10 @@ class ExportSource {
   final String? description;
   final DateTime? createdAt;
   final DateTime? modifiedAt;
+
+  /// The document's Markdown flavor (Write 11 §3): Markdown exports write
+  /// it.
+  final MarkdownFlavor markdownFlavor;
 }
 
 /// Resolves images for client exports (07 §4.4): `wonky-file://` through a
@@ -259,6 +264,7 @@ class WriteExporter {
       description: src.description,
       createdAt: src.createdAt,
       modifiedAt: src.modifiedAt,
+      markdownFlavor: src.markdownFlavor,
     ),
     theme: src.theme,
     variant: options.variant,

@@ -2,7 +2,8 @@
 class: DocMetaChanged
 extends: DocServerMessage
 fields:
-  ### themeId, pageSetup, language, frontMatter, title or themeVersion.
+  ### themeId, pageSetup, language, frontMatter, markdownFlavor, title or
+  ### themeVersion.
   field: String
   valueJson: String
   authorId: int?

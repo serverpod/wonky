@@ -25,6 +25,7 @@ abstract class Document
     String? pageSetupJson,
     this.language,
     this.frontMatter,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     required this.createdAt,
@@ -32,6 +33,7 @@ abstract class Document
   }) : headRevision = headRevision ?? 0,
        latestSnapshotRevision = latestSnapshotRevision ?? 0,
        pageSetupJson = pageSetupJson ?? '{}',
+       markdownFlavor = markdownFlavor ?? 'gfm',
        charCount = charCount ?? 0,
        wordCount = wordCount ?? 0;
 
@@ -45,6 +47,7 @@ abstract class Document
     String? pageSetupJson,
     String? language,
     String? frontMatter,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     required DateTime createdAt,
@@ -65,6 +68,7 @@ abstract class Document
       pageSetupJson: jsonSerialization['pageSetupJson'] as String?,
       language: jsonSerialization['language'] as String?,
       frontMatter: jsonSerialization['frontMatter'] as String?,
+      markdownFlavor: jsonSerialization['markdownFlavor'] as String?,
       charCount: jsonSerialization['charCount'] as int?,
       wordCount: jsonSerialization['wordCount'] as int?,
       createdAt: _isc.DateTimeJsonExtension.fromJson(
@@ -99,6 +103,9 @@ abstract class Document
 
   String? frontMatter;
 
+  /// `gfm` or `wonky` (Write 11 §3.1).
+  String markdownFlavor;
+
   int charCount;
 
   int wordCount;
@@ -120,6 +127,7 @@ abstract class Document
     String? pageSetupJson,
     String? language,
     String? frontMatter,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     DateTime? createdAt,
@@ -138,6 +146,7 @@ abstract class Document
       'pageSetupJson': pageSetupJson,
       if (language != null) 'language': language,
       if (frontMatter != null) 'frontMatter': frontMatter,
+      'markdownFlavor': markdownFlavor,
       'charCount': charCount,
       'wordCount': wordCount,
       'createdAt': createdAt.toJson(),
@@ -158,6 +167,7 @@ abstract class Document
       'pageSetupJson': pageSetupJson,
       if (language != null) 'language': language,
       if (frontMatter != null) 'frontMatter': frontMatter,
+      'markdownFlavor': markdownFlavor,
       'charCount': charCount,
       'wordCount': wordCount,
       'createdAt': createdAt.toJson(),
@@ -184,6 +194,7 @@ class _DocumentImpl extends Document {
     String? pageSetupJson,
     String? language,
     String? frontMatter,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     required DateTime createdAt,
@@ -198,6 +209,7 @@ class _DocumentImpl extends Document {
          pageSetupJson: pageSetupJson,
          language: language,
          frontMatter: frontMatter,
+         markdownFlavor: markdownFlavor,
          charCount: charCount,
          wordCount: wordCount,
          createdAt: createdAt,
@@ -218,6 +230,7 @@ class _DocumentImpl extends Document {
     String? pageSetupJson,
     Object? language = _Undefined,
     Object? frontMatter = _Undefined,
+    String? markdownFlavor,
     int? charCount,
     int? wordCount,
     DateTime? createdAt,
@@ -234,6 +247,7 @@ class _DocumentImpl extends Document {
       pageSetupJson: pageSetupJson ?? this.pageSetupJson,
       language: language is String? ? language : this.language,
       frontMatter: frontMatter is String? ? frontMatter : this.frontMatter,
+      markdownFlavor: markdownFlavor ?? this.markdownFlavor,
       charCount: charCount ?? this.charCount,
       wordCount: wordCount ?? this.wordCount,
       createdAt: createdAt ?? this.createdAt,

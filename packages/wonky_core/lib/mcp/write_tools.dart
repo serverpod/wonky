@@ -186,6 +186,15 @@ abstract final class WriteSchemas {
   );
 }
 
+/// The Wonky Markdown syntax, for tool descriptions (Write 11 §4, §10).
+const _wonkySyntax =
+    '; in Wonky documents also :::info|tip|note|warning|caution|danger[Title] '
+    '… :::, :::details (first ### is the summary) … :::, :::card … :::, '
+    ':::grid{columns=3 bullets=check} with "- item" lines … :::, '
+    ':button[Label](url){variant=secondary}, :link[Label](url), '
+    ':chip[Label], "## (1) Title" numbered headings and '
+    '::youtube[Title]{id=VIDEO_ID start=SECONDS} videos on their own line';
+
 const _addressing =
     ' Addressing: prefer quote ranges ({"type":"quote","quote":"…"}); '
     'offsets are 0-based Delta offsets (UTF-16 code units, embeds count 1, '
@@ -304,8 +313,10 @@ abstract final class WriteTools {
     name: 'write.insert_markdown',
     title: 'Insert Markdown',
     description:
-        'Inserts GitHub-flavored Markdown at a position (headings, lists, '
-        'quotes, code, tables, links, images by URL). as: "auto" (default; a '
+        'Inserts Markdown at a position (headings, lists, quotes, code, '
+        'tables, links, images by URL) in the document\'s flavor '
+        '(markdown_flavor of write.get_document)$_wonkySyntax. as: "auto" '
+        '(default; a '
         'single paragraph inserted mid-line is merged inline, otherwise '
         'blocks), "inline" or "blocks". Use it to add new content; use '
         'write.replace_range to rewrite existing text.$_addressing',
@@ -597,6 +608,27 @@ abstract final class WriteTools {
     scopes: _edit,
   );
 
+  static final setMarkdownFlavor = McpToolDefinition(
+    name: 'write.set_markdown_flavor',
+    title: 'Set the Markdown flavor',
+    description:
+        'Sets the document\'s Markdown flavor: "gfm" (GitHub-flavored, the '
+        'default) or "wonky" (GFM plus the Serverpod blog directives: '
+        'callouts, details, cards, grids, buttons, arrow links, chips, '
+        'numbered headings). Switching to "gfm" converts Wonky elements to '
+        'their closest GFM form (one change); with convert: false it fails '
+        'with validation_failed when there is something to convert. Revert '
+        'with changes.revert.',
+    inputSchema: WriteSchemas.doc(
+      {
+        'flavor': const JsonSchema.string(enumValues: ['gfm', 'wonky']),
+        'convert': const JsonSchema.boolean(defaultValue: true),
+      },
+      required: ['flavor'],
+    ),
+    scopes: _edit,
+  );
+
   static final updatePageSetup = McpToolDefinition(
     name: 'write.update_page_setup',
     title: 'Update the page setup',
@@ -742,6 +774,7 @@ abstract final class WriteTools {
     insertTable,
     updateTable,
     updatePageSetup,
+    setMarkdownFlavor,
     listSuggestions,
     acceptSuggestion,
     rejectSuggestion,

@@ -5,6 +5,7 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import '../collab/suggestion_view.dart';
 import '../delta/attributes.dart';
+import '../delta/boxes.dart';
 import '../delta/document.dart';
 import '../delta/embeds.dart';
 import '../delta/normalizer.dart';
@@ -20,7 +21,10 @@ final class DocTreeBuilder {
   /// Builds a [DocTree] from [document]: applies the suggestion [view],
   /// strips `cmt_*`, groups quote and code lines, computes list ordinals
   /// (per list run and indent level, restarting after a non-list block, a
-  /// shallower item or a change of list kind) and unique heading anchors.
+  /// shallower item, a change of list kind or of containers) and unique
+  /// heading anchors, and nests the blocks of Wonky Markdown containers into
+  /// [ContainerBlock]s (Write 11 §2.2: consecutive lines with the same frame
+  /// id at a depth are one container).
   DocTree fromDelta(
     Delta document, {
     SuggestionViewMode view = SuggestionViewMode.accepted,
@@ -31,19 +35,31 @@ final class DocTreeBuilder {
         : SuggestionView.render(document, view, stripComments: true);
     final doc = WonkyDocument(viewed);
     final blocks = <DocBlock>[];
+    // The containers of each block in [blocks].
+    final paths = <List<BoxFrame>>[];
     final anchors = AnchorIdGenerator();
     // Ordinal state per indent level: (kind, count).
     final ordinals = <int, (ListKindIr, int)>{};
     // Whether the list run so far is inside a quote (a quoted and an
     // unquoted list next to each other are two lists).
     var quotedRun = false;
+    var runPath = const <BoxFrame>[];
     var i = 0;
     final lines = doc.lines;
     while (i < lines.length) {
       final line = lines[i];
       final f = line.format;
-      if (!f.isList || f.quoted != quotedRun) ordinals.clear();
+      final path = Boxes.of(line.attributes);
+      bool samePath(DocumentLine l) =>
+          Boxes.samePath(Boxes.of(l.attributes), path);
+      if (!f.isList ||
+          f.quoted != quotedRun ||
+          !Boxes.samePath(path, runPath)) {
+        ordinals.clear();
+      }
       quotedRun = f.isList && f.quoted;
+      runPath = path;
+      final blockCount = blocks.length;
       if (line.isEmbedLine) {
         final embed = line.embed;
         switch (embed) {
@@ -74,9 +90,32 @@ final class DocTreeBuilder {
                 t.align,
                 [
                   for (final r in t.rows)
-                    [for (final c in r) InlineMarkdown.parse(c)],
+                    [for (final c in r) InlineMarkdown.parseCell(c)],
                 ],
                 cellMarkdown: t.rows,
+                deltaStart: line.start,
+                deltaLength: line.length,
+              ),
+            );
+          case GridEmbed():
+            blocks.add(
+              GridBlock(
+                embed.id,
+                embed.columns,
+                embed.bullets,
+                [
+                  for (final item in embed.items)
+                    InlineMarkdown.parseCell(item),
+                ],
+                itemMarkdown: embed.items,
+                deltaStart: line.start,
+                deltaLength: line.length,
+              ),
+            );
+          case YouTubeEmbed():
+            blocks.add(
+              YouTubeBlock(
+                embed,
                 deltaStart: line.start,
                 deltaLength: line.length,
               ),
@@ -84,6 +123,7 @@ final class DocTreeBuilder {
           case null:
             break;
         }
+        if (blocks.length > blockCount) paths.add(path);
         ordinals.clear();
         i++;
         continue;
@@ -107,6 +147,7 @@ final class DocTreeBuilder {
               anchorId: anchors.next(
                 InlineRun.plainText(runs).replaceAll('\u2028', ' ').trim(),
               ),
+              step: f.step,
               deltaStart: line.start,
               deltaLength: line.length,
             ),
@@ -118,7 +159,8 @@ final class DocTreeBuilder {
           var end = start;
           while (i < lines.length &&
               lines[i].format.type == BlockType.quote &&
-              !lines[i].isEmbedLine) {
+              !lines[i].isEmbedLine &&
+              samePath(lines[i])) {
             quoteLines.add(_runs(lines[i]));
             end = lines[i].end;
             i++;
@@ -133,7 +175,9 @@ final class DocTreeBuilder {
           var end = start;
           while (i < lines.length &&
               lines[i].format.type == BlockType.code &&
-              lines[i].format.language == language) {
+              lines[i].format.language == language &&
+              !lines[i].isEmbedLine &&
+              samePath(lines[i])) {
             codeLines.add(lines[i].text);
             end = lines[i].end;
             i++;
@@ -182,8 +226,49 @@ final class DocTreeBuilder {
           }
           i++;
       }
+      if (blocks.length > blockCount) paths.add(path);
     }
-    return DocTree(blocks, meta: meta);
+    return DocTree(_nest(blocks, paths, 0, blocks.length, 0), meta: meta);
+  }
+
+  /// Nests `blocks[from..to)` at container [depth]: runs of blocks whose
+  /// frame at [depth] has the same id become one [ContainerBlock].
+  static List<DocBlock> _nest(
+    List<DocBlock> blocks,
+    List<List<BoxFrame>> paths,
+    int from,
+    int to,
+    int depth,
+  ) {
+    final out = <DocBlock>[];
+    var i = from;
+    while (i < to) {
+      final path = paths[i];
+      if (path.length <= depth) {
+        out.add(blocks[i]);
+        i++;
+        continue;
+      }
+      final frame = path[depth];
+      var j = i + 1;
+      while (j < to &&
+          paths[j].length > depth &&
+          paths[j][depth].id == frame.id) {
+        j++;
+      }
+      final start = blocks[i].deltaStart;
+      final last = blocks[j - 1];
+      out.add(
+        ContainerBlock(
+          frame,
+          _nest(blocks, paths, i, j, depth + 1),
+          deltaStart: start,
+          deltaLength: last.deltaStart + last.deltaLength - start,
+        ),
+      );
+      i = j;
+    }
+    return out;
   }
 
   static List<InlineRun> _runs(DocumentLine line) => InlineRun.merge([
@@ -198,6 +283,7 @@ final class DocTreeToDelta {
   const DocTreeToDelta();
 
   /// Converts [tree]; the result is normalized (and therefore valid).
+  /// Blocks in [ContainerBlock]s get the containers' frames as `box`.
   Delta convert(DocTree tree) {
     final d = Delta();
     void runs(List<InlineRun> rs) {
@@ -207,65 +293,96 @@ final class DocTreeToDelta {
       }
     }
 
-    for (final b in tree.blocks) {
-      switch (b) {
-        case ParagraphBlock(runs: final rs):
-          runs(rs);
-          d.insert('\n');
-        case HeadingBlock(:final level, runs: final rs):
-          runs(rs);
-          d.insert('\n', {WonkyAttr.header: level.clamp(1, 6)});
-        case ListItemBlock(
-          :final kind,
-          :final indent,
-          :final inQuote,
-          runs: final rs,
-        ):
-          runs(rs);
-          d.insert('\n', {
-            WonkyAttr.list: kind == ListKindIr.ordered
-                ? ListKind.ordered.value
-                : ListKind.bullet.value,
-            if (indent > 0)
-              WonkyAttr.indent: indent.clamp(1, WonkyAttr.maxIndent),
-            if (inQuote) WonkyAttr.blockquote: true,
-          });
-        case TaskBlock(
-          :final checked,
-          :final indent,
-          :final inQuote,
-          runs: final rs,
-        ):
-          runs(rs);
-          d.insert('\n', {
-            WonkyAttr.list: checked
-                ? ListKind.checked.value
-                : ListKind.unchecked.value,
-            if (indent > 0)
-              WonkyAttr.indent: indent.clamp(1, WonkyAttr.maxIndent),
-            if (inQuote) WonkyAttr.blockquote: true,
-          });
-        case QuoteBlock(:final lines):
-          for (final l in lines) {
-            runs(l);
-            d.insert('\n', {WonkyAttr.blockquote: true});
-          }
-        case CodeBlock(:final language, :final text):
-          for (final l in text.split('\n')) {
-            if (l.isNotEmpty) d.insert(l);
-            d.insert('\n', {WonkyAttr.codeBlock: language});
-          }
-        case ImageBlock():
-          d.insert(b.toEmbed().toInsert());
-          d.insert('\n');
-        case RuleBlock(:final id):
-          d.insert(DividerEmbed(id: id).toInsert());
-          d.insert('\n');
-        case TableBlock():
-          d.insert(b.toEmbed().toInsert());
-          d.insert('\n');
+    void line(List<BoxFrame> path, [Map<String, dynamic>? block]) {
+      final attrs = <String, dynamic>{
+        ...?block,
+        if (path.isNotEmpty) WonkyAttr.box: Boxes.toValue(path),
+      };
+      d.insert('\n', attrs.isEmpty ? null : attrs);
+    }
+
+    void blocks(List<DocBlock> list, List<BoxFrame> path) {
+      for (final b in list) {
+        switch (b) {
+          case ParagraphBlock(runs: final rs):
+            runs(rs);
+            line(path);
+          case HeadingBlock(:final level, :final step, runs: final rs):
+            runs(rs);
+            line(path, {
+              WonkyAttr.header: level.clamp(1, 6),
+              WonkyAttr.step: ?step,
+            });
+          case ListItemBlock(
+            :final kind,
+            :final indent,
+            :final inQuote,
+            runs: final rs,
+          ):
+            runs(rs);
+            line(path, {
+              WonkyAttr.list: kind == ListKindIr.ordered
+                  ? ListKind.ordered.value
+                  : ListKind.bullet.value,
+              if (indent > 0)
+                WonkyAttr.indent: indent.clamp(1, WonkyAttr.maxIndent),
+              if (inQuote) WonkyAttr.blockquote: true,
+            });
+          case TaskBlock(
+            :final checked,
+            :final indent,
+            :final inQuote,
+            runs: final rs,
+          ):
+            runs(rs);
+            line(path, {
+              WonkyAttr.list: checked
+                  ? ListKind.checked.value
+                  : ListKind.unchecked.value,
+              if (indent > 0)
+                WonkyAttr.indent: indent.clamp(1, WonkyAttr.maxIndent),
+              if (inQuote) WonkyAttr.blockquote: true,
+            });
+          case QuoteBlock(:final lines):
+            for (final l in lines) {
+              runs(l);
+              line(path, {WonkyAttr.blockquote: true});
+            }
+          case CodeBlock(:final language, :final text):
+            for (final l in text.split('\n')) {
+              if (l.isNotEmpty) d.insert(l);
+              line(path, {WonkyAttr.codeBlock: language});
+            }
+          case ImageBlock():
+            d.insert(b.toEmbed().toInsert());
+            line(path);
+          case RuleBlock(:final id):
+            d.insert(DividerEmbed(id: id).toInsert());
+            line(path);
+          case TableBlock():
+            d.insert(b.toEmbed().toInsert());
+            line(path);
+          case GridBlock():
+            d.insert(b.toEmbed().toInsert());
+            line(path);
+          case YouTubeBlock(:final embed):
+            d.insert(embed.toInsert());
+            line(path);
+          case ContainerBlock(:final frame, :final children):
+            if (path.length >= BoxFrame.maxDepth) {
+              // Too deep: the content joins the enclosing container.
+              blocks(children, path);
+            } else if (children.isEmpty) {
+              // A container holds at least one line.
+              line([...path, frame]);
+            } else {
+              blocks(children, [...path, frame]);
+            }
+        }
       }
     }
+
+    blocks(tree.blocks, const []);
     return const WonkyDeltaNormalizer().normalize(d).document;
   }
 }

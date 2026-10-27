@@ -13,6 +13,9 @@ final class InlineRun {
     this.code = false,
     this.link,
     this.mentionUserUuid,
+    this.linkStyle,
+    this.chip = false,
+    this.chipIcon,
   });
 
   /// Text; may contain U+2028 (soft break), never `"\n"`.
@@ -36,6 +39,16 @@ final class InlineRun {
   /// Mentioned user UUID (with a `mailto:` [link]).
   final String? mentionUserUuid;
 
+  /// Wonky Markdown look of the [link]: `arrow`, `button` or
+  /// `buttonSecondary` (Write 11 §2.1).
+  final String? linkStyle;
+
+  /// Whether the run is a Wonky Markdown chip.
+  final bool chip;
+
+  /// The chip's icon name (kept, not shown; Write 11 WM10).
+  final String? chipIcon;
+
   /// Whether formatting equals [other]'s.
   bool sameFormat(InlineRun other) =>
       bold == other.bold &&
@@ -43,7 +56,10 @@ final class InlineRun {
       strike == other.strike &&
       code == other.code &&
       link == other.link &&
-      mentionUserUuid == other.mentionUserUuid;
+      mentionUserUuid == other.mentionUserUuid &&
+      linkStyle == other.linkStyle &&
+      chip == other.chip &&
+      chipIcon == other.chipIcon;
 
   /// Whether the run has no formatting.
   bool get isPlain =>
@@ -52,7 +68,9 @@ final class InlineRun {
       !strike &&
       !code &&
       link == null &&
-      mentionUserUuid == null;
+      mentionUserUuid == null &&
+      linkStyle == null &&
+      !chip;
 
   /// Copy with changed fields.
   InlineRun copyWith({
@@ -65,6 +83,10 @@ final class InlineRun {
     bool clearLink = false,
     String? mentionUserUuid,
     bool clearMention = false,
+    String? linkStyle,
+    bool clearLinkStyle = false,
+    bool? chip,
+    String? chipIcon,
   }) => InlineRun(
     text ?? this.text,
     bold: bold ?? this.bold,
@@ -75,17 +97,24 @@ final class InlineRun {
     mentionUserUuid: clearMention
         ? null
         : (mentionUserUuid ?? this.mentionUserUuid),
+    linkStyle: clearLinkStyle ? null : (linkStyle ?? this.linkStyle),
+    chip: chip ?? this.chip,
+    chipIcon: chip == false ? null : (chipIcon ?? this.chipIcon),
   );
 
-  /// Delta attributes of this run (`null` when plain).
+  /// Delta attributes of this run (`null` when plain). A chip or a styled
+  /// link drops what it excludes (Write 11 §2.1).
   Map<String, dynamic>? toAttributes() {
+    if (chip) return {'chip': chipIcon ?? true};
+    final styled = linkStyle != null && link != null;
     final a = <String, dynamic>{
-      if (bold && !code) 'bold': true,
-      if (italic && !code) 'italic': true,
-      if (strike && !code) 'strike': true,
-      if (code) 'code': true,
+      if (bold && !code && !styled) 'bold': true,
+      if (italic && !code && !styled) 'italic': true,
+      if (strike && !code && !styled) 'strike': true,
+      if (code && !styled) 'code': true,
       'link': ?link,
-      'mention': ?mentionUserUuid,
+      if (!styled) 'mention': ?mentionUserUuid,
+      if (styled) 'linkStyle': linkStyle,
     };
     return a.isEmpty ? null : a;
   }
@@ -100,6 +129,9 @@ final class InlineRun {
         code: a?['code'] == true,
         link: a?['link'] as String?,
         mentionUserUuid: a?['mention'] as String?,
+        linkStyle: a?['linkStyle'] as String?,
+        chip: a?['chip'] == true || a?['chip'] is String,
+        chipIcon: a?['chip'] is String ? a!['chip'] as String : null,
       );
 
   @override
@@ -107,8 +139,18 @@ final class InlineRun {
       other is InlineRun && other.text == text && sameFormat(other);
 
   @override
-  int get hashCode =>
-      Object.hash(text, bold, italic, strike, code, link, mentionUserUuid);
+  int get hashCode => Object.hash(
+    text,
+    bold,
+    italic,
+    strike,
+    code,
+    link,
+    mentionUserUuid,
+    linkStyle,
+    chip,
+    chipIcon,
+  );
 
   @override
   String toString() {
@@ -119,6 +161,8 @@ final class InlineRun {
       if (code) 'c',
       if (link != null) 'link=$link',
       if (mentionUserUuid != null) '@$mentionUserUuid',
+      if (linkStyle != null) 'style=$linkStyle',
+      if (chip) 'chip${chipIcon == null ? '' : '=$chipIcon'}',
     ];
     return 'Run("$text"${f.isEmpty ? '' : ' ${f.join(',')}'})';
   }

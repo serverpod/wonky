@@ -191,6 +191,75 @@ void main() {
       },
     );
 
+    test('when switching to Wonky Markdown then the meta is written and undo '
+        'switches back (AC-WM.1)', () async {
+      expect(doc.isWonky, isFalse);
+      await run('write.doc.setMarkdownFlavor', {'flavor': 'wonky'});
+      await pumpEventQueue();
+      expect(doc.isWonky, isTrue);
+      expect(
+        h.services.dispatcher.stateOf('write.insert.callout').visible,
+        isTrue,
+      );
+
+      await h.undo.undo();
+      await pumpEventQueue();
+      expect(doc.markdownFlavor, MarkdownFlavor.gfm);
+      expect(
+        h.services.dispatcher.stateOf('write.insert.callout').visible,
+        isFalse,
+      );
+    });
+
+    test('when choosing a callout\'s current type then nothing happens and '
+        'it succeeds; another type is applied', () async {
+      await run('write.doc.setMarkdownFlavor', {'flavor': 'wonky'});
+      await pumpEventQueue();
+      doc.editor.select(const DeltaSelection(0, 0));
+      await run('write.insert.callout', {'variant': 'info'});
+      await pumpEventQueue();
+      final before = h.session.editor.delta;
+
+      final same = await run('write.box.setVariant', {'variant': 'info'});
+      expect(same.isOk, isTrue, reason: same.message);
+      expect(h.session.editor.delta, before);
+
+      final other = await run('write.box.setVariant', {'variant': 'warning'});
+      expect(other.isOk, isTrue, reason: other.message);
+      expect(doc.commands.containerAt()?.frame.variant, CalloutVariant.warning);
+    });
+
+    test('when setting a step number or callout title to its current value '
+        'then nothing happens and it succeeds', () async {
+      await run('write.doc.setMarkdownFlavor', {'flavor': 'wonky'});
+      await pumpEventQueue();
+      doc.editor.applyLocal(
+        Delta()
+          ..retain(text().length - 1)
+          ..insert('\nInstall')
+          ..retain(1, {'header': 2, 'step': 5}),
+        label: 'Typing',
+      );
+      await pumpEventQueue();
+      final heading = doc.editor.document.last.id;
+      final before = h.session.editor.delta;
+
+      final step = await run('write.heading.setStepNumber', {
+        'nodeId': heading,
+        'n': 5,
+      });
+      expect(step.isOk, isTrue, reason: step.message);
+      expect(h.session.editor.delta, before);
+
+      doc.editor.select(const DeltaSelection(0, 0));
+      await run('write.insert.callout', {'variant': 'info'});
+      await run('write.box.editTitle', {'title': 'Heads up'});
+      final callout = h.session.editor.delta;
+      final title = await run('write.box.editTitle', {'title': 'Heads up'});
+      expect(title.isOk, isTrue, reason: title.message);
+      expect(h.session.editor.delta, callout);
+    });
+
     test('when navigating to a heading then the caret moves there', () async {
       doc.editor.applyLocal(
         Delta()
