@@ -402,8 +402,9 @@ class WriteEditorCommands {
     return blocks.isNotEmpty && blocks.every((b) => isInQuoteNode(b.node));
   }
 
+  /// Table cells and grid items keep their type (Write 12 §3.4).
   bool canChangeBlockType() =>
-      canEdit && _selectedBlocks().any((b) => b.isText);
+      canEdit && _selectedBlocks().any((b) => b.isText && !isCellNode(b.node));
 
   /// `write.format.blockType {type}` and the list toggles. Quote, code and
   /// lists are toggles; headings are not. With [toggle] `false`
@@ -417,7 +418,9 @@ class WriteEditorCommands {
     final blocks = nodeId != null
         ? [?controller.mirror.blockOf(nodeId)]
         : _selectedBlocks();
-    final textBlocks = blocks.where((b) => b.isText).toList();
+    final textBlocks = blocks
+        .where((b) => b.isText && !isCellNode(b.node))
+        .toList();
     if (!canEdit || textBlocks.isEmpty) return false;
     final isToggle =
         toggle &&

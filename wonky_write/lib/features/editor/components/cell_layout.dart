@@ -242,7 +242,8 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
       group: slot.group,
       index: slot.index,
       maxColumns: slot.columns,
-      minColumnWidth: 160 * zoom,
+      // Three columns from about 480 px (Write 11 §7.2).
+      minColumnWidth: 140 * zoom,
       gap: theme.wonky.gridColumnGap * zoom,
       spaceBefore: _gaps[nodeId] ?? 0,
     );

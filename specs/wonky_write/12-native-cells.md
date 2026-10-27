@@ -183,7 +183,7 @@ Write's `WriteCellLayout` (`components/cell_layout.dart`) provides placements fr
 (every cell's row and column and every item's index, recomputed in one pass when the document
 changes; it notifies when a slot changes), table borders and the header background (theme
 `tableBorderColor`, `tableHeaderBackground`), grid bullets (painted in `paintGroup` at each item
-slot's top left), grid gaps from the theme (minimum column width 160 px at 100 %), container
+slot's top left), grid gaps from the theme (minimum column width 140 px at 100 %: three columns from about 480 px), container
 frames around a group (`BoxFrameComponentBuilder.frameGroup`, using the group's first and last
 node) and the chrome (§3.7).
 

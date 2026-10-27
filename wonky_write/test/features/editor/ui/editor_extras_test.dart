@@ -176,6 +176,60 @@ void main() {
       expect(_caret(p.h), ('Apples and pears', 11, 16));
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+    testWidgets(
+      'when dragging from inside one cell into the next then the selection '
+      'runs from the drag start to its end',
+      (tester) async {
+        final p = await _pump(tester, _tableDoc());
+        final layout = p.h.controller.documentLayout!;
+        Offset at(String text, int offset) {
+          final node = p.h.controller.document.firstWhere(
+            (n) => n is TextNode && n.text.toPlainText() == text,
+          );
+          return layout.getGlobalOffsetFromDocumentOffset(
+            layout
+                .getRectForPosition(
+                  DocumentPosition(
+                    nodeId: node.id,
+                    nodePosition: TextNodePosition(offset: offset),
+                  ),
+                )!
+                .center,
+          );
+        }
+
+        final from = at('Name', 2);
+        final to = at('Qty', 1);
+        final gesture = await tester.startGesture(
+          from,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pump();
+        // A hand moves a few pixels first: the drag starts where it is
+        // recognized (beyond the 2 px mouse slop).
+        await gesture.moveTo(from + const Offset(0, 3));
+        await tester.pump(const Duration(milliseconds: 16));
+        for (var i = 1; i <= 10; i++) {
+          await gesture.moveTo(Offset.lerp(from, to, i / 10)!);
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await gesture.up();
+        await tester.pumpAndSettle();
+        final s = p.h.controller.composer.selection!;
+        final doc = p.h.controller.document;
+        expect(
+          (doc.getNodeById(s.base.nodeId)! as TextNode).text.toPlainText(),
+          'Name',
+        );
+        expect((s.base.nodePosition as TextNodePosition).offset, 2);
+        expect(
+          (doc.getNodeById(s.extent.nodeId)! as TextNode).text.toPlainText(),
+          'Qty',
+        );
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
+
     testWidgets('when clicking below a short cell then the caret goes into '
         'that cell', (tester) async {
       final p = await _pump(

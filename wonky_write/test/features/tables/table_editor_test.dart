@@ -484,10 +484,9 @@ void main() {
         CellRuns.of(WonkyDocument(delta)).whereType<CellTable>().single.id;
 
     List<Object?> rowsOf(Delta delta) => [
-      for (final row
-          in CellRuns.of(
-            WonkyDocument(delta),
-          ).whereType<CellTable>().single.rows)
+      for (final row in CellRuns.of(
+        WonkyDocument(delta),
+      ).whereType<CellTable>().single.rows)
         [for (final c in row.cells) c.text],
     ];
 
