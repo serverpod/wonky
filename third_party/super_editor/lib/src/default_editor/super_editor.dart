@@ -134,6 +134,8 @@ class SuperEditor extends StatefulWidget {
     this.contentTapDelegateFactories = const [superEditorLaunchLinkTapHandlerFactory],
     // WONKY PATCH SE-6
     this.contentDragDelegate,
+    // WONKY PATCH SE-15
+    this.cellLayout,
     this.selectionLayerLinks,
     this.documentUnderlayBuilders = const [],
     this.documentOverlayBuilders = defaultSuperEditorDocumentOverlayBuilders,
@@ -315,6 +317,11 @@ class SuperEditor extends StatefulWidget {
   ///
   /// Only used with mouse gestures ([DocumentGestureMode.mouse]).
   final ContentDragDelegate? contentDragDelegate;
+
+  /// WONKY PATCH SE-15: places components in cell groups that are laid out
+  /// side by side (table rows, grids), see [DocumentCellLayout] and
+  /// [SingleColumnDocumentLayout.cellLayout].
+  final DocumentCellLayout? cellLayout;
 
   /// Leader links that connect leader widgets near the user's selection
   /// to carets, handles, and other things that want to follow the selection.
@@ -764,6 +771,8 @@ class SuperEditorState extends State<SuperEditor> {
               presenter: presenter,
               componentBuilders: widget.componentBuilders,
               shrinkWrap: widget.shrinkWrap,
+              // WONKY PATCH SE-15
+              cellLayout: widget.cellLayout,
               underlays: [
                 // Add all underlays from plugins.
                 for (final plugin in widget.plugins) //

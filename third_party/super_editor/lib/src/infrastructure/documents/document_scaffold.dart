@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/core/document_debug_paint.dart';
 import 'package:super_editor/src/default_editor/document_scrollable.dart';
+// WONKY PATCH SE-15
+import 'package:super_editor/src/default_editor/layout_single_column/_cell_layout.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_layout.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_presenter.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
@@ -29,6 +31,8 @@ class DocumentScaffold<ContextType> extends StatefulWidget {
     this.underlays = const [],
     this.overlays = const [],
     this.debugPaint = const DebugPaintConfig(),
+    // WONKY PATCH SE-15
+    this.cellLayout,
   });
 
   /// [LayerLink] that's is attached to the document layout.
@@ -85,6 +89,9 @@ class DocumentScaffold<ContextType> extends StatefulWidget {
   /// Only used when the document is not inside a scrollable.
   final bool shrinkWrap;
 
+  /// WONKY PATCH SE-15: see [SingleColumnDocumentLayout.cellLayout].
+  final DocumentCellLayout? cellLayout;
+
   @override
   State<DocumentScaffold> createState() => _DocumentScaffoldState();
 }
@@ -140,6 +147,8 @@ class _DocumentScaffoldState extends State<DocumentScaffold> {
         componentBuilders: widget.componentBuilders,
         onBuildScheduled: onBuildScheduled,
         showDebugPaint: widget.debugPaint.layout,
+        // WONKY PATCH SE-15
+        cellLayout: widget.cellLayout,
       ),
       underlays: widget.underlays,
       overlays: widget.overlays,

@@ -253,6 +253,48 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
 - **Spec**: Write 04 §18.4, Write 11 §7.4
 - **Upstream**: generally useful (embedded interactive content); to be proposed.
 
+## SE-15 — Cell groups lay out components side by side
+
+- **Reason**: Wonky Write makes every table cell and grid item an ordinary `ParagraphNode`
+  (native document text instead of overlay text fields), so the single-column layout must place
+  those components in 2D: table rows and flowing grids.
+- **Changes**:
+  - New public API (`layout_single_column/_cell_layout.dart`): `DocumentCellLayout` (supplied by
+    the app, a `Listenable`: `placementOf(nodeId)`, `wrapGroup`, `paintGroup`),
+    `DocumentCellPlacement.rows(group, row, column, minColumnWidth = 64, gap, spaceBefore)` /
+    `.flow(group, index, maxColumns, minColumnWidth = 160, gap, spaceBefore)`,
+    `DocumentCellGroupKind`, `DocumentCellGroup` (id, kind, node ids in document order),
+    `DocumentCellGroupGeometry` (size, row/column counts, `columnEdges`, `rowEdges`, `rowBottoms`,
+    `slotRects` per node) and the render widget `DocumentCellGroupView` /
+    `RenderDocumentCellGroup`. The group-wide values (`minColumnWidth`, `gap`, `maxColumns`) come
+    from the group's first placement.
+  - `SingleColumnDocumentLayout(cellLayout:)`: maximal runs of consecutive components whose
+    placements share a group id become one `DocumentCellGroupView` (wrapped by `wrapGroup`) in
+    the column; components keep their keys and presenter builders. Rebuilds when the cell layout
+    notifies (after the frame when it notifies during build/layout) or is replaced.
+  - Rows: columns share the width equally (minus gaps), never narrower than `minColumnWidth`
+    (they overflow); a row is as tall as its tallest cell; missing cells are empty space; the
+    largest `spaceBefore` of a row is added above it (outside the row's edges and slots). Flow:
+    the column count drops from `maxColumns` while columns would be narrower than
+    `minColumnWidth` (a single column takes the available width); items fill rows in index
+    order. `paintGroup` paints behind the cells; dry layout and intrinsics are supported.
+  - 2D geometry: a point in a cell's slot outside its component (below a short cell, padding)
+    resolves to that cell (`getDocumentPositionAtOffset`, `getDesiredCursorAtOffset`); the
+    nearest component beside a group is the cell with the nearest slot (2D distance; ordinary
+    components keep the vertical distance, they span the width); the start/end-of-content checks
+    use the group's bounds; the binary search used by region selection treats a group as one
+    block and starts at its first cell, and a cell that doesn't overlap the region no longer
+    ends the search; a region end inside a group resolves to the cell at that point (so a drag
+    from a later cell of a row starts there).
+  - `SuperEditor(cellLayout:)`, `SuperReader(cellLayout:)` → `DocumentScaffold` → layout.
+    Keyboard caret movement (document order) is unchanged.
+- **Files**: `lib/src/default_editor/layout_single_column/{_cell_layout.dart (new),_layout.dart,layout_single_column.dart}`,
+  `lib/src/infrastructure/documents/document_scaffold.dart`, `lib/src/default_editor/super_editor.dart`,
+  `lib/src/super_reader/super_reader.dart`; test: `test/wonky_patches/se15_cell_groups_test.dart` (new).
+- **Tests**: the file above; the package's layout and selection tests.
+- **Spec**: Write 12 §3.2
+- **Upstream**: generally useful (tables and grids of ordinary components); to be proposed.
+
 ## Infra
 
 - `pubspec.yaml`: `dependency_overrides: attributed_text: {path: ../attributed_text}` so the
