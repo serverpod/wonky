@@ -684,7 +684,7 @@ class WriteDocumentController extends DocumentController {
 
   /// The caret block is an image / table / code block.
   bool get onImage => embedData('image') != null;
-  bool get inTable => embedData('table') != null;
+  bool get inTable => commands.tableRunAt() != null;
   bool get inCode => block()?.isCode ?? false;
 
   /// Global rect of the text at Delta [offset] (popover anchors).

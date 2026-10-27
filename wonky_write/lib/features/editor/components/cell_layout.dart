@@ -6,6 +6,7 @@ import 'package:wonky_write_core/wonky_write_core.dart'
 
 import '../../../l10n/write_l10n.dart';
 import '../mapping/wonky_schema.dart';
+import '../pagination/pagination.dart';
 import '../styles/editor_theme.dart';
 import 'box_frames.dart';
 import 'editor_services.dart';
@@ -163,11 +164,31 @@ class CellSlots extends ChangeNotifier {
 /// bullets; the group sits in its containers' frames and has the table's
 /// or grid's chrome.
 class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
-  WriteCellLayout(this.slots) {
+  WriteCellLayout(this.slots, {this.pagination}) {
     slots.addListener(notifyListeners);
+    pagination?.addListener(_onPagination);
   }
 
   final CellSlots slots;
+
+  /// The page breaks (Pages layout): a row pushed to the next page has its
+  /// gap as space before it (Write 12 §3.8).
+  final PaginationController? pagination;
+  var _gaps = const <String, double>{};
+
+  void _onPagination() {
+    final gaps = {
+      for (final e in pagination!.gaps.entries)
+        if (slots[e.key] != null) e.key: e.value,
+    };
+    if (_sameGaps(gaps, _gaps)) return;
+    _gaps = gaps;
+    notifyListeners();
+  }
+
+  static bool _sameGaps(Map<String, double> a, Map<String, double> b) =>
+      a.length == b.length &&
+      a.entries.every((e) => (b[e.key] ?? -1) == e.value);
 
   /// Set by the editor on every build.
   EditorTheme theme = EditorTheme.fallback(Brightness.light);
@@ -177,10 +198,6 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
 
   /// Frames the group in its containers (the editor's frame builder).
   BoxFrameComponentBuilder? frames;
-
-  /// Extra space above row `row` of the table or grid `group` (pagination,
-  /// Write 12 §3.8).
-  double Function(String group, int row)? rowSpaceBefore;
 
   /// Takes the editor's values. Called while building: a theme or zoom
   /// change also changes the stylesheet, which rebuilds the layout.
@@ -218,7 +235,7 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
         row: slot.row,
         column: slot.column,
         minColumnWidth: 48 * zoom,
-        spaceBefore: rowSpaceBefore?.call(slot.group, slot.row) ?? 0,
+        spaceBefore: _gaps[nodeId] ?? 0,
       );
     }
     return DocumentCellPlacement.flow(
@@ -227,7 +244,7 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
       maxColumns: slot.columns,
       minColumnWidth: 160 * zoom,
       gap: theme.wonky.gridColumnGap * zoom,
-      spaceBefore: rowSpaceBefore?.call(slot.group, slot.index) ?? 0,
+      spaceBefore: _gaps[nodeId] ?? 0,
     );
   }
 
@@ -433,6 +450,7 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
   @override
   void dispose() {
     slots.removeListener(notifyListeners);
+    pagination?.removeListener(_onPagination);
     super.dispose();
   }
 }

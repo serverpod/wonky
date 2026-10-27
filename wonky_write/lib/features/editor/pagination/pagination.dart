@@ -166,9 +166,23 @@ class PaginationController extends ChangeNotifier {
     var page = 0;
     double? lastBottom;
     for (var i = 0; i < nodes.length; i += 1) {
-      final rect = natural[i];
-      if (rect == null) continue;
+      final laidOut = natural[i];
+      if (laidOut == null) continue;
+      var rect = laidOut;
       final node = nodes[i];
+      // A table row (or a row of a flowed grid) moves as one: the cells
+      // side by side with this one (Write 12 §3.8). Its gap goes on its
+      // first cell (the cell layout's space before the row).
+      final group = _groupOf(node);
+      if (group != null) {
+        while (i + 1 < nodes.length &&
+            _groupOf(nodes[i + 1]) == group &&
+            natural[i + 1] != null &&
+            (natural[i + 1]!.top - rect.top).abs() <= 0.5) {
+          i += 1;
+          rect = rect.expandToInclude(natural[i]!);
+        }
+      }
       final height = rect.height;
       var top = rect.top + shift;
       var bottom = rect.bottom + shift;
@@ -244,6 +258,14 @@ class PaginationController extends ChangeNotifier {
     return box is RenderBox && box.hasSize ? box.size : null;
   }
 
+  /// The table or grid of a cell or item node (`null` for other nodes).
+  static String? _groupOf(DocumentNode node) {
+    final cell = cellOf(node);
+    if (cell != null) return 't:${cell.table}';
+    final item = gridItemOf(node);
+    return item == null ? null : 'g:${item.id}';
+  }
+
   static int? _nextLaidOut(List<Rect?> rects, int index) {
     for (var j = index + 1; j < rects.length; j += 1) {
       if (rects[j] != null) return j;
@@ -311,7 +333,11 @@ class PaginationStylePhase extends SingleColumnLayoutStylePhase {
         for (var i = 0; i < models.length; i += 1)
           _padded(
             models[i],
-            top: gaps[models[i].nodeId] ?? 0,
+            // A row's gap is the cell layout's space before it (Write 12
+            // §3.8), not the cell's padding.
+            top: isCellNode(document.getNodeById(models[i].nodeId))
+                ? 0
+                : gaps[models[i].nodeId] ?? 0,
             bottom: i == models.length - 1 ? tail : 0,
           ),
       ],

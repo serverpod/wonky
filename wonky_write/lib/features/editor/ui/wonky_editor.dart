@@ -311,7 +311,7 @@ class WonkyEditorState extends State<WonkyEditor> {
     if (cells == null || !identical(cells.slots.document, document)) {
       cells?.slots.dispose();
       cells?.dispose();
-      cells = WriteCellLayout(CellSlots(document));
+      cells = WriteCellLayout(CellSlots(document), pagination: _pagination);
       if (main) {
         _mainCells = cells;
       } else {
