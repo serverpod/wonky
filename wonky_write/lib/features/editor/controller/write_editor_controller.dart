@@ -18,7 +18,6 @@ import '../mapping/mirror_overlays.dart';
 import '../requests/block_editing_handlers.dart';
 import '../setup/editor_factory.dart';
 import '../components/box_frames.dart' show BoxFrameLayout;
-import '../grid/inline_grid_editing.dart' show InlineGridEditing;
 import '../reactions/pill_boundary.dart';
 import '../view/editor_view_state.dart';
 import 'editor_pipeline.dart';
@@ -77,8 +76,6 @@ class WriteEditorController extends ChangeNotifier {
         mode: () => _mode,
         newEmbedId: this.newEmbedId,
         isWonky: () => markdownFlavor() == MarkdownFlavor.wonky,
-        // A new grid gets the caret in its first item (Write 11 §7.5).
-        onGridInserted: (id) => gridEditing?.activateSoon(id, 0),
         pillBoundary: pillBoundary,
       ),
       onTransaction: _onTransaction,
@@ -157,14 +154,6 @@ class WriteEditorController extends ChangeNotifier {
   /// The document's Markdown flavor (Write 11 §5): clipboard Markdown and
   /// pasted fragments follow it. Set by the document session.
   MarkdownFlavor Function() markdownFlavor = () => MarkdownFlavor.gfm;
-
-  /// In-place table cell editing of the mounted editor widget (SE-4,
-  /// Write 04 §18.4); `null` while no editor is mounted.
-  InlineTableEditingHandle? tableEditing;
-
-  /// In-place grid item editing of the mounted editor widget (Write 11
-  /// §7.4); `null` while no editor is mounted.
-  InlineGridEditing? gridEditing;
 
   /// The document layout, once the editor is laid out.
   DocumentLayout? get documentLayout =>
@@ -779,18 +768,6 @@ class SuggestionSession {
     _nodeIds = change.nodeIds;
     _selection = selection;
   }
-}
-
-/// What commands need from the in-place table editor (`write.table.editCell`).
-abstract interface class InlineTableEditingHandle {
-  /// Starts editing cell ([row], [column]) of the table [tableId].
-  bool activate(String tableId, int row, int column, {bool selectAll});
-
-  /// Stops editing (saving the cell).
-  void deactivate();
-
-  /// Whether a cell is being edited.
-  bool get isEditing;
 }
 
 /// A notice for the UI (toast, announcement).

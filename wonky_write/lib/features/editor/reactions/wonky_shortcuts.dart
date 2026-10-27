@@ -1,10 +1,17 @@
 import 'package:super_editor/super_editor.dart';
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show BoxFrame, BoxType, Boxes, CalloutVariant, GridBullets, GridEmbed;
+    show
+        BoxFrame,
+        BoxType,
+        Boxes,
+        CalloutVariant,
+        CellIds,
+        GridBullets,
+        GridEmbed,
+        GridItemAttr;
 
 import '../attributions/wonky_attributions.dart';
 import '../mapping/attribution_mapping.dart';
-import '../mapping/wonky_embed_node.dart';
 import '../mapping/wonky_schema.dart';
 import 'pill_boundary.dart';
 
@@ -77,23 +84,27 @@ abstract final class WonkyShortcuts {
   ) {
     final host = boxOf(node);
     if (shortcut.grid) {
-      final grid = GridEmbed(
-        id: newId(),
+      // Three empty grid item lines before the paragraph (Write 12 §1.2).
+      final item = GridItemAttr(
+        id: CellIds.group(),
         columns: shortcut.columns,
         bullets: shortcut.bullets,
-        items: const ['', '', ''],
-      );
+      ).toJson();
+      final index = document.getNodeIndexById(node.id);
       return [
-        InsertNodeAtIndexRequest(
-          nodeIndex: document.getNodeIndexById(node.id),
-          newNode: WonkyEmbedNode(
-            id: grid.id,
-            metadata: {
-              WonkyNodeMetadata.embed: grid.toInsert(),
-              if (host.isNotEmpty) WonkyNodeMetadata.box: Boxes.toValue(host),
-            },
+        for (var i = 0; i < 3; i++)
+          InsertNodeAtIndexRequest(
+            nodeIndex: index + i,
+            newNode: ParagraphNode(
+              id: Editor.createNodeId(),
+              text: AttributedText(''),
+              metadata: {
+                NodeMetadata.blockType: paragraphAttribution,
+                WonkyNodeMetadata.gridItem: item,
+                if (host.isNotEmpty) WonkyNodeMetadata.box: Boxes.toValue(host),
+              },
+            ),
           ),
-        ),
       ];
     }
     final frame = shortcut.type == BoxType.callout

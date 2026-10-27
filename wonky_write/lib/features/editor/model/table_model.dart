@@ -1,5 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show CellTable, InlineContext, InlineMarkdownWriter, InlineRun;
 
 /// Column alignment of a GFM table.
 enum TableAlign {
@@ -38,6 +40,29 @@ class TableModel {
     align: List.filled(columnCount, TableAlign.none),
     rows: List.generate(rowCount, (_) => List.filled(columnCount, '')),
   );
+
+  /// A table of cell lines (Write 12 §1.1) with its cells as inline Markdown;
+  /// pads ragged rows.
+  factory TableModel.fromCells(CellTable table) {
+    final columns = table.columnCount;
+    return TableModel(
+      id: table.id,
+      align: [for (final a in table.align) TableAlign.parse(a?.value)],
+      rows: [
+        for (final row in table.rows)
+          [
+            for (var c = 0; c < columns; c++)
+              c < row.cells.length
+                  ? InlineMarkdownWriter.write([
+                      for (final s in row.cells[c].segments)
+                        if (!s.isEmbed)
+                          InlineRun.fromAttributes(s.text, s.attributes),
+                    ], context: InlineContext.tableCell)
+                  : '',
+          ],
+      ],
+    );
+  }
 
   /// Reads the inner embed value; pads ragged rows.
   factory TableModel.fromEmbed(Map<String, dynamic> value) {

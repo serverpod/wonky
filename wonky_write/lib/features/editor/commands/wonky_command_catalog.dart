@@ -420,10 +420,7 @@ List<EditorCommandSpec> wonkyEditorCommandCatalog() => [
         t.commands.canEdit &&
         !t.commands.isSuggesting &&
         t.commands.gridOf(nodeId: a.string('nodeId')) != null,
-    run: (t, a) {
-      final grid = t.commands.gridOf(nodeId: a.string('nodeId'));
-      return _result(grid != null && t.commands.deleteBlock(nodeId: grid.id));
-    },
+    run: (t, a) => _result(t.commands.deleteGrid(nodeId: a.string('nodeId'))),
   ),
   EditorCommandSpec(
     id: 'write.link.setStyle',

@@ -418,33 +418,25 @@ extension WonkyMarkdownCommands on WriteEditorCommands {
   // ---------------------------------------------------------------------------
   // Grids.
 
-  /// The grid at [nodeId], or at the selection.
-  GridEmbed? gridOf({String? nodeId}) {
-    final block = _embedBlock(nodeId, DeltaKeys.gridEmbed);
-    if (block == null) return null;
-    final value = block.node.getMetadataValue(WonkyNodeMetadata.embed);
-    final embed = WonkyEmbed.tryParse(value);
-    return embed is GridEmbed ? embed : null;
-  }
+  /// The grid at [nodeId] (an item node or the grid id), or at the
+  /// selection (Write 12 §1.2).
+  CellGrid? gridOf({String? nodeId}) => cellRunAt(nodeId: nodeId)?.grid;
 
-  /// `write.insert.grid {columns?, bullets?}`: three empty items.
+  /// `write.insert.grid {columns?, bullets?}`: three empty items, the caret
+  /// in the first.
   String? insertGrid({
     int columns = 3,
     GridBullets bullets = GridBullets.check,
   }) {
-    if (isSuggesting) return null;
-    final grid = GridEmbed(
-      id: controller.newEmbedId(),
-      columns: GridEmbed.canonicalColumns(columns),
+    if (isSuggesting || caretInCell) return null;
+    final id = CellIds.group();
+    final lines = CellLines.grid(
+      id: id,
+      items: [Delta(), Delta(), Delta()],
+      columns: columns,
       bullets: bullets,
-      items: const ['', '', ''],
     );
-    if (_insertEmbeds([grid.toInsert()], _l.cmdInsertGrid) == null) {
-      return null;
-    }
-    // The caret goes into the first item.
-    controller.gridEditing?.activate(grid.id, 0);
-    return grid.id;
+    return _insertLines(lines, _l.cmdInsertGrid) == null ? null : id;
   }
 
   // ---------------------------------------------------------------------------
@@ -500,70 +492,59 @@ extension WonkyMarkdownCommands on WriteEditorCommands {
     return _replaceEmbed(block, next.toInsert(), _l.cmdYouTubeEdit) != null;
   }
 
-  /// Replaces the grid at [nodeId] with [grid] (same id).
-  bool replaceGrid(GridEmbed grid, {String? nodeId, String? label}) {
-    final block = _embedBlock(nodeId ?? grid.id, DeltaKeys.gridEmbed);
-    if (!canEdit || isSuggesting || block == null) return false;
-    final current = gridOf(nodeId: block.id);
-    final next = grid.copyWith(
-      id: current?.id ?? grid.id,
-      items: grid.items.isEmpty ? const [''] : grid.items,
-    );
-    if (next == current) return true;
-    return _replaceEmbed(block, next.toInsert(), label ?? _l.undoEditGrid) !=
-        null;
-  }
-
   /// `write.grid.setColumns {columns}`.
-  bool setGridColumns(int columns, {String? nodeId}) {
-    final grid = gridOf(nodeId: nodeId);
-    if (grid == null) return false;
-    return replaceGrid(
-      grid.copyWith(columns: GridEmbed.canonicalColumns(columns)),
-      nodeId: nodeId,
-      label: _l.cmdGridSetColumns,
-    );
-  }
+  bool setGridColumns(int columns, {String? nodeId}) => editCells(
+    (run) => run.grid == null
+        ? null
+        : CellEdits.setGridColumns(run.doc, run.id, columns),
+    nodeId: nodeId,
+    label: _l.cmdGridSetColumns,
+  );
 
   /// `write.grid.setBullets {bullets}`.
-  bool setGridBullets(GridBullets bullets, {String? nodeId}) {
-    final grid = gridOf(nodeId: nodeId);
-    if (grid == null) return false;
-    return replaceGrid(
-      grid.copyWith(bullets: bullets),
-      nodeId: nodeId,
-      label: _l.cmdGridSetBullets,
-    );
-  }
+  bool setGridBullets(GridBullets bullets, {String? nodeId}) => editCells(
+    (run) => run.grid == null
+        ? null
+        : CellEdits.setGridBullets(run.doc, run.id, bullets),
+    nodeId: nodeId,
+    label: _l.cmdGridSetBullets,
+  );
 
   /// `write.grid.addItem {index?}`: an empty item at [index] (default: the
-  /// end).
+  /// end), the caret in it.
   bool addGridItem({String? nodeId, int? index}) {
     final grid = gridOf(nodeId: nodeId);
-    if (grid == null || grid.items.length >= GridEmbed.maxItems) return false;
-    final items = [...grid.items]
-      ..insert((index ?? grid.items.length).clamp(0, grid.items.length), '');
-    return replaceGrid(
-      grid.copyWith(items: items),
+    if (grid == null) return false;
+    final at = (index ?? grid.items.length).clamp(0, grid.items.length);
+    return editCells(
+      (run) => CellEdits.addGridItem(run.doc, run.id, at),
       nodeId: nodeId,
       label: _l.cmdGridAddItem,
+      selectionAfter: (run, _) => DeltaSelection.collapsed(
+        run.start +
+            (at == grid.items.length
+                ? run.doc.length
+                : run.grid!.items[at].start),
+      ),
     );
   }
 
-  /// `write.grid.removeItem {index}`.
-  bool removeGridItem(int index, {String? nodeId}) {
-    final grid = gridOf(nodeId: nodeId);
-    if (grid == null || index < 0 || index >= grid.items.length) return false;
-    if (grid.items.length == 1) {
-      return deleteBlock(nodeId: nodeId ?? grid.id);
-    }
-    final items = [...grid.items]..removeAt(index);
-    return replaceGrid(
-      grid.copyWith(items: items),
-      nodeId: nodeId,
-      label: _l.cmdGridRemoveItem,
-    );
-  }
+  /// `write.grid.removeItem {index}`; removing the last item deletes the
+  /// grid.
+  bool removeGridItem(int index, {String? nodeId}) => editCells(
+    (run) => run.grid == null
+        ? null
+        : CellEdits.removeGridItem(run.doc, run.id, index),
+    nodeId: nodeId,
+    label: _l.cmdGridRemoveItem,
+  );
+
+  /// `write.grid.delete`.
+  bool deleteGrid({String? nodeId}) => editCells(
+    (run) => run.grid == null ? null : CellEdits.deleteGrid(run.doc, run.id),
+    nodeId: nodeId,
+    label: _l.undoDelete,
+  );
 
   // ---------------------------------------------------------------------------
   // Link styles and chips.

@@ -17,7 +17,6 @@ class BlockPrefixConversionReaction extends EditReaction {
   BlockPrefixConversionReaction({
     required this.newEmbedId,
     this.isWonky,
-    this.onGridInserted,
   });
 
   /// Creates ids for new embeds (UUIDv7).
@@ -28,7 +27,6 @@ class BlockPrefixConversionReaction extends EditReaction {
   final bool Function()? isWonky;
 
   /// Called with the id of a grid the `:::grid ` shortcut inserted.
-  final void Function(String gridId)? onGridInserted;
 
   static final _step = RegExp(r'^\((\d{1,4})\) $');
 
@@ -239,7 +237,8 @@ class BlockPrefixConversionReaction extends EditReaction {
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
           position: DocumentPosition(
-            nodeId: node.id,
+            // A new grid gets the caret in its first item (Write 11 §7.5).
+            nodeId: insertedGrid ?? node.id,
             nodePosition: const TextNodePosition(offset: 0),
           ),
         ),
@@ -247,7 +246,6 @@ class BlockPrefixConversionReaction extends EditReaction {
         SelectionReason.contentChange,
       ),
     ]);
-    if (insertedGrid != null) onGridInserted?.call(insertedGrid);
   }
 
   /// Metadata that survives a node type conversion (line-end overlays).

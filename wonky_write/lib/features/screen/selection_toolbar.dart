@@ -84,10 +84,6 @@ class _SelectionToolbarLayerState extends State<SelectionToolbarLayer> {
     if (!mounted || s == null || s.isCollapsed || _pointerDown) return;
     if (_dismissedFor == s) return;
     if (!doc.viewPrefs.showSelectionToolbar) return;
-    // A table cell or grid item is edited in place (its own field has the
-    // focus).
-    if (doc.editor.tableEditing?.isEditing ?? false) return;
-    if (doc.editor.gridEditing?.isEditing ?? false) return;
     // A selected grid has its own chrome; text formatting doesn't apply.
     final ds = doc.editor.composer.selection;
     if (ds != null && ds.base.nodeId == ds.extent.nodeId) {

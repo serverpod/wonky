@@ -108,7 +108,6 @@ List<EditReaction> wonkyReactions(
   required EditorMode Function() mode,
   required String Function() newEmbedId,
   bool Function()? isWonky,
-  void Function(String gridId)? onGridInserted,
   PillBoundary? pillBoundary,
 }) {
   final extractor = pipeline.extractor;
@@ -150,7 +149,6 @@ List<EditReaction> wonkyReactions(
       BlockPrefixConversionReaction(
         newEmbedId: newEmbedId,
         isWonky: isWonky,
-        onGridInserted: onGridInserted,
       ),
       'Autoformat',
       markdown,

@@ -12,7 +12,6 @@ import '../features/editor/commands/write_editor_commands.dart';
 import '../features/editor/controller/editor_types.dart';
 import '../features/editor/model/document_queries.dart';
 import '../features/editor/model/link_url_policy.dart';
-import '../features/editor/model/table_model.dart';
 import '../features/export/export_service.dart';
 import '../features/images/image_dialogs.dart';
 import '../features/images/image_services.dart';
@@ -140,26 +139,10 @@ Map<String, WriteRun Function(EditorCommandSpec spec)> _overrides(
     d.focusEditor();
     return runSpec(spec, d, JsonArgs({'url': r.url, 'alt': r.alt}));
   },
-  // Inserting from the UI opens the table editor on the new table (04 §18.3).
+  // Inserting from the UI puts the caret in the first cell (Write 12 §3.5).
   'write.insert.table': (spec) => (ctx, d, a) async {
     final r = await runSpec(spec, d, a);
-    final c = _ctx(ctx);
-    final data = r.data;
-    if (r.isOk && _ui(ctx) && c != null && data is Map) {
-      final id = data['id'] as String?;
-      // In-place cell editing (SE-4) starts on the first cell; without it
-      // the table editor opens.
-      final inline = d.editor.tableEditing;
-      if (id != null && inline != null) {
-        scheduleMicrotask(() => inline.activate(id, 0, 0, selectAll: true));
-      } else if (id != null) {
-        scheduleMicrotask(() {
-          if (c.mounted) {
-            unawaited(_editTable(c, d, nodeId: id));
-          }
-        });
-      }
-    }
+    if (r.isOk && _ui(ctx)) d.focusEditor();
     return r;
   },
   // Modes are clamped to the role (Write 04 §31).
@@ -190,9 +173,8 @@ Future<CommandResult> _editTable(
   int col = 0,
 }) async {
   final l = writeL10n(context);
-  final data = d.embedData('table', nodeId);
-  if (data == null) return CommandResult.failed(l.commandToastNoTableSelected);
-  final table = TableModel.fromEmbed(data);
+  final table = d.commands.tableOf(nodeId: nodeId);
+  if (table == null) return CommandResult.failed(l.commandToastNoTableSelected);
   final edited = await showTableEditor(context, table, row: row, column: col);
   d.focusEditor();
   if (edited == null) return const CommandResult.cancelled();
@@ -897,16 +879,14 @@ List<Command<CommandArgs>> insertCommands(ShellServices s) => [
       properties: {'nodeId': JsonSchema.string()},
     ),
     enabled: (d, a) =>
-        d.copyAllowed && d.embedData('table', a.string('nodeId')) != null,
+        d.copyAllowed && d.commands.tableOf(nodeId: a.string('nodeId')) != null,
     run: (ctx, d, a) async {
-      final data = d.embedData('table', a.string('nodeId'));
+      final table = d.commands.tableOf(nodeId: a.string('nodeId'));
       final l = writeL10nOf(s);
-      if (data == null) {
+      if (table == null) {
         return CommandResult.failed(l.commandToastNoTableSelected);
       }
-      await Clipboard.setData(
-        ClipboardData(text: TableModel.fromEmbed(data).toTsv()),
-      );
+      await Clipboard.setData(ClipboardData(text: table.toTsv()));
       s.toasts.show(l.commandToastTableCopiedAsTsv);
       return const CommandResult.ok();
     },

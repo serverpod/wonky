@@ -16,7 +16,6 @@ import '../mapping/wonky_schema.dart';
 import '../model/code_languages.dart';
 import '../model/embeds.dart';
 import '../styles/editor_theme.dart';
-import '../tables/inline_table_editing.dart';
 import 'editor_services.dart';
 import 'image_size_cache.dart';
 
@@ -644,23 +643,13 @@ class _FailedOverlay extends StatelessWidget {
 // -----------------------------------------------------------------------------
 // Tables (Write 04 §18.2).
 
-/// Wraps super_editor's Markdown table component with an "Edit table" button
-/// and the block-selection ring. With [inlineEditing] (patch SE-4) cells are
-/// edited in place; otherwise double-click opens the table editor.
+/// A legacy `table` embed (super_editor's Markdown table component with the
+/// block-selection ring), read-only until the server upgrades it to cell
+/// lines (Write 12 §1.5).
 class WonkyTableComponentBuilder implements ComponentBuilder {
-  const WonkyTableComponentBuilder({
-    required this.theme,
-    this.callbacks = const EditorBlockCallbacks(),
-    this.editable = true,
-    this.inlineEditing,
-  });
+  const WonkyTableComponentBuilder({required this.theme});
 
   final EditorTheme theme;
-  final EditorBlockCallbacks callbacks;
-  final bool editable;
-
-  /// In-place cell editing (Write 04 §18.4).
-  final InlineTableEditing? inlineEditing;
   static const _inner = MarkdownTableComponentBuilder();
 
   @override
@@ -675,61 +664,25 @@ class WonkyTableComponentBuilder implements ComponentBuilder {
     SingleColumnLayoutComponentViewModel viewModel,
   ) {
     if (viewModel is! MarkdownTableViewModel) return null;
-    var tableModel = viewModel;
-    final inline = editable ? inlineEditing : null;
-    // Selected tables show the ring, not a translucent fill over the cells
-    // (which would also cover the cell being edited). On a copy: the
-    // presenter keeps `viewModel` to compare with the next pass, and a
-    // mutated one never equals it, so every table would be rebuilt on every
-    // keystroke (W-12).
-    if (inline != null) {
-      tableModel = tableModel.copy() as MarkdownTableViewModel
-        ..selectionColor = const Color(0x00000000);
-    }
-    final table = inline == null
-        ? _inner.createComponent(componentContext, tableModel)
-        : MarkdownTableComponent(
-            componentKey: componentContext.componentKey,
-            viewModel: tableModel,
-            cellBuilder: inlineTableCellBuilder(inline, theme),
-          );
+    final table = _inner.createComponent(componentContext, viewModel);
     if (table == null) return null;
-    final selection = tableModel.selection?.nodeSelection;
+    final selection = viewModel.selection?.nodeSelection;
     final isSelected =
         selection is UpstreamDownstreamNodeSelection && !selection.isCollapsed;
-    final rows = tableModel.cells.length;
-    final columns = rows == 0 ? 0 : tableModel.cells.first.length;
+    final rows = viewModel.cells.length;
+    final columns = rows == 0 ? 0 : viewModel.cells.first.length;
     return Semantics(
       label: writeL10n(
         componentContext.context,
       ).editorTableLabel(columns, rows),
-      child: GestureDetector(
-        onDoubleTap:
-            !editable || inline != null || callbacks.onEditTable == null
-            ? null
-            : () => callbacks.onEditTable!(viewModel.nodeId),
-        child: EditorHoverChrome(
-          showAlways: isSelected,
-          chrome: !editable || callbacks.onEditTable == null
-              ? null
-              : EditorChromeButton(
-                  key: ValueKey(
-                    '${WonkyEditorKeys.tableEdit}.${viewModel.nodeId}',
-                  ),
-                  icon: Icons.edit_outlined,
-                  tooltip: writeL10n(componentContext.context).editorEditTable,
-                  onTap: (_) => callbacks.onEditTable!(viewModel.nodeId),
-                ),
-          child: DecoratedBox(
-            position: DecorationPosition.foreground,
-            decoration: BoxDecoration(
-              border: isSelected
-                  ? Border.all(color: theme.ringColor, width: 2)
-                  : null,
-            ),
-            child: table,
-          ),
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          border: isSelected
+              ? Border.all(color: theme.ringColor, width: 2)
+              : null,
         ),
+        child: table,
       ),
     );
   }

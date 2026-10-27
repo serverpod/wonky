@@ -19,7 +19,8 @@ const _deepEquality = DeepCollectionEquality();
 /// | consecutive `code-block` lines of one language | one [ParagraphNode] (`codeAttribution`) whose text contains `\n`; language in [WonkyNodeMetadata.codeLanguage] |
 /// | `list: bullet/ordered` (+ `indent`, `blockquote`) | [ListItemNode] ([WonkyNodeMetadata.quoted] inside a quote) |
 /// | `list: checked/unchecked` (+ `indent`, `blockquote`) | [TaskNode] (same) |
-/// | `image` / `divider` / `table` embed + `\n` | [ImageNode] / [HorizontalRuleNode] / [TableBlockNode] (raw embed in [WonkyNodeMetadata.embed]) |
+/// | `image` / `divider` / (legacy) `table` embed + `\n` | [ImageNode] / [HorizontalRuleNode] / [TableBlockNode] (raw embed in [WonkyNodeMetadata.embed]) |
+/// | `cell` / `grid` line (Write 12 §1) | [ParagraphNode] with [WonkyNodeMetadata.cell] / [WonkyNodeMetadata.gridItem] |
 ///
 /// Soft line breaks (U+2028) are `\n` inside non-code node text. Overlay
 /// attributes of a line end are kept in [WonkyNodeMetadata.lineAttributes];
@@ -133,6 +134,11 @@ class WonkyDeltaSerializer implements DeltaSerializer {
       };
     }
     if (node is ParagraphNode) {
+      // A table cell or grid item is a plain line (Write 12 §1.4).
+      final cell = node.getMetadataValue(WonkyNodeMetadata.cell);
+      if (cell is Map) return {DeltaKeys.cell: cell};
+      final item = node.getMetadataValue(WonkyNodeMetadata.gridItem);
+      if (item is Map) return {DeltaKeys.gridItem: item};
       final blockType = node.getMetadataValue(NodeMetadata.blockType);
       if (blockType == codeAttribution) {
         return {DeltaKeys.codeBlock: codeLanguageOf(node)};
@@ -371,6 +377,23 @@ class WonkyDeltaParser {
       WonkyNodeMetadata.lineAttributes: ?overlays,
       if (box is List && box.isNotEmpty) WonkyNodeMetadata.box: box,
     };
+    // A table cell or grid item (Write 12 §3.1).
+    final cell = end?[DeltaKeys.cell];
+    final item = end?[DeltaKeys.gridItem];
+    if (cell is Map || item is Map) {
+      return ParagraphNode(
+        id: id,
+        text: text,
+        metadata: {
+          ...metadata,
+          NodeMetadata.blockType: paragraphAttribution,
+          if (cell is Map)
+            WonkyNodeMetadata.cell: cell.cast<String, dynamic>()
+          else if (item is Map)
+            WonkyNodeMetadata.gridItem: item.cast<String, dynamic>(),
+        },
+      );
+    }
 
     final list = end?[DeltaKeys.list];
     final rawIndent = end?[DeltaKeys.indent];
