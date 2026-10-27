@@ -13,6 +13,7 @@ import '../../../l10n/write_l10n.dart';
 import '../applier/delta_applier.dart';
 import '../commands/write_editor_commands.dart';
 import '../components/box_frames.dart';
+import '../components/cell_layout.dart';
 import '../components/editor_services.dart';
 import '../components/grid_component.dart';
 import '../components/youtube_component.dart';
@@ -173,6 +174,12 @@ class WonkyEditorState extends State<WonkyEditor> {
     zoom: 1,
   );
   final _direction = TextDirectionStylePhase();
+  // Table cells and grid items laid out side by side (Write 12 §3.2), one
+  // layout per document shown (the document, a suggestion preview).
+  WriteCellLayout? _mainCells;
+  WriteCellLayout? _previewCells;
+  late final _cellPhase = CellStylePhase(_cellsFor(controller.document));
+  WriteCellLayout? _cellsInBuild;
   final _pillSpacing = PillSpacingStylePhase();
   final _slashPicker = PickerController<SlashItem>();
   final _mentionPicker = PickerController<MentionCandidate>();
@@ -297,8 +304,29 @@ class WonkyEditorState extends State<WonkyEditor> {
     }
   }
 
+  /// The cell layout of [document] (made when the document changes).
+  WriteCellLayout _cellsFor(Document document) {
+    final main = identical(document, controller.document);
+    var cells = main ? _mainCells : _previewCells;
+    if (cells == null || !identical(cells.slots.document, document)) {
+      cells?.slots.dispose();
+      cells?.dispose();
+      cells = WriteCellLayout(CellSlots(document));
+      if (main) {
+        _mainCells = cells;
+      } else {
+        _previewCells = cells;
+      }
+    }
+    return cells;
+  }
+
   @override
   void dispose() {
+    for (final cells in [_mainCells, _previewCells]) {
+      cells?.slots.dispose();
+      cells?.dispose();
+    }
     _detach(controller);
     _hoverTimer?.cancel();
     _previewTimer?.cancel();
@@ -926,6 +954,18 @@ class WonkyEditorState extends State<WonkyEditor> {
       callbacks: widget.blockCallbacks,
       editable: editable,
     );
+    // Tables and grids are framed as a whole (Write 12 §3.2).
+    final cells = _cellsFor(doc)
+      ..update(
+        theme: theme,
+        zoom: zoom,
+        editable: editable,
+        callbacks: widget.blockCallbacks,
+        frames: framed(const ParagraphComponentBuilder())
+            as BoxFrameComponentBuilder,
+      );
+    _cellPhase.layout = cells;
+    _cellsInBuild = cells;
     return [
       for (final builder in _unframedBuilders(
         theme,
@@ -1036,6 +1076,7 @@ class WonkyEditorState extends State<WonkyEditor> {
       selectionStyle: style.selectionStyles,
       customStylePhases: [
         _boxPhase,
+        _cellPhase,
         _pillSpacing,
         if (pages) _paginationPhase,
         _codeHighlight,
@@ -1043,6 +1084,7 @@ class WonkyEditorState extends State<WonkyEditor> {
         ...widget.extraStylePhases,
       ],
       componentBuilders: _componentBuilders(theme, style.zoom, editable: true),
+      cellLayout: _cellsInBuild,
       contentDragDelegate: _textDrag,
       documentUnderlayBuilders: [
         if (pages)
@@ -1113,6 +1155,7 @@ class WonkyEditorState extends State<WonkyEditor> {
       stylesheet: stylesheet,
       customStylePhases: [
         _boxPhase,
+        _cellPhase,
         _pillSpacing,
         // Pages also for previews (Viewing mode shows one).
         if (pages) _paginationPhase,
@@ -1126,6 +1169,7 @@ class WonkyEditorState extends State<WonkyEditor> {
         editable: false,
         document: editor.document,
       ),
+      cellLayout: _cellsInBuild,
       documentUnderlayBuilders: [
         if (pages)
           _ReaderPageChromeLayerBuilder(

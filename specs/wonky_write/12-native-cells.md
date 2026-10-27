@@ -99,10 +99,17 @@ stay valid input everywhere, and `CellUpgrade` (`wonky_write_core`) converts the
   `table`/`grid` embed line with cell or item lines (inline Markdown parsed into inline attributes,
   the embed id kept as the table/grid id, new row ids, the embed line's `box` copied to each line,
   `cmt_*`/`sug_*` of the embed dropped), or `null` when there are none.
-- **Server**: when a document's state is loaded, and after every committed op whose result still
-  contains a legacy embed (an old client, a restored version), the server commits the upgrade as a
-  system op ("Upgrade tables"), so stored documents converge to the new format. Clients receive it
-  as an ordinary remote op.
+- **Server** (`CellUpgrader`, `wonky_server/lib/src/write/ot/cell_upgrader.dart`): when a
+  document's state is loaded (`DocumentCache.of`), and after every committed op whose result still
+  contains a legacy embed (an old client, a restored version; `OtService.submit`), the server
+  commits the upgrade as a system op (`kind: system`, a system actor, no author; "Upgrade tables"
+  in the logs), so stored documents converge to the new format. Clients receive it as an ordinary
+  remote op. The change is computed from the head and committed only at that head (`atHead`;
+  otherwise it retries from the new head), so two upgrades never both apply; once the head holds no
+  legacy embed nothing is committed. It bumps the document's revision and `updatedAt`, but adds no
+  activity, version or drive "modified" entry. Readers that bypass the document cache (snapshots,
+  exports, copies) see legacy embeds until the first load; they handle both forms. Comment threads
+  anchored on an embed become orphaned (text deleted).
 - **Client**: a legacy embed that is still in a local document (an offline cache from before the
   upgrade) renders read-only as before (`TableBlockNode`, the grid component without editing)
   until the server's upgrade op arrives. The editor never creates legacy embeds.
@@ -112,7 +119,7 @@ stay valid input everywhere, and `CellUpgrade` (`wonky_write_core`) converts the
 
 ### 1.6 Markdown and other formats
 
-Nothing changes in the formats: a table is a GFM table, a grid the `::::grid` directive (11 §4).
+Nothing changes in the formats: a table is a GFM table, a grid the `:::grid` directive (11 §4).
 Import produces cell/item lines; export reads them through `DocTree`. A cell's inline content is
 written as inline Markdown (pipes escaped), so a cell with a comment or a mention round-trips as
 its text.
@@ -272,10 +279,12 @@ delete is empty after the transform).
   document and a table/grid id (insert/delete/move row and column, alignment, set cell, insert
   table/grid, grid columns/bullets/items, replace a table from rows). `DocumentEdits` (MCP on the
   server) uses it; so do the editor commands.
-- MCP tools keep their names and arguments (`write.table.*`, `write.grid.*`, 09 §3); cell
-  arguments are inline Markdown, as before.
+- The server MCP tools keep their names and arguments (`write.insert_table`,
+  `write.update_table`, 09 §3); cell arguments are inline Markdown, as before. The editor's
+  `write.table.*` and `write.grid.*` commands (§3.5) are reachable through `ui.write`. Document
+  offsets now count a table's cell text and line ends (an image still counts 1).
 - The AI assistant reads documents as Markdown and writes Markdown: unchanged.
-- `DocumentStore` upgrades legacy embeds on load and after commits (§1.5).
+- `CellUpgrader` upgrades legacy embeds on load and after commits (§1.5).
 
 ## 5. Tests and acceptance
 

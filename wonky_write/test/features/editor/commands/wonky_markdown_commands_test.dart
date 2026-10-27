@@ -4,9 +4,14 @@ import 'package:wonky_write/features/editor/applier/delta_applier.dart';
 import 'package:wonky_write/features/editor/commands/write_editor_commands.dart';
 import 'package:wonky_write/features/editor/controller/editor_types.dart';
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show BoxType, CalloutVariant, GridBullets, MarkdownFlavor;
-
-import 'package:wonky_write/features/editor/grid/inline_grid_editing.dart';
+    show
+        BoxType,
+        CalloutVariant,
+        CellGrid,
+        CellRuns,
+        GridBullets,
+        MarkdownFlavor,
+        WonkyDocument;
 
 import '../support/editor_harness.dart';
 
@@ -188,26 +193,23 @@ void main() {
       expect(h.controller.boxFrames.isCollapsed('any'), isFalse);
     });
 
-    test('when inserting a grid then it has three items and can change', () {
-      final grids = h.controller.gridEditing = InlineGridEditing(
-        controller: h.controller,
-        commands: commands,
-      );
-      addTearDown(grids.dispose);
+    test('when inserting a grid then it has three item lines, the caret is '
+        'in the first, and it can change', () {
       final id = commands.insertGrid()!;
-      expect(grids.active, GridItemRef(id, 0), reason: 'caret in item 1');
-      grids.deactivate();
-      Map<dynamic, dynamic> grid() =>
-          (h.delta.operations.first.data! as Map)['grid'] as Map;
-      expect(grid()['items'], ['', '', '']);
+      CellGrid grid() => CellRuns.grid(WonkyDocument(h.delta), id)!;
+      expect(grid().items.map((l) => l.text), ['', '', '']);
+      expect(commands.caretInCell, isTrue);
+      expect(commands.gridOf()?.id, id);
       commands.setGridColumns(2, nodeId: id);
       commands.setGridBullets(GridBullets.circle, nodeId: id);
       commands.addGridItem(nodeId: id);
-      expect(grid()['columns'], 2);
-      expect(grid()['bullets'], 'circle');
-      expect((grid()['items'] as List).length, 4);
+      expect(grid().columns, 2);
+      expect(grid().bullets, GridBullets.circle);
+      expect(grid().items, hasLength(4));
       commands.removeGridItem(0, nodeId: id);
-      expect((grid()['items'] as List).length, 3);
+      expect(grid().items, hasLength(3));
+      commands.deleteGrid(nodeId: id);
+      expect(CellRuns.grid(WonkyDocument(h.delta), id), isNull);
     });
   });
 

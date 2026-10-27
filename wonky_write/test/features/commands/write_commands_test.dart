@@ -149,21 +149,29 @@ void main() {
       },
     );
 
-    test('when inserting a 2×2 table then undo removes it', () async {
+    test('when inserting a 2×2 table then its cells are lines, the caret is '
+        'in the first cell and undo removes it', () async {
       doc.editor.select(DeltaSelection.collapsed(text().length - 1));
 
       final r = await run('write.insert.table', {'rows': 2, 'cols': 2});
       expect(r.isOk, isTrue);
+      final tables = CellRuns.of(
+        WonkyDocument(h.session.editor.delta),
+      ).whereType<CellTable>();
+      expect(tables.single.rows.map((r) => r.cells.length), [2, 2]);
+      expect(doc.commands.caretCell(), (0, 0));
+
+      await run('write.table.insertRow', {'position': 'below'});
       expect(
-        h.session.editor.delta.toList().any((op) => op.data is Map),
-        isTrue,
+        CellRuns.of(
+          WonkyDocument(h.session.editor.delta),
+        ).whereType<CellTable>().single.rows,
+        hasLength(3),
       );
 
       await h.undo.undo();
-      expect(
-        h.session.editor.delta.toList().any((op) => op.data is Map),
-        isFalse,
-      );
+      await h.undo.undo();
+      expect(CellRuns.of(WonkyDocument(h.session.editor.delta)), isEmpty);
     });
 
     test(
