@@ -65,6 +65,14 @@ abstract final class WonkyAttr {
   /// Valid next to every other block attribute and on embed lines.
   static const box = 'box';
 
+  /// `Map` `{table, row, align?}` — a table cell line (Write 12 §1.1):
+  /// consecutive lines of one table, row by row; valid next to [box] only.
+  static const cell = 'cell';
+
+  /// `Map` `{id, columns, bullets}` — a Wonky Markdown grid item line
+  /// (Write 12 §1.2); valid next to [box] only.
+  static const grid = 'grid';
+
   // Overlays.
 
   /// Prefix of comment anchor keys: `cmt_<threadUuid>: true`.
@@ -111,11 +119,13 @@ abstract final class WonkyAttr {
     indent,
     step,
     box,
+    cell,
+    grid,
   };
 
   /// The block keys a [BlockFormat] describes (a block type change rewrites
-  /// them all); [box] is not one of them, so containers survive block type
-  /// changes.
+  /// them all); [box], [cell] and [grid] are not among them, so containers,
+  /// tables and grids survive block type changes.
   static const blockFormatKeys = {
     header,
     blockquote,

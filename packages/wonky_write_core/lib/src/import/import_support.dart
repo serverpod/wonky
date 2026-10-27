@@ -12,7 +12,6 @@ import '../delta/embeds.dart';
 import '../delta/validator.dart';
 import '../ir/doc_tree.dart';
 import '../ir/doc_tree_builder.dart';
-import '../markdown/inline_writer.dart';
 import 'import_api.dart';
 
 /// Soft line break inside a line (U+2028).
@@ -409,7 +408,7 @@ abstract final class RunTools {
 }
 
 /// Builds a [TableBlock] from cell runs: pads rows to the widest row, writes
-/// canonical inline Markdown cells.
+/// single-line cells.
 TableBlock buildTable(
   String id,
   List<List<List<InlineRun>>> rows,
@@ -433,18 +432,7 @@ TableBlock buildTable(
   final paddedAlign = [
     for (var c = 0; c < columns; c++) c < align.length ? align[c] : null,
   ];
-  return TableBlock(
-    id,
-    paddedAlign,
-    paddedRows,
-    cellMarkdown: [
-      for (final r in paddedRows)
-        [
-          for (final c in r)
-            InlineMarkdownWriter.write(c, context: InlineContext.tableCell),
-        ],
-    ],
-  );
+  return TableBlock(id, paddedAlign, paddedRows);
 }
 
 /// The placeholder paragraph for an image that could not be imported.

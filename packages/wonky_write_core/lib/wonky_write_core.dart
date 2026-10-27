@@ -10,6 +10,8 @@ export 'src/delta/attributes.dart';
 export 'src/delta/delta_utils.dart';
 export 'src/delta/document.dart';
 export 'src/delta/boxes.dart';
+export 'src/delta/cell_upgrade.dart';
+export 'src/delta/cells.dart';
 export 'src/delta/embeds.dart';
 export 'src/delta/hash.dart';
 export 'src/delta/links.dart';
@@ -35,6 +37,7 @@ export 'src/markdown/markdown_importer.dart'
 export 'src/delta/delta_diff.dart';
 export 'src/derived/plain_text.dart';
 export 'src/edit/address.dart';
+export 'src/edit/cell_edits.dart';
 export 'src/edit/document_edits.dart';
 export 'src/edit/document_reader.dart';
 export 'src/edit/search.dart';

@@ -16,7 +16,6 @@ import '../ir/doc_tree.dart';
 import '../ir/doc_tree_builder.dart';
 import 'front_matter.dart';
 import 'inline_reader.dart';
-import 'inline_writer.dart';
 import 'md_syntax.dart';
 import 'package:wonky_rich_text/wonky_rich_text.dart' show WonkyMdTags;
 
@@ -592,10 +591,6 @@ final class MarkdownImporter {
         GridEmbed.canonicalColumns(node.attributes[WonkyMdTags.columns]),
         GridBullets.parse(node.attributes[WonkyMdTags.bullets]),
         items,
-        itemMarkdown: [
-          for (final runs in items)
-            InlineMarkdownWriter.write(runs, context: InlineContext.tableCell),
-        ],
       ),
     );
   }
@@ -649,24 +644,24 @@ final class MarkdownImporter {
     }
     if (rows.isEmpty) return;
     final cols = rows.fold(align.length, (m, r) => r.length > m ? r.length : m);
-    final markdown = [
-      for (final r in rows)
-        [
-          for (var c = 0; c < cols; c++)
-            c < r.length
-                ? InlineMarkdownWriter.write([
-                    for (final run in r[c])
-                      run.copyWith(text: run.text.replaceAll(softBreak, ' ')),
-                  ], context: InlineContext.tableCell)
-                : '',
-        ],
-    ];
     _blocks.add(
       TableBlock(
         options.idGenerator(),
         [for (var c = 0; c < cols; c++) c < align.length ? align[c] : null],
-        rows,
-        cellMarkdown: markdown,
+        [
+          for (final r in rows)
+            [
+              for (var c = 0; c < cols; c++)
+                c < r.length
+                    ? InlineRun.merge([
+                        for (final run in r[c])
+                          run.copyWith(
+                            text: run.text.replaceAll(softBreak, ' '),
+                          ),
+                      ])
+                    : const <InlineRun>[],
+            ],
+        ],
       ),
     );
   }

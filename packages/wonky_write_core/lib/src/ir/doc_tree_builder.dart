@@ -6,6 +6,7 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 import '../collab/suggestion_view.dart';
 import '../delta/attributes.dart';
 import '../delta/boxes.dart';
+import '../delta/cells.dart';
 import '../delta/document.dart';
 import '../delta/embeds.dart';
 import '../delta/normalizer.dart';
@@ -60,6 +61,24 @@ final class DocTreeBuilder {
       quotedRun = f.isList && f.quoted;
       runPath = path;
       final blockCount = blocks.length;
+      if (CellAttr.of(line.attributes) != null ||
+          GridItemAttr.of(line.attributes) != null) {
+        // A table or grid: one block for its run of lines (Write 12 §2).
+        final run = CellRuns.at(doc, i)!;
+        final int count;
+        if (run is CellTable) {
+          blocks.add(_table(run));
+          count = run.rows.fold(0, (n, r) => n + r.cells.length);
+        } else {
+          run as CellGrid;
+          blocks.add(_grid(run));
+          count = run.items.length;
+        }
+        paths.add(path);
+        ordinals.clear();
+        i += count;
+        continue;
+      }
       if (line.isEmbedLine) {
         final embed = line.embed;
         switch (embed) {
@@ -92,7 +111,6 @@ final class DocTreeBuilder {
                   for (final r in t.rows)
                     [for (final c in r) InlineMarkdown.parseCell(c)],
                 ],
-                cellMarkdown: t.rows,
                 deltaStart: line.start,
                 deltaLength: line.length,
               ),
@@ -107,7 +125,6 @@ final class DocTreeBuilder {
                   for (final item in embed.items)
                     InlineMarkdown.parseCell(item),
                 ],
-                itemMarkdown: embed.items,
                 deltaStart: line.start,
                 deltaLength: line.length,
               ),
@@ -275,6 +292,36 @@ final class DocTreeBuilder {
     for (final s in line.segments)
       if (!s.isEmbed) InlineRun.fromAttributes(s.text, s.attributes),
   ]);
+
+  /// The block of a table's cell lines; ragged rows are padded with empty
+  /// cells (Write 12 §1.1).
+  static TableBlock _table(CellTable t) {
+    final columns = t.columnCount;
+    return TableBlock(
+      t.id,
+      t.align,
+      [
+        for (final r in t.rows)
+          [
+            for (var c = 0; c < columns; c++)
+              c < r.cells.length ? _runs(r.cells[c]) : const <InlineRun>[],
+          ],
+      ],
+      rowIds: [for (final r in t.rows) r.id],
+      deltaStart: t.start,
+      deltaLength: t.end - t.start,
+    );
+  }
+
+  /// The block of a grid's item lines.
+  static GridBlock _grid(CellGrid g) => GridBlock(
+    g.id,
+    g.columns,
+    g.bullets,
+    [for (final item in g.items) _runs(item)],
+    deltaStart: g.start,
+    deltaLength: g.end - g.start,
+  );
 }
 
 /// Converts an IR tree back into a normalized document delta.
@@ -359,12 +406,39 @@ final class DocTreeToDelta {
           case RuleBlock(:final id):
             d.insert(DividerEmbed(id: id).toInsert());
             line(path);
-          case TableBlock():
-            d.insert(b.toEmbed().toInsert());
-            line(path);
-          case GridBlock():
-            d.insert(b.toEmbed().toInsert());
-            line(path);
+          case TableBlock(:final id, :final align, :final rowIds):
+            final box = path.isEmpty ? null : Boxes.toValue(path);
+            var r = 0;
+            for (final op in CellLines.table(
+              id: id,
+              rows: [
+                for (final row in b.rows)
+                  [for (final c in row) CellLines.inline(c)],
+              ],
+              align: align,
+              box: box,
+              rowId: rowIds != null && rowIds.length == b.rows.length
+                  ? () => rowIds[r++]
+                  : null,
+            ).toList()) {
+              d.push(op);
+            }
+          case GridBlock(
+            :final id,
+            :final columns,
+            :final bullets,
+            :final items,
+          ):
+            final box = path.isEmpty ? null : Boxes.toValue(path);
+            for (final op in CellLines.grid(
+              id: id,
+              items: [for (final item in items) CellLines.inline(item)],
+              columns: columns,
+              bullets: bullets,
+              box: box,
+            ).toList()) {
+              d.push(op);
+            }
           case YouTubeBlock(:final embed):
             d.insert(embed.toInsert());
             line(path);

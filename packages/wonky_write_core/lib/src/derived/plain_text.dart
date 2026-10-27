@@ -4,6 +4,7 @@ library;
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import '../collab/suggestion_view.dart';
+import '../delta/cells.dart';
 import '../delta/delta_utils.dart';
 import '../delta/document.dart';
 import '../delta/embeds.dart';
@@ -13,7 +14,8 @@ import '../markdown/inline_markdown.dart';
 abstract final class PlainTextRenderer {
   /// Plain text of [document]: one line per line, soft breaks as `"\n"`,
   /// images as `[image: alt]`, dividers as `---`, tables as TSV (cells as
-  /// plain text), grid items one per line. Suggestions rendered per [view].
+  /// plain text, cell lines and legacy embeds alike), grid items one per
+  /// line. Suggestions rendered per [view].
   static String render(
     Delta document, {
     SuggestionViewMode view = SuggestionViewMode.accepted,
@@ -23,7 +25,23 @@ abstract final class PlainTextRenderer {
         : SuggestionView.render(document, view);
     final doc = WonkyDocument(viewed);
     final out = <String>[];
+    // The row of the previous cell line: cells of one row join with tabs.
+    CellAttr? prevCell;
     for (final line in doc.lines) {
+      final cell = CellAttr.of(line.attributes);
+      if (cell != null) {
+        final text = line.text.replaceAll(embedChar, '').replaceAll('\t', ' ');
+        if (prevCell != null &&
+            prevCell.table == cell.table &&
+            prevCell.row == cell.row) {
+          out.last = '${out.last}\t$text';
+        } else {
+          out.add(text);
+        }
+        prevCell = cell;
+        continue;
+      }
+      prevCell = null;
       if (line.isEmbedLine) {
         final e = line.embed;
         switch (e) {
