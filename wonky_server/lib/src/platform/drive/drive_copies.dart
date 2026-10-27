@@ -1,6 +1,7 @@
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
-import 'package:wonky_write_core/wonky_write_core.dart' show DeltaUtils;
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show DeltaUtils, MarkdownFlavor;
 
 import '../../sheets/spaces/space_copier.dart';
 import '../../slides/decks/deck_copies.dart';
@@ -136,6 +137,7 @@ abstract final class DriveCopies {
             pageSetupJson: sourceDoc.pageSetupJson,
             language: sourceDoc.language,
             frontMatter: sourceDoc.frontMatter,
+            markdownFlavor: MarkdownFlavor.parse(sourceDoc.markdownFlavor),
             transaction: tx,
           );
           await DriveItem.db.updateRow(

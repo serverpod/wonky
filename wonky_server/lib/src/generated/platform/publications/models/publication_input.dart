@@ -25,6 +25,7 @@ abstract class PublicationInput
     this.templateItemUuid,
     this.termsUrl,
     required this.fields,
+    this.markdownFlavor,
     required this.enabled,
   });
 
@@ -35,6 +36,7 @@ abstract class PublicationInput
     _is.UuidValue? templateItemUuid,
     String? termsUrl,
     required _i1a71r29.PublicationFields fields,
+    String? markdownFlavor,
     required bool enabled,
   }) = _PublicationInputImpl;
 
@@ -52,6 +54,7 @@ abstract class PublicationInput
       fields: _il4umwa0.Protocol().deserialize<_i1a71r29.PublicationFields>(
         jsonSerialization['fields'],
       ),
+      markdownFlavor: jsonSerialization['markdownFlavor'] as String?,
       enabled: _is.BoolJsonExtension.fromJson(jsonSerialization['enabled']),
     );
   }
@@ -68,6 +71,9 @@ abstract class PublicationInput
 
   _i1a71r29.PublicationFields fields;
 
+  /// `gfm` (default) or `wonky` (Write 11 §3.3).
+  String? markdownFlavor;
+
   bool enabled;
 
   /// Returns a shallow copy of this [PublicationInput]
@@ -80,6 +86,7 @@ abstract class PublicationInput
     _is.UuidValue? templateItemUuid = const _is.$UndefinedUuidValue(),
     String? termsUrl,
     _i1a71r29.PublicationFields? fields,
+    String? markdownFlavor,
     bool? enabled,
   });
   @override
@@ -93,6 +100,7 @@ abstract class PublicationInput
         'templateItemUuid': templateItemUuid?.toJson(),
       if (termsUrl != null) 'termsUrl': termsUrl,
       'fields': fields.toJson(),
+      if (markdownFlavor != null) 'markdownFlavor': markdownFlavor,
       'enabled': enabled,
     };
   }
@@ -108,6 +116,7 @@ abstract class PublicationInput
         'templateItemUuid': templateItemUuid?.toJson(),
       if (termsUrl != null) 'termsUrl': termsUrl,
       'fields': fields.toJsonForProtocol(),
+      if (markdownFlavor != null) 'markdownFlavor': markdownFlavor,
       'enabled': enabled,
     };
   }
@@ -128,6 +137,7 @@ class _PublicationInputImpl extends PublicationInput {
     _is.UuidValue? templateItemUuid,
     String? termsUrl,
     required _i1a71r29.PublicationFields fields,
+    String? markdownFlavor,
     required bool enabled,
   }) : super._(
          name: name,
@@ -136,6 +146,7 @@ class _PublicationInputImpl extends PublicationInput {
          templateItemUuid: templateItemUuid,
          termsUrl: termsUrl,
          fields: fields,
+         markdownFlavor: markdownFlavor,
          enabled: enabled,
        );
 
@@ -150,6 +161,7 @@ class _PublicationInputImpl extends PublicationInput {
     _is.UuidValue? templateItemUuid = const _is.$UndefinedUuidValue(),
     Object? termsUrl = _Undefined,
     _i1a71r29.PublicationFields? fields,
+    Object? markdownFlavor = _Undefined,
     bool? enabled,
   }) {
     return PublicationInput(
@@ -161,6 +173,9 @@ class _PublicationInputImpl extends PublicationInput {
           : templateItemUuid,
       termsUrl: termsUrl is String? ? termsUrl : this.termsUrl,
       fields: fields ?? this.fields.copyWith(),
+      markdownFlavor: markdownFlavor is String?
+          ? markdownFlavor
+          : this.markdownFlavor,
       enabled: enabled ?? this.enabled,
     );
   }

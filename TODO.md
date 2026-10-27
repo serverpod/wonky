@@ -147,6 +147,27 @@ Spec: `specs/18-publications-and-submissions.md` §13; guide: `docs/blog-integra
 - [ ] Moderators who sign up later get access only with the next submit or status change; grant
       at sign-up instead.
 
+## Wonky Markdown (Write 11) — open items
+
+Spec: `specs/wonky_write/11-wonky-markdown.md`.
+
+- [ ] Chip icons (`:chip[x]{icon=…}`): kept in the Delta and in Markdown, not drawn in the
+      editor or the exports (out of scope by decision).
+- [ ] App widget tests per §12: container frames and chrome, grid inline editing (Enter,
+      Backspace, arrows, Tab), link style popover, slash items, menu and toolbar visibility per
+      flavor; light/dark goldens of the elements in the editor, print preview, PDF and HTML.
+- [ ] Submit dialog: a *Switch flavor* action next to the flavor warning (today it points to
+      *File › Markdown flavor*).
+- [ ] AC-WM.1–7 and 9 were walked through in a release build (2026-10-26); still open: the
+      same with two collaborators (flavor switch seen by both), AC-WM.8 through the UI (a
+      Wonky publication and a submission), and pasting the blog examples as Markdown (the
+      agent browser pane can't write the clipboard; covered by the codec tests).
+- [ ] YouTube videos: the blog's renderer for `::youtube` (`docs/blog-integration.md`; the
+      serverpod_website repository); thumbnails instead of a link in PDF, DOCX and ODT
+      exports; other video sites if needed.
+- [ ] Chips inside tinted callouts have little contrast (the chip's gray `@codeBg` pill on a
+      light tint, editor and PDF); consider a subtle border or a tint-aware chip color.
+
 ## RevLog sync — open items
 
 Sheets and Slides sync through RevLog (`specs/17-revlog-sync.md`); the CRDT engine, the sync

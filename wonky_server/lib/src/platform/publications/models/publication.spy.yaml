@@ -22,6 +22,9 @@ fields:
   templateItemId: int?, relation(parent=drive_item, onDelete=SetNull)
   termsUrl: String?
   fields: PublicationFields
+  ### Markdown flavor of new stories and submissions: `gfm` or `wonky`
+  ### (Write 11 §3.3).
+  markdownFlavor: String, default='gfm'
   ### "whsec_" + base64 key; must be kept in plain to sign (specs/13 §2).
   signingSecret: String
   ### The previous secret signs too until [previousSecretUntil] (rotation).

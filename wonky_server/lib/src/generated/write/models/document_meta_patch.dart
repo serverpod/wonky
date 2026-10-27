@@ -13,7 +13,8 @@
 import 'package:serverpod/serverpod.dart' as _is;
 
 /// One LWW metadata change: [field] ∈ themeId, pageSetup, language,
-/// frontMatter; [valueJson] is the JSON-encoded new value (may be `null`).
+/// frontMatter, markdownFlavor; [valueJson] is the JSON-encoded new value
+/// (may be `null`).
 abstract class DocumentMetaPatch
     implements _is.SerializableModel, _is.ProtocolSerialization {
   DocumentMetaPatch._({

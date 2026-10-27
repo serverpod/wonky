@@ -1,6 +1,21 @@
 import 'package:collection/collection.dart';
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:super_editor/super_editor.dart';
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show
+        BoxFrame,
+        BoxType,
+        Boxes,
+        CalloutVariant,
+        DeltaUtils,
+        GridBullets,
+        GridEmbed,
+        MarkdownFlavor,
+        WonkyAttr,
+        WonkyDeltaNormalizer,
+        WonkyEmbed,
+        WonkyToGfm,
+        YouTubeEmbed;
 
 import '../../../l10n/write_l10n.dart';
 import '../applier/delta_applier.dart';
@@ -16,6 +31,8 @@ import '../model/embeds.dart';
 import '../model/link_url_policy.dart';
 import '../model/table_model.dart';
 import '../reactions/typing_attributes_reaction.dart';
+
+part 'wonky_markdown_commands.dart';
 
 /// Block types of `write.format.blockType` / `write.block.turnInto`.
 enum BlockKind {
@@ -855,6 +872,17 @@ class WriteEditorCommands {
     return (block.start + block.length, false);
   }
 
+  /// The line-end attributes that put a new line in the containers of the
+  /// caret's block (`{box: …}`), or `null` outside containers.
+  Map<String, dynamic>? _hostLineAttributes() {
+    final s = selection;
+    final block = s == null
+        ? controller.mirror.blockAt(controller.mirror.nodeCount - 1)
+        : controller.mirror.blockAtOffset(s.end);
+    final box = boxValueOf(block.node);
+    return box == null ? null : {DeltaKeys.box: box};
+  }
+
   bool get _caretInCode {
     final s = selection;
     return s != null && controller.mirror.blockAtOffset(s.start).isCode;
@@ -871,11 +899,13 @@ class WriteEditorCommands {
   ) {
     if (!canInsertBlock() || values.isEmpty) return null;
     final (at, replaces) = _embedInsertionPoint();
+    // Embeds inserted in a container go into it (Write 11 §7.4).
+    final host = _hostLineAttributes();
     final change = Delta()..retain(at);
     for (var i = 0; i < values.length; i += 1) {
       change.insert(values[i]);
       if (!(replaces && i == values.length - 1)) {
-        change.insert('\n');
+        change.insert('\n', host);
       }
     }
     final insertedLength = values.length * 2 - (replaces ? 1 : 0);
@@ -890,7 +920,7 @@ class WriteEditorCommands {
         controller.mirror.blockAt(nextIndex).isText;
     if (!hasTextAfter) {
       if (replaces) change.retain(1);
-      change.insert('\n');
+      change.insert('\n', host);
     }
     return _apply(
       change,
@@ -941,10 +971,11 @@ class WriteEditorCommands {
         final change = Delta()
           ..retain(s.start)
           ..insert('\n', block.blockAttributes);
+        final host = _hostLineAttributes();
         for (final value in values) {
           change
             ..insert(value)
-            ..insert('\n');
+            ..insert('\n', host);
         }
         _apply(
           change,
@@ -1546,7 +1577,7 @@ class WriteEditorCommands {
     final from = start ?? s?.start;
     final to = end ?? s?.end ?? from;
     if (!canEdit || from == null || to == null || fragment.isEmpty) return null;
-    final lines = splitDeltaIntoLines(fragment);
+    var lines = splitDeltaIntoLines(fragment);
     if (lines.isEmpty) return null;
 
     final change = Delta()..retain(from);
@@ -1579,6 +1610,14 @@ class WriteEditorCommands {
       );
     }
 
+    // Pasted containers get new ids and go into the caret's containers
+    // (Write 11 §7.4).
+    if (controller.markdownFlavor() == MarkdownFlavor.gfm) {
+      fragment = _gfmFragment(fragment);
+    } else {
+      fragment = _nestFragment(fragment, boxOf(block.node));
+    }
+    lines = splitDeltaIntoLines(fragment);
     final isEmptyParagraph =
         block.isText &&
         (block.node as TextNode).text.isEmpty &&
@@ -1612,7 +1651,14 @@ class WriteEditorCommands {
         if (i == 0 && local > 0) change.insert('\n', blockAttributes);
         change
           ..insert(line.segments.single.data, line.segments.single.attributes)
-          ..insert('\n', AttributionMappingOverlays.of(line.endAttributes));
+          ..insert(
+            '\n',
+            {
+              ...?AttributionMappingOverlays.of(line.endAttributes),
+              if (line.endAttributes?[DeltaKeys.box] != null)
+                DeltaKeys.box: line.endAttributes![DeltaKeys.box],
+            }.nullIfEmpty,
+          );
         continue;
       }
       for (final segment in line.segments) {
@@ -1738,3 +1784,7 @@ String embedIdOf(DocumentNode node) => EmbedNodes.embedIdOf(node);
 /// Serializes a node (for copy-as-Markdown of a block).
 Delta deltaOfNode(DocumentNode node) =>
     const WonkyDeltaSerializer().serializeNode(node);
+
+extension on Map<String, dynamic> {
+  Map<String, dynamic>? get nullIfEmpty => isEmpty ? null : this;
+}

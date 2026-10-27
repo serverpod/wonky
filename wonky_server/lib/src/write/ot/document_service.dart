@@ -17,7 +17,13 @@ import 'document_store.dart';
 
 /// Non-streaming document operations (Write 03 §1, §6).
 abstract final class DocumentService {
-  static const metaFields = {'themeId', 'pageSetup', 'language', 'frontMatter'};
+  static const metaFields = {
+    'themeId',
+    'pageSetup',
+    'language',
+    'frontMatter',
+    'markdownFlavor',
+  };
   static const maxOpsPerRequest = 1000;
   static const opRetention = Duration(days: 30);
 
@@ -79,6 +85,7 @@ abstract final class DocumentService {
         pageSetupJson: doc.pageSetupJson,
         language: doc.language,
         frontMatter: doc.frontMatter,
+        markdownFlavor: doc.markdownFlavor,
       ),
       charCount: doc.charCount,
       wordCount: doc.wordCount,
@@ -215,6 +222,13 @@ abstract final class DocumentService {
         }
         beforeJson = jsonEncode(doc.language);
         afterJson = jsonEncode(value);
+      case 'markdownFlavor':
+        if (value != MarkdownFlavor.gfm.value &&
+            value != MarkdownFlavor.wonky.value) {
+          throw Errors.invalid('markdownFlavor must be "gfm" or "wonky".');
+        }
+        beforeJson = jsonEncode(doc.markdownFlavor);
+        afterJson = jsonEncode(value);
       case 'frontMatter':
         if (value != null && value is! String) {
           throw Errors.invalid('frontMatter must be a string.');
@@ -237,6 +251,7 @@ abstract final class DocumentService {
               'themeId' => t.themeId(themeId),
               'pageSetup' => t.pageSetupJson(afterJson),
               'language' => t.language(value as String?),
+              'markdownFlavor' => t.markdownFlavor(value as String),
               _ => t.frontMatter(value as String?),
             },
             t.updatedAt(now),

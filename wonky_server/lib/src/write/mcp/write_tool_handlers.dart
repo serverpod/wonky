@@ -44,6 +44,7 @@ abstract final class WriteToolHandlers {
     _t(WriteTools.insertTable, insertTable),
     _t(WriteTools.updateTable, updateTable),
     _t(WriteTools.updatePageSetup, updatePageSetup),
+    _t(WriteTools.setMarkdownFlavor, setMarkdownFlavor),
     _t(WriteTools.listSuggestions, listSuggestions),
     _t(WriteTools.acceptSuggestion, acceptSuggestion),
     _t(WriteTools.rejectSuggestion, rejectSuggestion),
@@ -157,7 +158,8 @@ abstract final class WriteToolHandlers {
       'raw' => SuggestionViewMode.raw,
       _ => null,
     };
-    final read = const DocumentReader().read(
+    final flavor = MarkdownFlavor.parse(t.document.markdownFlavor);
+    final read = DocumentReader(flavor: flavor).read(
       content,
       format: format,
       range: _range(content, a.object('range')),
@@ -171,6 +173,7 @@ abstract final class WriteToolHandlers {
       ..._docHeader(t, revision),
       ...read.toJson(),
       'front_matter': t.document.frontMatter,
+      'markdown_flavor': flavor.value,
       'theme_uuid': t.document.themeId?.uuid,
       'layout': _layout(t.document),
       'role': t.role.name,
@@ -729,6 +732,90 @@ abstract final class WriteToolHandlers {
       'page_setup': next.toJson(),
       'change_id': id,
     }, text: 'Updated the page setup · change_id $id');
+  }
+
+  /// `write.set_markdown_flavor` (Write 11 §10): converts Wonky elements
+  /// when switching to GFM (one content change), then changes the flavor
+  /// (a meta change).
+  static Future<ToolResult> setMarkdownFlavor(
+    ToolContext ctx,
+    ToolArgs a,
+  ) async {
+    final uuid = _doc(a);
+    final t = await HeadlessDocumentEditor.resolve(
+      ctx.session,
+      ctx.actor,
+      uuid,
+      min: Role.editor,
+    );
+    final flavor = MarkdownFlavor.parse(a.requireString('flavor'));
+    final current = MarkdownFlavor.parse(t.document.markdownFlavor);
+    final out = <String, Object?>{
+      'document_uuid': t.item.uuid.uuid,
+      'markdown_flavor': flavor.value,
+    };
+    if (flavor == current) {
+      return ToolResult(out, text: 'The document is already ${flavor.value}');
+    }
+    if (flavor == MarkdownFlavor.gfm) {
+      final head = await HeadlessDocumentEditor.head(ctx.session, t.document);
+      final inventory = WonkyToGfm.inventory(head.content);
+      if (!inventory.isEmpty) {
+        if (a.boolean('convert') == false) {
+          throw McpToolException(
+            McpErrorCode.validationFailed,
+            'The document has Wonky Markdown elements to convert '
+            '(hasWonkyContent); pass convert: true to convert them.',
+            details: {'elements': inventory.toJson()},
+          );
+        }
+        final r = await HeadlessDocumentEditor.mutate(
+          ctx,
+          documentUuid: uuid,
+          toolName: 'write.set_markdown_flavor',
+          options: MutationOptions.of(a),
+          allowSuggest: false,
+          defaultLabel: 'Convert to GitHub Markdown',
+          build: (head, edits) {
+            final change = WonkyToGfm.change(head);
+            return EditResult(
+              change: change,
+              document: head.compose(change),
+              summary: 'Converted Wonky Markdown elements',
+            );
+          },
+        );
+        out['conversion_change_id'] = r['change_id'];
+        out['converted'] = inventory.toJson();
+      }
+    }
+    final before = HeadlessDocumentEditor.metaValueJson(
+      t.document,
+      'markdownFlavor',
+    );
+    final after = jsonEncode(flavor.value);
+    await DocumentService.updateMeta(
+      ctx.session,
+      ctx.actor,
+      t.document.uuid,
+      DocumentMetaPatch(field: 'markdownFlavor', valueJson: after),
+      const Uuid().v7obj(),
+    );
+    out['change_id'] = await HeadlessDocumentEditor.recordMetaChange(
+      ctx,
+      t,
+      toolName: 'write.set_markdown_flavor',
+      field: 'markdownFlavor',
+      beforeValueJson: before,
+      afterValueJson: after,
+      label: 'Markdown flavor',
+    );
+    return ToolResult(
+      out,
+      text:
+          'Set the Markdown flavor to ${flavor.value} · change_id '
+          '${out['change_id']}',
+    );
   }
 
   // ----------------------------------------------------------- suggestions

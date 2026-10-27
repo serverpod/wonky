@@ -130,6 +130,63 @@ void main() {
       expect(p.state.tableEditing.active?.column, 0);
     });
 
+    testWidgets(
+      'when another cell is pressed while editing then editing moves there '
+      'without stopping in between',
+      (tester) async {
+        final p = await _pump(tester, _tableDoc());
+        await tester.tapAt(_center(tester, 'Apples'));
+        await tester.pumpAndSettle();
+        final editing = p.state.tableEditing;
+        final stops = <Object?>[];
+        void record() {
+          if (editing.active == null) stops.add(null);
+        }
+
+        editing.addListener(record);
+        addTearDown(() => editing.removeListener(record));
+
+        final gesture = await tester.startGesture(
+          _center(tester, '3'),
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pump();
+        expect(editing.active?.column, 0);
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(editing.active?.row, 1);
+        expect(editing.active?.column, 1);
+        expect(stops, isEmpty);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
+
+    testWidgets(
+      'when a word of a cell is double-clicked then editing starts with the '
+      'word selected',
+      (tester) async {
+        final p = await _pump(tester, _tableDoc());
+        final at = _center(tester, 'Apples');
+        final gesture = await tester.startGesture(
+          at,
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.up();
+        await tester.pump(const Duration(milliseconds: 40));
+        await gesture.down(at);
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(p.state.tableEditing.active?.row, 1);
+        expect(
+          p.state.tableEditing.text.selection,
+          const TextSelection(baseOffset: 0, extentOffset: 6),
+        );
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
+
     testWidgets('when typing and pressing Tab then the cell is replaced in '
         'one "Edit cell" step and the next cell is edited', (tester) async {
       final p = await _pump(tester, _tableDoc());

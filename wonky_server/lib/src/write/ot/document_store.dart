@@ -57,6 +57,7 @@ abstract final class DocumentStore {
     String? language,
     UuidValue? themeId,
     String pageSetupJson = '{}',
+    MarkdownFlavor markdownFlavor = MarkdownFlavor.gfm,
     required Transaction transaction,
   }) async {
     final now = nowUtc();
@@ -77,6 +78,7 @@ abstract final class DocumentStore {
         pageSetupJson: pageSetupJson,
         language: language,
         frontMatter: frontMatter,
+        markdownFlavor: markdownFlavor.value,
         charCount: text.length,
         wordCount: wordCount(text),
         createdAt: now,

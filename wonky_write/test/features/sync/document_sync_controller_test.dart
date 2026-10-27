@@ -5,6 +5,7 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_ui/wonky_ui.dart' show SyncState;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_write/features/sync/document_sync_controller.dart';
+import 'package:wonky_write/features/sync/sync_persistence.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 import 'support/fake_document_server.dart';
@@ -325,6 +326,32 @@ void main() {
           a.events.whereType<SyncResynced>().single.reason,
           ResyncReason.integrity,
         );
+      },
+    );
+
+    test(
+      'when a restored copy differs from the server then connecting re-synchronizes it',
+      () async {
+        a.insert(5, ' world');
+        await pumpEventQueue();
+        // The cached copy has text the server never committed (e.g. an
+        // embed an older server dropped while normalizing).
+        final b = _Client(server, userId: 2);
+        b.sync.restore(
+          SyncLocalState(revision: 1, serverDocument: _doc('Hello world!')),
+        );
+        expect(b.text, 'Hello world!\n');
+
+        b.sync.start();
+        await pumpEventQueue();
+
+        expect(_sent<DocHashCheck>(server), hasLength(1));
+        expect(
+          b.events.whereType<SyncResynced>().single.reason,
+          ResyncReason.integrity,
+        );
+        expect(b.text, 'Hello world\n');
+        await b.dispose();
       },
     );
 

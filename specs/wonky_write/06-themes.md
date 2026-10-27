@@ -10,7 +10,8 @@ HTML, DOCX, ODT, RTF, EPUB), so a document looks the same everywhere.
 Related specs: suite design system [../02-design-system.md](../02-design-system.md)
 (app tokens, `WonkyColorPicker`, `FontPicker`, `WonkyNumberStepper`), commands & undo
 [../08-commands-and-undo.md](../08-commands-and-undo.md) (domain `write.theme`),
-MCP [../09-mcp.md](../09-mcp.md), editor [04-editor.md](04-editor.md), screens
+MCP [../09-mcp.md](../09-mcp.md), editor [04-editor.md](04-editor.md), Wonky Markdown elements
+[11-wonky-markdown.md](11-wonky-markdown.md) §8, screens
 & menus [05-screens-menus-toolbar.md](05-screens-menus-toolbar.md), exports
 [07-import-export-print.md](07-import-export-print.md).
 

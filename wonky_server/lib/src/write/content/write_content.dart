@@ -18,8 +18,14 @@ abstract final class WriteContent {
     String? frontMatter,
     String? title,
   })
-  fromMarkdown(String markdown) {
-    final result = const core.MarkdownCodec().importMarkdown(markdown);
+  fromMarkdown(
+    String markdown, {
+    core.MarkdownFlavor flavor = core.MarkdownFlavor.gfm,
+  }) {
+    final result = const core.MarkdownCodec().importMarkdown(
+      markdown,
+      options: core.ImportOptions(flavor: flavor),
+    );
     return (
       delta: result.delta,
       warnings: warningsOf(result),
@@ -49,10 +55,15 @@ abstract final class WriteContent {
     return (delta: normalized.document, warnings: const []);
   }
 
-  /// Markdown export of a document (overlays dropped, suggestions accepted).
-  static String toMarkdown(core.Delta document, {String? frontMatter}) =>
-      const core.MarkdownCodec().exportMarkdown(
-        document,
-        frontMatter: frontMatter,
-      );
+  /// Markdown export of a document (overlays dropped, suggestions accepted)
+  /// in [flavor].
+  static String toMarkdown(
+    core.Delta document, {
+    String? frontMatter,
+    core.MarkdownFlavor flavor = core.MarkdownFlavor.gfm,
+  }) => const core.MarkdownCodec().exportMarkdown(
+    document,
+    frontMatter: frontMatter,
+    options: core.MarkdownExportOptions(flavor: flavor),
+  );
 }

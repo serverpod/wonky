@@ -34,7 +34,8 @@ abstract class DocMetaChanged extends _iototaiw.DocServerMessage
     );
   }
 
-  /// themeId, pageSetup, language, frontMatter, title or themeVersion.
+  /// themeId, pageSetup, language, frontMatter, markdownFlavor, title or
+  /// themeVersion.
   String field;
 
   String valueJson;

@@ -11,6 +11,7 @@ import '../features/editor/commands/editor_command_catalog.dart';
 import '../features/editor/commands/write_editor_commands.dart';
 import '../features/editor/controller/editor_types.dart';
 import '../features/editor/model/document_queries.dart';
+import '../features/editor/model/link_url_policy.dart';
 import '../features/editor/model/table_model.dart';
 import '../features/export/export_service.dart';
 import '../features/images/image_dialogs.dart';
@@ -20,6 +21,7 @@ import '../features/links/link_editor.dart';
 import '../features/screen/anchored_popover.dart';
 import '../features/screen/dialogs/document_dialogs.dart';
 import '../features/screen/dialogs/page_setup_dialog.dart';
+import '../features/screen/wonky_menus.dart';
 import '../features/screen/write_document_controller.dart';
 import '../features/tables/table_editor.dart';
 import '../features/themes/document_theme.dart';
@@ -53,6 +55,26 @@ List<Command<CommandArgs>> writeCommands(
 
 BuildContext? _ctx(CommandContext ctx) => ctx.dialogContext;
 
+/// "2 callouts, 1 grid and 3 chips" for the conversion dialog.
+String flavorInventoryText(WriteLocalizations l, WonkyInventory i) {
+  final parts = [
+    if (i.callouts > 0) l.flavorCountCallouts(i.callouts),
+    if (i.details > 0) l.flavorCountDetails(i.details),
+    if (i.cards > 0) l.flavorCountCards(i.cards),
+    if (i.grids > 0) l.flavorCountGrids(i.grids),
+    if (i.buttons > 0) l.flavorCountButtons(i.buttons),
+    if (i.arrowLinks > 0) l.flavorCountArrowLinks(i.arrowLinks),
+    if (i.chips > 0) l.flavorCountChips(i.chips),
+    if (i.steps > 0) l.flavorCountSteps(i.steps),
+    if (i.videos > 0) l.flavorCountVideos(i.videos),
+  ];
+  if (parts.length <= 1) return parts.join();
+  return l.flavorListJoin(
+    parts.sublist(0, parts.length - 1).join(', '),
+    parts.last,
+  );
+}
+
 bool _ui(CommandContext ctx) => !ctx.source.isAgent;
 
 // ---------------------------------------------------------------------------
@@ -61,6 +83,53 @@ bool _ui(CommandContext ctx) => !ctx.source.isAgent;
 Map<String, WriteRun Function(EditorCommandSpec spec)> _overrides(
   ShellServices s,
 ) => {
+  // Without a title (menus) the title popover asks for it (Write 11 §7.4).
+  'write.box.editTitle': (spec) => (ctx, d, a) async {
+    if (a.values.containsKey('title') || !_ui(ctx)) return runSpec(spec, d, a);
+    final c = _ctx(ctx);
+    if (c == null) return const CommandResult.failed('title is required');
+    await editBoxTitle(
+      c,
+      d,
+      (id, args) => unawaited(
+        s.dispatcher.invoke(id, args: args, source: ctx.source, context: c),
+      ),
+      nodeId: a.string('nodeId'),
+      depth: a.integer('depth'),
+    );
+    return const CommandResult.ok();
+  },
+  // Without a link (menus, toolbar, slash) the dialog asks for it (Write 11
+  // §7.5).
+  'write.insert.youtube': (spec) => (ctx, d, a) async {
+    if (a.string('url') != null || !_ui(ctx)) return runSpec(spec, d, a);
+    final c = _ctx(ctx);
+    if (c == null) return const CommandResult.failed('url is required');
+    final r = await showYouTubeDialog(c);
+    d.focusEditor();
+    if (r == null) return const CommandResult.cancelled();
+    return runSpec(spec, d, JsonArgs({'url': r.url, 'title': r.title}));
+  },
+  'write.youtube.edit': (spec) => (ctx, d, a) async {
+    if (a.values.containsKey('url') ||
+        a.values.containsKey('title') ||
+        !_ui(ctx)) {
+      return runSpec(spec, d, a);
+    }
+    final c = _ctx(ctx);
+    final current = d.commands.youtubeOf(nodeId: a.string('nodeId'));
+    if (c == null || current == null) {
+      return const CommandResult.failed('url or title is required');
+    }
+    final r = await showYouTubeDialog(c, current: current);
+    d.focusEditor();
+    if (r == null) return const CommandResult.cancelled();
+    return runSpec(
+      spec,
+      d,
+      JsonArgs({'nodeId': current.id, 'url': r.url, 'title': r.title}),
+    );
+  },
   // Without a URL (menus, toolbar) the dialog asks for it (Write 05 §12.1).
   'write.insert.imageFromUrl': (spec) => (ctx, d, a) async {
     if (a.string('url') != null) return runSpec(spec, d, a);
@@ -194,6 +263,7 @@ List<Command<CommandArgs>> fileCommands(ShellServices s) => [
           Uint8List.fromList(f.bytes),
           uploadImage: importImageUploader(s, itemUuid: d.itemUuid),
           l: l,
+          flavor: d.markdownFlavor,
         );
         final change = d.commands.insertFragment(
           converted.result.delta,
@@ -602,6 +672,48 @@ List<Command<CommandArgs>> insertCommands(ShellServices s) => [
     enabled: (d, a) => d.commands.canInsertLink(),
     run: (ctx, d, a) => _linkEditor(ctx, d),
   ),
+  // Wonky Markdown buttons and arrow links (Write 11 §7.4): the link at
+  // the caret gets the style, otherwise the link editor opens with it.
+  WriteCommand(
+    'write.insert.button',
+    label: (l) => l.cmdInsertButton,
+    categoryName: (l) => l.categoryInsert,
+    requiredRole: Role.commenter,
+    isUndoable: true,
+    needsEditable: true,
+    wonkyOnly: true,
+    argsSchema: const JsonSchema.object(
+      properties: {
+        'variant': JsonSchema.string(enumValues: ['primary', 'secondary']),
+      },
+    ),
+    enabled: (d, a) => d.commands.canInsertLink(),
+    run: (ctx, d, a) {
+      final style = a.string('variant') == 'secondary'
+          ? 'buttonSecondary'
+          : 'button';
+      if (d.commands.linkStyleAt() != null) {
+        return okIf(d.commands.setLinkStyle(style), 'Not available here');
+      }
+      return _linkEditor(ctx, d, style: style);
+    },
+  ),
+  WriteCommand(
+    'write.insert.arrowLink',
+    label: (l) => l.cmdInsertArrowLink,
+    categoryName: (l) => l.categoryInsert,
+    requiredRole: Role.commenter,
+    isUndoable: true,
+    needsEditable: true,
+    wonkyOnly: true,
+    enabled: (d, a) => d.commands.canInsertLink(),
+    run: (ctx, d, a) {
+      if (d.commands.linkStyleAt() != null) {
+        return okIf(d.commands.setLinkStyle('arrow'), 'Not available here');
+      }
+      return _linkEditor(ctx, d, style: 'arrow');
+    },
+  ),
   WriteCommand(
     'write.link.edit',
     label: (l) => l.cmdLinkEdit,
@@ -846,8 +958,9 @@ CommandResult insertPickedImages(
 
 Future<CommandResult> _linkEditor(
   CommandContext ctx,
-  WriteDocumentController d,
-) async {
+  WriteDocumentController d, {
+  String? style,
+}) async {
   final c = _ctx(ctx);
   if (c == null) return const CommandResult.failed('No window');
   final existing = d.commands.linkAt();
@@ -880,6 +993,10 @@ Future<CommandResult> _linkEditor(
       initialText: text,
       showText: single,
       searchDocuments: LinkEditor.driveSearch(services),
+      // Wonky Markdown: the link's look (Write 11 §7.4).
+      initialStyle: d.isWonky
+          ? style ?? d.commands.linkStyleAt() ?? 'plain'
+          : null,
     ),
   );
   d.focusEditor();
@@ -895,18 +1012,29 @@ Future<CommandResult> _linkEditor(
         ),
         l.reasonNotAvailable,
       );
-    case ApplyLink(:final url, text: final newText):
+    case ApplyLink(:final url, text: final newText, style: final newStyle):
       try {
-        final t = newText ?? (range.isCollapsed ? null : null);
-        return okIf(
-          d.commands.setLink(
-            url,
-            text: t ?? (range.isCollapsed ? null : null),
-            start: range.start,
-            length: range.end - range.start,
-          ),
-          l.reasonNotAvailable,
-        );
+        // Only the style changed (Write 11 §7.4): the link stays as it is.
+        final normalized = d.commands.linkPolicy.normalize(url);
+        final sameLink =
+            existing != null &&
+            normalized is ValidLinkUrl &&
+            existing.url == normalized.url &&
+            (newText == null || newText == text);
+        final ok =
+            sameLink ||
+            d.commands.setLink(
+              url,
+              text: newText,
+              start: range.start,
+              length: range.end - range.start,
+            );
+        if (ok && newStyle != null && newStyle != d.commands.linkStyleAt()) {
+          d.commands.setLinkStyle(newStyle);
+        }
+        // A new button or arrow link: typing goes after it.
+        if (ok && range.isCollapsed) d.editor.leavePillAtCaret();
+        return okIf(ok, l.reasonNotAvailable);
       } on EditorCommandError catch (e) {
         return CommandResult.failed(e.message);
       }
@@ -1049,6 +1177,81 @@ List<Command<CommandArgs>> documentCommands(
         label: layout == PageLayoutMode.pages
             ? writeL10nOf(s).undoSwitchToPages
             : writeL10nOf(s).undoSwitchToPageless,
+      );
+      return const CommandResult.ok();
+    },
+  ),
+  WriteCommand(
+    'write.youtube.open',
+    label: (l) => l.cmdYouTubeOpen,
+    categoryName: (l) => l.categoryFormat,
+    requiredRole: Role.viewer,
+    wonkyOnly: true,
+    argsSchema: const JsonSchema.object(
+      properties: {'nodeId': JsonSchema.string()},
+    ),
+    enabled: (d, a) => d.commands.youtubeOf(nodeId: a.string('nodeId')) != null,
+    run: (ctx, d, a) async {
+      final video = d.commands.youtubeOf(nodeId: a.string('nodeId'));
+      if (video == null) {
+        return CommandResult.failed(writeL10nOf(s).reasonNotAvailable);
+      }
+      await openWriteLink(s, d, video.watchUrl, context: _ctx(ctx));
+      return const CommandResult.ok();
+    },
+  ),
+  WriteCommand(
+    'write.doc.setMarkdownFlavor',
+    label: (l) => l.cmdDocSetMarkdownFlavor,
+    categoryName: (l) => l.categoryFile,
+    requiredRole: Role.editor,
+    isUndoable: true,
+    argsSchema: const JsonSchema.object(
+      properties: {
+        'flavor': JsonSchema.string(enumValues: ['gfm', 'wonky']),
+      },
+      required: ['flavor'],
+    ),
+    enabled: (d, a) => d.canChangeSettings,
+    checked: (d, a) => a.string('flavor') == null
+        ? null
+        : d.markdownFlavor.value == a.string('flavor'),
+    undoLabelOf: (l, a) => l.cmdDocSetMarkdownFlavor,
+    run: (ctx, d, a) async {
+      final l = writeL10nOf(s);
+      final flavor = MarkdownFlavor.parse(a.string('flavor'));
+      if (flavor == d.markdownFlavor) return const CommandResult.ok();
+      // Wonky → GitHub converts every Wonky element first (Write 11 §3.2),
+      // in the same undo step as the setting.
+      if (flavor == MarkdownFlavor.gfm) {
+        final content = d.editor.delta;
+        final inventory = WonkyToGfm.inventory(content);
+        if (!inventory.isEmpty) {
+          if (d.editor.mode != EditorMode.editing) {
+            return CommandResult.failed(l.flavorConvertNeedsEditing);
+          }
+          final c = _ctx(ctx);
+          if (_ui(ctx) && c != null) {
+            final ok = await confirmDialog(
+              c,
+              title: l.flavorConvertTitle,
+              description: l.flavorConvertBody(
+                flavorInventoryText(l, inventory),
+              ),
+              confirmLabel: l.flavorConvertButton,
+            );
+            if (!ok) return const CommandResult.cancelled();
+          }
+          d.editor.applyLocal(
+            WonkyToGfm.change(d.editor.delta),
+            label: l.cmdDocSetMarkdownFlavor,
+          );
+        }
+      }
+      await d.setMeta(
+        'markdownFlavor',
+        flavor.value,
+        label: l.cmdDocSetMarkdownFlavor,
       );
       return const CommandResult.ok();
     },

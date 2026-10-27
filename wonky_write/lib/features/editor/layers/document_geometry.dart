@@ -6,6 +6,24 @@ import '../model/document_queries.dart';
 
 /// Geometry helpers over a laid-out document (Write 04 §25.3, §34.2).
 abstract final class DocumentGeometry {
+  /// The position before the character under [offset] (document
+  /// coordinates): a click resolves to the nearest caret position, which is
+  /// after the character when the click is on its right half (or on the gap
+  /// after it: an arrow link's arrow). For what a click is *on*, like a link.
+  static DocumentPosition? characterAt(DocumentLayout layout, Offset offset) {
+    final position = layout.getDocumentPositionNearestToOffset(offset);
+    final p = position?.nodePosition;
+    if (position == null || p is! TextNodePosition || p.offset == 0) {
+      return position;
+    }
+    final before = DocumentPosition(
+      nodeId: position.nodeId,
+      nodePosition: TextNodePosition(offset: p.offset - 1),
+    );
+    final box = layout.getRectForSelection(before, position);
+    return box != null && box.contains(offset) ? before : position;
+  }
+
   /// Per-line rectangles (document coordinates) covering Delta `[start, end)`.
   /// Embeds contribute their whole box. Limited to [maxRects].
   static List<Rect> rectsForRange(
@@ -93,7 +111,11 @@ abstract final class DocumentGeometry {
   ) {
     final position = mirror.positionAt(offset);
     if (position == null) return null;
-    final rect = layout.getRectForPosition(position);
+    // The caret's edge: as tall as the text beside it, like the local caret
+    // (super_editor patch SE-11).
+    final rect =
+        layout.getEdgeForPosition(position) ??
+        layout.getRectForPosition(position);
     if (rect == null) return null;
     return Rect.fromLTWH(rect.left, rect.top, 2, rect.height);
   }

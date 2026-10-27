@@ -9,6 +9,7 @@ library;
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import '../../delta/boxes.dart';
 import '../../delta/embeds.dart';
 import '../../ir/doc_tree.dart';
 import '../../layout/page_setup.dart';
@@ -71,7 +72,15 @@ final class _DocxJob {
     input.theme,
     input.variant,
   );
-  late final DocTree tree = exportTree(input, options);
+  late final DocTree tree = exportTree(input, options).withVideosAsLinks;
+
+  /// The blocks in document order with Wonky containers flattened
+  /// (Write 11 §9): a callout's title and a details summary become bold
+  /// paragraphs, and every block in a container gets the container's look
+  /// ([_boxes]).
+  late final List<DocBlock> _blocks = _flatten(tree.blocks, null);
+  final _boxes = Map<DocBlock, _Box>.identity();
+  final _titleColors = Map<DocBlock, int>.identity();
   late final double contentWidth = contentWidthPt(input, theme);
   late final double contentHeight = contentHeightPt(input, theme);
   Map<String, OfficeImage> _images = const {};
@@ -464,7 +473,7 @@ final class _DocxJob {
 
   /// Natural (style) spacing of each block before collapsing.
   List<(double, double)> _naturalSpacing() {
-    final blocks = tree.blocks;
+    final blocks = _blocks;
     final out = <(double, double)>[];
     for (var i = 0; i < blocks.length; i++) {
       final b = blocks[i];
@@ -472,6 +481,15 @@ final class _DocxJob {
       final next = i + 1 < blocks.length ? blocks[i + 1] : null;
       bool isListLike(DocBlock? x) => x is ListItemBlock || x is TaskBlock;
       switch (b) {
+        case ContainerBlock():
+          // Flattened ([_blocks]).
+          out.add((0, 0));
+        case YouTubeBlock():
+          // Links ([DocTree.withVideosAsLinks]).
+          out.add((0, 0));
+        case GridBlock():
+          final g = theme.wonky.grid;
+          out.add((g.spaceBefore, g.spaceAfter));
         case ParagraphBlock():
           var before = theme.body.box.spaceBefore;
           var after = theme.body.box.spaceAfter;
@@ -533,7 +551,7 @@ final class _DocxJob {
 
   String _body() {
     final b = StringBuffer();
-    final blocks = tree.blocks;
+    final blocks = _blocks;
     final natural = _naturalSpacing();
     // Collapsed: Word adds after(prev) + before(next); emit
     // before = max(0, before - after(prev)) so the gap is the max (06 §7.3).
@@ -559,6 +577,22 @@ final class _DocxJob {
       final (before, after) = spacing[i];
       final (natBefore, natAfter) = natural[i];
       switch (block) {
+        case ContainerBlock():
+          // Flattened ([_blocks]).
+          break;
+        case YouTubeBlock():
+          // Links ([DocTree.withVideosAsLinks]).
+          break;
+        case GridBlock():
+          if (i > 0 && before > 0.5) b.write(_spacer(before));
+          b.write(_grid(block));
+          b.write(_spacer(natAfter));
+          if (i + 1 < blocks.length) {
+            spacing[i + 1] = (
+              math.max(0, spacing[i + 1].$1 - natAfter).toDouble(),
+              spacing[i + 1].$2,
+            );
+          }
         case ParagraphBlock(:final runs):
           final p = ParaProps();
           final styleBefore = theme.body.box.spaceBefore;
@@ -568,13 +602,31 @@ final class _DocxJob {
           if (theme.body.firstLineIndent > 0 && runs.isNotEmpty) {
             p.firstLine = theme.body.firstLineIndent;
           }
-          b.write(_paragraph(p, runs));
+          _boxed(block, p);
+          final titleColor = _titleColors[block];
+          if (titleColor != null) {
+            // A callout title.
+            p.keepNext = true;
+            final props = RunProps()
+              ..bold = true
+              ..color = titleColor;
+            b.write(
+              '<w:p>${p.xml()}${_textRun(InlineRun.plainText(runs), props)}</w:p>',
+            );
+          } else {
+            b.write(_paragraph(p, runs));
+          }
         case HeadingBlock(:final level, :final runs, :final anchorId):
           final box = theme.heading(level).box;
           final p = ParaProps()..style = DocxStyleIds.heading(level);
           if (before != box.spaceBefore) p.spaceBefore = before;
+          _boxed(block, p);
           final bookmark = _bookmarks[anchorId];
           final content = StringBuffer();
+          if (block.step != null) {
+            // A numbered heading (Write 11 §9).
+            content.write(_textRun('${block.step}. ', null));
+          }
           if (bookmark != null) {
             content.write(
               '<w:bookmarkStart w:id="$_bookmarkId" w:name="$bookmark"/>',
@@ -617,6 +669,7 @@ final class _DocxJob {
           if (before != 0) p.spaceBefore = before;
           if (after != theme.list.itemSpacing) p.spaceAfter = after;
           if (block.inQuote) _quoted(p, indent);
+          _boxed(block, p);
           b.write(_paragraph(p, runs));
         case TaskBlock(:final checked, :final indent, :final runs):
           orderedNum.remove(indent);
@@ -626,6 +679,7 @@ final class _DocxJob {
           if (before != 0) p.spaceBefore = before;
           if (after != theme.list.itemSpacing) p.spaceAfter = after;
           if (block.inQuote) _quoted(p, indent);
+          _boxed(block, p);
           final glyph = RunProps()
             ..font = 'Segoe UI Symbol'
             ..color = theme.task.checkbox.borderColor;
@@ -653,6 +707,7 @@ final class _DocxJob {
             final la = last ? after : theme.body.box.spaceAfter;
             if (lb != 0) p.spaceBefore = lb;
             if (la != 0) p.spaceAfter = la;
+            _boxed(block, p);
             b.write(_paragraph(p, lines[l]));
           }
         case CodeBlock(:final language, :final text):
@@ -694,6 +749,109 @@ final class _DocxJob {
       }
     }
     if (blocks.isEmpty) b.write('<w:p/>');
+    return b.toString();
+  }
+
+  /// Flattens Wonky containers ([_blocks]).
+  List<DocBlock> _flatten(List<DocBlock> blocks, _Box? box) {
+    final out = <DocBlock>[];
+    for (final b in blocks) {
+      if (b is! ContainerBlock) {
+        if (box != null) _boxes[b] = box;
+        out.add(b);
+        continue;
+      }
+      final w = theme.wonky;
+      final depth = (box?.depth ?? 0) + 1;
+      final frame = b.frame;
+      final _Box inner;
+      switch (frame.type) {
+        case BoxType.callout:
+          final cc = w.callout.colorsFor(
+            (frame.variant ?? CalloutVariant.info).value,
+          );
+          inner = _Box(
+            cc.background,
+            BorderPt(
+              width: math.max(w.callout.borderWidth, 1.5) * 2,
+              style: LineStyle.solid,
+              color: cc.border,
+            ),
+            depth,
+          );
+          final title = ParagraphBlock([
+            InlineRun(frame.calloutLabel, bold: true),
+          ]);
+          _titleColors[title] = cc.title;
+          _boxes[title] = inner;
+          out.add(title);
+        case BoxType.details:
+          inner = _Box(w.details.background, w.details.border, depth);
+          final summary = ParagraphBlock([
+            for (final r in b.summary?.runs ?? const <InlineRun>[])
+              r.code ? r : r.copyWith(bold: true),
+          ]);
+          _boxes[summary] = inner;
+          out.add(summary);
+        case BoxType.card:
+          inner = _Box(w.card.background, null, depth);
+      }
+      out.addAll(_flatten(b.body, inner));
+    }
+    return out;
+  }
+
+  /// Gives a paragraph in a Wonky container the container's shading, left
+  /// border and nesting indent.
+  void _boxed(DocBlock block, ParaProps p) {
+    final box = _boxes[block];
+    if (box == null) return;
+    p.shading ??= box.shading;
+    final border = box.border;
+    if (p.left == null && border != null && border.isVisible) {
+      p.left = docxBorder('left', border, space: 6);
+    }
+    if (p.indentLeft == null && box.depth > 1) {
+      p.indentLeft = 12.0 * (box.depth - 1);
+    }
+  }
+
+  /// A Wonky grid as a borderless table (Write 11 §9).
+  String _grid(GridBlock g) {
+    final cols = g.columns.clamp(1, 4);
+    final width = contentWidth / cols;
+    final b = StringBuffer(
+      '<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/>'
+      '<w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>',
+    );
+    for (var c = 0; c < cols; c++) {
+      b.write('<w:gridCol w:w="${OfficeUnits.twips(width)}"/>');
+    }
+    b.write('</w:tblGrid>');
+    final glyph = switch (g.bullets) {
+      GridBullets.check => '✓ ',
+      GridBullets.circle => '• ',
+      GridBullets.none => '',
+    };
+    final bullet = RunProps()
+      ..color = theme.wonky.grid.bulletColor
+      ..bold = true;
+    for (var r = 0; r * cols < g.items.length; r++) {
+      b.write('<w:tr><w:trPr><w:cantSplit/></w:trPr>');
+      for (var c = 0; c < cols; c++) {
+        final k = r * cols + c;
+        final p = ParaProps()..spaceAfter = theme.wonky.grid.rowGap;
+        final content = k < g.items.length
+            ? '${_textRun(glyph, bullet)}${_runs(g.items[k])}'
+            : '';
+        b.write(
+          '<w:tc><w:tcPr><w:tcW w:w="${OfficeUnits.twips(width)}" '
+          'w:type="dxa"/></w:tcPr><w:p>${p.xml()}$content</w:p></w:tc>',
+        );
+      }
+      b.write('</w:tr>');
+    }
+    b.write('</w:tbl>');
     return b.toString();
   }
 
@@ -755,11 +913,19 @@ final class _DocxJob {
       p.style = DocxStyleIds.codeChar;
       return p;
     }
+    if (r.chip) {
+      // A chip: shaded text (Write 11 §9).
+      p
+        ..shading = theme.wonky.chip.background
+        ..color = theme.wonky.chip.color;
+      return p;
+    }
     if (r.mentionUserUuid != null) {
       p.style = DocxStyleIds.mention;
     } else if (r.link != null) {
       p.style = DocxStyleIds.hyperlink;
     }
+    if (r.linkStyle != null) p.bold = true;
     if (r.bold) {
       p.bold = true;
       if (theme.bold.color != null) p.color = theme.bold.color;
@@ -996,4 +1162,14 @@ final class _DocxJob {
     b.write('</w:tbl>');
     return b.toString();
   }
+}
+
+/// The look of a Wonky container in DOCX: paragraph shading, left border,
+/// nesting depth.
+final class _Box {
+  const _Box(this.shading, this.border, this.depth);
+
+  final int? shading;
+  final BorderPt? border;
+  final int depth;
 }

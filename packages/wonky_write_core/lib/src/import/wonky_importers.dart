@@ -138,7 +138,7 @@ final class WonkyImporters {
     final decoded = ImportTextDecoder.decode(bytes);
     final r = const MarkdownCodec().importMarkdown(
       decoded.text,
-      options: options,
+      options: _flavored(decoded.text, options),
     );
     final w = decoded.warning;
     return w == null ? r : _withWarnings(r, [w]);
@@ -201,7 +201,7 @@ final class WonkyImporters {
     final text = ImportTextDecoder.decode(main.content).text;
     return const MarkdownCodec().importMarkdown(
       text,
-      options: options,
+      options: _flavored(text, options),
       resolveImage: resolve,
     );
   }
@@ -219,6 +219,13 @@ final class WonkyImporters {
     return out.join('/');
   }
 
+  /// [options] reading [markdown] as Wonky Markdown when it has directives
+  /// and detection is on.
+  static ImportOptions _flavored(String markdown, ImportOptions options) =>
+      options.detectFlavor && looksLikeWonkyMarkdown(markdown)
+      ? options.withFlavor(MarkdownFlavor.wonky)
+      : options;
+
   static ImportResult _withWarnings(
     ImportResult r,
     List<ImportWarning> extra,
@@ -230,6 +237,7 @@ final class WonkyImporters {
     language: r.language,
     images: r.images,
     pageSetup: r.pageSetup,
+    markdownFlavor: r.markdownFlavor,
   );
 }
 
@@ -285,6 +293,7 @@ abstract final class ImportPostProcessor {
       frontMatter: result.frontMatter,
       language: result.language,
       pageSetup: result.pageSetup,
+      markdownFlavor: result.markdownFlavor,
     );
   }
 }

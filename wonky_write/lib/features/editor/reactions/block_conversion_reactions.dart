@@ -1,9 +1,11 @@
 import 'package:super_editor/super_editor.dart';
 
+import '../components/box_frames.dart' show isDetailsSummaryNode;
 import '../mapping/wonky_schema.dart';
 import '../model/code_languages.dart';
 import '../model/embeds.dart';
 import 'reaction_wrappers.dart';
+import 'wonky_shortcuts.dart';
 
 /// Markdown block prefixes typed at the start of a block (Write 04 §7.1):
 /// `# `…`###### `, `- ` `* ` `+ `, `1. ` `1) `, `> `, `[ ] ` `[x] ` `- [ ] `,
@@ -12,10 +14,23 @@ import 'reaction_wrappers.dart';
 /// The prefix must be exactly the text before the caret, and the caret must be
 /// right after the space that was just typed. Never applies in code blocks.
 class BlockPrefixConversionReaction extends EditReaction {
-  BlockPrefixConversionReaction({required this.newEmbedId});
+  BlockPrefixConversionReaction({
+    required this.newEmbedId,
+    this.isWonky,
+    this.onGridInserted,
+  });
 
   /// Creates ids for new embeds (UUIDv7).
   final String Function() newEmbedId;
+
+  /// Whether the document is in Wonky Markdown: `:::type ` and `(n) `
+  /// shortcuts (Write 11 §7.4).
+  final bool Function()? isWonky;
+
+  /// Called with the id of a grid the `:::grid ` shortcut inserted.
+  final void Function(String gridId)? onGridInserted;
+
+  static final _step = RegExp(r'^\((\d{1,4})\) $');
 
   static final _heading = RegExp(r'^(#{1,6}) $');
   static final _bullet = RegExp(r'^[-*+] $');
@@ -59,6 +74,7 @@ class BlockPrefixConversionReaction extends EditReaction {
         node.getMetadataValue(NodeMetadata.blockType) == blockquoteAttribution;
 
     final requests = <EditRequest>[];
+    String? insertedGrid;
     final rest = node.text.copyText(prefix.length);
     var deletePrefix = true;
     Match? match;
@@ -163,6 +179,37 @@ class BlockPrefixConversionReaction extends EditReaction {
             },
           ),
         );
+    } else if ((isWonky?.call() ?? false) &&
+        isParagraph &&
+        WonkyShortcuts.block(prefix.substring(0, prefix.length - 1)) != null &&
+        boxOf(node).length < 3) {
+      // `:::warning ` … a container or grid (Write 11 §7.4).
+      final shortcut = WonkyShortcuts.block(
+        prefix.substring(0, prefix.length - 1),
+      )!;
+      requests.addAll(
+        WonkyShortcuts.requestsFor(shortcut, node, document, newEmbedId),
+      );
+      if (shortcut.grid) {
+        final grid = requests.whereType<InsertNodeAtIndexRequest>().first;
+        insertedGrid = grid.newNode.id;
+      }
+    } else if ((match = _step.firstMatch(prefix)) != null &&
+        (isWonky?.call() ?? false) &&
+        node is ParagraphNode &&
+        const [2, 3].contains(
+          headingLevelOf(node.getMetadataValue(NodeMetadata.blockType)),
+        ) &&
+        stepOf(node) == null &&
+        !(boxOf(node).isNotEmpty &&
+            isDetailsSummaryNode(document, node, boxOf(node).length - 1))) {
+      // `(1) ` at the start of an H2/H3: a numbered heading.
+      requests.add(
+        ChangeNodeMetadataRequest(
+          nodeId: node.id,
+          metadata: {WonkyNodeMetadata.step: int.parse(match!.group(1)!)},
+        ),
+      );
     } else if (_divider.hasMatch(prefix) &&
         isParagraph &&
         node.text.length == prefix.length) {
@@ -200,6 +247,7 @@ class BlockPrefixConversionReaction extends EditReaction {
         SelectionReason.contentChange,
       ),
     ]);
+    if (insertedGrid != null) onGridInserted?.call(insertedGrid);
   }
 
   /// Metadata that survives a node type conversion (line-end overlays).

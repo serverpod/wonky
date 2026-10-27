@@ -110,6 +110,13 @@ String elementLabel(WriteLocalizations l, ThemeElement e) => switch (e) {
   ThemeElement.rule => l.themeElementRule,
   ThemeElement.image => l.themeElementImage,
   ThemeElement.table => l.themeElementTable,
+  ThemeElement.callout => l.themeElementCallout,
+  ThemeElement.details => l.themeElementDetails,
+  ThemeElement.card => l.themeElementCard,
+  ThemeElement.grid => l.themeElementGrid,
+  ThemeElement.button => l.themeElementButton,
+  ThemeElement.chip => l.themeElementChip,
+  ThemeElement.stepBadge => l.themeElementStepBadge,
   ThemeElement.header => l.themeElementHeader,
   ThemeElement.footer => l.themeElementFooter,
 };
@@ -118,7 +125,8 @@ String elementLabel(WriteLocalizations l, ThemeElement e) => switch (e) {
 class ThemeTreeGroup {
   const ThemeTreeGroup(this.id, this.nodes, {this.node});
 
-  /// `headings`, `inline`, `blocks`, or empty for an untitled group.
+  /// `headings`, `inline`, `blocks`, `wonky`, or empty for an untitled
+  /// group.
   final String id;
 
   /// The group's title (empty for an untitled group).
@@ -126,6 +134,7 @@ class ThemeTreeGroup {
     'headings' => l.themeEditorTreeHeadings,
     'inline' => l.themeEditorTreeInline,
     'blocks' => l.themeEditorTreeBlocks,
+    'wonky' => l.themeEditorTreeWonky,
     _ => '',
   };
 
@@ -169,6 +178,16 @@ const List<ThemeTreeGroup> themeTree = [
     ThemeNode.element(ThemeElement.rule),
     ThemeNode.element(ThemeElement.image),
     ThemeNode.element(ThemeElement.table),
+  ]),
+  // Wonky Markdown elements (Write 11 §8), shown for every document.
+  ThemeTreeGroup('wonky', [
+    ThemeNode.element(ThemeElement.callout),
+    ThemeNode.element(ThemeElement.details),
+    ThemeNode.element(ThemeElement.card),
+    ThemeNode.element(ThemeElement.grid),
+    ThemeNode.element(ThemeElement.button),
+    ThemeNode.element(ThemeElement.chip),
+    ThemeNode.element(ThemeElement.stepBadge),
   ]),
   ThemeTreeGroup('', [ThemeNode.headerFooter, ThemeNode.advanced]),
 ];

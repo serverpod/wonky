@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import '../delta/attributes.dart';
+import '../delta/boxes.dart';
 import '../delta/delta_utils.dart';
 import '../delta/document.dart';
 import '../delta/embeds.dart';
@@ -26,6 +27,7 @@ final class DeltaGenOptions {
     this.unicode = true,
     this.markdownSpecials = true,
     this.emptyLines = true,
+    this.wonky = false,
   });
 
   /// Maximum number of lines.
@@ -60,6 +62,13 @@ final class DeltaGenOptions {
 
   /// Generate empty lines.
   final bool emptyLines;
+
+  /// Generate Wonky Markdown elements (Write 11 §2): containers (nested),
+  /// grids, numbered headings, styled links and chips, within the limits
+  /// of the round-trip guarantee (§5.4): labels without `]`, line breaks or
+  /// edge whitespace, styled link URLs without parentheses, details that
+  /// start with their summary, no code line starting with a fence.
+  final bool wonky;
 }
 
 /// Generates random, valid (normalized) Wonky documents from a seed.
@@ -101,6 +110,23 @@ final class DeltaGen {
     'https://ex.com/%C3%A9t%C3%A9',
   ];
   static const _languages = ['', 'dart', 'js', 'python', 'c++', 'objective-c'];
+  static const _styledLinks = [
+    'https://example.com',
+    'https://example.com/a_b/c?x=1&y=2#frag',
+    'mailto:someone@example.com',
+    'wonky://doc/0192f1a2-0000-7000-8000-000000000001#h-intro-1',
+  ];
+
+  /// A chip or styled link label: plain text without `]`, line breaks or
+  /// edge whitespace.
+  String _label() {
+    final t = text(options.maxRunLength)
+        .replaceAll(']', ')')
+        .replaceAll(softBreak, ' ')
+        .replaceAll('\u00A0', ' ')
+        .trim();
+    return t.isEmpty ? 'x' : t;
+  }
 
   /// A fresh deterministic id.
   String nextId() {
@@ -132,6 +158,19 @@ final class DeltaGen {
 
   Map<String, dynamic>? _inlineAttributes() {
     final attrs = <String, dynamic>{};
+    if (options.wonky && random.nextInt(8) == 0) {
+      // A styled run; its text comes from [_label].
+      if (random.nextBool()) {
+        attrs[WonkyAttr.chip] = random.nextInt(3) == 0 ? 'google' : true;
+      } else {
+        attrs[WonkyAttr.link] =
+            _styledLinks[random.nextInt(_styledLinks.length)];
+        attrs[WonkyAttr.linkStyle] = WonkyAttr.linkStyles.elementAt(
+          random.nextInt(WonkyAttr.linkStyles.length),
+        );
+      }
+      return attrs;
+    }
     if (random.nextInt(4) == 0) {
       attrs[WonkyAttr.code] = true;
     } else {
@@ -194,8 +233,34 @@ final class DeltaGen {
 
   /// A random embed.
   WonkyEmbed embed() {
-    final p = random.nextInt(options.tables ? 3 : 2);
+    final p = random.nextInt(options.tables ? (options.wonky ? 5 : 3) : 2);
     switch (p) {
+      case 4:
+        const ids = ['AGAQ_N56wCs', 'dQw4w9WgXcQ', 'o3kP3dT2C5k'];
+        return YouTubeEmbed(
+          id: nextId(),
+          videoId: ids[random.nextInt(ids.length)],
+          start: random.nextBool() ? null : random.nextInt(4000),
+          title: random.nextBool()
+              ? null
+              : YouTubeEmbed.canonicalTitle(_singleLine(text(5))),
+        );
+      case 3:
+        return GridEmbed(
+          id: nextId(),
+          columns: 1 + random.nextInt(4),
+          bullets:
+              GridBullets.values[random.nextInt(GridBullets.values.length)],
+          items: [
+            for (var i = 0, n = 1 + random.nextInt(4); i < n; i++)
+              switch (random.nextInt(5)) {
+                0 => '',
+                1 => ':chip[${_plainWord()}]',
+                2 => '**${_plainWord()}** ${_plainWord()}',
+                _ => 'item ${_plainWord()}',
+              },
+          ],
+        );
       case 0:
         return ImageEmbed(
           id: nextId(),
@@ -245,36 +310,98 @@ final class DeltaGen {
     int? prevListIndent;
     var prevInQuote = false;
     var prevListQuoted = false;
+    var boxes = <BoxFrame>[];
     for (var l = 0; l < lines; l++) {
-      if (options.embeds && random.nextInt(8) == 0) {
+      // Containers: pop some, maybe push one (Write 11 §2.2).
+      var opensDetails = false;
+      if (options.wonky) {
+        final previous = boxes;
+        if (boxes.isNotEmpty && random.nextInt(4) == 0) {
+          boxes = boxes.sublist(0, random.nextInt(boxes.length));
+        }
+        if (boxes.length < BoxFrame.maxDepth && random.nextInt(5) == 0) {
+          final frame = _frame();
+          opensDetails = frame.type == BoxType.details;
+          boxes = [...boxes, frame];
+        }
+        if (!Boxes.samePath(previous, boxes)) {
+          prevListIndent = null;
+          prevInQuote = false;
+        }
+      }
+      Map<String, dynamic>? withBox(Map<String, dynamic>? attrs) =>
+          boxes.isEmpty
+          ? attrs
+          : {...?attrs, WonkyAttr.box: Boxes.toValue(boxes)};
+      if (!opensDetails && options.embeds && random.nextInt(8) == 0) {
         final e = embed();
         final attrs = options.overlays && random.nextInt(4) == 0
             ? {WonkyAttr.commentKey('t${random.nextInt(3)}'): true}
             : null;
         d.insert(e.toInsert(), attrs);
-        d.insert('\n');
+        d.insert('\n', withBox(null));
         prevListIndent = null;
         prevInQuote = false;
         continue;
       }
-      final block = _blockAttributes(
-        prevListIndent,
-        prevInQuote: prevInQuote,
-        prevListQuoted: prevListQuoted,
-      );
+      var block = opensDetails
+          ? {WonkyAttr.header: 3}
+          : _blockAttributes(
+              prevListIndent,
+              prevInQuote: prevInQuote,
+              prevListQuoted: prevListQuoted,
+            );
+      final level = block?[WonkyAttr.header];
+      // A details summary is never numbered (the blog reads `(n)` in it as
+      // text).
+      if (options.wonky &&
+          !opensDetails &&
+          (level == 2 || level == 3) &&
+          random.nextInt(3) == 0) {
+        block = {...block!, WonkyAttr.step: random.nextInt(20)};
+      }
+      final isCode = block?.containsKey(WonkyAttr.codeBlock) ?? false;
       final runs = options.emptyLines && random.nextInt(8) == 0
           ? 0
           : 1 + random.nextInt(options.maxRunsPerLine);
       for (var r = 0; r < runs; r++) {
-        d.insert(text(options.maxRunLength), _inlineAttributes());
+        final attrs = _inlineAttributes();
+        final styled =
+            attrs != null &&
+            (attrs.containsKey(WonkyAttr.chip) ||
+                attrs.containsKey(WonkyAttr.linkStyle));
+        var t = styled ? _label() : text(options.maxRunLength);
+        if (options.wonky && attrs?[WonkyAttr.code] == true) {
+          // An inline code span opening a line with three backticks reads
+          // as a fence to the blog's directive parser (a known limit).
+          t = t.replaceAll('`', "'");
+        }
+        if (options.wonky && isCode && r == 0) {
+          // A code line starting with a fence ends the blog's fence
+          // tracking (a known limit of the syntax).
+          t = t.replaceAll('`', "'");
+        }
+        d.insert(t, attrs);
       }
-      d.insert('\n', block);
+      d.insert('\n', withBox(block));
       final f = BlockFormat.fromAttributes(block);
       prevListIndent = f.isList ? f.indent : null;
       prevInQuote = f.inQuote;
       prevListQuoted = f.quoted;
     }
     return d;
+  }
+
+  /// A random container frame.
+  BoxFrame _frame() {
+    final type = BoxType.values[random.nextInt(BoxType.values.length)];
+    if (type != BoxType.callout) return BoxFrame(id: nextId(), type: type);
+    return BoxFrame.callout(
+      id: nextId(),
+      variant:
+          CalloutVariant.values[random.nextInt(CalloutVariant.values.length)],
+      title: random.nextBool() ? null : BoxFrame.canonicalTitle(_label()),
+    );
   }
 
   /// A random valid, normalized document.

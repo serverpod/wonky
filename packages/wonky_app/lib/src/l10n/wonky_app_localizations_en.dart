@@ -4660,6 +4660,15 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get pubTemplateInvalid => 'Paste the link of a Wonky Write document.';
 
   @override
+  String get pubMarkdownFlavor => 'Markdown flavor of new stories';
+
+  @override
+  String get pubMarkdownGfm => 'GitHub Markdown';
+
+  @override
+  String get pubMarkdownWonky => 'Wonky Markdown (Serverpod blog directives)';
+
+  @override
   String get pubRequired => 'Required.';
 
   @override
@@ -9755,6 +9764,16 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   @override
   String get pubTemplateInvalid =>
       '[Þåšţé ţĥé ļîñķ öƒ å Ŵöñķý Ŵŕîţé ðöçûɱéñţ. one two thre]';
+
+  @override
+  String get pubMarkdownFlavor => '[Ṁåŕķðöŵñ ƒļåṽöŕ öƒ ñéŵ šţöŕîéš one two th]';
+
+  @override
+  String get pubMarkdownGfm => '[ĜîţĤûƀ Ṁåŕķðöŵñ one t]';
+
+  @override
+  String get pubMarkdownWonky =>
+      '[Ŵöñķý Ṁåŕķðöŵñ (Šéŕṽéŕþöð ƀļöĝ ðîŕéçţîṽéš) one two three]';
 
   @override
   String get pubRequired => '[Ŕéǫûîŕéð. one]';

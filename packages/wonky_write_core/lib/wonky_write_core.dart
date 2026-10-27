@@ -9,6 +9,7 @@ export 'package:dart_quill_delta/dart_quill_delta.dart' show Delta, Operation;
 export 'src/delta/attributes.dart';
 export 'src/delta/delta_utils.dart';
 export 'src/delta/document.dart';
+export 'src/delta/boxes.dart';
 export 'src/delta/embeds.dart';
 export 'src/delta/hash.dart';
 export 'src/delta/links.dart';
@@ -28,6 +29,7 @@ export 'src/markdown/inline_reader.dart' show mentionTitlePrefix;
 export 'src/markdown/inline_writer.dart';
 export 'src/markdown/markdown_codec.dart';
 export 'src/markdown/markdown_exporter.dart';
+export 'src/markdown/wonky_to_gfm.dart';
 export 'src/markdown/markdown_importer.dart'
     show MarkdownImporter, RelativeImageResolver;
 export 'src/delta/delta_diff.dart';

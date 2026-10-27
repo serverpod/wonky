@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import '../delta/delta_utils.dart';
 import '../ir/doc_tree.dart';
 import '../markdown/inline_markdown.dart';
+import '../markdown/wonky_to_gfm.dart';
 import 'export_api.dart';
 import 'markdown_file_exporter.dart';
 
@@ -44,6 +45,9 @@ final class TxtExporter implements DocumentExporter<TxtExportOptions> {
     TxtExportOptions options, {
     LinkResolver links = const IdentityLinkResolver(),
   }) {
+    // Wonky elements as text: a callout's label line, grid items as lines,
+    // `(n) ` before numbered headings (Write 11 §9).
+    tree = WonkyToGfm.tree(tree);
     final blocks = <(String text, bool listLike, bool code)>[];
     String runs(List<InlineRun> rs) => runsText(rs, links);
 
@@ -109,9 +113,12 @@ final class TxtExporter implements DocumentExporter<TxtExportOptions> {
         case TableBlock(:final cellMarkdown):
           final cells = [
             for (final r in cellMarkdown)
-              [for (final c in r) InlineMarkdown.toPlainText(c)],
+              [for (final c in r) InlineMarkdown.cellPlainText(c)],
           ];
           blocks.add((_table(cells, options.tables), false, true));
+        case ContainerBlock() || GridBlock() || YouTubeBlock():
+          // Converted above.
+          blocks.add(('', false, false));
       }
     }
     // A list inside a quote (Write 02 §1.2): the items behind `> `, joined to

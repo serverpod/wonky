@@ -17,7 +17,12 @@ class EditorClipboard {
     SystemClipboard? clipboard,
     ClipboardCodec? codec,
   }) : clipboard = clipboard ?? SystemClipboard.platform(),
-       codec = codec ?? ClipboardCodec(newEmbedId: controller.newEmbedId);
+       codec =
+           codec ??
+           ClipboardCodec(
+             newEmbedId: controller.newEmbedId,
+             flavor: () => controller.markdownFlavor(),
+           );
 
   final WriteEditorController controller;
   final WriteEditorCommands commands;

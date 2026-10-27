@@ -8516,6 +8516,630 @@ abstract class WriteLocalizations {
   /// In en, this message translates to:
   /// **'Withdraw'**
   String get withdrawButton;
+
+  /// No description provided for @themeElementCallout.
+  ///
+  /// In en, this message translates to:
+  /// **'Callout'**
+  String get themeElementCallout;
+
+  /// No description provided for @themeElementDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get themeElementDetails;
+
+  /// No description provided for @themeElementCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Card'**
+  String get themeElementCard;
+
+  /// No description provided for @themeElementGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get themeElementGrid;
+
+  /// No description provided for @themeElementButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Button and arrow link'**
+  String get themeElementButton;
+
+  /// No description provided for @themeElementChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Chip'**
+  String get themeElementChip;
+
+  /// No description provided for @themeElementStepBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered heading badge'**
+  String get themeElementStepBadge;
+
+  /// No description provided for @themeEditorTreeWonky.
+  ///
+  /// In en, this message translates to:
+  /// **'Wonky Markdown'**
+  String get themeEditorTreeWonky;
+
+  /// No description provided for @editorDetailsExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get editorDetailsExpand;
+
+  /// No description provided for @editorDetailsCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get editorDetailsCollapse;
+
+  /// No description provided for @editorContainerMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'More container actions'**
+  String get editorContainerMenu;
+
+  /// No description provided for @editorCalloutType.
+  ///
+  /// In en, this message translates to:
+  /// **'Change callout type'**
+  String get editorCalloutType;
+
+  /// No description provided for @editorCalloutEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit title'**
+  String get editorCalloutEditTitle;
+
+  /// No description provided for @editorStepNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the step number'**
+  String get editorStepNumber;
+
+  /// No description provided for @cmdBoxConvert.
+  ///
+  /// In en, this message translates to:
+  /// **'Change container type'**
+  String get cmdBoxConvert;
+
+  /// No description provided for @cmdBoxDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete container'**
+  String get cmdBoxDelete;
+
+  /// No description provided for @cmdBoxEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit callout title'**
+  String get cmdBoxEditTitle;
+
+  /// No description provided for @cmdBoxLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave container'**
+  String get cmdBoxLeave;
+
+  /// No description provided for @cmdBoxSetVariant.
+  ///
+  /// In en, this message translates to:
+  /// **'Change callout type'**
+  String get cmdBoxSetVariant;
+
+  /// No description provided for @cmdBoxUnwrap.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove container'**
+  String get cmdBoxUnwrap;
+
+  /// No description provided for @cmdFormatChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Chip'**
+  String get cmdFormatChip;
+
+  /// No description provided for @cmdGridAddItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Add grid item'**
+  String get cmdGridAddItem;
+
+  /// No description provided for @cmdGridRemoveItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove grid item'**
+  String get cmdGridRemoveItem;
+
+  /// No description provided for @cmdGridSetBullets.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid bullets'**
+  String get cmdGridSetBullets;
+
+  /// No description provided for @cmdGridSetColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid columns'**
+  String get cmdGridSetColumns;
+
+  /// No description provided for @cmdHeadingRenumberSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Renumber steps'**
+  String get cmdHeadingRenumberSteps;
+
+  /// No description provided for @cmdHeadingSetStepNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Change step number'**
+  String get cmdHeadingSetStepNumber;
+
+  /// No description provided for @cmdHeadingToggleStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered heading'**
+  String get cmdHeadingToggleStep;
+
+  /// No description provided for @cmdInsertCallout.
+  ///
+  /// In en, this message translates to:
+  /// **'Callout'**
+  String get cmdInsertCallout;
+
+  /// No description provided for @cmdInsertCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Card'**
+  String get cmdInsertCard;
+
+  /// No description provided for @cmdInsertDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details (expandable)'**
+  String get cmdInsertDetails;
+
+  /// No description provided for @cmdInsertGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get cmdInsertGrid;
+
+  /// No description provided for @cmdLinkSetStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Link style'**
+  String get cmdLinkSetStyle;
+
+  /// No description provided for @editorChipPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag'**
+  String get editorChipPlaceholder;
+
+  /// No description provided for @editorDetailsSummaryPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get editorDetailsSummaryPlaceholder;
+
+  /// No description provided for @undoEditGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit grid'**
+  String get undoEditGrid;
+
+  /// No description provided for @editorGridColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 column} other{{count} columns}}'**
+  String editorGridColumns(int count);
+
+  /// No description provided for @editorGridMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'More grid actions'**
+  String get editorGridMenu;
+
+  /// No description provided for @editorGridLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid of {items} items in {columns} columns'**
+  String editorGridLabel(int items, int columns);
+
+  /// No description provided for @editorGridItemPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get editorGridItemPlaceholder;
+
+  /// No description provided for @cmdDocSetMarkdownFlavor.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown flavor'**
+  String get cmdDocSetMarkdownFlavor;
+
+  /// No description provided for @flavorConvertNeedsEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to Editing mode to convert the Wonky Markdown elements.'**
+  String get flavorConvertNeedsEditing;
+
+  /// No description provided for @flavorConvertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Convert to GitHub Markdown?'**
+  String get flavorConvertTitle;
+
+  /// No description provided for @flavorConvertBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This document has {elements}, which GitHub Markdown doesn\'t support. They become their closest GitHub form: callouts become quotes, buttons and arrow links plain links, chips text, grids lists and numbered headings text. You can undo this.'**
+  String flavorConvertBody(String elements);
+
+  /// No description provided for @flavorConvertButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Convert'**
+  String get flavorConvertButton;
+
+  /// No description provided for @flavorCountCallouts.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 callout} other{{count} callouts}}'**
+  String flavorCountCallouts(int count);
+
+  /// No description provided for @flavorCountDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 details block} other{{count} details blocks}}'**
+  String flavorCountDetails(int count);
+
+  /// No description provided for @flavorCountCards.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 card} other{{count} cards}}'**
+  String flavorCountCards(int count);
+
+  /// No description provided for @flavorCountGrids.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 grid} other{{count} grids}}'**
+  String flavorCountGrids(int count);
+
+  /// No description provided for @flavorCountButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 button} other{{count} buttons}}'**
+  String flavorCountButtons(int count);
+
+  /// No description provided for @flavorCountArrowLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 arrow link} other{{count} arrow links}}'**
+  String flavorCountArrowLinks(int count);
+
+  /// No description provided for @flavorCountChips.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 chip} other{{count} chips}}'**
+  String flavorCountChips(int count);
+
+  /// No description provided for @flavorCountSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 numbered heading} other{{count} numbered headings}}'**
+  String flavorCountSteps(int count);
+
+  /// No description provided for @flavorListJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'{first} and {last}'**
+  String flavorListJoin(String first, String last);
+
+  /// No description provided for @menuMarkdownFlavor.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown flavor'**
+  String get menuMarkdownFlavor;
+
+  /// No description provided for @menuMarkdownGfm.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Markdown'**
+  String get menuMarkdownGfm;
+
+  /// No description provided for @menuMarkdownWonky.
+  ///
+  /// In en, this message translates to:
+  /// **'Wonky Markdown'**
+  String get menuMarkdownWonky;
+
+  /// No description provided for @linkStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get linkStyle;
+
+  /// No description provided for @linkStylePlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get linkStylePlain;
+
+  /// No description provided for @linkStyleArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow link'**
+  String get linkStyleArrow;
+
+  /// No description provided for @linkStyleButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Button'**
+  String get linkStyleButton;
+
+  /// No description provided for @linkStyleButtonSecondary.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary button'**
+  String get linkStyleButtonSecondary;
+
+  /// No description provided for @cmdInsertButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Button'**
+  String get cmdInsertButton;
+
+  /// No description provided for @cmdInsertArrowLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow link'**
+  String get cmdInsertArrowLink;
+
+  /// No description provided for @menuButtonEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Button…'**
+  String get menuButtonEllipsis;
+
+  /// No description provided for @menuSecondaryButtonEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary button…'**
+  String get menuSecondaryButtonEllipsis;
+
+  /// No description provided for @menuArrowLinkEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow link…'**
+  String get menuArrowLinkEllipsis;
+
+  /// No description provided for @calloutInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get calloutInfo;
+
+  /// No description provided for @calloutTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip'**
+  String get calloutTip;
+
+  /// No description provided for @calloutNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get calloutNote;
+
+  /// No description provided for @calloutWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get calloutWarning;
+
+  /// No description provided for @calloutCaution.
+  ///
+  /// In en, this message translates to:
+  /// **'Caution'**
+  String get calloutCaution;
+
+  /// No description provided for @calloutDanger.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger'**
+  String get calloutDanger;
+
+  /// No description provided for @menuContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Container'**
+  String get menuContainer;
+
+  /// No description provided for @menuCalloutType.
+  ///
+  /// In en, this message translates to:
+  /// **'Callout type'**
+  String get menuCalloutType;
+
+  /// No description provided for @menuEditTitleEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit title…'**
+  String get menuEditTitleEllipsis;
+
+  /// No description provided for @menuChangeTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Change to'**
+  String get menuChangeTo;
+
+  /// No description provided for @menuColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get menuColumns;
+
+  /// No description provided for @menuBullets.
+  ///
+  /// In en, this message translates to:
+  /// **'Bullets'**
+  String get menuBullets;
+
+  /// No description provided for @gridBulletsCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check marks'**
+  String get gridBulletsCheck;
+
+  /// No description provided for @gridBulletsCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Circles'**
+  String get gridBulletsCircle;
+
+  /// No description provided for @gridBulletsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get gridBulletsNone;
+
+  /// No description provided for @menuDeleteGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete grid'**
+  String get menuDeleteGrid;
+
+  /// No description provided for @toolbarInsertElement.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert element'**
+  String get toolbarInsertElement;
+
+  /// No description provided for @slashCallout.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} callout'**
+  String slashCallout(String type);
+
+  /// No description provided for @boxTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Callout title'**
+  String get boxTitleLabel;
+
+  /// No description provided for @stepNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Step number'**
+  String get stepNumberLabel;
+
+  /// No description provided for @cmdDetailsToggleCollapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse or expand details'**
+  String get cmdDetailsToggleCollapsed;
+
+  /// Submit dialog: the document is in Wonky Markdown, the publication in GitHub style.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} expects GitHub-style Markdown, but this document uses Wonky Markdown extensions, which the blog may not render. Switch with File › Markdown flavor.'**
+  String submitFlavorWantsGfm(String publication);
+
+  /// Submit dialog: the document is in GitHub style, the publication in Wonky Markdown.
+  ///
+  /// In en, this message translates to:
+  /// **'{publication} supports Wonky Markdown extensions (callouts, buttons and more); this document uses GitHub style. Switch with File › Markdown flavor to use them.'**
+  String submitFlavorWantsWonky(String publication);
+
+  /// No description provided for @cmdInsertYouTube.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube video…'**
+  String get cmdInsertYouTube;
+
+  /// No description provided for @cmdYouTubeEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit video…'**
+  String get cmdYouTubeEdit;
+
+  /// No description provided for @cmdYouTubeOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on YouTube'**
+  String get cmdYouTubeOpen;
+
+  /// No description provided for @cmdYouTubeDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete video'**
+  String get cmdYouTubeDelete;
+
+  /// No description provided for @editorYouTubeMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Video actions'**
+  String get editorYouTubeMenu;
+
+  /// Screen reader label of a YouTube video in the editor.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube video: {title}'**
+  String editorYouTubeLabel(String title);
+
+  /// No description provided for @youtubeDialogInsertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert YouTube video'**
+  String get youtubeDialogInsertTitle;
+
+  /// No description provided for @youtubeDialogEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit YouTube video'**
+  String get youtubeDialogEditTitle;
+
+  /// No description provided for @youtubeFieldUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube link'**
+  String get youtubeFieldUrl;
+
+  /// No description provided for @youtubeFieldUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://www.youtube.com/watch?v=…'**
+  String get youtubeFieldUrlHint;
+
+  /// No description provided for @youtubeDialogDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the video\'s link. A start time in it (like &t=90) is kept. Wonky Write shows the thumbnail; the published page plays the video.'**
+  String get youtubeDialogDescription;
+
+  /// No description provided for @youtubeFieldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title (optional)'**
+  String get youtubeFieldTitle;
+
+  /// No description provided for @youtubeInvalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a YouTube video link.'**
+  String get youtubeInvalidUrl;
+
+  /// No description provided for @flavorCountVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 YouTube video} other{{count} YouTube videos}}'**
+  String flavorCountVideos(int count);
 }
 
 class _WriteLocalizationsDelegate

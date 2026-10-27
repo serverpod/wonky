@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:attributed_text/attributed_text.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart' hide SelectableText;
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/default_editor/node_change_events.dart';
@@ -900,7 +901,40 @@ class TextComponentState extends State<TextComponent> with DocumentComponent imp
     //       right for them.
     final textPosition = textLayout.getPositionNearestToOffset(localOffset);
 
-    return TextNodePosition.fromTextPosition(textPosition);
+    // WONKY PATCH SE-13
+    return TextNodePosition.fromTextPosition(_splitAtGlyph(textPosition, localOffset));
+  }
+
+  /// WONKY PATCH SE-13: Flutter splits a character at the middle of its box,
+  /// which includes the letter spacing after the glyph, so with a wide
+  /// spacing (Wonky Markdown gives the last character of a chip, button or
+  /// arrow link the room for the pill's padding or the arrow) a click on the
+  /// right half of the glyph, or on the arrow, landed before it. Split at the
+  /// middle of the glyph instead.
+  TextPosition _splitAtGlyph(TextPosition position, Offset localOffset) {
+    final index = position.offset;
+    if (index < 0 || index >= widget.text.length) return position;
+    final style = widget.textStyleBuilder(widget.text.getAllAttributionsAt(index));
+    final spacing = style.letterSpacing ?? 0;
+    if (spacing <= 0) return position;
+    final boxes = textLayout.getBoxesForSelection(TextSelection(baseOffset: index, extentOffset: index + 1));
+    if (boxes.isEmpty) return position;
+    final box = boxes.first;
+    if (box.direction != TextDirection.ltr ||
+        localOffset.dy < box.top ||
+        localOffset.dy > box.bottom ||
+        localOffset.dx < box.left ||
+        localOffset.dx > box.right) {
+      return position;
+    }
+    final glyphMiddle = box.left + max(0.0, box.right - box.left - spacing) / 2;
+    if (localOffset.dx < glyphMiddle) return position;
+    // After the glyph, on its line: upstream when the line wraps after it.
+    final next = index + 1 < widget.text.length
+        ? textLayout.getBoxesForSelection(TextSelection(baseOffset: index + 1, extentOffset: index + 2))
+        : const <TextBox>[];
+    final wraps = next.isNotEmpty && next.first.top >= box.bottom - 0.5;
+    return TextPosition(offset: index + 1, affinity: wraps ? TextAffinity.upstream : TextAffinity.downstream);
   }
 
   @override
@@ -930,7 +964,58 @@ class TextComponentState extends State<TextComponent> with DocumentComponent imp
     final textNodePosition = nodePosition as TextPosition;
     final characterBox = getRectForPosition(textNodePosition);
 
-    return textNodePosition.affinity == TextAffinity.upstream ? characterBox.leftEdge : characterBox.rightEdge;
+    final edge = textNodePosition.affinity == TextAffinity.upstream ? characterBox.leftEdge : characterBox.rightEdge;
+    // WONKY PATCH SE-11: the caret spans the characters next to it, not the
+    // whole line box. With a line height above 1 the line box includes the
+    // leading (mostly above the text), and a taller run on the line (a
+    // Wonky Markdown chip or button) stretches it further, so the caret rose
+    // above the text, most visibly at the end of a line. Not on Android and
+    // iOS, whose drag handles and magnifier hang off the line rectangle.
+    final mobile = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
+    if (mobile) return edge;
+    final glyphs = _caretGlyphSpan(textNodePosition, characterBox);
+    return glyphs == null ? edge : Rect.fromLTWH(edge.left, glyphs.$1, edge.width, glyphs.$2);
+  }
+
+  /// The top and height of the glyphs of the character next to [position]
+  /// on its line (the one before it, else the one after it): about 1.2 em
+  /// of its font size, where its run's line height puts the glyphs, so the
+  /// caret is as tall in plain text as in a taller run or at the end of a
+  /// line (where the last character's box spans the line). On an empty
+  /// line, the text style's. `null` to use the whole [line].
+  (double, double)? _caretGlyphSpan(TextPosition position, Rect line) {
+    final length = widget.text.length;
+    // Flutter splits a run's leading by its font's ascent and descent:
+    // about four fifths above the glyphs.
+    (double, double) glyphsIn(double top, double runHeight, TextStyle style) {
+      final fontSize = style.fontSize;
+      final glyph = fontSize == null ? runHeight : min(fontSize * 1.2, runHeight);
+      return (top + (runHeight - glyph) * 0.8, glyph);
+    }
+
+    double runHeightOf(TextStyle style, double boxHeight) {
+      final fontSize = style.fontSize;
+      final factor = style.height;
+      return fontSize == null || factor == null ? boxHeight : min(boxHeight, fontSize * factor);
+    }
+
+    (double, double)? boxAt(int start) {
+      if (start < 0 || start >= length) return null;
+      final boxes = textLayout.getBoxesForSelection(TextSelection(baseOffset: start, extentOffset: start + 1));
+      if (boxes.isEmpty) return null;
+      final box = boxes.first.toRect();
+      // Only a character on the caret's line.
+      if (box.height <= 0 || box.bottom <= line.top + 0.5 || box.top >= line.bottom - 0.5) return null;
+      final style = widget.textStyleBuilder(widget.text.getAllAttributionsAt(start));
+      return glyphsIn(box.top, runHeightOf(style, box.height), style);
+    }
+
+    final beside = boxAt(position.offset - 1) ?? boxAt(position.offset);
+    if (beside != null || length > 0) return beside;
+    // An empty line: its box is the style's line height.
+    final style = widget.textStyleBuilder(const {});
+    if (line.height <= 0) return null;
+    return glyphsIn(line.top, line.height, style);
   }
 
   @override

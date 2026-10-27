@@ -27,5 +27,6 @@ export 'src/markdown/inline_markdown.dart';
 export 'src/markdown/inline_reader.dart';
 export 'src/markdown/inline_writer.dart';
 export 'src/markdown/md_syntax.dart';
+export 'src/markdown/wonky_syntax.dart';
 export 'src/rich_text_normalizer.dart';
 export 'src/text_rules.dart';

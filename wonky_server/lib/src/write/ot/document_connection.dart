@@ -284,6 +284,7 @@ class DocumentConnection {
     pageSetupJson: d.pageSetupJson,
     language: d.language,
     frontMatter: d.frontMatter,
+    markdownFlavor: d.markdownFlavor,
   );
 
   Future<List<DocumentOpView>> _opViews(int from, int to) async {

@@ -16,6 +16,8 @@ abstract final class AttributionMapping {
       attribution == codeAttribution ||
       attribution is LinkAttribution ||
       attribution is MentionAttribution ||
+      attribution is LinkStyleAttribution ||
+      attribution is ChipAttribution ||
       attribution is CommentAttribution ||
       attribution is SuggestionAttribution;
 
@@ -67,6 +69,12 @@ abstract final class AttributionMapping {
       } else if (attribution is MentionAttribution) {
         key = DeltaKeys.mention;
         value = attribution.userUuid;
+      } else if (attribution is LinkStyleAttribution) {
+        key = DeltaKeys.linkStyle;
+        value = attribution.style;
+      } else if (attribution is ChipAttribution) {
+        key = DeltaKeys.chip;
+        value = attribution.icon ?? true;
       } else {
         continue;
       }
@@ -126,6 +134,14 @@ abstract final class AttributionMapping {
           if (value is String) result.add(linkAttributionFor(value));
         case DeltaKeys.mention:
           if (value is String) result.add(MentionAttribution(value));
+        case DeltaKeys.linkStyle:
+          if (value is String) result.add(LinkStyleAttribution(value));
+        case DeltaKeys.chip:
+          if (value == true) {
+            result.add(ChipAttribution.plain);
+          } else if (value is String) {
+            result.add(ChipAttribution(value));
+          }
       }
     }
     return result;

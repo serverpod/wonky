@@ -35,6 +35,7 @@ import '../../l10n/write_l10n.dart';
 import 'command_invoke.dart';
 import 'document_menus.dart';
 import 'selection_toolbar.dart';
+import 'wonky_menus.dart';
 import 'write_document_controller.dart';
 import '../publish/submission_title_actions.dart';
 import 'write_toolbar.dart';
@@ -357,6 +358,8 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
             onContinueWriting: ai.shown
                 ? () => _invoke('write.ai.continue')
                 : null,
+            isWonky: () => doc.isWonky,
+            onCommand: _invoke,
           ),
           blockCallbacks: EditorBlockCallbacks(
             onEditTable: (nodeId, {row, column}) => _invoke(
@@ -379,6 +382,68 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
               if (data != null) doc.images.cancel('${data['src']}');
               _invoke('write.block.delete', {'nodeId': nodeId});
             },
+            // Wonky Markdown chrome (Write 11 §7.2).
+            onBoxTitleTap: (nodeId, depth, rect) => unawaited(
+              editBoxTitle(
+                _menuContext ?? context,
+                doc,
+                _invoke,
+                nodeId: nodeId,
+                depth: depth,
+                anchor: rect,
+              ),
+            ),
+            onCalloutVariantTap: (nodeId, depth, rect) =>
+                WonkyPopupMenuHost.maybeOf(_menuContext ?? context)?.show(
+                  rect.bottomLeft,
+                  () => calloutVariantEntries(ui, nodeId: nodeId, depth: depth),
+                ),
+            onBoxMenu: (nodeId, depth, rect) =>
+                WonkyPopupMenuHost.maybeOf(_menuContext ?? context)?.show(
+                  rect.bottomLeft,
+                  () => containerEntries(
+                    ui,
+                    doc,
+                    nodeId: nodeId,
+                    depth: depth,
+                    chrome: true,
+                  ),
+                ),
+            onStepTap: (nodeId, rect) => unawaited(
+              editStepNumber(
+                _menuContext ?? context,
+                doc,
+                _invoke,
+                nodeId: nodeId,
+                anchor: rect,
+              ),
+            ),
+            grid: GridCallbacks(
+              onColumnsTap: (nodeId, rect) => WonkyPopupMenuHost.maybeOf(
+                _menuContext ?? context,
+              )?.show(rect.bottomLeft, () => gridColumnsEntries(ui, nodeId)),
+              onBulletsTap: (nodeId, rect) => WonkyPopupMenuHost.maybeOf(
+                _menuContext ?? context,
+              )?.show(rect.bottomLeft, () => gridBulletsEntries(ui, nodeId)),
+              onAddItem: (nodeId) =>
+                  _invoke('write.grid.addItem', {'nodeId': nodeId}),
+              onMenu: (nodeId, rect) =>
+                  WonkyPopupMenuHost.maybeOf(_menuContext ?? context)?.show(
+                    rect.bottomLeft,
+                    () => gridEntries(ui, nodeId, chrome: true),
+                  ),
+            ),
+            youtube: YouTubeCallbacks(
+              onEdit: (nodeId, _) =>
+                  _invoke('write.youtube.edit', {'nodeId': nodeId}),
+              onOpen: (nodeId) =>
+                  _invoke('write.youtube.open', {'nodeId': nodeId}),
+              onMenu: (nodeId, rect) =>
+                  WonkyPopupMenuHost.maybeOf(_menuContext ?? context)?.show(
+                    rect.bottomLeft,
+                    () => youtubeEntries(ui, nodeId, chrome: true),
+                  ),
+            ),
           ),
           mentionCandidates: _mentionCandidates,
           emojiSuggestions: _emoji,

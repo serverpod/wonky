@@ -103,7 +103,7 @@ class _CommandPaletteBodyState extends State<_CommandPaletteBody> {
     final l = WonkyAppLocalizations.of(context);
     final commands = [
       for (final c in s.registry.all)
-        if (c.showInPalette) c,
+        if (c.showInPalette && s.dispatcher.stateOf(c.id.value).visible) c,
     ];
     PaletteRow rowOf(
       Command<CommandArgs> c, {

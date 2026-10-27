@@ -9,6 +9,7 @@ outline, proofread). The shared transport, auth, scopes, conventions and `drive.
 rules are in [../10-ai-assistant.md](../10-ai-assistant.md).
 
 Related Write specs: Delta schema & Markdown codec [02-document-model.md](02-document-model.md),
+Wonky Markdown (flavor, `write.set_markdown_flavor`, prompts) [11-wonky-markdown.md](11-wonky-markdown.md) §10,
 OT [03-sync-protocol.md](03-sync-protocol.md), editor [04-editor.md](04-editor.md), themes
 [06-themes.md](06-themes.md) (theme tools §12), page setup/export
 [07-import-export-print.md](07-import-export-print.md), comments/suggestions/history

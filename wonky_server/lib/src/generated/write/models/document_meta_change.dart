@@ -72,7 +72,7 @@ abstract class DocumentMetaChange
 
   int documentId;
 
-  /// themeId, pageSetup, language, frontMatter.
+  /// themeId, pageSetup, language, frontMatter, markdownFlavor.
   String field;
 
   _is.UuidValue? clientOpId;
@@ -313,7 +313,7 @@ class DocumentMetaChangeTable extends _is.Table<int?> {
 
   late final _is.ColumnInt documentId;
 
-  /// themeId, pageSetup, language, frontMatter.
+  /// themeId, pageSetup, language, frontMatter, markdownFlavor.
   late final _is.ColumnString field;
 
   late final _is.ColumnUuid clientOpId;

@@ -13,6 +13,15 @@ const _stroke = LengthProp(LengthKind.stroke);
 const _color = ColorProp();
 const _bool = BoolProp();
 
+/// The colors of one callout type (Write 11 §8): [color] is the type's
+/// hue; the other colors are derived from it unless set.
+const _calloutVariant = ObjectProp({
+  'color': _color,
+  'background': _color,
+  'border': _color,
+  'titleColor': _color,
+});
+
 /// Allowed `align` values.
 const alignValues = ['left', 'center', 'right', 'justify'];
 
@@ -233,6 +242,68 @@ abstract final class ThemeCatalog {
       'zebraColor': _color,
       'cellPadding': EdgesProp.lengths(LengthKind.spacing),
       'fontSizeRatio': NumberProp(0.5, 2),
+    }),
+    // Wonky Markdown elements (Write 11 §8).
+    ThemeElement.callout: ObjectProp({
+      'spaceBefore': _spacing,
+      'spaceAfter': _spacing,
+      'padding': EdgesProp.lengths(LengthKind.spacing),
+      'borderRadius': _spacing,
+      'borderWidth': _stroke,
+      'titleCaseTransform': EnumProp(caseTransformValues),
+      'titleSizeRatio': NumberProp(0.5, 2),
+      'titleWeight': WeightProp(),
+      'info': _calloutVariant,
+      'tip': _calloutVariant,
+      'note': _calloutVariant,
+      'warning': _calloutVariant,
+      'danger': _calloutVariant,
+    }),
+    ThemeElement.details: ObjectProp({
+      'spaceBefore': _spacing,
+      'spaceAfter': _spacing,
+      'padding': EdgesProp.lengths(LengthKind.spacing),
+      'background': _color,
+      'border': BorderProp(),
+      'borderRadius': _spacing,
+      'summaryWeight': WeightProp(),
+      'chevronColor': _color,
+    }),
+    ThemeElement.card: ObjectProp({
+      'spaceBefore': _spacing,
+      'spaceAfter': _spacing,
+      'padding': EdgesProp.lengths(LengthKind.spacing),
+      'background': _color,
+      'borderRadius': _spacing,
+      'shadow': EnumProp(['none', 'soft']),
+    }),
+    ThemeElement.grid: ObjectProp({
+      'spaceBefore': _spacing,
+      'spaceAfter': _spacing,
+      'bulletColor': _color,
+      'columnGap': _spacing,
+      'rowGap': _spacing,
+    }),
+    ThemeElement.button: ObjectProp({
+      'background': _color,
+      'color': _color,
+      'secondaryBackground': _color,
+      'secondaryColor': _color,
+      'borderRadius': _spacing,
+      'fontWeight': WeightProp(),
+      'arrowColor': _color,
+      'arrowWeight': WeightProp(),
+    }),
+    ThemeElement.chip: ObjectProp({
+      'background': _color,
+      'color': _color,
+      'borderRadius': _spacing,
+      'fontWeight': WeightProp(),
+    }),
+    ThemeElement.stepBadge: ObjectProp({
+      'background': _color,
+      'color': _color,
+      'sizeRatio': NumberProp(0.6, 2),
     }),
     ThemeElement.header: ObjectProp(headerFooterProps),
     ThemeElement.footer: ObjectProp(headerFooterProps),

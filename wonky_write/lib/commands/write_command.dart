@@ -42,6 +42,7 @@ class WriteCommand extends JsonCommand {
     this.reason,
     this.undoLabelOf,
     this.aliasList = const [],
+    this.wonkyOnly = false,
   }) : id = CommandId(id),
        // Menus show the command's icon; fall back to the shared table so
        // every Write command has one (Write 05 §7).
@@ -52,6 +53,10 @@ class WriteCommand extends JsonCommand {
   final WriteText label;
   @override
   final IconData? icon;
+
+  @override
+  IconData? iconFor(Map<String, Object?> args) =>
+      args.isEmpty ? icon : (commandIconFor(id.value, args) ?? icon);
   final WriteText? categoryName;
   final WriteText? descriptionText;
   @override
@@ -73,6 +78,9 @@ class WriteCommand extends JsonCommand {
 
   /// Whether the command changes content (needs Editing/Suggesting rights).
   final bool needsEditable;
+
+  /// Only shown and enabled in Wonky Markdown documents (Write 11 §7.5).
+  final bool wonkyOnly;
   final bool Function(WriteDocumentController doc, JsonArgs args)? enabled;
   final bool? Function(WriteDocumentController doc, JsonArgs args)? checked;
   final String? Function(
@@ -110,7 +118,14 @@ class WriteCommand extends JsonCommand {
     if (doc == null) return !needsDocument;
     if (needsDocument && !doc.isLoaded) return false;
     if (needsEditable && !doc.editable) return false;
+    if (wonkyOnly && !doc.isWonky) return false;
     return enabled?.call(doc, args) ?? true;
+  }
+
+  @override
+  bool isVisible(CommandContext ctx, JsonArgs args) {
+    if (!wonkyOnly) return true;
+    return WriteDocumentController.of(ctx)?.isWonky ?? false;
   }
 
   @override

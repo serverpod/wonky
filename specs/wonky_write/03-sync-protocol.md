@@ -164,7 +164,9 @@ or `getOps`). If the server is behind the stored revision (another history), the
 and offers the local state as a copy.
 
 ### 3.2 Integrity check
-Every 200 revisions (and on demand in debug), client and server compare a SHA-256 of the
+Every 200 revisions, once when a copy restored from the offline cache connects (it can have
+drifted, e.g. after an op an older or newer server normalized differently than the client
+predicted), and on demand in debug, client and server compare a SHA-256 of the
 canonical document JSON at a given revision (`Hash` message variant). Mismatch → client discards
 local document state (keeping the outbox as a recovery file), re-inits from a snapshot, and logs
 an error with the op range for diagnosis.

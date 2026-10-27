@@ -4,3 +4,5 @@ fields:
   pageSetupJson: String
   language: String?
   frontMatter: String?
+  ### `gfm` or `wonky` (Write 11 §3.1); null from older servers = `gfm`.
+  markdownFlavor: String?

@@ -3,7 +3,7 @@ class: DocumentMetaChange
 table: document_meta_change
 fields:
   documentId: int, relation(parent=document, onDelete=Cascade)
-  ### themeId, pageSetup, language, frontMatter.
+  ### themeId, pageSetup, language, frontMatter, markdownFlavor.
   field: String
   clientOpId: UuidValue?
   beforeJson: String

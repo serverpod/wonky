@@ -16,6 +16,7 @@ class WriteDocContext {
     required this.markdown,
     required this.outline,
     required this.frontMatter,
+    this.flavor = MarkdownFlavor.gfm,
   });
 
   final String title;
@@ -28,6 +29,9 @@ class WriteDocContext {
   final String markdown;
   final List<OutlineEntry> outline;
   final String? frontMatter;
+
+  /// The document's Markdown flavor (Write 11 §10).
+  final MarkdownFlavor flavor;
 
   late final WonkyDocument doc = WonkyDocument(content);
 
@@ -71,6 +75,7 @@ abstract final class WriteContextBuilder {
       revision: state.revision,
       content: state.content,
       frontMatter: target.document.frontMatter,
+      flavor: MarkdownFlavor.parse(target.document.markdownFlavor),
     );
   }
 
@@ -79,11 +84,13 @@ abstract final class WriteContextBuilder {
     required int revision,
     required Delta content,
     String? frontMatter,
+    MarkdownFlavor flavor = MarkdownFlavor.gfm,
   }) {
     final md = DocumentReader.renderMarkdown(
       content,
       SuggestionViewMode.accepted,
       frontMatter: frontMatter,
+      flavor: flavor,
     );
     return WriteDocContext(
       title: title,
@@ -92,6 +99,7 @@ abstract final class WriteContextBuilder {
       markdown: md,
       outline: const OutlineExtractor().outlineOf(WonkyDocument(content)),
       frontMatter: frontMatter,
+      flavor: flavor,
     );
   }
 
@@ -165,7 +173,11 @@ abstract final class WriteContextBuilder {
   static String _sectionMarkdown(WriteDocContext c, (int, int) s) {
     final end = (s.$1 + s.$2).clamp(0, c.doc.length);
     final slice = c.content.slice(s.$1, end);
-    return DocumentReader.renderMarkdown(slice, SuggestionViewMode.accepted);
+    return DocumentReader.renderMarkdown(
+      slice,
+      SuggestionViewMode.accepted,
+      flavor: c.flavor,
+    );
   }
 
   /// Markdown sections keyed by heading line (for change summaries).

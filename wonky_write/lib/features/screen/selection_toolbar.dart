@@ -8,6 +8,7 @@ import 'package:wonky_ui/wonky_ui.dart';
 import '../ai/ai_selection_menu.dart';
 import '../editor/commands/write_editor_commands.dart';
 import '../editor/controller/editor_types.dart';
+import '../editor/mapping/wonky_embed_node.dart';
 import '../../l10n/write_l10n.dart';
 import 'write_document_controller.dart';
 import 'write_toolbar.dart';
@@ -83,8 +84,16 @@ class _SelectionToolbarLayerState extends State<SelectionToolbarLayer> {
     if (!mounted || s == null || s.isCollapsed || _pointerDown) return;
     if (_dismissedFor == s) return;
     if (!doc.viewPrefs.showSelectionToolbar) return;
-    // A table cell is edited in place (its own field has the focus).
+    // A table cell or grid item is edited in place (its own field has the
+    // focus).
     if (doc.editor.tableEditing?.isEditing ?? false) return;
+    if (doc.editor.gridEditing?.isEditing ?? false) return;
+    // A selected grid has its own chrome; text formatting doesn't apply.
+    final ds = doc.editor.composer.selection;
+    if (ds != null && ds.base.nodeId == ds.extent.nodeId) {
+      final node = doc.editor.document.getNodeById(ds.base.nodeId);
+      if (node is WonkyEmbedNode && node.embedType == 'grid') return;
+    }
     setState(() => _visible = true);
   }
 

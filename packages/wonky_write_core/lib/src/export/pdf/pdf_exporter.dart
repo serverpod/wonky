@@ -13,7 +13,9 @@ import 'package:pdf/pdf.dart';
 // ignore: implementation_imports
 import 'package:pdf/src/pdf/format/string.dart' show PdfString;
 
+import '../../delta/boxes.dart';
 import '../../delta/delta_utils.dart';
+import '../../delta/embeds.dart';
 import '../../highlight/syntax_highlighter.dart';
 import '../../ir/doc_tree.dart';
 import '../../layout/header_footer_tokens.dart';
@@ -41,7 +43,42 @@ final class _DeterministicDocument extends PdfDocument {
   Uint8List get documentID => _id;
 }
 
-enum _Kind { text, image, rule, table }
+enum _Kind { text, image, rule, table, grid, spacer }
+
+/// One Wonky Markdown container a block is in (Write 11 §9): the frame the
+/// block's slices draw behind their content.
+final class _Frame {
+  _Frame({
+    required this.x,
+    required this.width,
+    required this.background,
+    required this.border,
+    required this.radius,
+    this.top = false,
+    this.bottom = false,
+  });
+
+  /// Left offset from the content left (pt) and width of the container.
+  final double x;
+  final double width;
+  final int? background;
+  final BorderPt border;
+  final double radius;
+
+  /// Whether the block is the container's first (header) / last block.
+  final bool top;
+  final bool bottom;
+
+  _Frame copyWith({bool? top, bool? bottom}) => _Frame(
+    x: x,
+    width: width,
+    background: background,
+    border: border,
+    radius: radius,
+    top: top ?? this.top,
+    bottom: bottom ?? this.bottom,
+  );
+}
 
 /// One cell of a laid-out table.
 final class _Cell {
@@ -83,10 +120,41 @@ final class _Block {
   final int? background;
   final BordersPt? borders;
   final double radius;
-  final double spaceBefore;
-  final double spaceAfter;
+  double spaceBefore;
+  double spaceAfter;
   final bool keepWithNext;
   final bool pageBreakBefore;
+
+  /// Left offset from the content left and available width (pt): narrower
+  /// inside Wonky containers.
+  double x = 0;
+  double width = 0;
+
+  /// The containers the block is in, outermost first.
+  List<_Frame> frames = const [];
+
+  /// Height of a spacer block (a container's top or bottom padding).
+  double spacerHeight = 0;
+
+  // Wonky decorations (Write 11 §9).
+  int? stepNumber;
+  double stepSize = 0;
+  int stepBackground = 0;
+  PdfRunStyle? stepStyle;
+  String? calloutIcon;
+  int iconColor = 0;
+  double iconSize = 0;
+  int? chevronColor;
+  double chevronSize = 0;
+
+  // Grid: rows → cells → lines.
+  List<List<List<PdfLine>>> gridRows = const [];
+  double gridColumnWidth = 0;
+  double gridColumnGap = 0;
+  double gridTextLeft = 0;
+  GridBullets gridBullets = GridBullets.none;
+  int gridBulletColor = 0;
+  double gridBulletSize = 0;
 
   // Decorations.
   BorderPt? leftBar;
@@ -187,7 +255,7 @@ final class _PdfJob {
     input.theme,
     input.variant,
   );
-  late final DocTree tree = exportTree(input, options);
+  late final DocTree tree = exportTree(input, options).withVideosAsLinks;
   late final PdfDocument doc = _DeterministicDocument(
     Uint8List.fromList(
       sha256
@@ -224,6 +292,15 @@ final class _PdfJob {
     );
   }();
   late final double contentWidth = pageWidth - margins.left - margins.right;
+
+  /// Left offset and width of the area blocks are laid out in (narrower
+  /// inside Wonky containers), and the containers around it.
+  double _x = 0;
+  late double _avail = contentWidth;
+  final _frameStack = <_Frame>[];
+
+  /// Heading numbering labels (details summaries are not numbered).
+  final _headingLabels = <HeadingBlock, String?>{};
   final _images = <String, PdfImage?>{};
   List<_Block> blocks = [];
   List<int> headingPages = [];
@@ -259,7 +336,27 @@ final class _PdfJob {
       _images[im.src] = await _loadImage(im);
     }
     input.cancel?.throwIfCancelled();
+    _labelHeadings();
     blocks = await _buildBlocks(tree.blocks);
+  }
+
+  void _labelHeadings() {
+    final headings = <HeadingBlock>[];
+    void walk(List<DocBlock> list) {
+      for (final b in list) {
+        if (b is HeadingBlock) headings.add(b);
+        if (b is ContainerBlock) walk(b.body);
+      }
+    }
+
+    walk(tree.blocks);
+    final labels = HeadingNumberer.labelsFor(
+      theme.headingNumbering,
+      headings.map((h) => h.level),
+    );
+    for (var i = 0; i < headings.length; i++) {
+      _headingLabels[headings[i]] = labels[i];
+    }
   }
 
   /// A turn for the event loop when the export runs on the UI isolate (web,
@@ -273,7 +370,7 @@ final class _PdfJob {
 
   String _allText() {
     final b = StringBuffer();
-    for (final block in tree.blocks) {
+    for (final block in tree.allBlocks) {
       switch (block) {
         case ParagraphBlock(:final runs) ||
             HeadingBlock(:final runs) ||
@@ -294,10 +391,21 @@ final class _PdfJob {
           }
         case ImageBlock(:final alt, :final title):
           b.write('$alt${title ?? ''}');
+        case GridBlock(:final items):
+          for (final i in items) {
+            b.write(InlineRun.plainText(i));
+          }
+        case YouTubeBlock(:final asLink):
+          b.write(InlineRun.plainText(asLink.runs));
+        case ContainerBlock(:final frame):
+          b.write(frame.calloutLabel.toUpperCase());
+          b.write(frame.calloutLabel);
         case RuleBlock():
           break;
       }
     }
+    // Arrow link glyphs, step numbers.
+    b.write('\u2197\u21920123456789');
     return b.toString();
   }
 
@@ -354,11 +462,25 @@ final class _PdfJob {
     int? color,
     bool strikeAll = false,
     CaseTransform caseTransform = CaseTransform.none,
+    int? weight,
   }) {
     final t = theme;
     final out = <(String, PdfRunStyle)>[];
-    for (final r in runs) {
+    for (var k = 0; k < runs.length; k++) {
+      final r = runs[k];
       final text = applyCase(r.text, caseTransform);
+      final styled = _styledRun(r, text, base, strikeAll: strikeAll);
+      if (styled != null) {
+        // A plain space on each side keeps pills apart from their
+        // neighbours (the pill reaches into it).
+        final pill = styled.first.$2.background != null;
+        final space = _base(base);
+        final gap = r.chip ? ' ' : '  ';
+        if (pill && k > 0) out.add((gap, space));
+        out.addAll(styled);
+        if (pill && k < runs.length - 1) out.add((gap, space));
+        continue;
+      }
       if (r.code) {
         final ic = t.inlineCode;
         out.add((
@@ -381,7 +503,9 @@ final class _PdfJob {
         ));
         continue;
       }
-      final weight = r.bold ? (t.bold.fontWeight ?? 700) : base.fontWeight;
+      final runWeight = r.bold
+          ? (t.bold.fontWeight ?? 700)
+          : (weight ?? base.fontWeight);
       final italic = r.italic ? true : base.italic;
       var c = color ?? base.color;
       if (r.bold && t.bold.color != null) c = t.bold.color!;
@@ -394,7 +518,7 @@ final class _PdfJob {
         PdfRunStyle(
           font: fonts.font(
             base.fontFamily,
-            isMention ? t.mention.fontWeight : weight,
+            isMention ? t.mention.fontWeight : runWeight,
             italic,
           ),
           size: base.fontSize,
@@ -419,6 +543,73 @@ final class _PdfJob {
     return out;
   }
 
+  /// A chip, button or arrow link (Write 11 §9): pills behind the label,
+  /// links kept; `null` for other runs.
+  List<(String, PdfRunStyle)>? _styledRun(
+    InlineRun r,
+    String text,
+    ResolvedTextStyle base, {
+    bool strikeAll = false,
+  }) {
+    final w = theme.wonky;
+    final size = base.fontSize;
+    if (r.chip) {
+      final ch = w.chip;
+      return [
+        (
+          text,
+          PdfRunStyle(
+            font: fonts.font(base.fontFamily, ch.fontWeight, false),
+            size: size,
+            color: ch.color,
+            background: ch.background,
+            backgroundPadX: size * 0.3,
+            backgroundRadius: math.min(ch.borderRadius, size * 0.6),
+            strike: strikeAll,
+          ),
+        ),
+      ];
+    }
+    final link = r.link;
+    final style = r.linkStyle;
+    if (link == null || style == null) return null;
+    final target = input.links.resolve(link);
+    final bt = w.button;
+    if (style == 'arrow') {
+      final s = PdfRunStyle(
+        font: fonts.font(base.fontFamily, bt.arrowWeight, false),
+        size: size,
+        color: bt.arrowColor,
+        link: target,
+        strike: strikeAll,
+      );
+      return [(text, s), ('\u00a0${_arrowGlyph(s.font)}', s)];
+    }
+    final secondary = style == 'buttonSecondary';
+    return [
+      (
+        text,
+        PdfRunStyle(
+          font: fonts.font(base.fontFamily, bt.fontWeight, false),
+          size: size,
+          color: secondary ? bt.secondaryColor : bt.color,
+          background: secondary ? bt.secondaryBackground : bt.background,
+          backgroundPadX: size * 0.3,
+          backgroundRadius: math.min(bt.borderRadius, size * 0.6),
+          link: target,
+          strike: strikeAll,
+        ),
+      ),
+    ];
+  }
+
+  /// `↗`, or a fallback the fonts can draw.
+  String _arrowGlyph(PdfFont font) {
+    if (fonts.supports(0x2197, font)) return '\u2197';
+    if (fonts.supports(0x2192, font)) return '\u2192';
+    return '>';
+  }
+
   PdfRunStyle _base(ResolvedTextStyle s, {bool mono = false}) =>
       styler.text(s, mono: mono);
 
@@ -427,11 +618,6 @@ final class _PdfJob {
 
   Future<List<_Block>> _buildBlocks(List<DocBlock> source) async {
     final t = theme;
-    final labels = HeadingNumberer.labelsFor(
-      t.headingNumbering,
-      source.whereType<HeadingBlock>().map((h) => h.level),
-    );
-    var headingIndex = 0;
     final out = <_Block>[];
     DocBlock? prev;
     for (var i = 0; i < source.length; i++) {
@@ -440,12 +626,13 @@ final class _PdfJob {
       final b = source[i];
       final afterHeading = prev is HeadingBlock;
       final next = i + 1 < source.length ? source[i + 1] : null;
+      final mark = out.length;
       switch (b) {
         case ParagraphBlock(:final runs):
           final box = t.body.box;
           final lines = breaker.layout(
             _runs(runs, t.body.style),
-            contentWidth,
+            _avail,
             lineHeight: t.body.style.lineHeight,
             baseStyle: _base(t.body.style),
             align: box.align,
@@ -467,9 +654,14 @@ final class _PdfJob {
           );
         case HeadingBlock(:final level, :final runs, :final anchorId):
           final h = t.headings[level - 1];
-          final label = labels[headingIndex++];
+          final label = _headingLabels[b];
           final all = [if (label != null) InlineRun(label), ...runs];
-          final width = contentWidth - h.box.padding.horizontal;
+          final step = b.step;
+          final badge = step == null
+              ? 0.0
+              : h.style.fontSize * t.wonky.stepBadge.sizeRatio;
+          final badgeGap = step == null ? 0.0 : h.style.fontSize * 0.45;
+          final width = _avail - h.box.padding.horizontal - badge - badgeGap;
           final lines = breaker.layout(
             _runs(all, h.style, caseTransform: h.style.caseTransform),
             width,
@@ -486,6 +678,7 @@ final class _PdfJob {
                 index: i,
                 kind: _Kind.text,
                 lines: lines,
+                textLeft: badge + badgeGap,
                 paddingTop: h.box.padding.top,
                 paddingBottom: h.box.padding.bottom + borderH,
                 paddingLeft: h.box.padding.left,
@@ -500,9 +693,20 @@ final class _PdfJob {
               ..bottomBorderGap = h.borderBottomGap
               ..anchorId = anchorId
               ..headingLevel = level
-              ..headingTitle = InlineRun.plainText(
-                all,
-              ).replaceAll(softBreak, ' ').trim(),
+              ..headingTitle = InlineRun.plainText([
+                if (step != null) InlineRun('($step) '),
+                ...all,
+              ]).replaceAll(softBreak, ' ').trim()
+              ..stepNumber = step
+              ..stepSize = badge
+              ..stepBackground = t.wonky.stepBadge.background
+              ..stepStyle = step == null
+                  ? null
+                  : PdfRunStyle(
+                      font: fonts.font(h.style.fontFamily, 700, false),
+                      size: badge * 0.6,
+                      color: t.wonky.stepBadge.color,
+                    ),
           );
         case ListItemBlock(
           :final kind,
@@ -539,7 +743,7 @@ final class _PdfJob {
           final q = t.blockquote;
           final bar = q.bar.isVisible ? q.bar.width : 0.0;
           final left = q.box.padding.left + bar;
-          final width = contentWidth - left - q.box.padding.right;
+          final width = _avail - left - q.box.padding.right;
           final laid = <PdfLine>[];
           for (var li = 0; li < lines.length; li++) {
             laid.addAll(
@@ -592,10 +796,263 @@ final class _PdfJob {
           );
         case TableBlock():
           out.add(_table(b, i));
+        case GridBlock():
+          out.add(_grid(b, i));
+        case YouTubeBlock():
+          // Links ([DocTree.withVideosAsLinks]).
+          break;
+        case ContainerBlock():
+          out.addAll(await _container(b, i));
+      }
+      if (b is! ContainerBlock) {
+        for (var k = mark; k < out.length; k++) {
+          out[k]
+            ..x = _x
+            ..width = _avail
+            ..frames = List.of(_frameStack);
+        }
       }
       prev = b;
     }
     return out;
+  }
+
+  /// A Wonky container (Write 11 §9): a header block (callout title,
+  /// details summary or top padding), the children laid out in the
+  /// container's inner area, and a bottom padding block; every block
+  /// carries the container's frame.
+  Future<List<_Block>> _container(ContainerBlock c, int index) async {
+    final t = theme;
+    final w = t.wonky;
+    final frame = c.frame;
+    final (
+      background,
+      border,
+      radius,
+      pad,
+      spaceBefore,
+      spaceAfter,
+    ) = switch (frame.type) {
+      BoxType.callout => () {
+        final cc = w.callout.colorsFor(
+          (frame.variant ?? CalloutVariant.info).value,
+        );
+        return (
+          cc.background as int?,
+          BorderPt(
+            width: w.callout.borderWidth,
+            style: LineStyle.solid,
+            color: cc.border,
+          ),
+          w.callout.borderRadius,
+          w.callout.padding,
+          w.callout.spaceBefore,
+          w.callout.spaceAfter,
+        );
+      }(),
+      BoxType.details => (
+        w.details.background,
+        w.details.border,
+        w.details.borderRadius,
+        w.details.padding,
+        w.details.spaceBefore,
+        w.details.spaceAfter,
+      ),
+      BoxType.card => (
+        w.card.background,
+        BorderPt.none,
+        w.card.borderRadius,
+        w.card.padding,
+        w.card.spaceBefore,
+        w.card.spaceAfter,
+      ),
+    };
+    final bw = border.isVisible ? border.width : 0.0;
+    final outerX = _x;
+    final outerW = _avail;
+    final f = _Frame(
+      x: outerX,
+      width: outerW,
+      background: background,
+      border: border,
+      radius: radius,
+    );
+    final innerX = outerX + bw + pad.left;
+    final innerW = math.max(1.0, outerW - 2 * bw - pad.horizontal);
+    final saved = List.of(_frameStack);
+    final out = <_Block>[];
+    void place(_Block b, _Frame frame) => out.add(
+      b
+        ..x = innerX
+        ..width = innerW
+        ..frames = [...saved, frame],
+    );
+
+    // Header.
+    final topPad = bw + pad.top;
+    final body = t.body.style;
+    switch (frame.type) {
+      case BoxType.callout:
+        final co = w.callout;
+        final cc = co.colorsFor((frame.variant ?? CalloutVariant.info).value);
+        final size = body.fontSize * co.titleSizeRatio;
+        final style = PdfRunStyle(
+          font: fonts.font(body.fontFamily, co.titleWeight, false),
+          size: size,
+          color: cc.title,
+          letterSpacing: size * 0.025,
+        );
+        final icon = size * 1.4;
+        final gap = size * 0.5;
+        final lines = breaker.layout(
+          [(applyCase(frame.calloutLabel, co.titleCase), style)],
+          innerW - icon - gap,
+          lineHeight: 1.6,
+          baseStyle: style,
+        );
+        place(
+          _Block(
+              source: c,
+              index: index,
+              kind: _Kind.text,
+              lines: lines,
+              textLeft: icon + gap,
+              paddingTop: topPad,
+              paddingBottom: body.fontSize * 0.4,
+              spaceBefore: spaceBefore,
+              keepWithNext: true,
+            )
+            ..calloutIcon = (frame.variant ?? CalloutVariant.info).value
+            ..iconColor = cc.title
+            ..iconSize = icon,
+          f.copyWith(top: true),
+        );
+      case BoxType.details:
+        final summary = c.summary;
+        final style = _base(body);
+        final chevron = body.fontSize * 1.25;
+        final lines = breaker.layout(
+          _runs(
+            summary?.runs ?? const [],
+            body,
+            weight: w.details.summaryWeight,
+          ),
+          innerW - chevron - body.fontSize,
+          lineHeight: body.lineHeight,
+          baseStyle: style,
+        );
+        place(
+          _Block(
+              source: c,
+              index: index,
+              kind: _Kind.text,
+              lines: lines,
+              paddingTop: topPad,
+              paddingBottom: c.body.isEmpty ? 0 : body.fontSize * 0.75,
+              spaceBefore: spaceBefore,
+              keepWithNext: true,
+            )
+            ..chevronColor = w.details.chevronColor
+            ..chevronSize = chevron,
+          f.copyWith(top: true),
+        );
+      case BoxType.card:
+        place(
+          _Block(
+            source: c,
+            index: index,
+            kind: _Kind.spacer,
+            spaceBefore: spaceBefore,
+            keepWithNext: true,
+          )..spacerHeight = topPad,
+          f.copyWith(top: true),
+        );
+    }
+
+    // Children.
+    final prevX = _x;
+    final prevW = _avail;
+    _x = innerX;
+    _avail = innerW;
+    _frameStack.add(f);
+    final children = await _buildBlocks(c.body);
+    _frameStack.removeLast();
+    _x = prevX;
+    _avail = prevW;
+    if (children.isNotEmpty) {
+      // The container's padding replaces the children's outer spacing.
+      children.first.spaceBefore = 0;
+      children.last.spaceAfter = 0;
+    }
+    out.addAll(children);
+
+    // Bottom padding.
+    place(
+      _Block(
+        source: c,
+        index: index,
+        kind: _Kind.spacer,
+        spaceAfter: spaceAfter,
+      )..spacerHeight = bw + pad.bottom,
+      f.copyWith(bottom: true),
+    );
+    return out;
+  }
+
+  /// A Wonky grid (Write 11 §9): items in columns, rows paginate.
+  _Block _grid(GridBlock g, int index) {
+    final t = theme;
+    final st = t.wonky.grid;
+    final body = t.body.style;
+    var cols = g.columns;
+    if (_avail < 360) cols = math.min(cols, 2);
+    if (_avail < 240) cols = 1;
+    final colW = (_avail - st.columnGap * (cols - 1)) / cols;
+    final bullet = g.bullets == GridBullets.none ? 0.0 : body.fontSize * 1.1;
+    final textLeft = bullet == 0 ? 0.0 : bullet + body.fontSize * 0.5;
+    final rows = <List<List<PdfLine>>>[];
+    final metrics = <RowMetrics>[];
+    for (var r = 0; r * cols < g.items.length; r++) {
+      final cells = <List<PdfLine>>[];
+      var h = 0.0;
+      for (var c = 0; c < cols && r * cols + c < g.items.length; c++) {
+        final lines = breaker.layout(
+          _runs(g.items[r * cols + c], body),
+          math.max(1, colW - textLeft),
+          lineHeight: body.lineHeight,
+          baseStyle: _base(body),
+        );
+        cells.add(lines);
+        h = math.max(h, lines.fold(0.0, (s, l) => s + l.height));
+      }
+      final last = (r + 1) * cols >= g.items.length;
+      final gap = last ? 0.0 : st.rowGap;
+      rows.add(cells);
+      metrics.add(
+        RowMetrics(
+          h + gap,
+          cellLineHeights: [
+            for (final c in cells) [for (final l in c) l.height],
+          ],
+          cellPadding: gap,
+        ),
+      );
+    }
+    return _Block(
+        source: g,
+        index: index,
+        kind: _Kind.grid,
+        spaceBefore: st.spaceBefore,
+        spaceAfter: st.spaceAfter,
+      )
+      ..gridRows = rows
+      ..gridColumnWidth = colW
+      ..gridColumnGap = st.columnGap
+      ..gridTextLeft = textLeft
+      ..gridBullets = g.bullets
+      ..gridBulletColor = st.bulletColor
+      ..gridBulletSize = bullet
+      .._rowMetrics.addAll(metrics);
   }
 
   _Block _listItem(
@@ -621,7 +1078,7 @@ final class _PdfJob {
         ? q.box.padding.left + (q.bar.isVisible ? q.bar.width : 0.0)
         : 0.0;
     final left = quoteLeft + l.indentPerLevel * (indent + 1);
-    final width = contentWidth - left - (quoted ? q.box.padding.right : 0);
+    final width = _avail - left - (quoted ? q.box.padding.right : 0);
     final lines = breaker.layout(
       _runs(
         runs,
@@ -688,7 +1145,7 @@ final class _PdfJob {
     final cb = t.codeBlock;
     final base = _base(cb.style, mono: true);
     final spans = SyntaxHighlighter.instance.tokenize(text, language);
-    final width = contentWidth - cb.box.padding.horizontal;
+    final width = _avail - cb.box.padding.horizontal;
     final lines = <PdfLine>[];
     var lineStart = 0;
     for (final raw in text.split('\n')) {
@@ -766,12 +1223,12 @@ final class _PdfJob {
     );
     final pdfImage = _images[b.src];
     final maxW = st.maxWidth.fraction != null
-        ? contentWidth * st.maxWidth.fraction!
-        : math.min(contentWidth, st.maxWidth.points ?? contentWidth);
+        ? _avail * st.maxWidth.fraction!
+        : math.min(_avail, st.maxWidth.points ?? _avail);
     if (pdfImage == null) {
       block
         ..placeholder = '[Image: ${b.alt}]'
-        ..imageWidth = math.min(maxW, contentWidth)
+        ..imageWidth = math.min(maxW, _avail)
         ..imageHeight = t.body.style.fontSize * 3;
     } else {
       final w = math.min(maxW, pdfImage.width * 0.75);
@@ -783,13 +1240,13 @@ final class _PdfJob {
         ..imageBorder = st.border;
     }
     block.imageLeft = st.align == ImageAlign.center
-        ? (contentWidth - block.imageWidth) / 2
+        ? (_avail - block.imageWidth) / 2
         : 0;
     if (st.caption.show && b.title != null && b.title!.isNotEmpty) {
       block
         ..caption = breaker.layout(
           [(b.title!, _base(st.caption.style))],
-          contentWidth,
+          _avail,
           lineHeight: st.caption.style.lineHeight,
           baseStyle: _base(st.caption.style),
           align: st.caption.align,
@@ -824,8 +1281,8 @@ final class _PdfJob {
       }
     }
     final sum = natural.fold(0.0, (s, w) => s + w);
-    final widths = ts.width == TableWidth.full || sum > contentWidth
-        ? [for (final w in natural) w / sum * contentWidth]
+    final widths = ts.width == TableWidth.full || sum > _avail
+        ? [for (final w in natural) w / sum * _avail]
         : natural;
     final rows = <List<_Cell>>[];
     final heights = <double>[];
@@ -950,6 +1407,25 @@ final class _PdfJob {
           rows: b._rowMetrics,
           headerRows: b.rows.isEmpty ? 0 : 1,
         );
+      case _Kind.grid:
+        return BlockMetrics(
+          blockIndex: i,
+          kind: BlockMetricsKind.table,
+          spaceBefore: b.spaceBefore,
+          spaceAfter: b.spaceAfter,
+          rows: b._rowMetrics,
+          headerRows: 0,
+        );
+      case _Kind.spacer:
+        // Never split; moves to the next page with what follows.
+        return BlockMetrics(
+          blockIndex: i,
+          kind: BlockMetricsKind.image,
+          spaceBefore: b.spaceBefore,
+          spaceAfter: b.spaceAfter,
+          fixedHeight: b.spacerHeight,
+          keepWithNext: b.keepWithNext,
+        );
     }
   }
 
@@ -1054,7 +1530,7 @@ final class _PdfJob {
       lines: lines,
       textLeft: indent,
       spaceAfter: 2,
-    );
+    )..width = contentWidth;
   }
 
   PdfRunStyle _withLink(PdfRunStyle s, String link) => PdfRunStyle(
@@ -1110,9 +1586,20 @@ final class _PdfJob {
       }
       final geo = _geometry(page.index);
       if (options.headerFooter) _headerFooter(g, page.index, count, geo);
+      double? prevBottom;
       for (final slice in page.slices) {
         final b = blocks[slice.blockIndex];
         final top = geo.contentTop + slice.y;
+        if (b.frames.isNotEmpty) {
+          _paintFrames(
+            g,
+            b,
+            slice,
+            top,
+            prevBottom == null ? null : top - prevBottom,
+          );
+        }
+        prevBottom = top + slice.height;
         switch (b.kind) {
           case _Kind.text:
             _paintText(pdfPage, g, b, slice, top);
@@ -1122,6 +1609,10 @@ final class _PdfJob {
             if (slice.height > 0) _paintRule(g, b, top);
           case _Kind.table:
             _paintTable(pdfPage, g, b, slice, top);
+          case _Kind.grid:
+            _paintGrid(pdfPage, g, b, slice, top);
+          case _Kind.spacer:
+            break;
         }
         // Anchors and bookmarks at the first slice of a heading.
         if (b.anchorId != null && !slice.isContinuation) {
@@ -1232,24 +1723,35 @@ final class _PdfJob {
     double top,
   ) {
     final baseline = pageHeight - (top + line.ascent);
+    // Backgrounds first, one per run of pieces in the same style (a chip or
+    // button label of several words is one pill), so no pill covers text.
+    final pieces = line.pieces;
+    for (var i = 0; i < pieces.length; i++) {
+      final s = pieces[i].style;
+      if (s.background == null || pieces[i].text.isEmpty) continue;
+      var j = i;
+      while (j + 1 < pieces.length && identical(pieces[j + 1].style, s)) {
+        j++;
+      }
+      final x0 = left + pieces[i].x - s.backgroundPadX;
+      final x1 = left + pieces[j].x + pieces[j].width + s.backgroundPadX;
+      g
+        ..setFillColor(_color(s.background!))
+        ..drawRRect(
+          x0,
+          baseline - s.size * 0.25,
+          x1 - x0,
+          s.size * 1.2,
+          s.backgroundRadius,
+          s.backgroundRadius,
+        )
+        ..fillPath();
+      i = j;
+    }
     for (final p in line.pieces) {
       if (p.text.isEmpty) continue;
       final s = p.style;
       final x = left + p.x;
-      if (s.background != null) {
-        final bh = s.size * 1.2;
-        g
-          ..setFillColor(_color(s.background!))
-          ..drawRRect(
-            x - s.backgroundPadX,
-            baseline - s.size * 0.25,
-            p.width + 2 * s.backgroundPadX,
-            bh,
-            s.backgroundRadius,
-            s.backgroundRadius,
-          )
-          ..fillPath();
-      }
       g
         ..setFillColor(_color(s.color))
         ..drawString(
@@ -1304,31 +1806,24 @@ final class _PdfJob {
   ) {
     final from = slice.lineFrom ?? 0;
     final to = math.min(slice.lineTo ?? b.lines.length, b.lines.length);
-    final left = margins.left;
+    final left = margins.left + b.x;
     final bottomY = pageHeight - (top + slice.height);
     // Box background / borders.
     if (b.background != null) {
       final r = slice.isContinuation || slice.continues ? 0.0 : b.radius;
       g
         ..setFillColor(_color(b.background!))
-        ..drawRRect(left, bottomY, contentWidth, slice.height, r, r)
+        ..drawRRect(left, bottomY, b.width, slice.height, r, r)
         ..fillPath();
     }
     final borders = b.borders;
     if (borders != null && borders.hasAny) {
       final yTop = pageHeight - top;
       if (borders.top.isVisible && !slice.isContinuation) {
-        _strokeLine(g, left, yTop, left + contentWidth, yTop, borders.top);
+        _strokeLine(g, left, yTop, left + b.width, yTop, borders.top);
       }
       if (borders.bottom.isVisible && !slice.continues) {
-        _strokeLine(
-          g,
-          left,
-          bottomY,
-          left + contentWidth,
-          bottomY,
-          borders.bottom,
-        );
+        _strokeLine(g, left, bottomY, left + b.width, bottomY, borders.bottom);
       }
       if (borders.left.isVisible) {
         _strokeLine(g, left, bottomY, left, yTop, borders.left);
@@ -1336,9 +1831,9 @@ final class _PdfJob {
       if (borders.right.isVisible) {
         _strokeLine(
           g,
-          left + contentWidth,
+          left + b.width,
           bottomY,
-          left + contentWidth,
+          left + b.width,
           yTop,
           borders.right,
         );
@@ -1356,6 +1851,7 @@ final class _PdfJob {
       final textLeft = left + b.textLeft + b.paddingLeft;
       if (i == 0 && !slice.isContinuation) {
         _paintMarker(g, b, line, textLeft, y);
+        _paintWonkyMarks(g, b, line, left + b.paddingLeft, y);
       }
       _drawLine(page, g, line, textLeft, y);
       y += line.height;
@@ -1363,7 +1859,327 @@ final class _PdfJob {
     if (b.bottomBorder != null && !slice.continues) {
       final by =
           pageHeight - (y + b.bottomBorderGap + b.bottomBorder!.width / 2);
-      _strokeLine(g, left, by, left + contentWidth, by, b.bottomBorder!);
+      _strokeLine(g, left, by, left + b.width, by, b.bottomBorder!);
+    }
+  }
+
+  /// A callout icon, details chevron or step badge on a block's first line.
+  void _paintWonkyMarks(
+    PdfGraphics g,
+    _Block b,
+    PdfLine line,
+    double left,
+    double top,
+  ) {
+    final cy = pageHeight - (top + line.height / 2);
+    if (b.calloutIcon != null) {
+      _drawIcon(g, b.calloutIcon!, left, cy, b.iconSize, b.iconColor);
+    }
+    if (b.chevronColor != null) {
+      _drawIcon(
+        g,
+        'chevron',
+        left + b.width - b.chevronSize,
+        cy,
+        b.chevronSize,
+        b.chevronColor!,
+      );
+    }
+    final step = b.stepNumber;
+    final style = b.stepStyle;
+    if (step != null && style != null) {
+      final r = b.stepSize / 2;
+      g
+        ..setFillColor(_color(b.stepBackground))
+        ..drawEllipse(left + r, cy, r, r)
+        ..fillPath();
+      final text = '$step';
+      final w = breaker.measure(text, style);
+      g
+        ..setFillColor(_color(style.color))
+        ..drawString(
+          style.font,
+          style.size,
+          text,
+          left + r - w / 2,
+          cy - style.size * 0.35,
+        );
+    }
+  }
+
+  /// Draws a Lucide icon of the Wonky elements (the 24-unit icons of
+  /// `WonkyIcons`, as strokes) with its left edge at [x], vertically centered
+  /// on [cy] (PDF coordinates), [size] pt wide.
+  void _drawIcon(
+    PdfGraphics g,
+    String name,
+    double x,
+    double cy,
+    double size,
+    int color,
+  ) {
+    final s = size / 24;
+    final top = cy + size / 2;
+    double px(double v) => x + v * s;
+    double py(double v) => top - v * s;
+    void poly(List<(double, double)> pts, {bool close = false}) {
+      g.moveTo(px(pts.first.$1), py(pts.first.$2));
+      for (final p in pts.skip(1)) {
+        g.lineTo(px(p.$1), py(p.$2));
+      }
+      if (close) g.closePath();
+      g.strokePath();
+    }
+
+    void curve(
+      double x1,
+      double y1,
+      double x2,
+      double y2,
+      double x3,
+      double y3,
+    ) => g.curveTo(px(x1), py(y1), px(x2), py(y2), px(x3), py(y3));
+    void dot(double cxv, double cyv) {
+      g
+        ..drawEllipse(px(cxv), py(cyv), s * 1.15, s * 1.15)
+        ..fillPath();
+    }
+
+    g
+      ..saveContext()
+      ..setStrokeColor(_color(color))
+      ..setFillColor(_color(color))
+      ..setLineWidth(2 * s)
+      ..setLineCap(PdfLineCap.round)
+      ..setLineJoin(PdfLineJoin.round);
+    switch (name) {
+      case 'info':
+        g
+          ..drawEllipse(px(12), py(12), 10 * s, 10 * s)
+          ..strokePath();
+        poly([(12, 16), (12, 12)]);
+        dot(12, 8);
+      case 'tip':
+        const k = 6 * 0.5523;
+        g.moveTo(px(15), py(14));
+        curve(15.2, 13, 15.7, 12.3, 16.5, 11.5);
+        curve(17.5, 10.6, 18, 9.3, 18, 8);
+        curve(18, 8 - k, 12 + k, 2, 12, 2);
+        curve(12 - k, 2, 6, 8 - k, 6, 8);
+        curve(6, 9, 6.2, 10.2, 7.5, 11.5);
+        curve(8.2, 12.2, 8.8, 13, 9, 14);
+        g.strokePath();
+        poly([(9, 18), (15, 18)]);
+        poly([(10, 22), (14, 22)]);
+      case 'note':
+        const k = 2 * 0.5523;
+        g.moveTo(px(22), py(17));
+        curve(22, 17 + k, 20 + k, 19, 20, 19);
+        g
+          ..lineTo(px(6.8), py(19))
+          ..lineTo(px(2), py(21.3))
+          ..lineTo(px(2), py(5));
+        curve(2, 5 - k, 4 - k, 3, 4, 3);
+        g.lineTo(px(20), py(3));
+        curve(20 + k, 3, 22, 5 - k, 22, 5);
+        g
+          ..closePath()
+          ..strokePath();
+        dot(8, 11);
+        dot(12, 11);
+        dot(16, 11);
+      case 'warning' || 'caution':
+        poly([(12, 3.2), (21.9, 20), (2.1, 20)], close: true);
+        poly([(12, 9), (12, 13)]);
+        dot(12, 17);
+      case 'danger':
+        poly(const [
+          (8.69, 2),
+          (15.31, 2),
+          (22, 8.69),
+          (22, 15.31),
+          (15.31, 22),
+          (8.69, 22),
+          (2, 15.31),
+          (2, 8.69),
+        ], close: true);
+        poly([(12, 8), (12, 12)]);
+        dot(12, 16);
+      case 'chevron':
+        poly([(19, 9), (12, 16), (5, 9)]);
+      case 'check':
+        poly([(5, 13), (9, 17), (19, 7)]);
+      case 'circle':
+        g
+          ..drawEllipse(px(12), py(12), 4 * s, 4 * s)
+          ..fillPath();
+    }
+    g.restoreContext();
+  }
+
+  /// The frames of the containers around [b] behind one of its slices
+  /// (Write 11 §9): background, side borders, and the top/bottom edges with
+  /// rounded corners on the container's first and last slice. A frame
+  /// reaches up over the gap to the slice above it on the page, so a
+  /// container is one continuous box.
+  void _paintFrames(
+    PdfGraphics g,
+    _Block b,
+    PlacedSlice slice,
+    double top,
+    double? gapAbove,
+  ) {
+    for (final f in b.frames) {
+      final roundTop = f.top && !slice.isContinuation;
+      final roundBottom = f.bottom && !slice.continues;
+      // A hair of overlap with the slice above hides the seam between fills.
+      final yTop = top - (roundTop || gapAbove == null ? 0 : gapAbove + 0.5);
+      final h = top + slice.height - yTop;
+      if (h <= 0) continue;
+      final x = margins.left + f.x;
+      final yb = pageHeight - (top + slice.height);
+      final maxR = math.min(f.width / 2, roundTop && roundBottom ? h / 2 : h);
+      final rt = roundTop ? math.min(f.radius, maxR) : 0.0;
+      final rb = roundBottom ? math.min(f.radius, maxR) : 0.0;
+      if (f.background != null) {
+        g.setFillColor(_color(f.background!));
+        _framePath(g, x, yb, f.width, h, rt, rb);
+        g.fillPath();
+      }
+      final border = f.border;
+      if (!border.isVisible) continue;
+      final inset = border.width / 2;
+      final bx = x + inset;
+      final bw = f.width - border.width;
+      final byb = yb + (roundBottom ? inset : 0);
+      final bt = yb + h - (roundTop ? inset : 0);
+      g
+        ..saveContext()
+        ..setStrokeColor(_color(border.color))
+        ..setLineWidth(border.width);
+      const k = 0.5523;
+      if (roundTop && roundBottom) {
+        _framePath(g, bx, byb, bw, bt - byb, rt, rb);
+      } else if (roundTop) {
+        g
+          ..moveTo(bx, byb)
+          ..lineTo(bx, bt - rt)
+          ..curveTo(bx, bt - rt + rt * k, bx + rt - rt * k, bt, bx + rt, bt)
+          ..lineTo(bx + bw - rt, bt)
+          ..curveTo(
+            bx + bw - rt + rt * k,
+            bt,
+            bx + bw,
+            bt - rt + rt * k,
+            bx + bw,
+            bt - rt,
+          )
+          ..lineTo(bx + bw, byb);
+      } else if (roundBottom) {
+        g
+          ..moveTo(bx, bt)
+          ..lineTo(bx, byb + rb)
+          ..curveTo(bx, byb + rb - rb * k, bx + rb - rb * k, byb, bx + rb, byb)
+          ..lineTo(bx + bw - rb, byb)
+          ..curveTo(
+            bx + bw - rb + rb * k,
+            byb,
+            bx + bw,
+            byb + rb - rb * k,
+            bx + bw,
+            byb + rb,
+          )
+          ..lineTo(bx + bw, bt);
+      } else {
+        g
+          ..moveTo(bx, byb)
+          ..lineTo(bx, bt)
+          ..moveTo(bx + bw, byb)
+          ..lineTo(bx + bw, bt);
+      }
+      g
+        ..strokePath()
+        ..restoreContext();
+    }
+  }
+
+  /// A rectangle with corner radius [rt] at the top and [rb] at the bottom
+  /// (PDF coordinates: [yb] is the bottom edge).
+  static void _framePath(
+    PdfGraphics g,
+    double x,
+    double yb,
+    double w,
+    double h,
+    double rt,
+    double rb,
+  ) {
+    const k = 0.5523;
+    final t = yb + h;
+    g
+      ..moveTo(x + rb, yb)
+      ..lineTo(x + w - rb, yb);
+    if (rb > 0) {
+      g.curveTo(
+        x + w - rb + rb * k,
+        yb,
+        x + w,
+        yb + rb - rb * k,
+        x + w,
+        yb + rb,
+      );
+    }
+    g.lineTo(x + w, t - rt);
+    if (rt > 0) {
+      g.curveTo(x + w, t - rt + rt * k, x + w - rt + rt * k, t, x + w - rt, t);
+    }
+    g.lineTo(x + rt, t);
+    if (rt > 0) g.curveTo(x + rt - rt * k, t, x, t - rt + rt * k, x, t - rt);
+    g.lineTo(x, yb + rb);
+    if (rb > 0) g.curveTo(x, yb + rb - rb * k, x + rb - rb * k, yb, x + rb, yb);
+    g.closePath();
+  }
+
+  /// A Wonky grid slice: its rows, each item with its bullet.
+  void _paintGrid(
+    PdfPage page,
+    PdfGraphics g,
+    _Block b,
+    PlacedSlice slice,
+    double top,
+  ) {
+    var y = top;
+    final from = slice.rowFrom ?? 0;
+    final to = math.min(slice.rowTo ?? b.gridRows.length, b.gridRows.length);
+    for (var r = from; r < to; r++) {
+      final split = r == from && slice.rowSplit != null ? slice.rowSplit : null;
+      final cells = b.gridRows[r];
+      var rowH = 0.0;
+      for (var c = 0; c < cells.length; c++) {
+        final x =
+            margins.left + b.x + c * (b.gridColumnWidth + b.gridColumnGap);
+        final (f, t) = split != null && c < split.length
+            ? split[c]
+            : (0, cells[c].length);
+        var ly = y;
+        for (var li = f; li < math.min(t, cells[c].length); li++) {
+          final line = cells[c][li];
+          if (li == 0 && b.gridBullets != GridBullets.none) {
+            _drawIcon(
+              g,
+              b.gridBullets == GridBullets.check ? 'check' : 'circle',
+              x,
+              pageHeight - (ly + line.height / 2),
+              b.gridBulletSize,
+              b.gridBulletColor,
+            );
+          }
+          _drawLine(page, g, line, x + b.gridTextLeft, ly);
+          ly += line.height;
+        }
+        rowH = math.max(rowH, ly - y);
+      }
+      y += split != null ? rowH : b._rowMetrics[r].height;
     }
   }
 
@@ -1449,7 +2265,7 @@ final class _PdfJob {
     final scale = slice.scale;
     final w = b.imageWidth * scale;
     final h = b.imageHeight * scale;
-    final x = margins.left + (b.imageLeft + (b.imageWidth - w) / 2);
+    final x = margins.left + b.x + (b.imageLeft + (b.imageWidth - w) / 2);
     final y = pageHeight - (top + h);
     final image = b.image;
     if (image == null) {
@@ -1498,7 +2314,7 @@ final class _PdfJob {
     }
     var cy = top + h + b.captionGap;
     for (final line in b.caption) {
-      _drawLine(null, g, line, margins.left, cy);
+      _drawLine(null, g, line, margins.left + b.x, cy);
       cy += line.height;
     }
   }
@@ -1506,19 +2322,21 @@ final class _PdfJob {
   void _paintRule(PdfGraphics g, _Block b, double top) {
     final r = b.rule!;
     final width = r.width.fraction != null
-        ? contentWidth * r.width.fraction!
-        : math.min(contentWidth, r.width.points ?? contentWidth);
-    final x = margins.left + (contentWidth - width) / 2;
+        ? b.width * r.width.fraction!
+        : math.min(b.width, r.width.points ?? b.width);
+    final x = margins.left + b.x + (b.width - width) / 2;
     if (r.style == RuleStyle.ornament) {
       final style = _base(r.ornamentStyle);
       final lines = breaker.layout(
         [(r.ornament, style)],
-        contentWidth,
+        b.width,
         lineHeight: r.ornamentStyle.lineHeight,
         baseStyle: style,
         align: ThemeAlign.center,
       );
-      if (lines.isNotEmpty) _drawLine(null, g, lines.first, margins.left, top);
+      if (lines.isNotEmpty) {
+        _drawLine(null, g, lines.first, margins.left + b.x, top);
+      }
       return;
     }
     final y = pageHeight - (top + b.ruleHeight / 2);
@@ -1579,7 +2397,7 @@ final class _PdfJob {
         }
         rowH = maxH + pad.vertical;
       }
-      var x = margins.left;
+      var x = margins.left + b.x;
       for (var c = 0; c < b.rows[r].length; c++) {
         final cell = b.rows[r][c];
         final w = b.columnWidths[c];
@@ -1611,9 +2429,9 @@ final class _PdfJob {
       if (drawBottom) {
         _strokeLine(
           g,
-          margins.left,
+          margins.left + b.x,
           bottom,
-          margins.left + tableWidth,
+          margins.left + b.x + tableWidth,
           bottom,
           border,
         );
@@ -1624,7 +2442,7 @@ final class _PdfJob {
       g
         ..setStrokeColor(_color(ts.borderColor))
         ..setLineWidth(ts.borderWidth)
-        ..drawRect(margins.left, pageHeight - y, tableWidth, y - tableTop)
+        ..drawRect(margins.left + b.x, pageHeight - y, tableWidth, y - tableTop)
         ..strokePath();
     }
   }

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart' show Brightness;
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../editor/styles/editor_theme.dart';
+import '../editor/styles/wonky_style.dart';
 import 'write_fonts.dart';
 
 /// Logical pixels per point (96 dpi screen, 72 pt per inch).
@@ -137,6 +138,7 @@ class EditorThemeAdapter {
       pagelessMaxWidth: px(t.page.pagelessMaxWidth),
       pagelessPadding: edges(t.page.pagelessPadding),
       contentHash: '${t.contentHash}/${t.variant.name}',
+      wonky: WonkyEditorStyle.fromResolved(t.wonky, px),
     );
   }
 

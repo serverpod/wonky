@@ -323,7 +323,13 @@ class _OutlineRowWidgetState extends State<_OutlineRowWidget> {
     final cs = theme.colorScheme;
     final e = widget.row.entry;
     final l = writeL10n(context);
-    final text = e.text.trim().isEmpty ? l.outlineUntitledHeading : e.text;
+    final untitled = e.text.trim().isEmpty;
+    // Numbered headings show their number (Write 11 §7.4).
+    final text = untitled
+        ? (e.step == null
+              ? l.outlineUntitledHeading
+              : '(${e.step}) ${l.outlineUntitledHeading}')
+        : e.label;
     final top = widget.row.depth == 0;
     return MouseRegion(
       cursor: SystemMouseCursors.click,

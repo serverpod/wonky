@@ -14,6 +14,8 @@ fields:
   accepting: bool
   fields: PublicationFields
   termsUrl: String?
+  ### The publication's Markdown flavor, `gfm` or `wonky` (Write 11 §3.3).
+  markdownFlavor: String?
   ### The caller still has to agree to the terms before submitting.
   consentNeeded: bool
   values: SubmissionValues

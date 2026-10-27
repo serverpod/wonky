@@ -6,6 +6,7 @@ import '../editor/commands/write_editor_commands.dart';
 import '../editor/controller/editor_types.dart';
 import '../../commands/extras_commands.dart' show spellingMenuEntries;
 import '../editor/model/code_languages.dart';
+import 'wonky_menus.dart';
 import 'write_document_controller.dart';
 import 'write_toolbar.dart';
 
@@ -87,6 +88,48 @@ List<WonkyMenuEntry> contextMenuEntries(
       const WonkyMenuSeparator(),
       search(),
     ];
+  }
+
+  // Wonky Markdown grids and containers (Write 11 §7.5).
+  if (doc.isWonky) {
+    final grid = doc.commands.gridOf();
+    if (grid != null) {
+      return [
+        ...out,
+        ...gridEntries(ui, grid.id),
+        const WonkyMenuSeparator(),
+        ui.item('shell.comments.create', label: l.menuComment),
+        ui.item('write.edit.cut'),
+        ui.item('write.edit.copy'),
+        const WonkyMenuSeparator(),
+        ui.item('write.block.moveUp', label: l.docMenuMoveUp),
+        ui.item('write.block.moveDown', label: l.docMenuMoveDown),
+      ];
+    }
+    final video = doc.commands.youtubeOf();
+    if (video != null) {
+      return [
+        ...out,
+        ...youtubeEntries(ui, video.id),
+        const WonkyMenuSeparator(),
+        ui.item('shell.comments.create', label: l.menuComment),
+        ui.item('write.edit.cut'),
+        ui.item('write.edit.copy'),
+        const WonkyMenuSeparator(),
+        ui.item('write.block.moveUp', label: l.docMenuMoveUp),
+        ui.item('write.block.moveDown', label: l.docMenuMoveDown),
+      ];
+    }
+    if (doc.commands.containerAt() != null) {
+      out.addAll([
+        WonkyMenuSubmenu(
+          label: l.menuContainer,
+          icon: LucideIcons.panelTop,
+          children: containerEntries(ui, doc),
+        ),
+        const WonkyMenuSeparator(),
+      ]);
+    }
   }
 
   if (doc.onImage) {

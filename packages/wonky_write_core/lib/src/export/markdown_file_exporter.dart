@@ -62,6 +62,7 @@ final class MarkdownFileExporter
           _ => img.src,
         },
         linkRewriter: input.links.resolve,
+        flavor: input.meta.markdownFlavor,
       ),
     ).export(tree);
     return ExportArtifact(
@@ -121,6 +122,7 @@ final class MarkdownZipExporter
         frontMatter: options.frontMatter,
         imageSource: (img) => paths[img.src] ?? img.src,
         linkRewriter: input.links.resolve,
+        flavor: input.meta.markdownFlavor,
       ),
     ).export(tree);
     entries.add(ZipEntry.text('document.md', md));

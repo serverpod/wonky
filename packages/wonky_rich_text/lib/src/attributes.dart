@@ -30,6 +30,15 @@ abstract final class WonkyAttr {
   /// `String` — user UUID of a mention; always paired with a `mailto:` [link].
   static const mention = 'mention';
 
+  /// `String` — Wonky Markdown look of a [link]: `arrow`, `button` or
+  /// `buttonSecondary` (Write 11 §2.1). Excludes [bold], [italic], [strike],
+  /// [code] and [mention].
+  static const linkStyle = 'linkStyle';
+
+  /// `true` or a `String` icon name — a Wonky Markdown chip (Write 11 §2.1).
+  /// Excludes every other inline attribute.
+  static const chip = 'chip';
+
   // Block.
 
   /// `int` 1–6 — heading level.
@@ -47,6 +56,15 @@ abstract final class WonkyAttr {
   /// `int` 1–8 — list nesting level; only valid together with [list].
   static const indent = 'indent';
 
+  /// `int` 0–9999 — the number of a Wonky Markdown numbered heading
+  /// (`## (n) Title`); only valid with [header] 2 or 3 (Write 11 §2.2).
+  static const step = 'step';
+
+  /// `List` of container frames, outermost first — the Wonky Markdown
+  /// containers (callout, details, card) a line is in (Write 11 §2.2).
+  /// Valid next to every other block attribute and on embed lines.
+  static const box = 'box';
+
   // Overlays.
 
   /// Prefix of comment anchor keys: `cmt_<threadUuid>: true`.
@@ -56,13 +74,62 @@ abstract final class WonkyAttr {
   static const suggestionPrefix = 'sug_';
 
   /// All inline attribute keys.
-  static const inlineKeys = {bold, italic, strike, code, link, mention};
+  static const inlineKeys = {
+    bold,
+    italic,
+    strike,
+    code,
+    link,
+    mention,
+    linkStyle,
+    chip,
+  };
 
   /// Inline keys that `code` excludes.
   static const codeExcludedKeys = {bold, italic, strike};
 
+  /// Inline keys that [linkStyle] excludes (its label is plain text).
+  static const linkStyleExcludedKeys = {bold, italic, strike, code, mention};
+
+  /// Inline keys that [chip] excludes (its label is plain text).
+  static const chipExcludedKeys = {
+    bold,
+    italic,
+    strike,
+    code,
+    link,
+    mention,
+    linkStyle,
+  };
+
   /// All block attribute keys.
-  static const blockKeys = {header, blockquote, codeBlock, list, indent};
+  static const blockKeys = {
+    header,
+    blockquote,
+    codeBlock,
+    list,
+    indent,
+    step,
+    box,
+  };
+
+  /// The block keys a [BlockFormat] describes (a block type change rewrites
+  /// them all); [box] is not one of them, so containers survive block type
+  /// changes.
+  static const blockFormatKeys = {
+    header,
+    blockquote,
+    codeBlock,
+    list,
+    indent,
+    step,
+  };
+
+  /// Values of [linkStyle].
+  static const linkStyles = {'arrow', 'button', 'buttonSecondary'};
+
+  /// Maximum [step] number.
+  static const maxStep = 9999;
 
   /// Mutually exclusive block-type keys (in normalization priority order);
   /// only [blockquote] may sit next to [list] (a list item in a quote).
@@ -165,13 +232,16 @@ final class BlockFormat {
     this.checked = false,
     this.language = '',
     this.quoted = false,
+    this.step,
   });
 
   /// A plain paragraph.
   static const paragraph = BlockFormat(BlockType.paragraph);
 
-  /// Heading of [level] 1–6.
-  const BlockFormat.heading(int level) : this(BlockType.heading, level: level);
+  /// Heading of [level] 1–6, a numbered heading when [step] is set (levels
+  /// 2–3 only, Write 11 §2.2).
+  const BlockFormat.heading(int level, {int? step})
+    : this(BlockType.heading, level: level, step: step);
 
   /// The block type.
   final BlockType type;
@@ -192,6 +262,10 @@ final class BlockFormat {
   /// next to `list`, Write 02 §1.2). Always false for other types: a quote
   /// line is [BlockType.quote].
   final bool quoted;
+
+  /// The number of a numbered heading (`## (n) Title`, Wonky Markdown);
+  /// `null` otherwise. Only set for headings of level 2 or 3.
+  final int? step;
 
   /// Whether the line is part of a blockquote (a quote line or a quoted
   /// list item).
@@ -219,7 +293,18 @@ final class BlockFormat {
     if (code is String) return BlockFormat(BlockType.code, language: code);
     final header = attributes[WonkyAttr.header];
     if (header is int && header >= 1 && header <= 6) {
-      return BlockFormat(BlockType.heading, level: header);
+      final step = attributes[WonkyAttr.step];
+      return BlockFormat(
+        BlockType.heading,
+        level: header,
+        step:
+            (header == 2 || header == 3) &&
+                step is int &&
+                step >= 0 &&
+                step <= WonkyAttr.maxStep
+            ? step
+            : null,
+      );
     }
     final list = ListKind.tryParse(attributes[WonkyAttr.list]);
     if (list != null) {
@@ -261,7 +346,10 @@ final class BlockFormat {
   /// The block attributes for this format (`null` for a paragraph).
   Map<String, dynamic>? toAttributes() => switch (type) {
     BlockType.paragraph => null,
-    BlockType.heading => {WonkyAttr.header: level},
+    BlockType.heading => {
+      WonkyAttr.header: level,
+      if (step != null && (level == 2 || level == 3)) WonkyAttr.step: step,
+    },
     BlockType.quote => {WonkyAttr.blockquote: true},
     BlockType.code => {WonkyAttr.codeBlock: language},
     BlockType.bullet || BlockType.ordered || BlockType.task => {
@@ -272,12 +360,13 @@ final class BlockFormat {
   };
 
   /// An attribute patch (for a `retain` on the `"\n"`) that changes
-  /// [current] block attributes into this format: every block key not in this
-  /// format is set to `null`.
+  /// [current] block attributes into this format: every block format key
+  /// ([WonkyAttr.blockFormatKeys]) not in this format is set to `null`;
+  /// [WonkyAttr.box] is kept.
   Map<String, dynamic> patchFrom(Map<String, dynamic>? current) {
     final target = toAttributes() ?? const {};
     final patch = <String, dynamic>{};
-    for (final key in WonkyAttr.blockKeys) {
+    for (final key in WonkyAttr.blockFormatKeys) {
       final has = current?.containsKey(key) ?? false;
       if (target.containsKey(key)) {
         if (!has || current![key] != target[key]) patch[key] = target[key];
@@ -296,17 +385,18 @@ final class BlockFormat {
       other.indent == indent &&
       other.checked == checked &&
       other.language == language &&
-      other.quoted == quoted;
+      other.quoted == quoted &&
+      other.step == step;
 
   @override
   int get hashCode =>
-      Object.hash(type, level, indent, checked, language, quoted);
+      Object.hash(type, level, indent, checked, language, quoted, step);
 
   @override
   String toString() =>
       'BlockFormat($type, level: $level, indent: $indent, '
       'checked: $checked, language: "$language"'
-      '${quoted ? ', quoted' : ''})';
+      '${quoted ? ', quoted' : ''}${step != null ? ', step: $step' : ''})';
 }
 
 /// Kind of a suggestion part.

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:shad/shad.dart' show ShadTheme;
 import 'package:super_editor/super_editor.dart';
@@ -11,7 +12,13 @@ import 'package:wonky_write_core/wonky_write_core.dart' show SuggestionView;
 import '../../../l10n/write_l10n.dart';
 import '../applier/delta_applier.dart';
 import '../commands/write_editor_commands.dart';
+import '../components/box_frames.dart';
 import '../components/editor_services.dart';
+import '../mapping/wonky_embed_node.dart';
+import '../components/grid_component.dart';
+import '../components/youtube_component.dart';
+import '../components/inline_pills.dart';
+import '../grid/inline_grid_editing.dart';
 import '../components/wonky_components.dart';
 import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
@@ -19,6 +26,8 @@ import '../dnd/drop_indicator.dart';
 import 'package:wonky_app/platform.dart';
 import '../dnd/text_drag.dart';
 import '../keyboard/editor_keyboard.dart';
+import '../attributions/wonky_attributions.dart';
+import '../layers/document_geometry.dart';
 import '../layers/editor_layers.dart';
 import '../mapping/delta_document_mapper.dart';
 import '../model/document_queries.dart';
@@ -28,6 +37,7 @@ import '../paste/editor_clipboard.dart';
 import '../plugins/slash_items.dart';
 import '../plugins/trigger_queries.dart';
 import '../popovers/editor_popovers.dart';
+import '../reactions/pill_boundary.dart';
 import '../setup/editor_factory.dart' show selectionGuard;
 import '../styles/editor_theme.dart';
 import '../styles/style_phases.dart';
@@ -163,7 +173,14 @@ class WonkyEditorState extends State<WonkyEditor> {
     _pagination,
   );
   final _codeHighlight = CodeHighlightStylePhase();
+  BoxFrameLayout get _boxLayout => controller.boxFrames;
+  late final _boxPhase = BoxStylePhase(
+    _boxLayout,
+    wonkyStyle: (widget.theme ?? EditorTheme.fallback(Brightness.light)).wonky,
+    zoom: 1,
+  );
   final _direction = TextDirectionStylePhase();
+  final _pillSpacing = PillSpacingStylePhase();
   final _slashPicker = PickerController<SlashItem>();
   final _mentionPicker = PickerController<MentionCandidate>();
   final _emojiPicker = PickerController<EmojiSuggestion>();
@@ -175,6 +192,7 @@ class WonkyEditorState extends State<WonkyEditor> {
   );
   late TextDragController _textDrag;
   late InlineTableEditing _tables;
+  late InlineGridEditing _grids;
   ExternalDropSource? _drops;
 
   /// The slash menu items in the UI language (set in [didChangeDependencies]).
@@ -224,7 +242,22 @@ class WonkyEditorState extends State<WonkyEditor> {
   void initState() {
     super.initState();
     _scrollController = widget.scrollController ?? ScrollController();
+    // The card is drawn with the other popovers: redraw when it changes
+    // without a controller change (→ out of a button, the hover timer).
+    _linkCard.addListener(_onLinkCardChanged);
     _attach();
+  }
+
+  void _onLinkCardChanged() {
+    if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
   }
 
   void _attach() {
@@ -249,8 +282,16 @@ class WonkyEditorState extends State<WonkyEditor> {
       onRedo: widget.shortcutCallbacks?.onRedo,
     )..focusParent = _outerFocus;
     controller.tableEditing = _tables;
+    _grids = InlineGridEditing(
+      controller: controller,
+      commands: _commands,
+      onUndo: widget.shortcutCallbacks?.onUndo,
+      onRedo: widget.shortcutCallbacks?.onRedo,
+    )..focusParent = _outerFocus;
+    controller.gridEditing = _grids;
     controller.addListener(_onControllerChanged);
     controller.view.addListener(_onViewChanged);
+    controller.pillBoundary.addListener(_updateLinkCardFromCaret);
     controller.notices.listen(_onNotice);
     _drops = widget.externalDrops ?? ExternalDropSource.platform();
     _drops!.attach(
@@ -261,16 +302,21 @@ class WonkyEditorState extends State<WonkyEditor> {
   }
 
   void _detach(WriteEditorController old) {
+    // First: disposing the inline editors below commits pending edits,
+    // which notifies the controller.
+    old.removeListener(_onControllerChanged);
+    old.view.removeListener(_onViewChanged);
+    old.pillBoundary.removeListener(_updateLinkCardFromCaret);
     _triggers.slash.removeListener(_onSlash);
     _triggers.mention.removeListener(_onMention);
     _triggers.emoji.removeListener(_onEmoji);
     _triggers.dispose();
     _textDrag.cancel();
     if (identical(old.tableEditing, _tables)) old.tableEditing = null;
+    if (identical(old.gridEditing, _grids)) old.gridEditing = null;
     _tables.dispose();
+    _grids.dispose();
     _drops?.detach();
-    old.removeListener(_onControllerChanged);
-    old.view.removeListener(_onViewChanged);
   }
 
   @override
@@ -278,6 +324,7 @@ class WonkyEditorState extends State<WonkyEditor> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       _detach(oldWidget.controller);
+      _boxPhase.layout = _boxLayout;
       _attach();
     }
   }
@@ -316,13 +363,25 @@ class WonkyEditorState extends State<WonkyEditor> {
   }
 
   void _onControllerChanged() {
+    final s = controller.selection;
+    if (s != null) _revealAt(s.end);
     _updateLinkCardFromCaret();
     if (_previewMode != null) _schedulePreviewRebuild();
     if (mounted) setState(() {});
   }
 
   void _onViewChanged() {
+    final view = controller.view;
+    final active = view.activeFindMatch;
+    if (active != null) _revealAt(view.findMatches[active].start);
     if (mounted) setState(() {});
+  }
+
+  /// Opens collapsed details around Delta [offset] (Write 11 §7.2).
+  void _revealAt(int offset) {
+    final mirror = controller.mirror;
+    if (offset < 0 || offset >= mirror.length) return;
+    _boxLayout.reveal(controller.document, mirror.blockAtOffset(offset).node);
   }
 
   // ---------------------------------------------------------------------------
@@ -476,6 +535,9 @@ class WonkyEditorState extends State<WonkyEditor> {
       return false;
     }
     final node = controller.document.getNodeById(selection.base.nodeId);
+    if (node is WonkyEmbedNode && _grids.canEdit(node.id)) {
+      return _grids.activate(node.id, 0);
+    }
     if (node is! TableBlockNode || !_tables.canEdit(node.id)) return false;
     return _tables.activate(node.id, 0, 0, selectAll: true);
   }
@@ -557,15 +619,38 @@ class WonkyEditorState extends State<WonkyEditor> {
     }
     final run = _commands.linkAt(selection.start);
     final inside =
-        run != null && selection.start > run.start && selection.start < run.end;
+        run != null &&
+        (selection.start > run.start && selection.start < run.end ||
+            selection.start == run.end && _insideStyledLinkEnd());
     _linkCard.value = inside ? run : null;
+  }
+
+  /// The caret at the end of a button or arrow link, still inside it
+  /// (typing extends it; Write 11 §7.4): the card shows there too, so a
+  /// one-character button can be edited.
+  bool _insideStyledLinkEnd() {
+    final extent = controller.composer.selection?.extent;
+    final p = extent?.nodePosition;
+    final node = extent == null
+        ? null
+        : controller.document.getNodeById(extent.nodeId);
+    if (extent == null || p is! TextNodePosition || node is! TextNode) {
+      return false;
+    }
+    return !controller.pillBoundary.isOutsideAt(extent) &&
+        PillBoundary.endingAt(
+          node.text,
+          p.offset,
+        ).any((a) => a is LinkStyleAttribution);
   }
 
   void _onHover(PointerHoverEvent event) {
     final layout = controller.documentLayout;
     if (layout == null) return;
     final local = layout.getDocumentOffsetFromAncestorOffset(event.position);
-    final position = layout.getDocumentPositionAtOffset(local);
+    final position = layout.getDocumentPositionAtOffset(local) == null
+        ? null
+        : DocumentGeometry.characterAt(layout, local);
     final offset = position == null
         ? null
         : controller.mirror.offsetOf(position);
@@ -697,6 +782,9 @@ class WonkyEditorState extends State<WonkyEditor> {
             lastBlockBottom: compact,
           );
     _tables
+      ..onUndo = widget.shortcutCallbacks?.onUndo
+      ..onRedo = widget.shortcutCallbacks?.onRedo;
+    _grids
       ..onUndo = widget.shortcutCallbacks?.onUndo
       ..onRedo = widget.shortcutCallbacks?.onRedo;
 
@@ -896,6 +984,37 @@ class WonkyEditorState extends State<WonkyEditor> {
     required bool editable,
     Document? document,
   }) {
+    _boxPhase.update(theme.wonky, zoom, theme.body.fontSize ?? 14.67);
+    final doc = document ?? controller.document;
+    // Every component in the frames of its containers (Write 11 §7.2).
+    ComponentBuilder framed(ComponentBuilder inner) => BoxFrameComponentBuilder(
+      inner,
+      document: doc,
+      layout: _boxLayout,
+      theme: theme,
+      zoom: zoom,
+      callbacks: widget.blockCallbacks,
+      editable: editable,
+    );
+    return [
+      for (final builder in _unframedBuilders(
+        theme,
+        zoom,
+        editable: editable,
+        document: document,
+      ))
+        builder is HintComponentBuilder
+            ? builder
+            : framed(InlinePillComponentBuilder(builder, theme: theme)),
+    ];
+  }
+
+  List<ComponentBuilder> _unframedBuilders(
+    EditorTheme theme,
+    double zoom, {
+    required bool editable,
+    Document? document,
+  }) {
     return [
       if (editable && controller.document.nodeCount == 1)
         HintComponentBuilder(
@@ -942,6 +1061,20 @@ class WonkyEditorState extends State<WonkyEditor> {
         editable: editable,
       ),
       WonkyRuleComponentBuilder(theme: theme),
+      WonkyGridComponentBuilder(
+        theme: theme,
+        zoom: zoom,
+        editing: editable ? _grids : null,
+        callbacks: widget.blockCallbacks,
+        editable: editable,
+      ),
+      WonkyYouTubeComponentBuilder(
+        services: widget.imageServices,
+        theme: theme,
+        zoom: zoom,
+        callbacks: widget.blockCallbacks,
+        editable: editable,
+      ),
       WonkyEmbedComponentBuilder(theme: theme),
       ...defaultComponentBuilders,
       const MarkdownTableComponentBuilder(),
@@ -983,6 +1116,8 @@ class WonkyEditorState extends State<WonkyEditor> {
       stylesheet: stylesheet,
       selectionStyle: style.selectionStyles,
       customStylePhases: [
+        _boxPhase,
+        _pillSpacing,
         if (pages) _paginationPhase,
         _codeHighlight,
         _direction,
@@ -1000,7 +1135,16 @@ class WonkyEditorState extends State<WonkyEditor> {
         WonkyHighlightLayerBuilder(controller: controller, theme: theme),
       ],
       documentOverlayBuilders: [
-        DefaultCaretOverlayBuilder(caretStyle: style.caretStyle),
+        DefaultCaretOverlayBuilder(
+          caretStyle: style.caretStyle,
+          // No caret with a selection (like desktop editors): a selected
+          // block (a grid or table being edited in place) showed a large
+          // caret beside it.
+          displayCaretWithExpandedSelection: false,
+          adjustCaretRect: (position, rect, _) => controller.pillBoundary
+              .caretRect(controller.document, position, rect),
+          caretRectListenable: controller.pillBoundary,
+        ),
         WonkyRemoteCaretLayerBuilder(controller: controller, theme: theme),
         DropIndicatorLayerBuilder(
           controller: controller,
@@ -1049,6 +1193,8 @@ class WonkyEditorState extends State<WonkyEditor> {
       scrollController: _scrollController,
       stylesheet: stylesheet,
       customStylePhases: [
+        _boxPhase,
+        _pillSpacing,
         // Pages also for previews (Viewing mode shows one).
         if (pages) _paginationPhase,
         _codeHighlight,
@@ -1231,18 +1377,33 @@ class WonkyLinkTapHandler extends ContentTapDelegate {
 
   bool get _active => !requireModifier || composer.isInInteractionMode.value;
 
+  /// The hover position is the nearest caret position: right of a link's
+  /// last glyph's middle (or over an arrow link's arrow) it follows the link.
   @override
   MouseCursor? mouseCursorForContentHover(DocumentPosition hoverPosition) =>
-      _active && _linkAt(hoverPosition) != null
+      _active &&
+          (_linkAt(hoverPosition) ?? _linkEndingAt(hoverPosition)) != null
       ? SystemMouseCursors.click
       : null;
+
+  String? _linkEndingAt(DocumentPosition position) {
+    final p = position.nodePosition;
+    if (p is! TextNodePosition || p.offset == 0) return null;
+    return _linkAt(
+      DocumentPosition(
+        nodeId: position.nodeId,
+        nodePosition: TextNodePosition(offset: p.offset - 1),
+      ),
+    );
+  }
 
   @override
   TapHandlingInstruction onTap(DocumentTapDetails details) {
     if (!_active || onOpenLink == null) {
       return TapHandlingInstruction.continueHandling;
     }
-    final position = details.documentLayout.getDocumentPositionNearestToOffset(
+    final position = DocumentGeometry.characterAt(
+      details.documentLayout,
       details.layoutOffset,
     );
     final url = position == null ? null : _linkAt(position);

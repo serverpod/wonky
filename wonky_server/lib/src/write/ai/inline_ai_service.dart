@@ -162,7 +162,7 @@ abstract final class InlineAiService {
         model: model(tier),
         effort: tier.effort,
         maxTokens: 32000,
-        system: WritePrompts.rewrite,
+        system: WritePrompts.forFlavor(WritePrompts.rewrite, ctx.flavor),
         messages: messages,
         userId: userId == null ? null : 'u$userId',
         feature: 'rewrite',
@@ -178,6 +178,7 @@ abstract final class InlineAiService {
         DocumentReader.renderMarkdown(
           ctx.content.slice(0, caret),
           SuggestionViewMode.accepted,
+          flavor: ctx.flavor,
         ),
         continueContextWords,
       );
@@ -188,7 +189,10 @@ abstract final class InlineAiService {
         model: model(tier),
         effort: tier.effort,
         maxTokens: 8000,
-        system: WritePrompts.continueWriting,
+        system: WritePrompts.forFlavor(
+          WritePrompts.continueWriting,
+          ctx.flavor,
+        ),
         messages: [
           user(
             '<document_title>${ctx.title}</document_title>\n'
@@ -247,7 +251,7 @@ abstract final class InlineAiService {
       model: model(tier),
       effort: tier.effort,
       maxTokens: 32000,
-      system: WritePrompts.documentActions,
+      system: WritePrompts.forFlavor(WritePrompts.documentActions, ctx.flavor),
       messages: [user('${body.isEmpty ? '' : '$body\n'}<task>$task</task>')],
       userId: userId == null ? null : 'u$userId',
       feature: action == 'generateOutline'

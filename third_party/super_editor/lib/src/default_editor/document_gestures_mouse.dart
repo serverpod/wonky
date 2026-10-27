@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart' show RenderMetaData;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document.dart';
@@ -127,6 +128,9 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   // whether the [ContentDragDelegate] owns the current pan.
   Offset? _pointerDownGlobal;
   bool _isContentDrag = false;
+
+  // WONKY PATCH SE-14: the gesture started on content that handles it itself.
+  bool _ignoringGesture = false;
 
   late StreamSubscription<DocumentSelectionChange> _selectionSubscription;
 
@@ -284,6 +288,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   }
 
   void _onTapUp(TapUpDetails details) {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog.info("Tap up on document");
     final docOffset = _getDocOffsetFromGlobalOffset(details.globalPosition);
     editorGesturesLog.fine(" - document offset: $docOffset");
@@ -349,6 +354,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   }
 
   void _onDoubleTapDown(TapDownDetails details) {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog.info("Double tap down on document");
     final docOffset = _getDocOffsetFromGlobalOffset(details.globalPosition);
     editorGesturesLog.fine(" - document offset: $docOffset");
@@ -466,11 +472,13 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   }
 
   void _onDoubleTap() {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog.info("Double tap up on document");
     _selectionType = SelectionType.position;
   }
 
   void _onTripleTapDown(TapDownDetails details) {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog.info("Triple down down on document");
     final docOffset = _getDocOffsetFromGlobalOffset(details.globalPosition);
     editorGesturesLog.fine(" - document offset: $docOffset");
@@ -547,6 +555,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   }
 
   void _onTripleTap() {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog.info("Triple tap up on document");
     _selectionType = SelectionType.position;
   }
@@ -566,6 +575,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   }
 
   void _onPanStart(DragStartDetails details) {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog.info("Pan start on document, global offset: ${details.globalPosition}, device: ${details.kind}");
 
     _panGestureDevice = details.kind;
@@ -608,6 +618,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog
         .info("Pan update on document, global offset: ${details.globalPosition}, device: $_panGestureDevice");
 
@@ -633,6 +644,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   }
 
   void _onPanEnd(DragEndDetails details) {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog.info("Pan end on document, device: $_panGestureDevice");
     // WONKY PATCH SE-6
     if (_isContentDrag) {
@@ -644,6 +656,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   }
 
   void _onPanCancel() {
+    if (_ignoringGesture) return; // WONKY PATCH SE-14
     editorGesturesLog.info("Pan cancel on document");
     // WONKY PATCH SE-6
     if (_isContentDrag) {
@@ -870,7 +883,11 @@ Updating drag selection:
         Listener(
           onPointerHover: _onMouseMove,
           // WONKY PATCH SE-6
-          onPointerDown: (event) => _pointerDownGlobal = event.position,
+          onPointerDown: (event) {
+            _pointerDownGlobal = event.position;
+            // WONKY PATCH SE-14
+            _ignoringGesture = DocumentGestureOptOut.isAt(event.position, View.of(context).viewId);
+          },
           child: _buildCursorStyle(
             child: _buildGestureInput(
               child: const SizedBox(),
@@ -960,4 +977,32 @@ class DragRectanglePainter extends CustomPainter {
   bool shouldRepaint(DragRectanglePainter oldDelegate) {
     return oldDelegate.selectionRect != selectionRect;
   }
+}
+
+/// WONKY PATCH SE-14: content inside the document that handles pointer input
+/// itself (an in-place text field, a cell that starts editing on a click).
+/// The mouse interactor ignores a gesture that starts on it: no caret
+/// placement, selection, drag selection or focus request for the editor.
+class DocumentGestureOptOut extends StatelessWidget {
+  const DocumentGestureOptOut({super.key, required this.child});
+
+  final Widget child;
+
+  static const _marker = Object();
+
+  /// Whether [globalPosition] in view [viewId] is on a [DocumentGestureOptOut].
+  static bool isAt(Offset globalPosition, int viewId) {
+    final result = HitTestResult();
+    WidgetsBinding.instance.hitTestInView(result, globalPosition, viewId);
+    return result.path.any(
+      (entry) => entry.target is RenderMetaData && identical((entry.target as RenderMetaData).metaData, _marker),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => MetaData(
+        metaData: _marker,
+        behavior: HitTestBehavior.translucent,
+        child: child,
+      );
 }

@@ -8086,6 +8086,24 @@ abstract class WonkyAppLocalizations {
   /// **'Paste the link of a Wonky Write document.'**
   String get pubTemplateInvalid;
 
+  /// No description provided for @pubMarkdownFlavor.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown flavor of new stories'**
+  String get pubMarkdownFlavor;
+
+  /// No description provided for @pubMarkdownGfm.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Markdown'**
+  String get pubMarkdownGfm;
+
+  /// No description provided for @pubMarkdownWonky.
+  ///
+  /// In en, this message translates to:
+  /// **'Wonky Markdown (Serverpod blog directives)'**
+  String get pubMarkdownWonky;
+
   /// No description provided for @pubRequired.
   ///
   /// In en, this message translates to:

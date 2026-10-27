@@ -379,6 +379,9 @@ class DocumentSyncController {
   int _pendingChanges = 0;
   bool _restored = false;
 
+  /// The restored copy is compared with the server after the first `Init`.
+  bool _checkRestored = false;
+
   // Ordering.
   final SplayTreeMap<int, _Ordered> _queue = SplayTreeMap();
   final ListQueue<(int, Delta)> _recent = ListQueue();
@@ -503,6 +506,7 @@ class DocumentSyncController {
         : (_revision ~/ hashEvery + 1) * hashEvery;
     _loaded = true;
     _restored = true;
+    _checkRestored = true;
     final pending = _pendingDelta();
     host.resetDocument(
       pending == null ? _server : WonkyOt.apply(_server, pending),
@@ -952,6 +956,14 @@ class DocumentSyncController {
         for (final op in m.ops ?? const <DocumentOpView>[]) {
           _onRemoteOp(_fromView(op));
         }
+        // A copy from the offline cache can have drifted from the server
+        // (an op the server normalized differently than predicted, e.g. by
+        // another version): compare it once instead of waiting for the next
+        // periodic check.
+        if (_checkRestored) {
+          _checkRestored = false;
+          checkIntegrity();
+        }
       }
     }
     _events.add(SyncParticipantsChanged(_participants));
@@ -1381,6 +1393,9 @@ class DocumentSyncController {
         'language' => meta.copyWith(language: value is String ? value : null),
         'frontMatter' => meta.copyWith(
           frontMatter: value is String ? value : null,
+        ),
+        'markdownFlavor' => meta.copyWith(
+          markdownFlavor: value is String ? value : null,
         ),
         _ => meta,
       };

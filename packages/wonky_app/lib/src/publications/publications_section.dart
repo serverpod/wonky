@@ -151,6 +151,12 @@ class _PublicationsSectionState extends State<PublicationsSection> {
                 : l.pubTemplateInvalid,
           ),
           SelectFieldSpec(
+            id: 'markdownFlavor',
+            label: l.pubMarkdownFlavor,
+            options: {'gfm': l.pubMarkdownGfm, 'wonky': l.pubMarkdownWonky},
+            initial: p?.markdownFlavor == 'wonky' ? 'wonky' : 'gfm',
+          ),
+          SelectFieldSpec(
             id: 'summary',
             label: l.pubFieldSummary,
             options: modes(),
@@ -218,6 +224,7 @@ class _PublicationsSectionState extends State<PublicationsSection> {
           ? null
           : r.text('termsUrl').trim(),
       templateItemUuid: _uuidIn(r.text('template')),
+      markdownFlavor: r.text('markdownFlavor'),
       fields: PublicationFields(
         summary: mode('summary'),
         tags: mode('tags'),

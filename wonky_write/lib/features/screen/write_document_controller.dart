@@ -223,6 +223,12 @@ class WriteDocumentController extends DocumentController {
   String? get language => meta.language;
   String? get frontMatter => meta.frontMatter;
 
+  /// The document's Markdown flavor (Write 11 §3.1).
+  MarkdownFlavor get markdownFlavor => meta.markdownFlavor;
+
+  /// Whether the document is in Wonky Markdown (its Wonky commands show).
+  bool get isWonky => markdownFlavor == MarkdownFlavor.wonky;
+
   /// Changes a document property (undoable `write.meta` change).
   Future<void> setMeta(String field, Object? value, {required String label}) =>
       session.setMeta(
@@ -456,6 +462,7 @@ class WriteDocumentController extends DocumentController {
       description: i?.description,
       createdAt: i?.createdAt,
       modifiedAt: i?.modifiedAt,
+      markdownFlavor: markdownFlavor,
     );
   }
 

@@ -4,7 +4,9 @@ The **canonical representation** of a Wonky Write document is a **Quill Delta** 
 inserts only) that conforms to the **Wonky Delta Schema v1** below. Every attribute in the schema
 maps 1:1 to GitHub-Flavored Markdown (GFM) or to a non-printing collaboration overlay (comments,
 suggestions). The editor (`super_editor`) is a *view* of this Delta; Markdown is the
-import/export format.
+import/export format. A document in the second flavor, **Wonky Markdown** (the Serverpod blog's
+directives), adds the attributes and the `grid` embed of
+[11-wonky-markdown.md](11-wonky-markdown.md) §2, which map 1:1 to that flavor.
 
 Three representations, two converters each, all round-trip tested:
 

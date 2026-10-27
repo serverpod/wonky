@@ -5,11 +5,14 @@ import '../controller/editor_types.dart';
 import '../mapping/wonky_schema.dart';
 import '../reactions/auto_pair_reaction.dart';
 import '../reactions/block_conversion_reactions.dart';
+import '../reactions/box_guard_reaction.dart';
 import '../reactions/embed_selection_reaction.dart';
 import '../reactions/mention_atomicity_reaction.dart';
 import '../reactions/reaction_wrappers.dart';
 import '../reactions/typing_attributes_reaction.dart';
 import '../reactions/typography_reactions.dart';
+import '../reactions/pill_boundary.dart';
+import '../reactions/wonky_shortcuts.dart';
 import '../schema_guard/schema_guard_reaction.dart';
 
 /// A command that does nothing (used by guards to refuse requests).
@@ -104,6 +107,9 @@ List<EditReaction> wonkyReactions(
   required WriteEditorPreferences Function() preferences,
   required EditorMode Function() mode,
   required String Function() newEmbedId,
+  bool Function()? isWonky,
+  void Function(String gridId)? onGridInserted,
+  PillBoundary? pillBoundary,
 }) {
   final extractor = pipeline.extractor;
   bool notInCode() {
@@ -135,11 +141,17 @@ List<EditReaction> wonkyReactions(
     extractor: extractor,
   );
 
+  final boxGuard = WonkyBoxGuard(pipeline.mirror);
   return [
-    WonkyTypingAttributesReaction(),
+    boxGuard.snapshot,
+    WonkyTypingAttributesReaction(boundary: pillBoundary),
     marked(const LinkifyReaction(), 'Autolink', autolink),
     marked(
-      BlockPrefixConversionReaction(newEmbedId: newEmbedId),
+      BlockPrefixConversionReaction(
+        newEmbedId: newEmbedId,
+        isWonky: isWonky,
+        onGridInserted: onGridInserted,
+      ),
       'Autoformat',
       markdown,
     ),
@@ -157,9 +169,16 @@ List<EditReaction> wonkyReactions(
       enabled: () => preferences().autoPair && mode() != EditorMode.viewing,
       markdownShortcuts: () => preferences().markdownShortcuts,
     ),
+    // After auto-pair, which overtypes the closer first.
+    marked(
+      WonkyInlineShortcutReaction(boundary: pillBoundary),
+      'Autoformat',
+      () => markdown() && (isWonky?.call() ?? false),
+    ),
     UpdateSubTaskIndentAfterTaskDeletionReaction(),
     const MentionAtomicityReaction(),
     EmbedSelectionReaction(isEditable: () => mode() != EditorMode.viewing),
+    boxGuard.restore,
     const WonkySchemaGuardReaction(),
   ];
 }

@@ -34,6 +34,7 @@ abstract class Publication
     this.templateItemId,
     this.termsUrl,
     required this.fields,
+    String? markdownFlavor,
     required this.signingSecret,
     this.previousSigningSecret,
     this.previousSecretUntil,
@@ -42,7 +43,8 @@ abstract class Publication
     bool? enabled,
     required this.createdAt,
     required this.updatedAt,
-  }) : enabled = enabled ?? true;
+  }) : markdownFlavor = markdownFlavor ?? 'gfm',
+       enabled = enabled ?? true;
 
   factory Publication({
     int? id,
@@ -56,6 +58,7 @@ abstract class Publication
     int? templateItemId,
     String? termsUrl,
     required _i1a71r29.PublicationFields fields,
+    String? markdownFlavor,
     required String signingSecret,
     String? previousSigningSecret,
     DateTime? previousSecretUntil,
@@ -83,6 +86,7 @@ abstract class Publication
       fields: _il4umwa0.Protocol().deserialize<_i1a71r29.PublicationFields>(
         jsonSerialization['fields'],
       ),
+      markdownFlavor: jsonSerialization['markdownFlavor'] as String?,
       signingSecret: jsonSerialization['signingSecret'] as String,
       previousSigningSecret:
           jsonSerialization['previousSigningSecret'] as String?,
@@ -138,6 +142,10 @@ abstract class Publication
 
   _i1a71r29.PublicationFields fields;
 
+  /// Markdown flavor of new stories and submissions: `gfm` or `wonky`
+  /// (Write 11 §3.3).
+  String markdownFlavor;
+
   /// "whsec_" + base64 key; must be kept in plain to sign (specs/13 §2).
   String signingSecret;
 
@@ -175,6 +183,7 @@ abstract class Publication
     int? templateItemId,
     String? termsUrl,
     _i1a71r29.PublicationFields? fields,
+    String? markdownFlavor,
     String? signingSecret,
     String? previousSigningSecret,
     DateTime? previousSecretUntil = const _is.$UndefinedDateTime(),
@@ -199,6 +208,7 @@ abstract class Publication
       if (templateItemId != null) 'templateItemId': templateItemId,
       if (termsUrl != null) 'termsUrl': termsUrl,
       'fields': fields.toJson(),
+      'markdownFlavor': markdownFlavor,
       'signingSecret': signingSecret,
       if (previousSigningSecret != null)
         'previousSigningSecret': previousSigningSecret,
@@ -260,6 +270,7 @@ class _PublicationImpl extends Publication {
     int? templateItemId,
     String? termsUrl,
     required _i1a71r29.PublicationFields fields,
+    String? markdownFlavor,
     required String signingSecret,
     String? previousSigningSecret,
     DateTime? previousSecretUntil,
@@ -280,6 +291,7 @@ class _PublicationImpl extends Publication {
          templateItemId: templateItemId,
          termsUrl: termsUrl,
          fields: fields,
+         markdownFlavor: markdownFlavor,
          signingSecret: signingSecret,
          previousSigningSecret: previousSigningSecret,
          previousSecretUntil: previousSecretUntil,
@@ -306,6 +318,7 @@ class _PublicationImpl extends Publication {
     Object? templateItemId = _Undefined,
     Object? termsUrl = _Undefined,
     _i1a71r29.PublicationFields? fields,
+    String? markdownFlavor,
     String? signingSecret,
     Object? previousSigningSecret = _Undefined,
     DateTime? previousSecretUntil = const _is.$UndefinedDateTime(),
@@ -331,6 +344,7 @@ class _PublicationImpl extends Publication {
           : this.templateItemId,
       termsUrl: termsUrl is String? ? termsUrl : this.termsUrl,
       fields: fields ?? this.fields.copyWith(),
+      markdownFlavor: markdownFlavor ?? this.markdownFlavor,
       signingSecret: signingSecret ?? this.signingSecret,
       previousSigningSecret: previousSigningSecret is String?
           ? previousSigningSecret
@@ -402,6 +416,12 @@ class PublicationUpdateTable extends _is.UpdateTable<PublicationTable> {
     table.fields,
     value,
   );
+
+  _is.ColumnValue<String, String> markdownFlavor(String value) =>
+      _is.ColumnValue(
+        table.markdownFlavor,
+        value,
+      );
 
   _is.ColumnValue<String, String> signingSecret(String value) =>
       _is.ColumnValue(
@@ -492,6 +512,11 @@ class PublicationTable extends _is.Table<int?> {
       'fields',
       this,
     );
+    markdownFlavor = _is.ColumnString(
+      'markdownFlavor',
+      this,
+      hasDefault: true,
+    );
     signingSecret = _is.ColumnString(
       'signingSecret',
       this,
@@ -555,6 +580,10 @@ class PublicationTable extends _is.Table<int?> {
 
   late final _is.ColumnSerializable<_i1a71r29.PublicationFields> fields;
 
+  /// Markdown flavor of new stories and submissions: `gfm` or `wonky`
+  /// (Write 11 §3.3).
+  late final _is.ColumnString markdownFlavor;
+
   /// "whsec_" + base64 key; must be kept in plain to sign (specs/13 §2).
   late final _is.ColumnString signingSecret;
 
@@ -587,6 +616,7 @@ class PublicationTable extends _is.Table<int?> {
     templateItemId,
     termsUrl,
     fields,
+    markdownFlavor,
     signingSecret,
     previousSigningSecret,
     previousSecretUntil,

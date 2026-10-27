@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:wonky_core/wonky_core.dart';
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show BoxType, CalloutVariant, GridBullets;
 
 import '../applier/delta_applier.dart';
 import '../controller/editor_types.dart';
@@ -9,6 +11,8 @@ import '../controller/write_editor_controller.dart';
 import '../model/table_model.dart';
 import '../paste/editor_clipboard.dart';
 import 'write_editor_commands.dart';
+
+part 'wonky_command_catalog.dart';
 
 /// What a command runs against: the editor of the active document.
 class EditorCommandTarget {
@@ -40,9 +44,14 @@ class EditorCommandSpec {
     this.enabled,
     this.checked,
     this.category,
+    this.wonkyOnly = false,
+    this.radio = false,
   });
 
   final String id;
+
+  /// Only shown and enabled in Wonky Markdown documents (Write 11 §7.5).
+  final bool wonkyOnly;
   final String title;
   final JsonSchema argsSchema;
   final List<KeyBinding> bindings;
@@ -57,6 +66,10 @@ class EditorCommandSpec {
   final String? category;
   final bool Function(EditorCommandTarget target, JsonArgs args)? enabled;
   final bool? Function(EditorCommandTarget target, JsonArgs args)? checked;
+
+  /// One of several choices (a callout type, a link style): choosing the
+  /// current one ([checked]) does nothing and succeeds.
+  final bool radio;
   final FutureOr<CommandResult> Function(
     EditorCommandTarget target,
     JsonArgs args,
@@ -107,6 +120,7 @@ List<EditorCommandSpec> editorCommandCatalog() {
 
   final kinds = {for (final k in BlockKind.values) k.name};
   return [
+    ...wonkyEditorCommandCatalog(),
     // Edit (§23.5).
     EditorCommandSpec(
       id: 'write.edit.copy',

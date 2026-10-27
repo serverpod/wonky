@@ -6,6 +6,8 @@ import 'dart:typed_data';
 
 import 'package:markdown/markdown.dart' as md;
 
+import '../delta/attributes.dart';
+import '../delta/boxes.dart';
 import '../delta/delta_utils.dart';
 import '../delta/embeds.dart';
 import '../delta/links.dart';
@@ -16,6 +18,7 @@ import 'front_matter.dart';
 import 'inline_reader.dart';
 import 'inline_writer.dart';
 import 'md_syntax.dart';
+import 'package:wonky_rich_text/wonky_rich_text.dart' show WonkyMdTags;
 
 /// Resolves an image source that is not an absolute URL (relative path,
 /// `data:` URI). Returns the imported image, or `null` when unavailable.
@@ -39,6 +42,7 @@ final class MarkdownImporter {
   var _warnedQuote = false;
   var _warnedStart = false;
   var _warnedFlatten = false;
+  var _warnedDirective = false;
   var _imageCounter = 0;
 
   /// Imports [markdown].
@@ -64,13 +68,17 @@ final class MarkdownImporter {
           FrontMatter.field(split.frontMatter, 'lang') ??
           FrontMatter.field(split.frontMatter, 'language'),
       images: List.unmodifiable(_images),
+      markdownFlavor: options.flavor,
     );
   }
 
   /// Parses [body] (no front matter) into the IR.
   DocTree parseTree(String body) {
     _blocks.clear();
-    for (final node in parseMarkdownAst(_protectFootnotes(body))) {
+    for (final node in parseMarkdownAst(
+      _protectFootnotes(body),
+      flavor: options.flavor,
+    )) {
       _topBlock(node);
     }
     return DocTree(List.of(_blocks));
@@ -151,10 +159,21 @@ final class MarkdownImporter {
         _inlineBlock(node.children ?? const [], (runs) => ParagraphBlock(runs));
       case 'h1' || 'h2' || 'h3' || 'h4' || 'h5' || 'h6':
         final level = int.parse(node.tag.substring(1));
+        final step = int.tryParse(node.attributes[WonkyMdTags.step] ?? '');
         _inlineBlock(
           node.children ?? const [],
-          (runs) => HeadingBlock(level, runs),
+          (runs) => HeadingBlock(
+            level,
+            runs,
+            step: step != null && step <= WonkyAttr.maxStep ? step : null,
+          ),
         );
+      case WonkyMdTags.box:
+        _box(node);
+      case WonkyMdTags.grid:
+        _grid(node);
+      case WonkyMdTags.youtube:
+        _youtube(node);
       case 'blockquote':
         _quote(node, depth: 0);
       case 'ul' || 'ol':
@@ -435,6 +454,9 @@ final class MarkdownImporter {
               'blockquote',
               'table',
               'hr',
+              WonkyMdTags.box,
+              WonkyMdTags.grid,
+              WonkyMdTags.youtube,
               'h1',
               'h2',
               'h3',
@@ -503,6 +525,108 @@ final class MarkdownImporter {
         _list(n, depth + 1, inQuote: inQuote);
       }
     }
+  }
+
+  void _directiveWarn() {
+    if (_warnedDirective) return;
+    _warnedDirective = true;
+    _warn(
+      ImportWarningKind.directiveFlattened,
+      'A Wonky Markdown block was not closed or held lines it cannot keep',
+    );
+  }
+
+  /// A Wonky Markdown container (Write 11 §5.1): its blocks become the
+  /// children of a [ContainerBlock].
+  void _box(md.Element node) {
+    if (node.attributes.containsKey(WonkyMdTags.unterminated)) {
+      _directiveWarn();
+    }
+    final type = BoxType.tryParse(node.attributes[WonkyMdTags.type]);
+    if (type == null) return;
+    final id = options.idGenerator();
+    final frame = type == BoxType.callout
+        ? BoxFrame.callout(
+            id: id,
+            variant:
+                CalloutVariant.tryParse(node.attributes[WonkyMdTags.variant]) ??
+                CalloutVariant.info,
+            title: BoxFrame.canonicalTitle(node.attributes[WonkyMdTags.title]),
+          )
+        : BoxFrame(id: id, type: type);
+    final outer = List.of(_blocks);
+    _blocks.clear();
+    for (final c in node.children ?? const <md.Node>[]) {
+      _topBlock(c);
+    }
+    final children = List.of(_blocks);
+    _blocks
+      ..clear()
+      ..addAll(outer)
+      ..add(ContainerBlock(frame, children));
+  }
+
+  /// A Wonky Markdown grid (Write 11 §5.1).
+  void _grid(md.Element node) {
+    if (node.attributes.containsKey(WonkyMdTags.unterminated) ||
+        node.attributes.containsKey(WonkyMdTags.dropped)) {
+      _directiveWarn();
+    }
+    final items = <List<InlineRun>>[];
+    for (final item
+        in (node.children ?? const <md.Node>[]).whereType<md.Element>()) {
+      if (item.tag != WonkyMdTags.gridItem) continue;
+      items.add([
+        for (final run in _reader.readRuns(item.children ?? const []))
+          run.copyWith(text: run.text.replaceAll(softBreak, ' ')),
+      ]);
+    }
+    if (items.isEmpty) items.add(const []);
+    if (items.length > GridEmbed.maxItems) {
+      _directiveWarn();
+      items.removeRange(GridEmbed.maxItems, items.length);
+    }
+    _blocks.add(
+      GridBlock(
+        options.idGenerator(),
+        GridEmbed.canonicalColumns(node.attributes[WonkyMdTags.columns]),
+        GridBullets.parse(node.attributes[WonkyMdTags.bullets]),
+        items,
+        itemMarkdown: [
+          for (final runs in items)
+            InlineMarkdownWriter.write(runs, context: InlineContext.tableCell),
+        ],
+      ),
+    );
+  }
+
+  /// `::youtube[title]{id=… start=…}` (Write 11 §5.1); the id may also be
+  /// a YouTube URL. Without a valid id the line stays as text.
+  void _youtube(md.Element node) {
+    final parsed = YouTubeEmbed.parseUrl(
+      node.attributes[WonkyMdTags.videoId] ?? '',
+    );
+    if (parsed == null) {
+      _directiveWarn();
+      _blocks.add(
+        ParagraphBlock([InlineRun(node.attributes[WonkyMdTags.raw] ?? '')]),
+      );
+      return;
+    }
+    _blocks.add(
+      YouTubeBlock(
+        YouTubeEmbed(
+          id: options.idGenerator(),
+          videoId: parsed.videoId,
+          start:
+              YouTubeEmbed.parseTime(node.attributes[WonkyMdTags.start]) ??
+              parsed.start,
+          title: YouTubeEmbed.canonicalTitle(
+            node.attributes[WonkyMdTags.title],
+          ),
+        ),
+      ),
+    );
   }
 
   void _table(md.Element table) {

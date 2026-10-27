@@ -4,12 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' show InlineMarkdown;
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show InlineMarkdown, InlineRun;
 
 import '../applier/delta_applier.dart';
 import '../commands/write_editor_commands.dart';
 import '../controller/write_editor_controller.dart';
 import '../model/document_queries.dart';
+import '../model/field_clicks.dart';
 import '../model/table_model.dart';
 import '../styles/editor_theme.dart';
 
@@ -100,6 +102,56 @@ class InlineTableEditing extends ChangeNotifier
   /// Keeps the field's state while the table component rebuilds.
   final GlobalKey fieldKey = GlobalKey(debugLabel: 'write-table-cell-field');
 
+  /// The caret where a cell was clicked; double and triple clicks.
+  final FieldClicks clicks = FieldClicks();
+
+  /// Selects the word at the field's caret (a double click).
+  void selectWordAtCaret() {
+    if (_active == null) return;
+    clicks.select(
+      text,
+      FieldClicks.wordAt(text.text, text.selection.baseOffset),
+    );
+  }
+
+  /// Selects the field's text (a triple click).
+  void selectAllText() {
+    if (_active == null) return;
+    clicks.select(
+      text,
+      TextSelection(baseOffset: 0, extentOffset: text.text.length),
+    );
+  }
+
+  /// After [clicks] clicks in a row at one place: a word for two, the text
+  /// for three or more.
+  void selectForClicks(int clicks) {
+    if (clicks == 2) selectWordAtCaret();
+    if (clicks >= 3) selectAllText();
+  }
+
+  /// The source offset of cell ([row], [column]) of [tableId] under
+  /// [global] in its rendered content [box].
+  int? caretAt(
+    String tableId,
+    int row,
+    int column,
+    RenderObject? box,
+    Offset global,
+  ) {
+    final table = commands.tableOf(nodeId: tableId);
+    if (table == null || row >= table.rowCount || column >= table.columnCount) {
+      return null;
+    }
+    final source = table.rows[row][column];
+    final plain = InlineRun.plainText(InlineMarkdown.parseCell(source));
+    if (plain.isEmpty) return 0;
+    final offset = FieldClicks.renderedOffsetAt(box, global);
+    return offset == null
+        ? null
+        : FieldClicks.sourceOffset(source, plain, offset);
+  }
+
   TableCellRef? _active;
   String _base = '';
   Timer? _idle;
@@ -149,20 +201,35 @@ class InlineTableEditing extends ChangeNotifier
       );
       undo.value = UndoHistoryValue.empty;
     }
-    // Presence: the local selection is the table embed (Write 04 §18.4).
-    final block = controller.mirror.blockOf(tableId);
-    if (block != null) {
-      final s = controller.selection;
-      if (s == null || s.start != block.start || s.end != block.start + 1) {
-        controller.select(
-          DeltaSelection(block.start, block.start + 1),
-          userInteraction: false,
-        );
-      }
-    }
+    _selectTableOnceFocused();
     notifyListeners();
     _focusField();
     return true;
+  }
+
+  bool _selectionPending = false;
+
+  /// Presence: the local selection is the table embed (Write 04 §18.4),
+  /// set once the field has the focus. Selecting it while the document
+  /// editor still has the focus (the field is built a frame later) let the
+  /// editor take the text input back after the field had it: typing went to
+  /// the editor, which moved its caret before or after the table.
+  void _selectTableOnceFocused() {
+    if (!focusNode.hasFocus) {
+      _selectionPending = true;
+      return;
+    }
+    _selectionPending = false;
+    final cell = _active;
+    final block = cell == null ? null : controller.mirror.blockOf(cell.tableId);
+    if (block == null) return;
+    final s = controller.selection;
+    if (s == null || s.start != block.start || s.end != block.start + 1) {
+      controller.select(
+        DeltaSelection(block.start, block.start + 1),
+        userInteraction: false,
+      );
+    }
   }
 
   void _focusField() {
@@ -214,6 +281,7 @@ class InlineTableEditing extends ChangeNotifier
     if (cell == null) return;
     if (save) commit();
     _idle?.cancel();
+    clicks.release();
     _active = null;
     _base = '';
     notifyListeners();
@@ -234,6 +302,7 @@ class InlineTableEditing extends ChangeNotifier
   }
 
   void _onFocusChanged() {
+    if (focusNode.hasFocus && _selectionPending) _selectTableOnceFocused();
     if (!focusNode.hasFocus && _active != null) {
       // Focus left the cell (click elsewhere, a dialog, the menubar).
       deactivate();
@@ -358,6 +427,7 @@ class InlineTableEditing extends ChangeNotifier
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
+    clicks.release();
     if (_active == null) return KeyEventResult.ignored;
     final keyboard = HardwareKeyboard.instance;
     final mod = _isApple ? keyboard.isMetaPressed : keyboard.isControlPressed;
@@ -509,20 +579,49 @@ class _InlineCell extends StatelessWidget {
     return ListenableBuilder(
       listenable: editing,
       builder: (context, _) {
-        if (_isActive) return _field(context);
+        if (_isActive) return DocumentGestureOptOut(child: _field(context));
         if (!editing.canEdit(cell.tableNodeId)) return cell.defaultContent;
-        return MouseRegion(
-          cursor: SystemMouseCursors.text,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => editing.activate(
-              cell.tableNodeId,
-              cell.rowIndex,
-              cell.columnIndex,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 48),
-              child: cell.defaultContent,
+        // In the field's tap region group: pressing another cell is not a
+        // tap outside the cell being edited, which would end editing (the
+        // editor showed its selection for a moment) before this tap moves
+        // the editing here.
+        return DocumentGestureOptOut(
+          child: TapRegion(
+            groupId: editing,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.text,
+              child: Listener(
+                onPointerDown: editing.clicks.down,
+                onPointerUp: editing.clicks.up,
+                child: Builder(
+                  builder: (content) => GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    // The caret where the click was.
+                    // (A fast second click can still land here: it
+                    // selects the word.)
+                    onTapUp: (details) {
+                      final clicks = editing.clicks.count;
+                      editing.activate(
+                        cell.tableNodeId,
+                        cell.rowIndex,
+                        cell.columnIndex,
+                        caret: editing.caretAt(
+                          cell.tableNodeId,
+                          cell.rowIndex,
+                          cell.columnIndex,
+                          content.findRenderObject(),
+                          details.globalPosition,
+                        ),
+                      );
+                      editing.selectForClicks(clicks);
+                    },
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 48),
+                      child: cell.defaultContent,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         );
@@ -536,25 +635,48 @@ class _InlineCell extends StatelessWidget {
       parentNode: editing.focusParent,
       canRequestFocus: false,
       skipTraversal: true,
-      child: TextField(
-        key: editing.fieldKey,
-        controller: editing.text,
-        focusNode: editing.focusNode,
-        undoController: editing.undo,
-        style: style,
-        textAlign: cell.cell.textAlign,
-        maxLines: null,
-        cursorColor: theme.caretColor,
-        cursorWidth: 2,
-        decoration: const InputDecoration.collapsed(hintText: ''),
-        inputFormatters: [
-          FilteringTextInputFormatter.deny(
-            RegExp(r'[\r\n]+'),
-            replacementString: ' ',
+      // After the field handled the click (a microtask), a double click's
+      // second click selects the word.
+      child: Listener(
+        onPointerDown: editing.clicks.down,
+        onPointerUp: (event) {
+          final clicks = editing.clicks.up(event);
+          if (clicks > 1) {
+            scheduleMicrotask(() => editing.selectForClicks(clicks));
+          }
+        },
+        // The editor's selection color, not Material's.
+        child: TextSelectionTheme(
+          data: TextSelectionThemeData(
+            selectionColor: theme.selectionColor,
+            cursorColor: theme.caretColor,
           ),
-        ],
-        onChanged: editing.onChanged,
+          child: _textField(style),
+        ),
       ),
+    );
+  }
+
+  Widget _textField(TextStyle style) {
+    return TextField(
+      key: editing.fieldKey,
+      controller: editing.text,
+      focusNode: editing.focusNode,
+      groupId: editing,
+      undoController: editing.undo,
+      style: style,
+      textAlign: cell.cell.textAlign,
+      maxLines: null,
+      cursorColor: theme.caretColor,
+      cursorWidth: 2,
+      decoration: const InputDecoration.collapsed(hintText: ''),
+      inputFormatters: [
+        FilteringTextInputFormatter.deny(
+          RegExp(r'[\r\n]+'),
+          replacementString: ' ',
+        ),
+      ],
+      onChanged: editing.onChanged,
     );
   }
 }

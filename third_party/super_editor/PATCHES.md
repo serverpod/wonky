@@ -177,6 +177,82 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
   both vendored packages.
 - **Upstream**: the API migrations are generally useful; the rest is local.
 
+## SE-11 — The caret is as tall as the text beside it
+
+- **Reason**: the caret spanned the whole line box. With a line height above 1 (every Write
+  theme) the box includes the leading, which Flutter's proportional distribution puts mostly
+  above the text, and a taller run on the line (Wonky Markdown chips and buttons use 1.8 and
+  2.3) stretches it further: the caret rose above the text, most visibly at the end of lines.
+- **Changes**: `TextComponentState.getEdgeForPosition` (the caret's geometry) is 1.2 em of the
+  font size of the character before the position (else the one after it, when that character is
+  on the caret's line), placed where that character's run puts its glyphs: Flutter's character
+  boxes include the run's line height (and the last character's box spans the line), so the
+  caret takes the run's box (`fontSize × height`, at most the character's box) and the glyphs
+  in it (four fifths of the leading above, Flutter's split for common fonts). It is as tall and
+  on the same baseline in plain text, inside a chip or button and at the end of a line. On an
+  empty line the same within the line box, from the paragraph's style. `getRectForPosition` is
+  unchanged (scrolling, anchors). Not on Android and iOS, whose drag handles and magnifier are
+  placed from the line rectangle (upstream behavior there). Write's remote carets use the same
+  edge.
+- **Files**: `lib/src/default_editor/text.dart`; tests:
+  `test/wonky_patches/se11_caret_height_test.dart` (new),
+  `test/super_editor/supereditor_caret_test.dart` (the expected caret is the edge).
+- **Tests**: the files above.
+- **Spec**: Write 04 §5 (caret)
+- **Upstream**: generally useful; to be proposed.
+
+## SE-12 — The app can move the caret
+
+- **Reason**: Wonky Markdown chips and buttons get room for their pill's right padding from the
+  letter spacing of their last character, so a caret at the end of one, still inside it (typed
+  text extends it), sat after that gap and looked outside the pill. Write draws it right after
+  the last glyph instead; only the app knows the inside/outside state.
+- **Changes**: `CaretDocumentOverlay` and `DefaultCaretOverlayBuilder` take an optional
+  `adjustCaretRect(position, rect, layout)`, applied to the caret of a collapsed selection, and a
+  `caretRectListenable` that repositions the caret when the adjustment changes (the selection
+  doesn't).
+- **Files**: `lib/src/default_editor/document_caret_overlay.dart`,
+  `lib/src/default_editor/super_editor.dart`; test: `test/wonky_patches/se12_caret_adjust_test.dart`
+  (new).
+- **Tests**: the file above.
+- **Spec**: Write 11 §7.4
+- **Upstream**: local (small, generic hook).
+
+## SE-13 — A click splits a character at its glyph's middle
+
+- **Reason**: Flutter splits a character's box at its middle to choose the caret position before
+  or after it, and the box includes the letter spacing after the glyph. Wonky Markdown gives the
+  last character of a chip, button or arrow link (and spaces next to pills) a wide spacing for
+  the pill's padding or the arrow, so a click on the right half of that glyph, or on the arrow,
+  put the caret before the character: the hit box seemed shifted to the right.
+- **Changes**: `TextComponentState.getPositionAtOffset` (every click, drag and drop position)
+  moves a position to after the character when the point is on that character's box, right of
+  the middle of its glyph (the box without the style's `letterSpacing`); upstream affinity when
+  the line wraps after it. Left-to-right text only.
+- **Files**: `lib/src/default_editor/text.dart`; test: `test/wonky_patches/se13_glyph_hit_test.dart`
+  (new).
+- **Tests**: the file above.
+- **Spec**: Write 11 §7.4
+- **Upstream**: generally useful (any letter spacing); to be proposed.
+
+## SE-14 — Content can opt out of the editor's gestures
+
+- **Reason**: the mouse interactor wraps the document, so its tap and pan recognizers also fire
+  for content that handles clicks itself. Write's in-place fields (grid items, table cells) got
+  each click twice: the editor requested its focus (out of the field) and put its caret before
+  or after the block, while the item started editing or placed the field's caret. In the
+  browser this showed as the caret jumping before the grid or table; widget tests don't show it
+  (there the field's recognizer wins).
+- **Changes**: a `DocumentGestureOptOut` widget (a `MetaData` marker) and, in
+  `DocumentMouseInteractor`, a hit test at pointer down: a gesture that starts on opted-out
+  content is ignored entirely (tap up, double and triple tap, pan: no focus request, caret,
+  selection or drag selection). Mouse interactor only (desktop and web).
+- **Files**: `lib/src/default_editor/document_gestures_mouse.dart`; test:
+  `test/wonky_patches/se14_gesture_opt_out_test.dart` (new).
+- **Tests**: the file above.
+- **Spec**: Write 04 §18.4, Write 11 §7.4
+- **Upstream**: generally useful (embedded interactive content); to be proposed.
+
 ## Infra
 
 - `pubspec.yaml`: `dependency_overrides: attributed_text: {path: ../attributed_text}` so the

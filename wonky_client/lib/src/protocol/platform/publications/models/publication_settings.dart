@@ -31,6 +31,7 @@ abstract class PublicationSettings
     this.templateName,
     this.termsUrl,
     required this.fields,
+    this.markdownFlavor,
     required this.moderators,
     required this.hasApiKey,
     this.apiKeyLast4,
@@ -52,6 +53,7 @@ abstract class PublicationSettings
     String? templateName,
     String? termsUrl,
     required _i1a71r29.PublicationFields fields,
+    String? markdownFlavor,
     required List<_in8lpp1q.PublicationModeratorView> moderators,
     required bool hasApiKey,
     String? apiKeyLast4,
@@ -84,6 +86,7 @@ abstract class PublicationSettings
       fields: _i8pkqg1o.Protocol().deserialize<_i1a71r29.PublicationFields>(
         jsonSerialization['fields'],
       ),
+      markdownFlavor: jsonSerialization['markdownFlavor'] as String?,
       moderators: _i8pkqg1o.Protocol()
           .deserialize<List<_in8lpp1q.PublicationModeratorView>>(
             jsonSerialization['moderators'],
@@ -126,6 +129,9 @@ abstract class PublicationSettings
 
   _i1a71r29.PublicationFields fields;
 
+  /// `gfm` or `wonky` (Write 11 §3.3).
+  String? markdownFlavor;
+
   List<_in8lpp1q.PublicationModeratorView> moderators;
 
   bool hasApiKey;
@@ -159,6 +165,7 @@ abstract class PublicationSettings
     String? templateName,
     String? termsUrl,
     _i1a71r29.PublicationFields? fields,
+    String? markdownFlavor,
     List<_in8lpp1q.PublicationModeratorView>? moderators,
     bool? hasApiKey,
     String? apiKeyLast4,
@@ -183,6 +190,7 @@ abstract class PublicationSettings
       if (templateName != null) 'templateName': templateName,
       if (termsUrl != null) 'termsUrl': termsUrl,
       'fields': fields.toJson(),
+      if (markdownFlavor != null) 'markdownFlavor': markdownFlavor,
       'moderators': moderators.toJson(valueToJson: (v) => v.toJson()),
       'hasApiKey': hasApiKey,
       if (apiKeyLast4 != null) 'apiKeyLast4': apiKeyLast4,
@@ -210,6 +218,7 @@ abstract class PublicationSettings
       if (templateName != null) 'templateName': templateName,
       if (termsUrl != null) 'termsUrl': termsUrl,
       'fields': fields.toJsonForProtocol(),
+      if (markdownFlavor != null) 'markdownFlavor': markdownFlavor,
       'moderators': moderators.toJson(
         valueToJson: (v) => v.toJsonForProtocol(),
       ),
@@ -244,6 +253,7 @@ class _PublicationSettingsImpl extends PublicationSettings {
     String? templateName,
     String? termsUrl,
     required _i1a71r29.PublicationFields fields,
+    String? markdownFlavor,
     required List<_in8lpp1q.PublicationModeratorView> moderators,
     required bool hasApiKey,
     String? apiKeyLast4,
@@ -263,6 +273,7 @@ class _PublicationSettingsImpl extends PublicationSettings {
          templateName: templateName,
          termsUrl: termsUrl,
          fields: fields,
+         markdownFlavor: markdownFlavor,
          moderators: moderators,
          hasApiKey: hasApiKey,
          apiKeyLast4: apiKeyLast4,
@@ -288,6 +299,7 @@ class _PublicationSettingsImpl extends PublicationSettings {
     Object? templateName = _Undefined,
     Object? termsUrl = _Undefined,
     _i1a71r29.PublicationFields? fields,
+    Object? markdownFlavor = _Undefined,
     List<_in8lpp1q.PublicationModeratorView>? moderators,
     bool? hasApiKey,
     Object? apiKeyLast4 = _Undefined,
@@ -312,6 +324,9 @@ class _PublicationSettingsImpl extends PublicationSettings {
       templateName: templateName is String? ? templateName : this.templateName,
       termsUrl: termsUrl is String? ? termsUrl : this.termsUrl,
       fields: fields ?? this.fields.copyWith(),
+      markdownFlavor: markdownFlavor is String?
+          ? markdownFlavor
+          : this.markdownFlavor,
       moderators:
           moderators ?? this.moderators.map((e0) => e0.copyWith()).toList(),
       hasApiKey: hasApiKey ?? this.hasApiKey,

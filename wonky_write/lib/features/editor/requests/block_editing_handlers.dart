@@ -1,4 +1,5 @@
 import 'package:super_editor/super_editor.dart';
+import 'package:wonky_write_core/wonky_write_core.dart' show Boxes;
 
 import '../mapping/wonky_schema.dart';
 import '../model/code_languages.dart';
@@ -81,6 +82,15 @@ EditCommand? _newlineCommand(
   if (node is! TextNode || position is! TextNodePosition) return null;
   final offset = position.offset;
   final text = node.text.toPlainText();
+
+  // Enter on an empty Normal last line of a container leaves the innermost
+  // container (Write 11 §7.4), like an empty quote line.
+  if (node is ParagraphNode &&
+      text.isEmpty &&
+      node.getMetadataValue(NodeMetadata.blockType) == paragraphAttribution &&
+      _isLastInInnermostBox(document, node)) {
+    return _PopBoxCommand(node.id);
+  }
 
   if (isCodeBlockNode(node)) {
     if (offset == text.length && text.endsWith('\n\n')) {
@@ -182,7 +192,12 @@ EditCommand? _backspaceAtStartCommand(Editor editor, TextNode node) {
     if (blockType != paragraphAttribution) {
       return _ChangeBlockTypeWrapper(node.id, paragraphAttribution);
     }
-    final previous = document.getNodeBefore(node);
+    // Backspace at the start of a container's first line moves the line out
+    // of the innermost container (Write 11 §7.4).
+    if (_isFirstInInnermostBox(document, node)) {
+      return _PopBoxCommand(node.id);
+    }
+    final previous = document.getNodeBeforeById(node.id);
     if (previous == null) {
       return const _NoOpCommand();
     }
@@ -207,6 +222,51 @@ EditCommand? _backspaceAtStartCommand(Editor editor, TextNode node) {
   return null;
 }
 
+bool _isLastInInnermostBox(Document document, DocumentNode node) {
+  final frames = boxOf(node);
+  return frames.isNotEmpty &&
+      !Boxes.sameAt(
+        boxOf(document.getNodeAfterById(node.id)),
+        frames,
+        frames.length - 1,
+      );
+}
+
+bool _isFirstInInnermostBox(Document document, DocumentNode node) {
+  final frames = boxOf(node);
+  return frames.isNotEmpty &&
+      !Boxes.sameAt(
+        boxOf(document.getNodeBeforeById(node.id)),
+        frames,
+        frames.length - 1,
+      );
+}
+
+/// Moves a node out of its innermost container (pops one frame).
+class _PopBoxCommand extends EditCommand {
+  _PopBoxCommand(this.nodeId);
+
+  final String nodeId;
+
+  @override
+  void execute(EditContext context, CommandExecutor executor) {
+    final node = context.document.getNodeById(nodeId);
+    if (node == null) return;
+    final frames = boxOf(node);
+    if (frames.isEmpty) return;
+    executor.executeCommand(
+      ReplaceNodeCommand(
+        existingNodeId: nodeId,
+        newNode: node.copyWithAddedMetadata({
+          WonkyNodeMetadata.box:
+              Boxes.toValue(frames.sublist(0, frames.length - 1)) ??
+              const <Object?>[],
+        }),
+      ),
+    );
+  }
+}
+
 int _indentOf(DocumentNode node) => switch (node) {
   ListItemNode(:final indent) || TaskNode(:final indent) => indent,
   _ => 0,
@@ -221,7 +281,7 @@ EditCommand? _deleteCommand(Editor editor) {
   if (node is! TextNode || position is! TextNodePosition) return null;
   final offset = position.offset;
   if (offset == node.text.length) {
-    final next = document.getNodeAfter(node);
+    final next = document.getNodeAfterById(node.id);
     if (next is BlockNode) {
       return _SelectEmbedCommand(next.id);
     }

@@ -157,8 +157,14 @@ abstract final class PublicationService {
     final tplDoc = template == null || template.trashedAt != null
         ? null
         : await DocumentStore.byItem(session, template.id!);
+    final flavor = core.MarkdownFlavor.parse(p.markdownFlavor);
     if (tplDoc == null) {
-      return DriveService.createDocument(session, actor, name: name);
+      return DriveService.createDocument(
+        session,
+        actor,
+        name: name,
+        markdownFlavor: flavor,
+      );
     }
     var content = core.SuggestionView.accepted(
       await DocumentStore.head(session, tplDoc),
@@ -192,6 +198,7 @@ abstract final class PublicationService {
       name: name,
       content: content,
       source: tplDoc,
+      markdownFlavor: flavor,
       activitySummary: {'publication': p.name},
       quotaReason: QuotaReason.copy,
     );
@@ -293,6 +300,7 @@ abstract final class PublicationService {
       templateName: template?.name,
       termsUrl: p.termsUrl,
       fields: p.fields,
+      markdownFlavor: p.markdownFlavor,
       moderators: [
         for (final m in mods)
           PublicationModeratorView(
@@ -396,6 +404,7 @@ abstract final class PublicationService {
         templateItemId: template?.id,
         termsUrl: terms,
         fields: _fields(input.fields),
+        markdownFlavor: core.MarkdownFlavor.parse(input.markdownFlavor).value,
         signingSecret: secret,
         enabled: input.enabled,
         createdAt: now,
@@ -439,6 +448,7 @@ abstract final class PublicationService {
         termsUrl: terms,
         templateItemId: template?.id,
         fields: _fields(input.fields),
+        markdownFlavor: core.MarkdownFlavor.parse(input.markdownFlavor).value,
         enabled: input.enabled,
         verifiedHost: siteChanged ? null : p.verifiedHost,
         verifiedAt: siteChanged ? null : p.verifiedAt,
@@ -451,6 +461,7 @@ abstract final class PublicationService {
         t.termsUrl,
         t.templateItemId,
         t.fields,
+        t.markdownFlavor,
         t.enabled,
         t.verifiedHost,
         t.verifiedAt,

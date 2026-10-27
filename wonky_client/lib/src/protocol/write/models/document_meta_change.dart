@@ -69,7 +69,7 @@ abstract class DocumentMetaChange
 
   int documentId;
 
-  /// themeId, pageSetup, language, frontMatter.
+  /// themeId, pageSetup, language, frontMatter, markdownFlavor.
   String field;
 
   _isc.UuidValue? clientOpId;

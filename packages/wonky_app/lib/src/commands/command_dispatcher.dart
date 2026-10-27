@@ -34,7 +34,11 @@ class CommandState {
     required this.enabled,
     required this.checked,
     required this.disabledReason,
+    this.visible = true,
   });
+
+  /// Whether the command is shown ([Command.isVisible]).
+  final bool visible;
 
   final bool enabled;
   final bool? checked;
@@ -92,12 +96,14 @@ class CommandDispatcher {
     final ctx = _context(InvocationSource.menu, null);
     try {
       final a = command.parseArgs(args);
+      final visible = command.isVisible(ctx, a);
       final role = roleProblem(command, ctx);
       if (role != null) {
         return CommandState(
           enabled: false,
           checked: command.isChecked(ctx, a),
           disabledReason: role,
+          visible: visible,
         );
       }
       final enabled = command.isEnabled(ctx, a);
@@ -105,6 +111,7 @@ class CommandDispatcher {
         enabled: enabled,
         checked: command.isChecked(ctx, a),
         disabledReason: enabled ? null : command.disabledReason(ctx, a),
+        visible: visible,
       );
     } catch (_) {
       return const CommandState(
