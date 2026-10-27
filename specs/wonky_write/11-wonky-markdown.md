@@ -83,6 +83,10 @@ restart), like a quoted and an unquoted list (02 §1.2).
 
 ### 2.3 Block embeds `grid` and `youtube`
 
+> **Grids are native lines now** ([12 §1.2](12-native-cells.md)): each item is a line with the
+> `grid` line attribute `{id, columns, bullets}`. The `grid` embed below is the legacy form,
+> still read (and upgraded by the server, 12 §1.5) but never written.
+
 | Embed | Value | Markdown (Wonky) |
 |-------|-------|------------------|
 | `grid` | `{"id", "columns": 1–4, "bullets": "check"\|"circle"\|"none", "items": [cellMarkdown, …]}` | `:::grid{columns=3 bullets=check}` + one `- item` line per item + `:::` |

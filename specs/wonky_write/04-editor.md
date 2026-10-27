@@ -1070,20 +1070,19 @@ import within Wonky (07 handles external rewriting).
 ## 18. Tables
 
 ### 18.1 Model recap
-The Delta `table` embed is `{id, align[], rows[][]}`. Row 0 is the header and cells are inline
-Markdown. `super_editor` maps it to a **read-only** `TableBlockNode(cells: List<List<TextNode>>)`,
-with cell alignment in the cell `TextNode` metadata `TextNodeMetadata.textAlign`. The node is
-selectable only as a whole.
+Tables are **native document text** ([12](12-native-cells.md)): each cell is a line with the
+`cell` line attribute `{table, row, align?}`, row 0 is the header, and cells hold ordinary inline
+content (formatting, links, mentions, chips, comments). Each cell is a `ParagraphNode` with
+`WonkyNodeMetadata.cell`. Legacy `table` embeds still render read-only (`TableBlockNode`) until
+the server upgrades them (12 §1.5).
 
-### 18.2 Rendering (`WonkyTableComponentBuilder`)
-- It wraps `MarkdownTableComponentBuilder` (which must also stay in the list, §2.2). Styling
-  comes from `TableStyles` in the theme (borders, header background, cell padding), with
-  light and dark variants.
-- Wide tables scroll horizontally with the built-in scrollbar. Cells wrap text up to a minimum
-  column width of 64 px.
-- **Affordances** on hover or selection: an **Edit table** button (pencil, top-right of the
-  table, opens the table editor popover). Clicking a cell edits it in place
-  (§18.4).
+### 18.2 Rendering
+- `WriteCellLayout` (super_editor SE-15, 12 §3.2) lays a table's cell components out in rows:
+  columns share the width, each row is as tall as its tallest cell, borders and the header
+  background are painted behind the cells (theme `tableBorderColor`, `tableHeaderBackground`).
+  `CellStylePhase` gives cells their padding, alignment and the header's weight (12 §3.3).
+- **Affordances** on hover: an **Edit table** button (pencil, top-right of the table, opens the
+  table editor popover). The context menu in a cell has the row and column commands (12 §3.7).
 
 ### 18.3 Insert
 - `write.insert.table {rows, cols}`. Defaults 3×3 (rows include the header row). Bounds 1–2,000
@@ -1091,43 +1090,16 @@ selectable only as a whole.
 - UI: the toolbar table button opens `WonkyTableSizePicker` (10×10 growing to 20×20). Insert ›
   Table ▸ has the same picker plus *Custom size…* (a dialog with two `WonkyNumberStepper`s).
   Slash `/table` inserts 3×3.
-- Inserts the embed (empty cells, `align` all `null`) after the current block, or replaces an
-  empty paragraph. Then it starts **in-place editing** of cell (0,0) (the popover when in-place
-  editing is unavailable). The insertion is its own undo step, "Insert table".
+- Inserts the cell lines (empty cells) after the current block, or replaces an empty paragraph,
+  and puts the caret in the first cell. The insertion is its own undo step, "Insert table".
 
 ### 18.4 Table editor
-**In-place editing** (patch **SE-4**, `features/editor/tables/inline_table_editing.dart`,
-`write.table.editCell {nodeId?, row?, col?}`): clicking a cell (or Enter / F2 on a selected
-table) turns it into a text field holding the cell's **inline Markdown source**; other cells keep
-their rendering. While a cell is edited the local selection (presence) is the table embed, set
-once the field has the focus: set while the document editor still had it (the field is built a
-frame later), the editor took the text input back, so typing went to the editor, which moved its
-caret before or after the table. Cells (rendered and edited) opt out of the editor's own
-gestures (`DocumentGestureOptOut`, super_editor SE-14): its interactor wraps the document, so
-without that a click in a cell also took the editor's focus and put its caret before or after
-the table.
-The cells share the field's tap region group, so pressing another cell is not a tap outside the
-field (which would end editing and show the editor's selection for a moment): editing moves
-straight to it. The click puts the field's caret where it was (the rendered offset mapped to the
-source, skipping markup: `FieldClicks`), a double click selects the word there and a triple
-click the text, counted from raw pointer events on the rendered cell and the field alike (the
-field misses the click that created it, and on the web its own double click doesn't fire), the
-selection kept against the field's late single click; the field uses the editor's selection
-color.
-- Tab / Shift+Tab: next / previous cell (Tab selects the cell's text; Tab in the last cell appends
-  a row). Enter: cell below; in the last row it appends a row. Shift+Enter: cell above. ↑ ↓: row
-  above / below; ← → at the text edges: previous / next cell. Leaving the first or last cell (or
-  the top / bottom row) puts the caret before / after the table.
-- Mod+B / I / E, Mod+Shift+X wrap the field selection in `**`, `*`, `` ` ``, `~~`; Mod+K wraps it
-  as `[text]()`.
-- Esc leaves the cell with the table selected; Mod+Enter leaves it with the caret after the table.
-- Commits: on leaving the cell, on focus loss, and after 1.5 s without typing (so collaborators
-  see the edit). Each commit is one `table` embed replacement and one undo step "Edit cell";
-  appended rows are their own step "Insert row". Mod+Z in a field with draft history undoes the
-  draft; in a clean field it runs the document undo.
-- Concurrency: a remote change to other cells updates the field when it is clean; a dirty draft
-  wins when committed (last writer wins, per cell). If the table or the cell disappears, editing
-  stops with a notice.
+Cells are edited in place like any text: the caret, clicks, double and triple clicks, drags and
+typing are the editor's (12 §3.4). Tab / Shift+Tab walk the cells (Tab in the last cell appends a
+row), Enter goes to the cell below (appending a row in the last row), Shift+Enter to the cell
+above, ↑ ↓ keep the column, Backspace and Delete never merge cells, and deleting a selection
+across cells clears their text and keeps the table's shape (12 §3.4). Structural commands are in
+12 §3.5.
 
 The **`TableEditorPopover`** (below) remains for bulk operations (structure, alignment, paste
 grid, sort) and narrow screens.

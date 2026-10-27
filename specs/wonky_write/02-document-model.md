@@ -96,7 +96,8 @@ attributes (suggested insertion/deletion of an image, divider or table; comments
 |-------|-------|----------|--------------|
 | `image` | `{"id","src","alt","title"?}` — `src` is `wonky-file://<fileUuid>` (uploaded) or an `https://` URL | `![alt](src "title")` (export rewrites `wonky-file://` to a signed/public URL or to a relative path in zip exports) | `ImageNode` |
 | `divider` | `{"id"}` | `---` | `HorizontalRuleNode` |
-| `table` | `{"id","align":[ "left"\|"center"\|"right"\|null, …], "rows":[[cellMarkdown,…],…]}` — row 0 is the header row; cells are **inline Markdown strings** | GFM table | `TableBlockNode` (read-only block; edited via the table editor, see editor spec) |
+| `table` | **Legacy** ([12 §1.5](12-native-cells.md): read, upgraded by the server, never written) `{"id","align":[ "left"\|"center"\|"right"\|null, …], "rows":[[cellMarkdown,…],…]}` — row 0 is the header row; cells are **inline Markdown strings** | GFM table | `TableBlockNode` (read-only) |
+| *(line attribute)* `cell` | `{"table", "row", "align"?}` on each cell's `"\n"`; a table is a run of cell lines, row 0 the header ([12 §1.1](12-native-cells.md)) | GFM table | `ParagraphNode` with `WonkyNodeMetadata.cell`, laid out in rows (SE-15) |
 
 ### 1.4 Constraints (validated on client before submit and on server after transform)
 
@@ -258,7 +259,8 @@ Each Delta line maps to one node, except merged code lines:
 |------|--------------|
 | Paragraph/header/quote/list/task with text `t` | `len(t) + 1` |
 | Code `ParagraphNode` with text containing k `\n` | `len(text) + 1` (each inner `\n` is a code-block line end) |
-| Image / HR / table node | `2` (embed + `\n`) |
+| Image / HR / (legacy) table node | `2` (embed + `\n`) |
+| Table cell / grid item node | its text length + `1` (a line) |
 
 `DeltaIndex` (in the Flutter mapper) maintains a prefix-sum structure (Fenwick tree keyed by
 node order) for O(log n) conversions `int deltaOffset ⇄ DocumentPosition(nodeId, offset)`,

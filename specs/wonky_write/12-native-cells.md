@@ -160,58 +160,77 @@ abstract class DocumentCellLayout implements Listenable {
   `DocumentCellGroupView` (a custom render object) instead of the column: either **rows** (each
   placement names its row and column) or **flow** (an index, a maximum column count and a minimum
   column width: the count drops while columns would be narrower). Columns share the width equally
-  (`minColumnWidth` 64 px for tables); each row is as tall as its tallest cell and every cell is
-  given that height, so borders line up. Missing cells of ragged rows are empty space.
+  (rows keep at least `minColumnWidth` and overflow beyond that); each row is as tall as its
+  tallest cell, and every cell's **slot** has that height, so borders line up (the cell's
+  component keeps its natural height; a click in the slot below its text goes to the cell).
+  Missing cells of ragged rows are empty space. A placement's `spaceBefore` adds space above its
+  row (pagination, §3.8). `DocumentCellGroupGeometry` gives the column edges, row tops and bottoms
+  and every node's slot.
 - `paintGroup` paints behind the cells with the cell rectangles (table borders, header background);
   `wrapGroup` wraps the whole group (container frames, chrome); both come from the app.
 - The layout rebuilds when `placementOf` changes (the cell layout notifies).
 - Geometry stays exact: components keep their keys and render boxes, so positions, selection
   rectangles, carets and hit tests work as for any component. The patch also makes the
-  "nearest component" fallback measure 2D distance (it measured only vertical distance, which
-  picked the first cell of a row for a click between cells).
+  "nearest component" fallback measure 2D distance for grouped components (it measured only
+  vertical distance, which picked the first cell of a row for a click between cells), resolves a
+  point in a slot outside the component to that cell, and makes drag selection find the cell at
+  each end of the drag (the top-to-bottom search treats a group as one block). Without a cell
+  layout nothing changes.
 - Mouse and touch interactors are unchanged: clicks, double/triple clicks and drags in cells are
   the editor's.
 
-Write's `WriteCellLayout` provides placements from the node metadata, table borders and the header
-background from `TableStyles`, grid gaps from the theme, container frames around a group (the
-frame segments of the group's first and last node) and the chrome (§3.7).
+Write's `WriteCellLayout` (`components/cell_layout.dart`) provides placements from `CellSlots`
+(every cell's row and column and every item's index, recomputed in one pass when the document
+changes; it notifies when a slot changes), table borders and the header background (theme
+`tableBorderColor`, `tableHeaderBackground`), grid bullets (painted in `paintGroup` at each item
+slot's top left), grid gaps from the theme (minimum column width 160 px at 100 %), container
+frames around a group (`BoxFrameComponentBuilder.frameGroup`, using the group's first and last
+node) and the chrome (§3.7).
 
 ### 3.3 Styling
 
-`CellStylePhase` (after the stylesheet, before pagination) gives cell and item view models their
-padding (table cells: `TableStyles.cellPadding`; grid items: the grid gap), the header row a bold
-text style, a cell its `align` as text alignment, and removes block spacing. Grid items render
-their bullet before the text (`GridItemComponentBuilder`). Containers no longer frame cell
-components one by one; `WriteCellLayout.wrapGroup` frames the group.
+`CellStylePhase` (after the container phase, before pagination) gives cell and item view models
+their padding (table cells 8 × 4 px at 100 %; grid items room on the left for their bullet), the
+header row a semi-bold text style and a cell its column's alignment as text alignment (block
+spacing goes). Containers do not frame cell components one by one; `WriteCellLayout.wrapGroup`
+frames the group.
 
 ### 3.4 Caret, selection and keys
 
 The caret is the document caret. Clicking, double click (word), triple click (line), dragging,
 Shift+arrows and Shift+click select as in paragraphs; a selection may span cells and continues in
-document order (row by row). Keys in a cell or item (`CellKeyboard`, before the defaults):
+document order (row by row). Enter, Shift+Enter, Backspace, Delete and deleting a selection are
+request handlers (`requests/cell_editing_handlers.dart`, before Write's block handlers), so
+hardware keys, IME and macOS selectors behave alike; Tab and ↑/↓ are a key handler
+(`keyboard/cell_keys.dart`, before the keymap) that uses the laid-out boxes, so ↑/↓ work for
+table rows and flowed grid rows alike:
 
 | Key | Table cell | Grid item |
 |-----|------------|-----------|
-| Enter | caret to the cell below; in the last row, appends a row first | inserts an item after this one (text after the caret moves into it) |
+| Enter | caret to the cell below; in the last row, appends a row first | inserts an item after this one (text after the caret moves into it); in an empty last item, leaves the grid (the item becomes a paragraph) |
 | Shift+Enter | caret to the cell above | — (ignored) |
 | Tab / Shift+Tab | next / previous cell, selecting its text; Tab in the last cell appends a row | next / previous item; Tab in the last item appends one |
 | ↑ / ↓ | same column, row above / below (keeping the x position); from the first / last row, to the block before / after the table | the item above / below in the flowed layout |
 | ← / → | across the cell edge to the previous / next cell (document order), out of the table at its ends | same, in item order |
-| Backspace at the start | moves the caret to the end of the previous cell (never merges cells) | in an empty item, removes it (and the grid with its last item), caret to the previous item's end; otherwise like a cell |
+| Backspace at the start | moves the caret to the end of the previous cell (never merges cells); in the first cell, nothing | in an empty item, removes it, caret to the previous item's end (the only item becomes a paragraph); otherwise like a cell |
 | Delete at the end | moves the caret to the start of the next cell | removes the next item if it is empty, else moves |
 | Mod+A | selects the document | selects the document |
 
+Next to a table or grid: Backspace at the start of the line after it and Delete at the end of the
+line before it move the caret into the table (removing that line when it is empty) instead of
+merging it with a cell.
+
 - **Deleting a selection that spans cells** clears the selected text in each cell; cells and rows
-  stay (`CellDeletionHandler`, a request handler before super_editor's). Typing or pasting over
-  such a selection clears it, then inserts into the first cell.
+  stay (a request handler for `DeleteSelectionRequest` and `DeleteContentRequest`). Typing or
+  pasting over such a selection clears it, then inserts into the first cell.
 - **Selections that start outside a table** and end inside it (or the reverse) delete whole lines
   outside and clear text inside. A selection covering a whole table (every cell, as from Mod+A or
   dragging across it) deletes the table.
 - **Paste into a cell** inserts plain text with line breaks as spaces; rich content keeps its
   inline formatting. Pasting cell lines (copied from a table) into a cell pastes their text joined
   with spaces. Pasting them into an ordinary line inserts a new table (new ids, §1.3).
-- **Copy** of a selection inside one table writes its text as TSV (cells separated by tabs, rows by
-  newlines) as plain text, the Delta (with new ids on paste) and an HTML table.
+- **Copy** writes the selection's plain text with a table's rows as TSV (cells separated by tabs,
+  rows by newlines), the Delta (new ids on paste, `CellLines.regenerateIds`) and HTML.
 - Inline formatting commands work on cell text. Block commands (headings, lists, quote, code
   block, alignment, indentation, numbered heading, insert table/grid/container) are disabled in a
   cell; the normalizer removes such attributes anyway (§1.4).
@@ -228,10 +247,11 @@ tools use (§4).
 | `write.insert.table {rows, cols}` | inserts a table after the current block (or replacing an empty paragraph), caret in the first cell |
 | `write.table.insertRow {index?, position}` | inserts a row above/below (default: the caret's row) |
 | `write.table.insertColumn {index?, position}` | inserts a column left/right (default: the caret's column) |
-| `write.table.deleteRow {index?}` / `deleteColumn` | deletes; deleting the last row or column deletes the table; the header row cannot be deleted while body rows exist (it can be emptied) |
+| `write.table.deleteRow {index?}` / `deleteColumn` | deletes; deleting the last row or column deletes the table; in the editor the header row cannot be deleted while body rows exist (it can be emptied); MCP's `delete_row` keeps its old rule (any row but the only one) |
 | `write.table.moveRow {from, to}` / `moveColumn` | moves (the moved cells' text is deleted and re-inserted) |
 | `write.table.setColumnAlignment {index?, align}` | sets `align` on the column's cells |
 | `write.table.setCell {row, col, markdown}` | replaces a cell's content (MCP) |
+| `write.table.editCell {row, col}` | selects the cell's text |
 | `write.table.delete` | deletes the table |
 | `write.table.edit` | opens the table editor popover (§3.6) |
 | `write.insert.grid` | inserts a grid of three empty items, caret in the first |
@@ -243,26 +263,28 @@ Choosing a value the table or grid already has succeeds without an edit (04 radi
 ### 3.6 Table editor popover
 
 The popover (04 §18.4) stays for bulk work (reordering, sorting, pasting a grid of values). It
-edits a `TableDraft` built from the table's lines; **Done** replaces the table's lines with the
-draft's (one undo step "Edit table"), keeping the table id. Inline attributes that inline Markdown
+edits a `TableModel` built from the table's lines (`TableModel.fromCells`, cells as inline
+Markdown); **Done** applies `CellEdits.replaceTable` (one undo step "Edit table"), keeping the
+table id; a cell whose Markdown did not change keeps its line. Inline attributes that inline Markdown
 cannot express (comments, suggestions) in changed cells are lost; unchanged cells keep their lines.
 Before any structural command or the popover, ragged rows are completed with empty cells (part of
 the same step).
 
 ### 3.7 Chrome and menus
 
-- **Table**: on hover or with the caret inside, the chrome above the table's top-right corner has
-  *Edit table* (the popover) and ⋯ (insert row above/below, insert column left/right, delete row,
-  delete column, alignment, delete table). The context menu in a cell has the same row/column
-  items. *Format › Table ▸* lists them when the caret is in a table.
+- **Table**: on hover, the chrome above the table's top-right corner has *Edit table* (the
+  popover). The context menu in a cell has insert row above/below, insert column left/right,
+  delete row, delete column, *Edit table*, copy as Markdown or TSV, comment and delete table.
 - **Grid**: the chrome of 11 §7.2 (columns, bullets, add item, ⋯ delete) sits on the group.
 - The chrome is in `WriteCellLayout.wrapGroup`, so it belongs to the group, not to one cell.
 
 ### 3.8 Pagination
 
-In Pages mode a table row moves to the next page as a unit: `PaginationController` measures a row
-as the union of its cells and gives every cell of the row the same gap. Grid rows likewise. A row
-taller than a page overflows the seam (as an oversized block does).
+In Pages mode a table row moves to the next page as a unit: `PaginationController` measures the
+consecutive cells of a group that share a top as one block (a table row, a row of a flowed grid)
+and records the gap on its first cell; the cell layout turns it into the row's `spaceBefore`
+(the pagination phase pads only other nodes). A row taller than a page overflows the seam (as an
+oversized block does).
 
 ### 3.9 Collaboration
 
