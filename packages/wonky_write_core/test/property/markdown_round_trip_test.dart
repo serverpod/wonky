@@ -4,11 +4,12 @@ import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../support/property.dart';
 
-/// `import(export(D)) == normalize(D)` (02 §2.2), embed ids replayed.
+/// `import(export(D)) == normalize(D)` (02 §2.2), embed, table and grid ids
+/// replayed, tables compared in their canonical form (Write 12 §5.1).
 void checkRoundTrip(Delta d) {
   const codec = MarkdownCodec();
   final normalized = const WonkyDeltaNormalizer().normalize(d).document;
-  final ids = [for (final (_, e) in WonkyDocument(normalized).embeds) e.id];
+  final ids = CellCanon.blockIds(normalized);
   var next = 0;
 
   final markdown = codec.exportMarkdown(normalized);
@@ -20,8 +21,8 @@ void checkRoundTrip(Delta d) {
   );
 
   expect(
-    back.delta.toJson(),
-    equals(normalized.toJson()),
+    CellCanon.canonical(back.delta).toJson(),
+    equals(CellCanon.canonical(normalized).toJson()),
     reason: 'Markdown:\n$markdown',
   );
 }

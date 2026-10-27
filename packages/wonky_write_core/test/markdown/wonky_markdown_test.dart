@@ -114,21 +114,22 @@ void main() {
       ]);
     });
 
-    test('when importing a grid then it becomes a grid embed', () {
+    test('when importing a grid then it becomes grid item lines', () {
       final d = importWonky(
         ':::grid{columns=3 bullets=check}\n- Automatic migrations\n'
         '- Stateful hot reload\n- Integrated **AI** tooling\n:::\n',
       ).delta;
 
-      expect(WonkyDocument(d).lines.single.embed, isA<GridEmbed>());
-      final grid = WonkyDocument(d).lines.single.embed! as GridEmbed;
+      final grids = CellRuns.of(WonkyDocument(d));
+      final grid = grids.single as CellGrid;
       expect(grid.columns, 3);
       expect(grid.bullets, GridBullets.check);
-      expect(grid.items, [
+      expect(grid.items.map((l) => l.text), [
         'Automatic migrations',
         'Stateful hot reload',
-        'Integrated **AI** tooling',
+        'Integrated AI tooling',
       ]);
+      expect(grid.items.last.segments[1].attributes, {'bold': true});
     });
 
     test('when importing a card with an arrow link then both survive', () {
@@ -537,18 +538,25 @@ void main() {
 }
 
 /// `import(export(D, wonky), wonky) == normalize(D)` (Write 11 §5.4), with
-/// container and embed ids replayed in import order.
+/// container, embed, table and grid ids replayed in import order, tables
+/// compared in their canonical form (Write 12 §5.1).
 void checkWonkyRoundTrip(Delta d) {
   const codec = MarkdownCodec();
   final normalized = const WonkyDeltaNormalizer().normalize(d).document;
   final ids = <String>[];
   var prevPath = const <BoxFrame>[];
+  String? prevGroup;
   for (final line in WonkyDocument(normalized).lines) {
     final path = Boxes.of(line.attributes);
     for (var k = Boxes.commonDepth(prevPath, path); k < path.length; k++) {
       ids.add(path[k].id);
     }
     prevPath = path;
+    final group =
+        CellAttr.of(line.attributes)?.table ??
+        GridItemAttr.of(line.attributes)?.id;
+    if (group != null && group != prevGroup) ids.add(group);
+    prevGroup = group;
     if (line.embed case final e?) ids.add(e.id);
   }
   var next = 0;
@@ -566,8 +574,8 @@ void checkWonkyRoundTrip(Delta d) {
   );
 
   expect(
-    back.delta.toJson(),
-    equals(normalized.toJson()),
+    CellCanon.canonical(back.delta).toJson(),
+    equals(CellCanon.canonical(normalized).toJson()),
     reason: 'Markdown:\n$markdown',
   );
 }

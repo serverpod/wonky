@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
+import 'package:wonky_write_core/testing.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../export/export_support.dart';
@@ -161,7 +162,7 @@ void main() {
     setUp(() => r = import(wordFixture(hex(pngBytes()))));
 
     test('when importing then the content maps to the delta schema', () {
-      expect(r.delta.toJson(), [
+      expect(CellCanon.canonical(r.delta).toJson(), [
         {'insert': 'Café heading'},
         {
           'insert': '\n',
@@ -227,19 +228,34 @@ void main() {
           'insert': '\n',
           'attributes': {'code-block': ''},
         },
+        {'insert': 'H1'},
         {
-          'insert': {
-            'table': {
-              'id': 'e0',
-              'align': ['left', 'right'],
-              'rows': [
-                ['H1', 'H2'],
-                ['a', 'b'],
-              ],
-            },
+          'insert': '\n',
+          'attributes': {
+            'cell': {'table': 'e0', 'row': 'r0', 'align': 'left'},
           },
         },
-        {'insert': '\n'},
+        {'insert': 'H2'},
+        {
+          'insert': '\n',
+          'attributes': {
+            'cell': {'table': 'e0', 'row': 'r0', 'align': 'right'},
+          },
+        },
+        {'insert': 'a'},
+        {
+          'insert': '\n',
+          'attributes': {
+            'cell': {'table': 'e0', 'row': 'r1', 'align': 'left'},
+          },
+        },
+        {'insert': 'b'},
+        {
+          'insert': '\n',
+          'attributes': {
+            'cell': {'table': 'e0', 'row': 'r1', 'align': 'right'},
+          },
+        },
         {
           'insert': {
             'image': {
@@ -367,7 +383,7 @@ void main() {
     test('when braces are unbalanced then the text is still imported', () {
       final r = import(r'{\rtf1 {\b one}} two\par}}} {three');
 
-      expect(r.delta.toJson(), [
+      expect(CellCanon.canonical(r.delta).toJson(), [
         {
           'insert': 'one',
           'attributes': {'bold': true},
@@ -380,7 +396,7 @@ void main() {
         'skipped', () {
       final r = import(r'{\rtf1 a{\*\unknown {nested} text}b\par}');
 
-      expect(r.delta.toJson(), [
+      expect(CellCanon.canonical(r.delta).toJson(), [
         {'insert': 'ab\n'},
       ]);
     });
@@ -404,9 +420,9 @@ void main() {
 
       expect(
         jsonEncode(
-          r.delta.toJson(),
+          CellCanon.canonical(r.delta).toJson(),
         ).replaceAll('import-image://img1', 'https://img.example.com/logo.png'),
-        jsonEncode(source.toJson()),
+        jsonEncode(CellCanon.canonical(source).toJson()),
       );
       expect(r.title, 'Q3 planning');
     });
@@ -447,7 +463,10 @@ after empty
 
       final r = const RtfImporter().importSync(exported.bytes, opts());
 
-      expect(jsonEncode(r.delta.toJson()), jsonEncode(source.toJson()));
+      expect(
+        jsonEncode(CellCanon.canonical(r.delta).toJson()),
+        jsonEncode(CellCanon.canonical(source).toJson()),
+      );
     });
   });
 }

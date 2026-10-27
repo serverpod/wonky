@@ -7,6 +7,7 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import '../delta/attributes.dart';
 import '../delta/boxes.dart';
+import '../delta/cells.dart';
 import '../delta/delta_utils.dart';
 import '../delta/document.dart';
 import '../delta/embeds.dart';
@@ -42,7 +43,7 @@ final class DeltaGenOptions {
   /// Generate image/divider embeds.
   final bool embeds;
 
-  /// Generate table embeds.
+  /// Generate tables (and grids in Wonky documents) as cell lines.
   final bool tables;
 
   /// Generate `cmt_*`/`sug_*` overlays.
@@ -231,11 +232,10 @@ final class DeltaGen {
     };
   }
 
-  /// A random embed.
+  /// A random embed (image, divider; YouTube videos in Wonky documents).
   WonkyEmbed embed() {
-    final p = random.nextInt(options.tables ? (options.wonky ? 5 : 3) : 2);
-    switch (p) {
-      case 4:
+    switch (random.nextInt(options.wonky ? 3 : 2)) {
+      case 2:
         const ids = ['AGAQ_N56wCs', 'dQw4w9WgXcQ', 'o3kP3dT2C5k'];
         return YouTubeEmbed(
           id: nextId(),
@@ -244,22 +244,6 @@ final class DeltaGen {
           title: random.nextBool()
               ? null
               : YouTubeEmbed.canonicalTitle(_singleLine(text(5))),
-        );
-      case 3:
-        return GridEmbed(
-          id: nextId(),
-          columns: 1 + random.nextInt(4),
-          bullets:
-              GridBullets.values[random.nextInt(GridBullets.values.length)],
-          items: [
-            for (var i = 0, n = 1 + random.nextInt(4); i < n; i++)
-              switch (random.nextInt(5)) {
-                0 => '',
-                1 => ':chip[${_plainWord()}]',
-                2 => '**${_plainWord()}** ${_plainWord()}',
-                _ => 'item ${_plainWord()}',
-              },
-          ],
         );
       case 0:
         return ImageEmbed(
@@ -270,26 +254,115 @@ final class DeltaGen {
           alt: random.nextBool() ? '' : _singleLine(text(6)),
           title: random.nextInt(3) == 0 ? _singleLine(text(5)) : null,
         );
-      case 1:
-        return DividerEmbed(id: nextId());
       default:
-        final cols = 1 + random.nextInt(3);
-        final rows = 1 + random.nextInt(3);
-        return TableEmbed(
-          id: nextId(),
-          align: [
-            for (var c = 0; c < cols; c++)
-              [null, ...CellAlign.values][random.nextInt(4)],
-          ],
-          rows: [
-            for (var r = 0; r < rows; r++)
-              [
-                for (var c = 0; c < cols; c++)
-                  random.nextInt(4) == 0 ? '' : 'c${r}x$c ${_plainWord()}',
-              ],
-          ],
-        );
+        return DividerEmbed(id: nextId());
     }
+  }
+
+  /// The lines of a random table (sometimes ragged) or, in Wonky
+  /// documents, grid (Write 12 §1.1–1.2), with [box] on every line.
+  Delta cells({Object? box}) {
+    if (options.wonky && random.nextInt(3) == 0) {
+      return CellLines.grid(
+        id: nextId(),
+        items: [
+          for (var i = 0, n = 1 + random.nextInt(4); i < n; i++) _cellContent(),
+        ],
+        columns: 1 + random.nextInt(4),
+        bullets: GridBullets.values[random.nextInt(GridBullets.values.length)],
+        box: box,
+      );
+    }
+    final cols = 1 + random.nextInt(3);
+    final ragged = random.nextInt(6) == 0;
+    final d = CellLines.table(
+      id: nextId(),
+      rows: [
+        for (var r = 0, n = 1 + random.nextInt(3); r < n; r++)
+          [
+            for (
+              var c = 0, m = ragged ? 1 + random.nextInt(cols) : cols;
+              c < m;
+              c++
+            )
+              _cellContent(),
+          ],
+      ],
+      align: [
+        for (var c = 0; c < cols; c++)
+          [null, ...CellAlign.values][random.nextInt(4)],
+      ],
+      box: box,
+      rowId: () => CellIds.row(random),
+    );
+    if (!ragged) return d;
+    // Drops the padding of short rows: a ragged table as an old or remote
+    // edit can leave it.
+    final out = Delta();
+    for (final line in WonkyDocument(d).lines) {
+      if (line.isEmpty && random.nextBool()) continue;
+      for (final s in line.segments) {
+        out.insert(s.data, s.attributes);
+      }
+      out.insert('\n', line.attributes);
+    }
+    return out;
+  }
+
+  /// A random legacy table embed (for the upgrade, Write 12 §1.5).
+  TableEmbed legacyTable() {
+    final cols = 1 + random.nextInt(3);
+    final rows = 1 + random.nextInt(3);
+    return TableEmbed(
+      id: nextId(),
+      align: [
+        for (var c = 0; c < cols; c++)
+          [null, ...CellAlign.values][random.nextInt(4)],
+      ],
+      rows: [
+        for (var r = 0; r < rows; r++)
+          [
+            for (var c = 0; c < cols; c++)
+              switch (random.nextInt(5)) {
+                0 => '',
+                1 => '**c${r}x$c** ${_plainWord()}',
+                2 => ':chip[${_plainWord()}]',
+                _ => 'c${r}x$c ${_plainWord()}',
+              },
+          ],
+      ],
+    );
+  }
+
+  /// A random legacy grid embed (for the upgrade, Write 12 §1.5).
+  GridEmbed legacyGrid() => GridEmbed(
+    id: nextId(),
+    columns: 1 + random.nextInt(4),
+    bullets: GridBullets.values[random.nextInt(GridBullets.values.length)],
+    items: [
+      for (var i = 0, n = 1 + random.nextInt(4); i < n; i++)
+        switch (random.nextInt(5)) {
+          0 => '',
+          1 => ':chip[${_plainWord()}]',
+          2 => '**${_plainWord()}** ${_plainWord()}',
+          _ => 'item ${_plainWord()}',
+        },
+    ],
+  );
+
+  /// The inline content of a random cell or grid item (may be empty).
+  Delta _cellContent() {
+    final d = Delta();
+    if (random.nextInt(5) == 0) return d;
+    for (var r = 0, n = 1 + random.nextInt(2); r < n; r++) {
+      final attrs = _inlineAttributes();
+      final styled =
+          attrs != null &&
+          (attrs.containsKey(WonkyAttr.chip) ||
+              attrs.containsKey(WonkyAttr.linkStyle));
+      d.insert(styled ? _label() : _singleLine(text(4)), attrs);
+    }
+    return d;
   }
 
   String _plainWord() {
@@ -333,6 +406,19 @@ final class DeltaGen {
           boxes.isEmpty
           ? attrs
           : {...?attrs, WonkyAttr.box: Boxes.toValue(boxes)};
+      if (!opensDetails &&
+          options.embeds &&
+          options.tables &&
+          random.nextInt(12) == 0) {
+        for (final op in cells(
+          box: boxes.isEmpty ? null : Boxes.toValue(boxes),
+        ).toList()) {
+          d.push(op);
+        }
+        prevListIndent = null;
+        prevInQuote = false;
+        continue;
+      }
       if (!opensDetails && options.embeds && random.nextInt(8) == 0) {
         final e = embed();
         final attrs = options.overlays && random.nextInt(4) == 0

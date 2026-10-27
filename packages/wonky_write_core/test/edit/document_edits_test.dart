@@ -14,6 +14,10 @@ Delta md(String markdown) => const MarkdownCodec()
 
 String toMd(Delta doc) => const MarkdownCodec().exportMarkdown(doc);
 
+List<InlineRun> _runs(DocumentLine line) => [
+  for (final s in line.segments) InlineRun.fromAttributes(s.text, s.attributes),
+];
+
 void main() {
   var ids = 0;
   final edits = DocumentEdits(idGenerator: () => 'id${ids++}');
@@ -447,7 +451,7 @@ void main() {
   });
 
   group('Given tables', () {
-    test('when inserting and updating a table then the embed keeps its id', () {
+    test('when inserting and updating a table then the table keeps its id', () {
       final doc = md('text\n');
       final ins = edits.insertTable(doc, 4, [
         ['a', 'b'],
@@ -466,30 +470,58 @@ void main() {
         ],
       );
 
-      final (_, table, _) = DocumentEdits.findTable(
-        upd.document,
-        tableIndex: 0,
-      );
+      final table = DocumentEdits.findTable(upd.document, tableIndex: 0);
       expect(table.id, id);
-      expect(table.rows, [
-        ['a', 'b', 'c'],
-        ['1', '**2**', ''],
-        ['x', 'y', 'z'],
-      ]);
+      expect(
+        [
+          for (final r in table.rows)
+            [
+              for (final c in r.cells)
+                InlineMarkdownWriter.write(
+                  _runs(c),
+                  context: InlineContext.tableCell,
+                ),
+            ],
+        ],
+        [
+          ['a', 'b', 'c'],
+          ['1', '**2**', ''],
+          ['x', 'y', 'z'],
+        ],
+      );
       expect(table.align, [CellAlign.right, null, null]);
     });
 
+    test('when updating a table then cells that do not change keep their '
+        'lines', () {
+      final ins = edits.insertTable(md('text\n'), 4, [
+        ['a', 'b'],
+        ['1', '2'],
+      ]);
+      final id = ins.extra['table_id'] as String;
+
+      final upd = edits.updateTable(
+        ins.document,
+        tableId: id,
+        operations: const [SetCellOp(1, 1, 'two')],
+      );
+
+      final deleted = upd.change
+          .toList()
+          .where((op) => op.isDelete)
+          .fold(0, (n, op) => n + op.length!);
+      expect(deleted, 1);
+    });
+
     test('when deleting the only row then invalid_args is thrown', () {
+      final ins = edits.insertTable(md('text\n'), 4, [
+        ['a'],
+      ]);
       expect(
-        () => DocumentEdits.applyTableOperation(
-          const TableEmbed(
-            id: 't',
-            align: [null],
-            rows: [
-              ['a'],
-            ],
-          ),
-          const DeleteRowOp(0),
+        () => edits.updateTable(
+          ins.document,
+          tableIndex: 0,
+          operations: const [DeleteRowOp(0)],
         ),
         throwsA(isA<AddressException>()),
       );

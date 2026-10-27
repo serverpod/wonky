@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
+import 'package:wonky_write_core/testing.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../export/export_support.dart';
@@ -122,7 +123,7 @@ List<Object?> _normalized(Delta delta) {
   var id = 0;
   final srcs = <String, String>{};
   return [
-    for (final op in delta.toJson())
+    for (final op in CellCanon.canonical(delta).toJson())
       if (op['insert'] is Map)
         {
           ...op,
@@ -180,7 +181,7 @@ void main() {
             _p('  a<text:s text:c="3"/>b<text:tab/>c<text:line-break/>d   e '),
           ),
         );
-        final ops = r.delta.toJson();
+        final ops = CellCanon.canonical(r.delta).toJson();
         expect(ops.first['insert'], 'a   b    c d e \n');
       },
     );
@@ -245,15 +246,14 @@ void main() {
         ),
       );
 
-      final table = r.delta.toJson().first['insert'] as Map;
-      expect(table['table'], {
-        'id': 'e0',
-        'align': [null, 'right', null],
-        'rows': [
-          ['Name', 'Value', ''],
-          ['a **b**', '1', 'x y'],
-        ],
-      });
+      final table =
+          const DocTreeBuilder().fromDelta(r.delta).blocks.first as TableBlock;
+      expect(table.id, 'e0');
+      expect(table.align, [null, CellAlign.right, null]);
+      expect(table.cellMarkdown, [
+        ['Name', 'Value', ''],
+        ['a **b**', '1', 'x y'],
+      ]);
       expect(_kinds(r), contains(ImportWarningKind.tableFlattened));
     });
 
@@ -276,7 +276,8 @@ void main() {
         ),
       );
 
-      final image = r.delta.toJson().first['insert'] as Map;
+      final image =
+          CellCanon.canonical(r.delta).toJson().first['insert'] as Map;
       expect(image['image'], {
         'id': 'e0',
         'src': 'import-image://img1',

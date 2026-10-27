@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../delta/attributes.dart';
 import '../delta/boxes.dart';
+import '../delta/cells.dart';
 import '../delta/delta_diff.dart';
 import '../delta/delta_utils.dart';
 import '../delta/document.dart';
@@ -19,6 +20,7 @@ import '../import/import_api.dart';
 import '../markdown/inline_markdown.dart';
 import '../markdown/markdown_codec.dart';
 import 'address.dart';
+import 'cell_edits.dart';
 import 'search.dart';
 
 /// How `insertMarkdown` places content (09 §2.2).
@@ -949,7 +951,8 @@ final class DocumentEdits {
   }
 
   /// Inserts a table at [at]. Rows are padded to the widest row; row 0 is the
-  /// header; cells are inline Markdown.
+  /// header; cells are inline Markdown. The table is made of cell lines
+  /// (Write 12 §1.1).
   EditResult insertTable(
     Delta document,
     int at,
@@ -962,50 +965,45 @@ final class DocumentEdits {
         'A table needs at least one row and column',
       );
     }
-    final embed = TableEmbed(
-      id: idGenerator(),
-      align: align ?? const [],
-      rows: rows,
-    ).padded();
+    final id = idGenerator();
     final r = insertFragment(
       document,
       at,
-      Delta()
-        ..insert(embed.toInsert())
-        ..insert('\n'),
+      CellLines.table(
+        id: id,
+        rows: [
+          for (final row in rows) [for (final c in row) _cell(c)],
+        ],
+        align: align ?? const [],
+      ),
       as: InsertAs.blocks,
     );
-    final doc = WonkyDocument(r.document);
-    var tableIndex = 0;
-    for (final (_, e) in doc.embeds) {
-      if (e is! TableEmbed) continue;
-      if (e.id == embed.id) break;
-      tableIndex++;
-    }
+    final tables = CellRuns.of(
+      WonkyDocument(r.document),
+    ).whereType<CellTable>().toList();
+    final table = tables.firstWhere((t) => t.id == id);
     return EditResult(
       change: r.change,
       document: r.document,
       appliedRange: r.appliedRange,
-      summary: 'Inserted a ${embed.rows.length}×${embed.columnCount} table',
-      extra: {'table_id': embed.id, 'table_index': tableIndex},
+      summary: 'Inserted a ${table.rows.length}×${table.columnCount} table',
+      extra: {'table_id': id, 'table_index': tables.indexOf(table)},
     );
   }
 
-  /// Finds a table by id or by 0-based index among tables; returns its
-  /// offset and embed.
-  static (int offset, TableEmbed table, Map<String, dynamic>? attributes)
-  findTable(Delta document, {String? tableId, int? tableIndex}) {
-    final doc = WonkyDocument(document);
-    var i = 0;
-    for (final line in doc.lines) {
-      for (final s in line.segments) {
-        final e = s.isEmbed ? WonkyEmbed.tryParse(s.data) : null;
-        if (e is! TableEmbed) continue;
-        if ((tableId != null && e.id == tableId) ||
-            (tableId == null && tableIndex == i)) {
-          return (s.start, e, s.attributes);
-        }
-        i++;
+  /// Finds a table by id or by 0-based index among the document's tables.
+  static CellTable findTable(
+    Delta document, {
+    String? tableId,
+    int? tableIndex,
+  }) {
+    final tables = CellRuns.of(
+      WonkyDocument(document),
+    ).whereType<CellTable>().toList();
+    for (final (i, t) in tables.indexed) {
+      if ((tableId != null && t.id == tableId) ||
+          (tableId == null && tableIndex == i)) {
+        return t;
       }
     }
     throw AddressException(
@@ -1014,8 +1012,9 @@ final class DocumentEdits {
     );
   }
 
-  /// Replaces a table's rows, or applies [operations] in order. The embed
-  /// keeps its id (embed identity rule).
+  /// Replaces a table's rows, or applies [operations] in order. The table
+  /// keeps its id, and cells that do not change keep their lines (Write 12
+  /// §3.6).
   EditResult updateTable(
     Delta document, {
     String? tableId,
@@ -1023,12 +1022,16 @@ final class DocumentEdits {
     List<List<String>>? rows,
     List<TableOperation> operations = const [],
   }) {
-    final (offset, table, attrs) = findTable(
-      document,
-      tableId: tableId,
-      tableIndex: tableIndex,
-    );
-    var t = table.padded();
+    final id = findTable(document, tableId: tableId, tableIndex: tableIndex).id;
+    var doc = WonkyDocument(document);
+    var change = Delta();
+    void step(Delta? d) {
+      if (d == null) return;
+      change = change.compose(d);
+      doc = WonkyDocument(doc.delta.compose(d));
+    }
+
+    step(CellEdits.completeRows(doc, id));
     if (rows != null) {
       if (rows.isEmpty) {
         throw const AddressException(
@@ -1036,85 +1039,94 @@ final class DocumentEdits {
           'rows must not be empty',
         );
       }
-      t = TableEmbed(id: t.id, align: t.align, rows: rows).padded();
+      step(
+        _cellEdit(
+          () => CellEdits.replaceTable(doc, id, [
+            for (final r in rows) [for (final c in r) _cell(c)],
+          ]),
+        ),
+      );
     }
     for (final op in operations) {
-      t = applyTableOperation(t, op);
+      step(applyTableOperation(doc, id, op));
     }
-    final d = Delta()
-      ..retain(offset)
-      ..delete(1)
-      ..insert(t.toInsert(), Attributes.orNull(Attributes.overlays(attrs)));
-    final r = _finish(
-      document,
-      DeltaUtils.canonical(d),
-      appliedRange: ResolvedRange(offset, 1),
-    );
+    final r = _finish(document, change);
+    final table = CellRuns.table(WonkyDocument(r.document), id)!;
     return EditResult(
       change: r.change,
       document: r.document,
-      appliedRange: r.appliedRange,
+      appliedRange: ResolvedRange(table.start, table.end - table.start),
       summary: 'Updated table',
       extra: {
-        'table_id': t.id,
-        'rows': t.rows.length,
-        'columns': t.columnCount,
+        'table_id': id,
+        'rows': table.rows.length,
+        'columns': table.columnCount,
       },
     );
   }
 
-  /// Applies one table operation (pure).
-  static TableEmbed applyTableOperation(TableEmbed table, TableOperation op) {
-    final t = table.padded();
-    final rows = [
-      for (final r in t.rows) [...r],
-    ];
-    final align = [...t.align];
-    final cols = t.columnCount;
+  /// The change of one table operation on the table [tableId] of [doc]
+  /// (`null` when it changes nothing). The only row and the only column
+  /// cannot be deleted (delete the table instead).
+  static Delta? applyTableOperation(
+    WonkyDocument doc,
+    String tableId,
+    TableOperation op,
+  ) {
+    final t = CellRuns.table(doc, tableId);
+    if (t == null) {
+      throw AddressException(
+        AddressErrorCode.notFound,
+        'Table $tableId not found',
+      );
+    }
     void check(bool ok, String message) {
       if (!ok) throw AddressException(AddressErrorCode.invalidArgs, message);
     }
 
-    String cell(String s) =>
-        s.replaceAll(RegExp(r'[\n\r\u2028\u2029\t]'), ' ').trim();
-    switch (op) {
-      case SetCellOp(:final row, :final col, :final markdown):
-        check(
-          row >= 0 && row < rows.length && col >= 0 && col < cols,
-          'Cell ($row, $col) out of range',
-        );
-        rows[row][col] = cell(markdown);
-      case InsertRowOp(:final at, :final cells):
-        check(at >= 0 && at <= rows.length, 'Row index $at out of range');
-        rows.insert(at, [
-          for (var c = 0; c < cols; c++)
-            cells != null && c < cells.length ? cell(cells[c]) : '',
-        ]);
-      case DeleteRowOp(:final row):
-        check(row >= 0 && row < rows.length, 'Row $row out of range');
-        check(rows.length > 1, 'Cannot delete the only row');
-        rows.removeAt(row);
-      case InsertColumnOp(:final at, :final header, :final cells):
-        check(at >= 0 && at <= cols, 'Column index $at out of range');
-        for (var r = 0; r < rows.length; r++) {
-          final v = r == 0
-              ? (header ?? '')
-              : (cells != null && r - 1 < cells.length ? cells[r - 1] : '');
-          rows[r].insert(at, cell(v));
-        }
-        align.insert(at, null);
-      case DeleteColumnOp(:final col):
-        check(col >= 0 && col < cols, 'Column $col out of range');
-        check(cols > 1, 'Cannot delete the only column');
-        for (final r in rows) {
-          r.removeAt(col);
-        }
-        align.removeAt(col);
-      case SetAlignOp(col: final col, align: final a):
-        check(col >= 0 && col < cols, 'Column $col out of range');
-        align[col] = a;
+    return _cellEdit(() {
+      switch (op) {
+        case SetCellOp(:final row, :final col, :final markdown):
+          return CellEdits.setCell(doc, tableId, row, col, _cell(markdown));
+        case InsertRowOp(:final at, :final cells):
+          return CellEdits.insertRow(
+            doc,
+            tableId,
+            at,
+            cells: cells?.map(_cell).toList(),
+          );
+        case DeleteRowOp(:final row):
+          check(t.rows.length > 1, 'Cannot delete the only row');
+          return CellEdits.deleteRow(doc, tableId, row);
+        case InsertColumnOp(:final at, :final header, :final cells):
+          return CellEdits.insertColumn(
+            doc,
+            tableId,
+            at,
+            header: header == null ? null : _cell(header),
+            cells: cells?.map(_cell).toList(),
+          );
+        case DeleteColumnOp(:final col):
+          check(t.columnCount > 1, 'Cannot delete the only column');
+          return CellEdits.deleteColumn(doc, tableId, col);
+        case SetAlignOp(col: final col, align: final a):
+          return CellEdits.setColumnAlignment(doc, tableId, col, a);
+      }
+    });
+  }
+
+  /// The inline Delta of an inline-Markdown cell argument.
+  static Delta _cell(String markdown) => CellLines.markdown(
+    markdown.replaceAll(RegExp(r'[\n\r\u2028\u2029\t]'), ' ').trim(),
+  );
+
+  /// Runs a [CellEdits] call, turning its errors into invalid_args.
+  static Delta? _cellEdit(Delta? Function() edit) {
+    try {
+      return edit();
+    } on CellEditException catch (e) {
+      throw AddressException(AddressErrorCode.invalidArgs, e.message);
     }
-    return TableEmbed(id: t.id, align: align, rows: rows);
   }
 
   // ---------------------------------------------------------------------

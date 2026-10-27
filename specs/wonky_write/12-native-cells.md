@@ -57,10 +57,11 @@ A grid (Wonky Markdown only) is a run of consecutive lines carrying the line att
 ```
 
 - `id`: the grid's id. `columns`: 1–4 (canonical as in 11 §2.2: 1, 2 or 4, else 3). `bullets`:
-  `check`, `circle` or `none`. Every item of a grid carries the same `columns` and `bullets`; the
-  normalizer copies the first item's values onto the others.
+  `check`, `circle` or `none`. Commands set the same `columns` and `bullets` on every item; when
+  items disagree (a concurrent edit), the first item's values are the grid's (rendering, exports,
+  `CellGrid`), and the next command on the grid makes them agree.
 - A grid is a maximal run of consecutive lines with the same grid `id`; items are in line order.
-  At most 100 items (`GridLines.maxItems`); an empty grid does not exist (its last item removed,
+  At most 100 items (`GridEmbed.maxItems`); an empty grid does not exist (its last item removed,
   the grid is gone).
 - Items are one line each with inline content, like cells (§1.1), and may also carry `box`.
 
@@ -82,8 +83,12 @@ change, client and server):
    `columns`;
 2. removes block attributes other than `box` from cell and grid lines, and `cell` from a line that
    also has `grid` (a line is either);
-3. replaces U+2028 in cell and grid lines with a space;
-4. copies the first item's `columns`/`bullets` onto the other items of a grid run.
+3. replaces U+2028 in cell and grid lines with a space.
+
+The rules are line-local, like every other normalizer rule, so normalizing a change on its lines
+equals normalizing it on the whole document. Cross-line facts (equal `columns`/`bullets` on a grid's
+items, equal alignment in a column, complete rows) are kept by the commands and read
+leniently (first item, header cell, placeholders).
 
 ### 1.5 Legacy embeds and the upgrade
 
