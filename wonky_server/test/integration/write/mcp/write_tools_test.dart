@@ -291,6 +291,123 @@ void main() {
       },
     );
 
+    test(
+      'when inserting a table then it is made of cell lines (Write 12 §1.1)',
+      () async {
+        final r = await mcp.call('write.insert_table', {
+          'document_uuid': docOf(doc),
+          'at': {'type': 'end'},
+          'rows': [
+            ['Name', 'Qty'],
+            ['**Pens**', '3'],
+          ],
+          'align': [null, 'right'],
+        });
+
+        final content = await _content(endpoints, anna, doc);
+        final table = CellRuns.table(
+          WonkyDocument(content),
+          r['table_id'] as String,
+        );
+        expect(r['table_index'], 0);
+        expect(CellUpgrade.hasLegacy(content), isFalse);
+        expect(table?.rows.map((row) => row.cells.length), [2, 2]);
+        expect(
+          CellAttr.of(table!.rows.first.cells.last.attributes)?.align,
+          CellAlign.right,
+        );
+        expect(
+          await _markdown(endpoints, anna, doc),
+          contains('| **Pens** | 3 |'),
+        );
+      },
+    );
+
+    test(
+      'when updating a table by index with operations then rows and columns '
+      'change and the result counts them',
+      () async {
+        await mcp.call('write.insert_table', {
+          'document_uuid': docOf(doc),
+          'at': {'type': 'end'},
+          'rows': [
+            ['Name', 'Qty'],
+            ['Pens', '3'],
+          ],
+        });
+
+        final r = await mcp.call('write.update_table', {
+          'document_uuid': docOf(doc),
+          'table': {'table_index': 0},
+          'operations': [
+            {
+              'op': 'insert_row',
+              'at': 2,
+              'cells': ['Ink', '1'],
+            },
+            {'op': 'insert_column', 'at': 2, 'header': 'Price'},
+            {'op': 'delete_row', 'row': 1},
+          ],
+        });
+
+        expect((r['rows'], r['columns']), (2, 3));
+        final md = await _markdown(endpoints, anna, doc);
+        expect(md, contains('| Name | Qty | Price |'));
+        expect(md, contains('| Ink | 1 |'));
+        expect(md, isNot(contains('Pens')));
+      },
+    );
+
+    test(
+      'when updating a table with rows then its rows are replaced and it '
+      'keeps its id',
+      () async {
+        final inserted = await mcp.call('write.insert_table', {
+          'document_uuid': docOf(doc),
+          'at': {'type': 'end'},
+          'rows': [
+            ['Name', 'Qty'],
+            ['Pens', '3'],
+          ],
+        });
+
+        final r = await mcp.call('write.update_table', {
+          'document_uuid': docOf(doc),
+          'table': {'table_id': inserted['table_id']},
+          'rows': [
+            ['Item'],
+            ['Paper'],
+            ['Glue'],
+          ],
+        });
+
+        final content = await _content(endpoints, anna, doc);
+        final table = CellRuns.table(
+          WonkyDocument(content),
+          inserted['table_id'] as String,
+        );
+        expect(r['table_id'], inserted['table_id']);
+        expect((r['rows'], r['columns']), (3, 1));
+        expect(table?.rows.length, 3);
+        expect(await _markdown(endpoints, anna, doc), contains('| Glue |'));
+      },
+    );
+
+    test(
+      'when updating a table that does not exist then not_found is returned',
+      () async {
+        final e = await mcp.error('write.update_table', {
+          'document_uuid': docOf(doc),
+          'table': {'table_index': 3},
+          'rows': [
+            ['A'],
+          ],
+        });
+
+        expect(e['code'], 'not_found');
+      },
+    );
+
     test('when setting markdown then untouched anchors survive', () async {
       final c = await mcp.call('comments.create', {
         'uuid': docOf(doc),

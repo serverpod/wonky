@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:serverpod/serverpod.dart';
@@ -9,6 +10,7 @@ import '../../platform/common/models.dart';
 import '../../platform/common/time.dart';
 import '../../platform/config/wonky_config.dart';
 import '../collab/overlay_lifecycle.dart';
+import 'cell_upgrader.dart';
 import 'document_bus.dart';
 import 'document_cache.dart';
 import 'document_store.dart';
@@ -71,7 +73,15 @@ abstract final class OtService {
   /// the bookkeeping was written;
   /// editing connections pass false and acknowledge right after the
   /// commit. [enforceOpLimits] applies [maxOpBytes] and [maxOpComponents]
-  /// (off for server-computed changes such as restores).
+  /// (off for server-computed changes such as restores). With [atHead] the
+  /// op must be based on the head: it is rejected with `rebaseTooOld`
+  /// instead of being transformed (server changes computed from the head
+  /// that must not be rebased, such as the table upgrade).
+  ///
+  /// An op of a system actor (`ActorKind.system`) is stored and broadcast
+  /// without an author and adds no edit bookkeeping. After an op whose
+  /// result still holds a legacy table or grid embed, the upgrade is queued
+  /// ([CellUpgrader], Write 12 §1.5).
   static Future<CommittedOp> submit(
     Session session, {
     required Actor actor,
@@ -87,7 +97,9 @@ abstract final class OtService {
     String? onBehalfOfSessionId,
     bool awaitSideEffects = true,
     bool enforceOpLimits = true,
+    bool atHead = false,
   }) async {
+    final system = actor.kind == ActorKind.system;
     final duplicate = await _duplicate(session, document, clientOpId);
     if (duplicate != null) return duplicate;
     if (role < Role.commenter) {
@@ -128,6 +140,7 @@ abstract final class OtService {
     }
 
     final state = await DocumentCache.of(session, document);
+    var legacy = false;
     final committed = await state.lock(() async {
       final now = nowUtc();
       _Commit? commit;
@@ -157,6 +170,12 @@ abstract final class OtService {
             transaction: tx,
           );
           if (resent != null) return;
+          if (atHead && baseRevision != locked.headRevision) {
+            throw OpRejection(
+              DocRejectCode.rebaseTooOld,
+              'The document changed since revision $baseRevision.',
+            );
+          }
           await state.catchUp(session, locked.headRevision, transaction: tx);
           commit = await _apply(
             session,
@@ -176,7 +195,7 @@ abstract final class OtService {
               documentId: document.id!,
               revision: commit!.revision,
               clientOpId: clientOpId,
-              authorId: actor.userId,
+              authorId: system ? null : actor.userId,
               actorKind: actor.kind,
               sessionId: sessionId,
               kind: kind,
@@ -229,8 +248,8 @@ abstract final class OtService {
             op: DocRemoteOp(
               revision: c.revision,
               deltaJson: c.opJson,
-              authorId: actor.userId,
-              authorUuid: actor.authUserId,
+              authorId: system ? null : actor.userId,
+              authorUuid: system ? null : actor.authUserId,
               authorSessionId: sessionId,
               actorKind: actor.kind,
               kind: kind,
@@ -248,15 +267,22 @@ abstract final class OtService {
         );
       }
       // Bookkeeping (activity, versions, drive) is only counted here and
-      // written in batches; the per-op work is queued.
-      state.edits.add(
-        session,
-        item,
-        actor,
-        op: c.op,
-        revision: c.revision,
-        after: c.after,
-      );
+      // written in batches; the per-op work is queued. System ops (the
+      // table upgrade) are nobody's edit.
+      if (!system) {
+        state.edits.add(
+          session,
+          item,
+          actor,
+          op: c.op,
+          revision: c.revision,
+          after: c.after,
+        );
+      }
+      legacy =
+          kind != DocumentOpKind.system &&
+          !state.upgradeBlocked &&
+          CellUpgrade.hasLegacy(c.after);
       final snapshot = c.revision % WonkyConfig.current.snapshotEveryNOps == 0;
       final effects = snapshot || transitions.isNotEmpty
           ? state.runSideEffect(
@@ -276,6 +302,12 @@ abstract final class OtService {
           : null;
       return CommittedOp(c.revision, c.op, sideEffects: effects);
     });
+    // Old clients and restores can still write legacy embeds (Write 12
+    // §1.5): upgrade them right after this op. [DocumentState.settle]
+    // waits for the upgrade.
+    if (legacy) {
+      unawaited(CellUpgrader.schedule(session, document, state, item: item));
+    }
     if (awaitSideEffects) {
       await committed.sideEffects;
       await state.settle();

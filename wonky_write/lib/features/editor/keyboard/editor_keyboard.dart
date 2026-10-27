@@ -6,6 +6,7 @@ import '../applier/delta_applier.dart';
 import '../commands/write_editor_commands.dart';
 import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
+import 'cell_keys.dart';
 import '../mapping/wonky_schema.dart' show isQuotedListNode;
 import '../model/document_queries.dart';
 import '../reactions/pill_boundary.dart';
@@ -71,6 +72,9 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
     required KeyEvent keyEvent,
   }) {
     if (popoverKeys != null && popoverKeys(keyEvent)) {
+      return ExecutionInstruction.haltExecution;
+    }
+    if (cellKeys(keyEvent, controller)) {
       return ExecutionInstruction.haltExecution;
     }
     if (keymap != null && keymap(keyEvent)) {

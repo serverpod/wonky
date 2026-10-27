@@ -4,6 +4,7 @@ import 'package:serverpod/serverpod.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../../platform/common/models.dart';
+import 'cell_upgrader.dart';
 import 'document_store.dart';
 import 'edit_bookkeeping.dart';
 
@@ -51,6 +52,24 @@ class DocumentState {
 
   static const maxRecent = 1000;
 
+  /// Upgrades of legacy table and grid embeds ([CellUpgrader]), run one
+  /// after the other outside [lock] and outside the side effects (an
+  /// upgrade commits an op, which queues side effects of its own).
+  Future<void> _upgrades = Future.value();
+
+  /// The legacy embeds of this document cannot be upgraded (the upgrade was
+  /// rejected): no further attempts while the state is cached.
+  bool upgradeBlocked = false;
+
+  /// Queues [work] after the earlier upgrades of this document. The
+  /// returned future completes when [work] is done; its errors are passed
+  /// on to it but never break the queue.
+  Future<void> runUpgrade(Future<void> Function() work) {
+    final done = _upgrades.then((_) => work());
+    _upgrades = done.catchError((Object _) {});
+    return done;
+  }
+
   /// Queues [work] after the side effects of earlier ops of this document.
   /// The returned future completes when [work] is done; its errors are
   /// passed on to it but never break the queue.
@@ -60,11 +79,13 @@ class DocumentState {
     return done;
   }
 
-  /// Writes the pending edit bookkeeping now and completes when every side
-  /// effect queued so far has run.
-  Future<void> settle() {
+  /// Writes the pending edit bookkeeping now and completes when every
+  /// upgrade and side effect queued so far has run (the side effects
+  /// queued by those upgrades included).
+  Future<void> settle() async {
     unawaited(edits.flush());
-    return _effects;
+    await _upgrades;
+    await _effects;
   }
 
   /// Runs [action] exclusively for this document on this instance.
@@ -207,6 +228,12 @@ abstract final class DocumentCache {
       }
       _states[key] = state;
       _touch(state);
+      // Legacy table and grid embeds are upgraded before the state is
+      // handed out (Write 12 §1.5); the upgrade's own submit finds the
+      // state registered above. Never throws.
+      if (CellUpgrade.hasLegacy(content)) {
+        await CellUpgrader.schedule(session, doc, state);
+      }
       return state;
     }();
     _loading[key] = future;

@@ -16,6 +16,7 @@ import '../mapping/delta_ops.dart';
 import '../mapping/document_mirror.dart';
 import '../mapping/mirror_overlays.dart';
 import '../requests/block_editing_handlers.dart';
+import '../requests/cell_editing_handlers.dart';
 import '../setup/editor_factory.dart';
 import '../components/box_frames.dart' show BoxFrameLayout;
 import '../reactions/pill_boundary.dart';
@@ -65,6 +66,7 @@ class WriteEditorController extends ChangeNotifier {
               _events.add(const EditorNotice(EditorNoticeKind.documentFull)),
           maxDocumentChars: maxDocumentChars,
         ),
+        ...cellEditingHandlers(),
         ...blockEditingHandlers(
           newEmbedId: this.newEmbedId,
           markdownShortcuts: () => _preferences.markdownShortcuts,
