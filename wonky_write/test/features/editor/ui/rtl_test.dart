@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:wonky_write/features/editor/applier/delta_applier.dart';
+import 'package:wonky_write/features/editor/attributions/wonky_attributions.dart';
 
 import '../support/editor_harness.dart';
 import 'wonky_editor_test.dart' show pumpEditor;
@@ -200,6 +201,63 @@ void main() {
       expect(s.extent.nodeId, _node(h, 1).id);
       expect(_extent(h).offset, 0);
     });
+  });
+
+  group('Given a chip at the end of a right-to-left line (Write 11 §7.4)', () {
+    Future<EditorHarness> pumpChip(WidgetTester tester) => pumpEditor(
+      tester,
+      Delta()
+        ..insert('انظر ')
+        ..insert('وثائق', {'chip': true})
+        ..insert('\nEnglish line\n'),
+    );
+    const end = 'انظر وثائق'.length;
+    bool inside(EditorHarness h) => h
+        .controller
+        .composer
+        .preferences
+        .currentAttributions
+        .contains(ChipAttribution.plain);
+    bool outside(EditorHarness h) => h.controller.pillBoundary.isOutsideAt(
+      h.controller.composer.selection!.extent,
+    );
+
+    testWidgets('when clicking left of it then the caret is outside it', (
+      tester,
+    ) async {
+      final h = await pumpChip(tester);
+      final line = _node(h, 0);
+      final last = _caret(h, line, end);
+      await tester.tapAt(Offset(last.left - 30, last.center.dy));
+      await tester.pumpAndSettle();
+      expect(_extent(h).offset, end);
+      expect(outside(h), isTrue);
+      expect(inside(h), isFalse);
+    });
+
+    testWidgets(
+      'when pressing ← at its end then the caret moves out of it, → back in',
+      (tester) async {
+        final h = await pumpChip(tester);
+        h.controller.focusNode.requestFocus();
+        h.controller.select(DeltaSelection.collapsed(end));
+        await tester.pump();
+        expect(inside(h), isTrue);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+        expect(_extent(h).offset, end);
+        expect(outside(h), isTrue);
+        expect(inside(h), isFalse);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pump();
+        expect(_extent(h).offset, end);
+        expect(outside(h), isFalse);
+        expect(inside(h), isTrue);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
   });
 
   group('Given a right-to-left table and grid (Write 12 §3.10)', () {

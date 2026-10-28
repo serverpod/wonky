@@ -81,11 +81,11 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
     if (keymap != null && keymap(keyEvent)) {
       return ExecutionInstruction.haltExecution;
     }
-    if (directionOf != null &&
-        _rightToLeftArrow(keyEvent, editContext, directionOf)) {
+    if (_pillBoundaryArrow(keyEvent, controller, directionOf)) {
       return ExecutionInstruction.haltExecution;
     }
-    if (_pillBoundaryArrow(keyEvent, controller)) {
+    if (directionOf != null &&
+        _rightToLeftArrow(keyEvent, editContext, directionOf)) {
       return ExecutionInstruction.haltExecution;
     }
     if (builtInShortcuts &&
@@ -173,8 +173,12 @@ bool _rightToLeftArrow(
 
 /// → at the end of a chip, button or arrow link moves the caret out of it
 /// without moving it (typing goes after the element); ← there moves it back
-/// in (Write 11 §7.4).
-bool _pillBoundaryArrow(KeyEvent event, WriteEditorController controller) {
+/// in (Write 11 §7.4). In a right-to-left block the keys swap.
+bool _pillBoundaryArrow(
+  KeyEvent event,
+  WriteEditorController controller,
+  TextDirection Function(String nodeId)? directionOf,
+) {
   if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
   final key = event.logicalKey;
   if (key != LogicalKeyboardKey.arrowRight &&
@@ -198,12 +202,16 @@ bool _pillBoundaryArrow(KeyEvent event, WriteEditorController controller) {
   final boundary = controller.pillBoundary;
   final outside = boundary.isOutsideAt(selection.extent);
   final preferences = controller.composer.preferences;
-  if (key == LogicalKeyboardKey.arrowRight && !outside) {
+  final rtl = directionOf?.call(node.id) == TextDirection.rtl;
+  final forward = rtl
+      ? LogicalKeyboardKey.arrowLeft
+      : LogicalKeyboardKey.arrowRight;
+  if (key == forward && !outside) {
     boundary.leaveAt(selection.extent);
     preferences.removeStyles(pill);
     return true;
   }
-  if (key == LogicalKeyboardKey.arrowLeft && outside) {
+  if (key != forward && outside) {
     boundary.clear();
     preferences.addStyles(pill);
     return true;

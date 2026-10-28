@@ -354,7 +354,10 @@ and exports show details expanded (HTML: `<details open>`).
   last glyph, not after the room for the pill's padding or the arrow (the last character's
   letter spacing; `PillBoundary.caretRect` through super_editor SE-12). → moves the caret
   *outside* without moving it (typing follows the element; the caret is drawn past the pill's
-  edge or the arrow), ← moves it back inside; a click splits the last character at its glyph's
+  edge or the arrow), ← moves it back inside (in a right-to-left block ← moves out and → back
+  in); a click past the element's end, beyond its last character's box (right of it; left of it
+  in a right-to-left block), puts the caret outside too (`PillBoundaryTapHandler`), and a click
+  on the element's end puts it inside; a click splits the last character at its glyph's
   middle, not its box's, which includes that room (super_editor SE-13), and a click on what is
   under the pointer (a link to open, the link card) takes the character whose box holds the
   point (`DocumentGeometry.characterAt`), so the arrow belongs to its link; the link card also

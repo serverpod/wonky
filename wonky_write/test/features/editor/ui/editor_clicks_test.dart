@@ -4,8 +4,26 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
+import 'package:wonky_write/features/editor/attributions/wonky_attributions.dart';
 
+import '../support/editor_harness.dart';
 import 'wonky_editor_test.dart' show pumpEditor;
+
+/// The global box of the character at [offset] in [nodeId].
+Rect characterBox(EditorHarness h, String nodeId, int offset) {
+  final layout = h.controller.documentLayout!;
+  final rect = layout.getRectForSelection(
+    DocumentPosition(
+      nodeId: nodeId,
+      nodePosition: TextNodePosition(offset: offset),
+    ),
+    DocumentPosition(
+      nodeId: nodeId,
+      nodePosition: TextNodePosition(offset: offset + 1),
+    ),
+  )!;
+  return rect.shift(layout.getGlobalOffsetFromDocumentOffset(Offset.zero));
+}
 
 /// Clicks reach the editor's interactor, which lies below the document
 /// content: nothing a component paints may be a hit target of its own.
@@ -85,4 +103,53 @@ void main() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.macOS),
   );
+
+  for (final (name, attributes, attribution) in [
+    ('a chip', {'chip': true}, ChipAttribution.plain as Attribution),
+    (
+      'a button',
+      {'link': 'https://example.com', 'linkStyle': 'button'},
+      LinkStyleAttribution.button,
+    ),
+    (
+      'an arrow link',
+      {'link': 'https://example.com', 'linkStyle': 'arrow'},
+      LinkStyleAttribution.arrow,
+    ),
+  ]) {
+    testWidgets(
+      'Given $name at the end of a line when clicking right of it then the '
+      'caret is outside it, and on its last glyph inside it (Write 11 §7.4)',
+      (tester) async {
+        final h = await pumpEditor(
+          tester,
+          Delta()
+            ..insert('See ')
+            ..insert('Docs', attributes)
+            ..insert('\nNext\n'),
+        );
+        final id = h.controller.document.first.id;
+        final end = DocumentPosition(
+          nodeId: id,
+          nodePosition: const TextNodePosition(offset: 8),
+        );
+        final last = characterBox(h, id, 7);
+        DocumentPosition caret() => h.controller.composer.selection!.extent;
+        bool inside() => h.controller.composer.preferences.currentAttributions
+            .contains(attribution);
+
+        await click(tester, Offset(last.right + 30, last.center.dy));
+        expect(caret().isEquivalentTo(end), isTrue);
+        expect(h.controller.pillBoundary.isOutsideAt(caret()), isTrue);
+        expect(inside(), isFalse);
+
+        // On the last glyph's right half, at the same position: inside.
+        await click(tester, Offset(last.right - 2, last.center.dy));
+        expect(caret().isEquivalentTo(end), isTrue);
+        expect(h.controller.pillBoundary.isOutsideAt(caret()), isFalse);
+        expect(inside(), isTrue);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
+  }
 }

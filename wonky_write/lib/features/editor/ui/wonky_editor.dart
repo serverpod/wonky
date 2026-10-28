@@ -1131,6 +1131,12 @@ class WonkyEditorState extends State<WonkyEditor> {
           requireModifier: true,
           onOpenLink: widget.onOpenLink,
         ),
+        (editContext) => PillBoundaryTapHandler(
+          document: controller.document,
+          composer: controller.composer,
+          boundary: controller.pillBoundary,
+          directionOf: _direction.directionOf,
+        ),
         superEditorAddEmptyParagraphTapHandlerFactory,
       ],
     );
