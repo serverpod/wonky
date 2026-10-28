@@ -360,7 +360,9 @@ and exports show details expanded (HTML: `<details open>`).
   on the element's end puts it inside; a click splits the last character at its glyph's
   middle, not its box's, which includes that room (super_editor SE-13), and a click on what is
   under the pointer (a link to open, the link card) takes the character whose box holds the
-  point (`DocumentGeometry.characterAt`), so the arrow belongs to its link; the link card also
+  point (`DocumentGeometry.characterAt`), so the arrow belongs to its link; the hover card
+  needs a character under the pointer (`DocumentGeometry.characterUnder`), so the pointer
+  right of a line ending in a link or button shows none; the link card also
   shows at the end of a button or arrow link while the caret is inside it (a one-character
   button can be edited); at the *start* of a chip or button after a space the caret (typed
   text goes before the element) is drawn before the pill, not on its first glyph; any other caret move ends the state. An element made by an

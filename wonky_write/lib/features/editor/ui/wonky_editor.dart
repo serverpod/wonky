@@ -612,13 +612,16 @@ class WonkyEditorState extends State<WonkyEditor> {
     final layout = controller.documentLayout;
     if (layout == null) return;
     final local = layout.getDocumentOffsetFromAncestorOffset(event.position);
+    // The character under the pointer: right of a line ending in a link
+    // (or button) is not on the link.
     final position = layout.getDocumentPositionAtOffset(local) == null
         ? null
-        : DocumentGeometry.characterAt(layout, local);
+        : DocumentGeometry.characterUnder(layout, controller.document, local);
     final offset = position == null
         ? null
         : controller.mirror.offsetOf(position);
-    final run = offset == null ? null : _commands.linkAt(offset);
+    var run = offset == null ? null : _commands.linkAt(offset);
+    if (run != null && (offset! < run.start || offset >= run.end)) run = null;
     _hoverTimer?.cancel();
     if (run == null) {
       _hoverTimer = Timer(const Duration(milliseconds: 200), () {

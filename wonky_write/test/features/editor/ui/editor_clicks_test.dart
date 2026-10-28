@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:wonky_write/features/editor/attributions/wonky_attributions.dart';
+import 'package:wonky_write/features/editor/popovers/editor_popovers.dart';
 
 import '../support/editor_harness.dart';
 import 'wonky_editor_test.dart' show pumpEditor;
@@ -152,4 +153,33 @@ void main() {
       variant: TargetPlatformVariant.only(TargetPlatform.macOS),
     );
   }
+
+  testWidgets(
+    'Given a button at the end of a line when the pointer rests right of it '
+    'then no link card shows, and over the button it does',
+    (tester) async {
+      final h = await pumpEditor(
+        tester,
+        Delta()
+          ..insert('See ')
+          ..insert('Docs', {
+            'link': 'https://example.com',
+            'linkStyle': 'button',
+          })
+          ..insert('\nNext\n'),
+      );
+      final last = characterBox(h, h.controller.document.first.id, 7);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset(last.right + 30, last.center.dy));
+      await mouse.moveTo(Offset(last.right + 40, last.center.dy));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(LinkHoverCard.cardKey), findsNothing);
+
+      await mouse.moveTo(last.center);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(LinkHoverCard.cardKey), findsOneWidget);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
 }

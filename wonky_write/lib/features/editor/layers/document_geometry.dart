@@ -24,6 +24,40 @@ abstract final class DocumentGeometry {
     return box != null && box.contains(offset) ? before : position;
   }
 
+  /// The position before the character whose box holds [offset] (document
+  /// coordinates), or null when the point is over no character: past a
+  /// line's end, in a margin. For what the pointer hovers.
+  static DocumentPosition? characterUnder(
+    DocumentLayout layout,
+    Document document,
+    Offset offset,
+  ) {
+    final position = layout.getDocumentPositionNearestToOffset(offset);
+    final p = position?.nodePosition;
+    final node = position == null
+        ? null
+        : document.getNodeById(position.nodeId);
+    if (position == null || p is! TextNodePosition || node is! TextNode) {
+      return null;
+    }
+    for (final start in [p.offset - 1, p.offset]) {
+      if (start < 0 || start >= node.text.length) continue;
+      final from = DocumentPosition(
+        nodeId: position.nodeId,
+        nodePosition: TextNodePosition(offset: start),
+      );
+      final box = layout.getRectForSelection(
+        from,
+        DocumentPosition(
+          nodeId: position.nodeId,
+          nodePosition: TextNodePosition(offset: start + 1),
+        ),
+      );
+      if (box != null && box.contains(offset)) return from;
+    }
+    return null;
+  }
+
   /// Per-line rectangles (document coordinates) covering Delta `[start, end)`.
   /// Embeds contribute their whole box. Limited to [maxRects].
   static List<Rect> rectsForRange(
