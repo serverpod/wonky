@@ -1624,7 +1624,8 @@ takes < 100 ms on a 100-page document.
 - **Scope**:
   - Visible blocks first, then the rest at idle. Re-checks changed nodes only.
   - Skipped: code blocks, inline code, links, mentions, URLs, emails, words with digits,
-    ALL-CAPS (setting), CamelCase, and words under 2 chars.
+    ALL-CAPS (setting), CamelCase, words under 2 chars, and words in a script the dictionary has
+    no letters of (Arabic or Hebrew in an English document: no red squiggles, §38).
   - Suggestions: a block is checked as it reads with its suggestions accepted — suggested
     deletions are left out, so `~~qi~~qu` + `ick` is checked as "quick", and struck text is never
     flagged.
@@ -2113,21 +2114,31 @@ feature flag.
 ## 38. RTL and bidirectional text
 
 - Per-paragraph direction is detected by `TextDirectionStylePhase` from the first strong
-  character (`intl` `Bidi.estimateDirectionOfText`, falling back to the document language's
-  direction). It is applied as `textDirection` in component view models. `super_editor`
-  supports RTL layout per text component (see its `demo_rtl` example). Nothing is stored in
-  the Delta.
-- For RTL blocks: list markers, checkboxes and indentation mirror to the right; quote borders
-  mirror.
-- Caret movement: ←/→ move **visually**. Word jumps follow the visual direction.
-  Home/End use the logical line start/end.
+  character (`detectTextDirection`, falling back to the document's direction: left to right, as
+  documents have no language yet). It is applied as `textDirection` in component view models;
+  alignment stays `start` (the stylesheet's), so it follows. `super_editor` supports RTL layout
+  per text component. Nothing is stored in the Delta.
+- For RTL blocks: list markers, checkboxes and indentation mirror to the right (super_editor's
+  list and task rows are in the block's `Directionality`); quote bars and their indent move to
+  the right (`quoteIndent` in the stylesheet, `quoteBar(rtl:)`); a numbered heading's step badge
+  is right of the text. A quote whose lines differ in direction has its bar per line.
+- Caret movement: ←/→ move **visually** at the block level: in an RTL block ← moves downstream
+  and → upstream, also by word (⌥/Ctrl) and line (⌘), with Shift extending
+  (`editor_keyboard.dart`, before super_editor's logical handling and, on the web, the
+  browser's). Mixed-direction runs inside a line follow the block's direction (as in Google
+  Docs), not per-run visual order. ← at an RTL block's visual left end moves to the next block.
+  Home/End use the logical line start/end; ↑/↓ keep the x position.
 - Mixed-direction runs inside a line rely on Flutter's bidi layout. Selection highlights use
   the per-box rects (possibly several per visual line).
-- Table cell alignment `null` means start-aligned per cell direction.
+- Tables and grids have a direction for their layout (column order, flow, bullets) from their
+  first strong character; a cell without one takes its table's; columns without an alignment are
+  start-aligned ([12](12-native-cells.md) §3.10).
 - An RTL application chrome (mirrored menus and panels) is P2 and is not covered by this spec.
 
 **AC-38.1** A paragraph starting with Arabic text renders right-aligned with its bullet on the
-right. → moves the caret visually right.
+right. ← moves the caret visually left (to the next character), ⌥← to the word's visual left end.
+**AC-38.2** An Arabic quote has its bar on the right; an Arabic task its checkbox on the right; an
+Arabic numbered heading its badge on the right.
 
 ## 39. Robustness and edge cases
 
