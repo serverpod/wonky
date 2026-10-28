@@ -1410,6 +1410,10 @@ class TextComponentState extends State<TextComponent> with DocumentComponent imp
         overflow: widget.overflow,
         layerBeneathBuilder: (context, textLayout) {
           return Stack(
+            // WONKY PATCH SE-5: the layers paint in the text layout's
+            // coordinates from its top left, also in a right-to-left
+            // Directionality (where topStart is the top right).
+            alignment: Alignment.topLeft,
             children: [
               // Selection highlight beneath the text.
               if (widget.text.length > 0)

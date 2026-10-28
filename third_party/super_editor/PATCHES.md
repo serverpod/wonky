@@ -105,10 +105,14 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
    edges, so in right-to-left text ⌘←/⌘→ (and Home/End) went to the wrong end, and the
    auto-wrap adjustment made the line end offset −1. Swapped for right-to-left components.
    `default_editor/text.dart`.
+8. **Right-to-left selection highlight**: the layers beneath a `TextComponent`'s text (selection
+   highlight, underlines) are zero-size painters in a `Stack`, aligned top start; in the
+   right-to-left `Directionality` of a paragraph, list item or task that is the top right, so
+   they painted a block's width to the right of the text. Aligned top left. `default_editor/text.dart`.
 
 - **Tests**: `test/wonky_patches/se5_fixes_test.dart`, `se3_node_change_events_test.dart`,
   `se2_document_patch_test.dart`
-- **Upstream**: 1–7 are general fixes; to be filed upstream.
+- **Upstream**: 1–8 are general fixes; to be filed upstream.
 
 ## SE-6 — Content drag delegate (drag and drop of the selection)
 

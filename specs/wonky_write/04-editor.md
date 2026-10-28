@@ -2128,8 +2128,11 @@ feature flag.
   browser's). Mixed-direction runs inside a line follow the block's direction (as in Google
   Docs), not per-run visual order. ← at an RTL block's visual left end moves to the next block.
   Home/End use the logical line start/end; ↑/↓ keep the x position.
+  At the end of a chip, button or arrow link, ← moves out of it and → back in
+  ([11](11-wonky-markdown.md) §7.4).
 - Mixed-direction runs inside a line rely on Flutter's bidi layout. Selection highlights use
-  the per-box rects (possibly several per visual line).
+  the per-box rects (possibly several per visual line), painted from the text's top left also in
+  an RTL block (super_editor SE-5), like spelling and comment underlines.
 - Tables and grids have a direction for their layout (column order, flow, bullets) from their
   first strong character; a cell without one takes its table's; columns without an alignment are
   start-aligned ([12](12-native-cells.md) §3.10).
@@ -2139,6 +2142,7 @@ feature flag.
 right. ← moves the caret visually left (to the next character), ⌥← to the word's visual left end.
 **AC-38.2** An Arabic quote has its bar on the right; an Arabic task its checkbox on the right; an
 Arabic numbered heading its badge on the right.
+**AC-38.3** Selecting a word of an Arabic paragraph highlights that word.
 
 ## 39. Robustness and edge cases
 
