@@ -7,12 +7,17 @@ import 'package:wonky_write_core/wonky_write_core.dart'
         BoxType,
         Boxes,
         CalloutVariant,
+        CellAlign,
+        CellEditException,
+        CellEdits,
+        CellGrid,
+        CellLines,
         DeltaUtils,
         GridBullets,
-        GridEmbed,
         MarkdownFlavor,
         WonkyAttr,
         WonkyDeltaNormalizer,
+        WonkyDocument,
         WonkyEmbed,
         WonkyToGfm,
         YouTubeEmbed;
@@ -25,6 +30,7 @@ import '../controller/write_editor_controller.dart';
 import '../mapping/delta_node_codec.dart';
 import '../mapping/delta_ops.dart';
 import '../mapping/wonky_schema.dart';
+import '../model/cells.dart';
 import '../model/code_languages.dart';
 import '../model/document_queries.dart';
 import '../model/embeds.dart';
@@ -396,8 +402,9 @@ class WriteEditorCommands {
     return blocks.isNotEmpty && blocks.every((b) => isInQuoteNode(b.node));
   }
 
+  /// Table cells and grid items keep their type (Write 12 §3.4).
   bool canChangeBlockType() =>
-      canEdit && _selectedBlocks().any((b) => b.isText);
+      canEdit && _selectedBlocks().any((b) => b.isText && !isCellNode(b.node));
 
   /// `write.format.blockType {type}` and the list toggles. Quote, code and
   /// lists are toggles; headings are not. With [toggle] `false`
@@ -411,7 +418,9 @@ class WriteEditorCommands {
     final blocks = nodeId != null
         ? [?controller.mirror.blockOf(nodeId)]
         : _selectedBlocks();
-    final textBlocks = blocks.where((b) => b.isText).toList();
+    final textBlocks = blocks
+        .where((b) => b.isText && !isCellNode(b.node))
+        .toList();
     if (!canEdit || textBlocks.isEmpty) return false;
     final isToggle =
         toggle &&
@@ -888,7 +897,9 @@ class WriteEditorCommands {
     return s != null && controller.mirror.blockAtOffset(s.start).isCode;
   }
 
-  bool canInsertBlock() => canEdit && !_caretInCode;
+  /// Blocks are not inserted in code blocks, table cells or grid items
+  /// (Write 12 §3.4).
+  bool canInsertBlock() => canEdit && !_caretInCode && !caretInCell;
 
   /// Inserts the embed [values] (each followed by `"\n"`) after the current
   /// block (or replacing an empty paragraph), creating a text block after the
@@ -990,17 +1001,19 @@ class WriteEditorCommands {
     return _insertEmbeds(values, label) == null ? const [] : ids;
   }
 
-  /// `write.insert.table {rows, cols}`. Returns the table's embed id.
+  /// `write.insert.table {rows, cols}`: a table of empty cell lines (Write
+  /// 12 §3.5), the caret in its first cell. Returns the table's id.
   String? insertTable({int rows = 3, int columns = 3}) {
-    if (isSuggesting) return null;
-    final table = TableModel.empty(
-      controller.newEmbedId(),
-      rowCount: rows.clamp(1, 2000),
-      columnCount: columns.clamp(1, 64),
+    if (isSuggesting || caretInCell) return null;
+    final id = controller.newEmbedId();
+    final lines = CellLines.table(
+      id: id,
+      rows: List.generate(
+        rows.clamp(1, 2000),
+        (_) => List.generate(columns.clamp(1, 64), (_) => Delta()),
+      ),
     );
-    return _insertEmbeds([table.toInsert()], _l.undoInsertTable) == null
-        ? null
-        : table.id;
+    return _insertLines(lines, _l.undoInsertTable) == null ? null : id;
   }
 
   /// `write.insert.mention {userUuid, replaceComposing}`: replaces `[start,
@@ -1471,48 +1484,168 @@ class WriteEditorCommands {
   }
 
   // ---------------------------------------------------------------------------
-  // Tables (§18).
+  // Tables (§18, Write 12 §3.5).
 
-  /// The table at [nodeId] (or the selected one).
+  /// The table or grid around node [nodeId] (a cell or item node, or the
+  /// table or grid id), or around the caret.
+  EditorCellRun? cellRunAt({String? nodeId}) {
+    if (nodeId != null) return EditorCellRun.of(controller.mirror, nodeId);
+    final s = selection;
+    if (s == null) return null;
+    return EditorCellRun.at(
+      controller.mirror,
+      controller.mirror.blockAtOffset(s.end).index,
+    );
+  }
+
+  /// The table around [nodeId] or the caret.
+  EditorCellRun? tableRunAt({String? nodeId}) {
+    final run = cellRunAt(nodeId: nodeId);
+    return run?.table == null ? null : run;
+  }
+
+  /// The (row, column) of the caret in its table.
+  (int, int)? caretCell() {
+    final s = selection;
+    if (s == null) return null;
+    final index = controller.mirror.blockAtOffset(s.end).index;
+    return EditorCellRun.at(
+      controller.mirror,
+      index,
+    )?.cellAt(controller.mirror, index);
+  }
+
+  /// `write.table.editCell {row, col}`: selects the text of cell ([row],
+  /// [col]) of the table at [nodeId] or the caret (the caret when empty).
+  bool selectCell(int row, int col, {String? nodeId}) {
+    final run = tableRunAt(nodeId: nodeId);
+    final index = run?.nodeIndexOfCell(row, col);
+    if (run == null || index == null) return false;
+    final block = controller.mirror.blockAt(index);
+    controller.select(DeltaSelection(block.start, block.lineEnd));
+    return true;
+  }
+
+  /// Whether the caret is in a table cell or grid item.
+  bool get caretInCell {
+    final s = selection;
+    return s != null &&
+        isCellNode(controller.mirror.blockAtOffset(s.start).node);
+  }
+
+  /// The table at [nodeId] (or the caret's) as a [TableModel].
   TableModel? tableOf({String? nodeId}) {
-    final block = _embedBlock(nodeId, DeltaKeys.tableEmbed);
-    return block == null
-        ? null
-        : TableModel.fromEmbed(EmbedNodes.embedDataOf(block.node)!);
+    final t = tableRunAt(nodeId: nodeId)?.table;
+    return t == null ? null : TableModel.fromCells(t);
   }
 
   bool canEditTable({String? nodeId}) =>
-      canEdit && !isSuggesting && tableOf(nodeId: nodeId) != null;
+      canEdit && !isSuggesting && tableRunAt(nodeId: nodeId) != null;
 
-  /// `write.table.replace {nodeId, table}`: one undo step "Edit table".
-  bool replaceTable(TableModel table, {String? nodeId, String? label}) {
-    label ??= _l.undoEditTable;
-    final block =
-        _embedBlock(nodeId ?? table.id, DeltaKeys.tableEmbed) ??
-        _embedBlock(nodeId, DeltaKeys.tableEmbed);
-    if (!canEditTable(nodeId: block?.id) || block == null) return false;
-    final current = TableModel.fromEmbed(EmbedNodes.embedDataOf(block.node)!);
-    final next = TableModel(
-      id: current.id,
-      align: table.align,
-      rows: table.rows,
-    );
-    if (next == current) return false;
-    return _replaceEmbed(block, next.toInsert(), label) != null;
-  }
-
-  /// Applies [edit] to the table and replaces it (direct table commands).
-  bool editTable(
-    TableModel Function(TableModel table) edit, {
+  /// Runs the structural edit [edit] on the table or grid at [nodeId] (or
+  /// the caret's) as one undo step [label]. Structural edits are not
+  /// suggestable (Write 12 §3.5). `true` when the edit applied or the table
+  /// already had the requested value.
+  bool editCells(
+    Delta? Function(EditorCellRun run) edit, {
     String? nodeId,
     required String label,
+    DeltaSelection? Function(EditorCellRun run, Delta change)? selectionAfter,
   }) {
-    final table = tableOf(nodeId: nodeId);
-    if (table == null) return false;
-    return replaceTable(
-      edit(table),
-      nodeId: nodeId ?? _targetBlock(null)?.id,
-      label: label,
+    if (!canEdit || isSuggesting) return false;
+    final run = cellRunAt(nodeId: nodeId);
+    if (run == null) return false;
+    final Delta? change;
+    try {
+      change = edit(run);
+    } on CellEditException {
+      return false;
+    }
+    if (change == null) return true;
+    final shifted = run.shift(change);
+    final normalized = const WonkyDeltaNormalizer()
+        .normalizeChange(
+          controller.mirror.slice(0, controller.mirror.length),
+          shifted,
+        )
+        .change;
+    return _apply(
+          normalized,
+          label,
+          selectionAfter: selectionAfter?.call(run, normalized),
+        ) !=
+        null;
+  }
+
+  /// `write.table.replace {nodeId, table}` (the table editor's Done): one
+  /// undo step "Edit table". Cells whose Markdown did not change keep their
+  /// lines (comments and all, Write 12 §3.6).
+  bool replaceTable(TableModel table, {String? nodeId, String? label}) {
+    if (!canEditTable(nodeId: nodeId ?? table.id)) return false;
+    return editCells(
+      (run) {
+        final current = TableModel.fromCells(run.table!);
+        Delta cellAt(int r, int c) {
+          final markdown = table.rows[r][c];
+          if (r < current.rows.length &&
+              c < current.rows[r].length &&
+              current.rows[r][c] == markdown &&
+              c < run.table!.rows[r].cells.length) {
+            final line = run.table!.rows[r].cells[c];
+            final d = Delta();
+            for (final s in line.segments) {
+              d.insert(s.data, s.attributes);
+            }
+            return d;
+          }
+          return CellLines.markdown(markdown);
+        }
+
+        return CellEdits.replaceTable(
+          run.doc,
+          run.id,
+          [
+            for (var r = 0; r < table.rows.length; r++)
+              [for (var c = 0; c < table.rows[r].length; c++) cellAt(r, c)],
+          ],
+          align: [for (final a in table.align) CellAlign.tryParse(a.value)],
+        );
+      },
+      nodeId: nodeId ?? table.id,
+      label: label ?? _l.undoEditTable,
+    );
+  }
+
+  /// Inserts the complete lines [lines] after the current block (or in place
+  /// of an empty paragraph) in the caret's containers, with a text block
+  /// after them, and puts the caret at [caret] (an offset in [lines]).
+  LocalDeltaChange? _insertLines(Delta lines, String label, {int caret = 0}) {
+    if (!canInsertBlock()) return null;
+    final (at, replaces) = _embedInsertionPoint();
+    final host = _hostLineAttributes();
+    final box = host?[DeltaKeys.box];
+    final change = Delta()..retain(at);
+    if (replaces) change.delete(1);
+    for (final line in WonkyDocument(lines).lines) {
+      for (final seg in line.segments) {
+        change.insert(seg.data, seg.attributes);
+      }
+      change.insert('\n', {...line.attributes, DeltaKeys.box: ?box});
+    }
+    final length = DeltaUtils.documentLength(lines);
+    final nextIndex = replaces
+        ? controller.mirror.indexAtOffset(at) + 1
+        : controller.mirror.indexAtOffset(at);
+    final hasTextAfter =
+        at < controller.mirror.length &&
+        nextIndex < controller.mirror.nodeCount &&
+        controller.mirror.blockAt(nextIndex).isText &&
+        !isCellNode(controller.mirror.blockAt(nextIndex).node);
+    if (!hasTextAfter) change.insert('\n', host);
+    return _apply(
+      change,
+      label,
+      selectionAfter: DeltaSelection.collapsed(at + caret.clamp(0, length)),
     );
   }
 
@@ -1573,10 +1706,23 @@ class WriteEditorCommands {
     int? end,
   }) {
     label ??= _l.undoPaste;
-    final s = selection;
+    var s = selection;
+    if (start == null &&
+        s != null &&
+        !s.isCollapsed &&
+        _selectionTouchesCells(s) &&
+        controller.mirror.blockAtOffset(s.start).id !=
+            controller.mirror.blockAtOffset(s.end).id) {
+      // Pasting over a selection across cells clears the cells first and
+      // pastes into the first (Write 12 §3.4).
+      deleteSelection();
+      s = selection;
+    }
     final from = start ?? s?.start;
     final to = end ?? s?.end ?? from;
     if (!canEdit || from == null || to == null || fragment.isEmpty) return null;
+    // A pasted table or grid is a new one (Write 12 §1.3).
+    fragment = CellLines.regenerateIds(fragment);
     var lines = splitDeltaIntoLines(fragment);
     if (lines.isEmpty) return null;
 
@@ -1587,6 +1733,30 @@ class WriteEditorCommands {
     final local = from - block.start;
     final blockAttributes = block.blockAttributes;
     final fragmentEndsWithNewline = _endsWithNewline(fragment);
+
+    if (isCellNode(block.node)) {
+      // A cell or grid item is one line: the pasted lines' text joined with
+      // spaces, inline formatting kept (Write 12 §3.4).
+      var first = true;
+      for (final line in lines) {
+        if (!first) change.insert(' ');
+        first = false;
+        for (final segment in line.segments) {
+          final data = segment.data;
+          if (data is! String) continue;
+          final text = data.replaceAll(DeltaKeys.softBreak, ' ');
+          if (text.isNotEmpty) {
+            change.insert(text, segment.attributes);
+          }
+        }
+      }
+      final inserted = _insertedLength(change);
+      return _apply(
+        change..trim(),
+        label,
+        selectionAfter: DeltaSelection.collapsed(from + inserted),
+      );
+    }
 
     if (block.isCode) {
       // Plain text; newlines stay code lines.
@@ -1647,6 +1817,15 @@ class WriteEditorCommands {
     final trailing = fragmentEndsWithNewline ? null : lines.last;
     for (var i = 0; i < complete.length; i += 1) {
       final line = complete[i];
+      if (_isCellLine(line)) {
+        // Cell and item lines stay whole lines (Write 12 §3.4).
+        if (i == 0 && local > 0) change.insert('\n', blockAttributes);
+        for (final segment in line.segments) {
+          change.insert(segment.data, segment.attributes);
+        }
+        change.insert('\n', line.endAttributes);
+        continue;
+      }
       if (line.isEmbedLine) {
         if (i == 0 && local > 0) change.insert('\n', blockAttributes);
         change
@@ -1681,6 +1860,14 @@ class WriteEditorCommands {
       selectionAfter: DeltaSelection.collapsed(from + inserted),
     );
   }
+
+  static bool _isCellLine(DeltaLine line) =>
+      line.endAttributes?[DeltaKeys.cell] != null ||
+      line.endAttributes?[DeltaKeys.gridItem] != null;
+
+  bool _selectionTouchesCells(DeltaSelection s) => controller.mirror
+      .blocksInSelection(s)
+      .any((block) => isCellNode(block.node));
 
   static Map<String, dynamic>? _mergeOverlays(
     Map<String, dynamic>? block,

@@ -25,6 +25,22 @@ JavaScript
 ''';
 
 void main() {
+  group('Given words in a script the dictionary has no letters of', () {
+    late SpellChecker checker;
+    setUp(() => checker = checkerFor(_aff, _dic));
+
+    checkVectors(() => checker, [
+      // Arabic, Hebrew and Cyrillic words in a Latin dictionary: unchecked.
+      ('مرحبا', true),
+      ('بالعالم', true),
+      ('שלום', true),
+      ('привет', true),
+      // A word with one of its letters is checked.
+      ('helloмир', false),
+      ('hallo', false),
+    ]);
+  });
+
   group('Given dictionary words with different capitalization', () {
     late SpellChecker checker;
     setUp(() => checker = checkerFor(_aff, _dic));

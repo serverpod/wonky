@@ -4,8 +4,27 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
+import 'package:wonky_write/features/editor/attributions/wonky_attributions.dart';
+import 'package:wonky_write/features/editor/popovers/editor_popovers.dart';
 
+import '../support/editor_harness.dart';
 import 'wonky_editor_test.dart' show pumpEditor;
+
+/// The global box of the character at [offset] in [nodeId].
+Rect characterBox(EditorHarness h, String nodeId, int offset) {
+  final layout = h.controller.documentLayout!;
+  final rect = layout.getRectForSelection(
+    DocumentPosition(
+      nodeId: nodeId,
+      nodePosition: TextNodePosition(offset: offset),
+    ),
+    DocumentPosition(
+      nodeId: nodeId,
+      nodePosition: TextNodePosition(offset: offset + 1),
+    ),
+  )!;
+  return rect.shift(layout.getGlobalOffsetFromDocumentOffset(Offset.zero));
+}
 
 /// Clicks reach the editor's interactor, which lies below the document
 /// content: nothing a component paints may be a hit target of its own.
@@ -82,6 +101,84 @@ void main() {
         expect(selection?.base.nodeId, id);
         expect(selection?.isCollapsed, isFalse);
       }
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
+
+  for (final (name, attributes, attribution) in [
+    ('a chip', {'chip': true}, ChipAttribution.plain as Attribution),
+    (
+      'a button',
+      {'link': 'https://example.com', 'linkStyle': 'button'},
+      LinkStyleAttribution.button,
+    ),
+    (
+      'an arrow link',
+      {'link': 'https://example.com', 'linkStyle': 'arrow'},
+      LinkStyleAttribution.arrow,
+    ),
+  ]) {
+    testWidgets(
+      'Given $name at the end of a line when clicking right of it then the '
+      'caret is outside it, and on its last glyph inside it (Write 11 §7.4)',
+      (tester) async {
+        final h = await pumpEditor(
+          tester,
+          Delta()
+            ..insert('See ')
+            ..insert('Docs', attributes)
+            ..insert('\nNext\n'),
+        );
+        final id = h.controller.document.first.id;
+        final end = DocumentPosition(
+          nodeId: id,
+          nodePosition: const TextNodePosition(offset: 8),
+        );
+        final last = characterBox(h, id, 7);
+        DocumentPosition caret() => h.controller.composer.selection!.extent;
+        bool inside() => h.controller.composer.preferences.currentAttributions
+            .contains(attribution);
+
+        await click(tester, Offset(last.right + 30, last.center.dy));
+        expect(caret().isEquivalentTo(end), isTrue);
+        expect(h.controller.pillBoundary.isOutsideAt(caret()), isTrue);
+        expect(inside(), isFalse);
+
+        // On the last glyph's right half, at the same position: inside.
+        await click(tester, Offset(last.right - 2, last.center.dy));
+        expect(caret().isEquivalentTo(end), isTrue);
+        expect(h.controller.pillBoundary.isOutsideAt(caret()), isFalse);
+        expect(inside(), isTrue);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
+  }
+
+  testWidgets(
+    'Given a button at the end of a line when the pointer rests right of it '
+    'then no link card shows, and over the button it does',
+    (tester) async {
+      final h = await pumpEditor(
+        tester,
+        Delta()
+          ..insert('See ')
+          ..insert('Docs', {
+            'link': 'https://example.com',
+            'linkStyle': 'button',
+          })
+          ..insert('\nNext\n'),
+      );
+      final last = characterBox(h, h.controller.document.first.id, 7);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset(last.right + 30, last.center.dy));
+      await mouse.moveTo(Offset(last.right + 40, last.center.dy));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(LinkHoverCard.cardKey), findsNothing);
+
+      await mouse.moveTo(last.center);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(LinkHoverCard.cardKey), findsOneWidget);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.macOS),
   );

@@ -6,6 +6,7 @@ import 'package:wonky_rich_text/wonky_rich_text.dart' show TextRules;
 
 import 'attributes.dart';
 import 'boxes.dart';
+import 'cells.dart';
 import 'embeds.dart';
 import 'links.dart';
 
@@ -56,6 +57,10 @@ enum ValidationCode {
   /// `step` on a line that is not a level 2–3 heading (Write 11 §2.4
   /// rule 12).
   invalidStep,
+
+  /// An invalid `cell` or `grid` value, both on one line, or another block
+  /// attribute than `box` next to them (Write 12 §1.4).
+  invalidCell,
 
   /// An embed that is not on its own line, or followed by a `"\n"` with block
   /// attributes.
@@ -274,12 +279,21 @@ final class WonkyDeltaValidator {
               add(ValidationCode.tabOutsideCode, t, 'Tab outside a code block');
             }
           }
+          final lineIsCell =
+              attrs.containsKey(WonkyAttr.cell) ||
+              attrs.containsKey(WonkyAttr.grid);
           for (final s in pendingSoftBreaks) {
             if (lineIsCode) {
               add(
                 ValidationCode.softBreakInCode,
                 s,
                 'Soft break inside a code block',
+              );
+            } else if (lineIsCell) {
+              add(
+                ValidationCode.invalidCell,
+                s,
+                'Soft break inside a table cell or grid item',
               );
             }
           }
@@ -601,6 +615,30 @@ final class WonkyDeltaValidator {
           if (!isValidBox(v)) {
             add(ValidationCode.invalidBox, offset, 'Invalid "box" value');
           }
+        case WonkyAttr.cell:
+          if (!CellAttr.isCanonical(v)) {
+            add(ValidationCode.invalidCell, offset, 'Invalid "cell" value');
+          }
+        case WonkyAttr.grid:
+          if (!GridItemAttr.isCanonical(v)) {
+            add(ValidationCode.invalidCell, offset, 'Invalid "grid" value');
+          }
+      }
+    }
+    if (attrs.containsKey(WonkyAttr.cell) ||
+        attrs.containsKey(WonkyAttr.grid)) {
+      // A cell or grid item is one plain line (Write 12 §1.4).
+      final others = Attributes.block(attrs).keys.where(
+        (k) => k != WonkyAttr.box && k != WonkyAttr.cell && k != WonkyAttr.grid,
+      );
+      if (others.isNotEmpty ||
+          (attrs.containsKey(WonkyAttr.cell) &&
+              attrs.containsKey(WonkyAttr.grid))) {
+        add(
+          ValidationCode.invalidCell,
+          offset,
+          'A cell or grid line with other block attributes',
+        );
       }
     }
     if (types > 1) {

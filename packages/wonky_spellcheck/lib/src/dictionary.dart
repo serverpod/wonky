@@ -78,6 +78,7 @@ final class HunspellDictionary {
 
   // Lazily built suggestion helpers.
   List<String>? _rootList;
+  Set<int>? _alphabet;
   String? _effectiveTry;
   Map<int, String>? _keyNeighbours;
 
@@ -132,6 +133,37 @@ final class HunspellDictionary {
   }
 
   List<String> get _roots => _rootList ??= _words.keys.toList(growable: false);
+
+  static final RegExp _letter = RegExp(r'\p{L}', unicode: true);
+
+  /// Whether [word] has a letter of this dictionary's alphabet (the letters
+  /// of its words and `TRY`, in either case). A word in another script
+  /// (Arabic in an English document) has none: it is not checked.
+  bool _hasLettersOf(String word) {
+    final alphabet = _alphabet ??= _buildAlphabet();
+    // An empty dictionary knows no script: it checks (rejects) everything.
+    if (alphabet.isEmpty) return true;
+    for (final m in _letter.allMatches(word)) {
+      if (alphabet.contains(m[0]!.runes.first)) return true;
+    }
+    return false;
+  }
+
+  Set<int> _buildAlphabet() {
+    final letters = <String>{};
+    for (final w in [_try, ..._words.keys]) {
+      for (final m in _letter.allMatches(w)) {
+        letters.add(m[0]!);
+      }
+    }
+    return {
+      for (final l in letters) ...[
+        l.runes.first,
+        ...l.toLowerCase().runes,
+        ...l.toUpperCase().runes,
+      ],
+    };
+  }
 
   /// TRY, or (when the `.aff` has none) the dictionary's letters by
   /// frequency.

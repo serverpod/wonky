@@ -6,13 +6,13 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import '../delta/attributes.dart';
 import '../delta/boxes.dart';
+import '../delta/cells.dart';
 import '../delta/document.dart';
 import '../delta/embeds.dart';
 import '../delta/normalizer.dart';
 import '../ir/doc_tree.dart';
 import '../import/import_api.dart' show MarkdownFlavor;
 import 'inline_markdown.dart';
-import 'inline_writer.dart';
 
 /// The Wonky elements of a document, counted for the conversion dialog.
 final class WonkyInventory {
@@ -91,6 +91,7 @@ abstract final class WonkyToGfm {
     void add(String key) => counts[key] = (counts[key] ?? 0) + 1;
     var prevPath = const <BoxFrame>[];
     String? prevStyleRun;
+    String? prevGrid;
     for (final line in WonkyDocument(document).lines) {
       final path = Boxes.of(line.attributes);
       final common = Boxes.commonDepth(prevPath, path);
@@ -99,6 +100,9 @@ abstract final class WonkyToGfm {
       }
       prevPath = path;
       if (line.format.step != null) add('step');
+      final item = GridItemAttr.of(line.attributes);
+      if (item != null && item.id != prevGrid) add('grid');
+      prevGrid = item?.id;
       for (final s in line.segments) {
         if (s.isEmbed) {
           switch (WonkyEmbed.tryParse(s.data)) {
@@ -142,7 +146,8 @@ abstract final class WonkyToGfm {
 
   /// The change that converts every Wonky element of [document] to GFM,
   /// normalized (`document.compose(change)` is valid). Comments and
-  /// suggestions on converted text stay; a grid's are dropped with it.
+  /// suggestions on converted text stay (a legacy grid embed's are dropped
+  /// with it).
   static Delta change(Delta document) {
     final doc = WonkyDocument(document);
     final d = Delta();
@@ -211,10 +216,21 @@ abstract final class WonkyToGfm {
           styled ? {WonkyAttr.chip: null, WonkyAttr.linkStyle: null} : null,
         );
       }
+      // A grid item becomes a bullet; a cell stays a cell (and leaves a
+      // callout's quote: a cell line has no other block format).
+      final gridItem = line.attributes.containsKey(WonkyAttr.grid);
+      final isCell = line.attributes.containsKey(WonkyAttr.cell);
       final patch = <String, dynamic>{
         if (path.isNotEmpty) WonkyAttr.box: null,
         if (format.step != null) WonkyAttr.step: null,
+        if (gridItem) ...{
+          WonkyAttr.grid: null,
+          WonkyAttr.list: ListKind.bullet.value,
+          if (inCallout) WonkyAttr.blockquote: true,
+        },
         if (inCallout &&
+            !gridItem &&
+            !isCell &&
             !line.isEmbedLine &&
             (format.type == BlockType.paragraph || format.isList) &&
             !format.inQuote)
@@ -306,17 +322,7 @@ abstract final class WonkyToGfm {
               b.id,
               b.align,
               rows,
-              cellMarkdown: [
-                for (final r in rows)
-                  [
-                    for (final c in r)
-                      InlineMarkdownWriter.write(
-                        c,
-                        context: InlineContext.tableCell,
-                        flavor: MarkdownFlavor.gfm,
-                      ),
-                  ],
-              ],
+              cellFlavor: MarkdownFlavor.gfm,
               deltaStart: b.deltaStart,
               deltaLength: b.deltaLength,
             ),

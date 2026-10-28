@@ -138,6 +138,7 @@ final class SpellChecker {
       return !_isForbidden(alt) && _checkCased(alt, true, compound);
     }
     if (_numberPattern.hasMatch(w)) return true;
+    if (!dictionary._hasLettersOf(w)) return true;
     if (_checkDots(w, forSuggest, compound)) return true;
     if (w.contains("'")) {
       return _checkDots(w.replaceAll("'", '’'), forSuggest, compound);

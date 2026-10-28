@@ -247,7 +247,8 @@ class BoxFrameComponentBuilder implements ComponentBuilder {
     if (component == null) return null;
     final node = document.getNodeById(viewModel.nodeId);
     final frames = boxOf(node);
-    if (node == null || frames.isEmpty) return component;
+    // Table cells and grid items are framed as a group ([frameGroup]).
+    if (node == null || frames.isEmpty || isCellNode(node)) return component;
     // Collapsing a details container changes no view model: the frames
     // listen to the layout instead.
     // Nor does a frame changed in place (a callout's type or title): the
@@ -268,7 +269,38 @@ class BoxFrameComponentBuilder implements ComponentBuilder {
     );
   }
 
-  Widget _frames(DocumentNode node, List<BoxFrame> frames, Widget component) {
+  /// [child] (a table or grid, Write 12 §3.2) in the frames of the
+  /// containers of its [first] and [last] nodes, with the block spacing
+  /// inside them.
+  Widget frameGroup(DocumentNode first, DocumentNode last, Widget child) {
+    final frames = boxOf(first);
+    if (frames.isEmpty) return child;
+    // The outermost container's spacing (for other nodes their padding,
+    // [BoxStylePhase]).
+    final outer = theme.wonky.frameOf(containerFrameOf(document, first, 0));
+    return Padding(
+      padding: EdgeInsets.only(
+        top: _isFirstAt(document, first, frames, 0)
+            ? outer.spaceBefore * zoom
+            : 0,
+        bottom: _isLastAt(document, last, frames, 0)
+            ? outer.spaceAfter * zoom
+            : 0,
+      ),
+      child: ListenableBuilder(
+        listenable: layout,
+        builder: (context, _) => _frames(first, frames, child, last: last),
+      ),
+    );
+  }
+
+  Widget _frames(
+    DocumentNode node,
+    List<BoxFrame> frames,
+    Widget component, {
+    DocumentNode? last,
+  }) {
+    final end = last ?? node;
     final style = theme.wonky;
     // The summary of a collapsed details ends its box: no block spacing
     // below it inside the frame, whose bottom padding follows directly.
@@ -293,7 +325,7 @@ class BoxFrameComponentBuilder implements ComponentBuilder {
           first &&
           layout.isCollapsed(frame.id);
       // A collapsed details ends with its summary: bottom border and padding.
-      final last = collapsedSummary || _isLastAt(document, node, frames, depth);
+      final last = collapsedSummary || _isLastAt(document, end, frames, depth);
       if (frame.type == BoxType.details &&
           layout.isCollapsed(frame.id) &&
           !(first && isDetailsSummaryNode(document, node, depth))) {

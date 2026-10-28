@@ -1,5 +1,6 @@
 import 'package:super_editor/super_editor.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' show BoxFrame, Boxes;
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show BoxFrame, Boxes, CellAttr, GridItemAttr;
 
 /// Delta attribute keys of the Wonky Delta Schema v1 used by the editor
 /// mapping (Write 02 §1). Mirrors `WonkyAttr` of `wonky_write_core`.
@@ -20,6 +21,12 @@ abstract final class DeltaKeys {
   static const indent = 'indent';
   static const step = 'step';
   static const box = 'box';
+
+  /// A table cell line (Write 12 §1.1).
+  static const cell = 'cell';
+
+  /// A grid item line (Write 12 §1.2; the same key as the legacy embed's).
+  static const gridItem = 'grid';
 
   static const commentPrefix = 'cmt_';
   static const suggestionPrefix = 'sug_';
@@ -48,6 +55,8 @@ abstract final class DeltaKeys {
     indent,
     step,
     box,
+    cell,
+    gridItem,
   };
 
   static bool isComment(String key) =>
@@ -98,7 +107,26 @@ abstract final class WonkyNodeMetadata {
 
   /// The number of a numbered heading (`step`, Write 11 §2.2).
   static const step = 'wonkyStep';
+
+  /// The `cell` value of a table cell node (Write 12 §3.1).
+  static const cell = 'wonkyCell';
+
+  /// The `grid` value of a grid item node (Write 12 §3.1).
+  static const gridItem = 'wonkyGridItem';
 }
+
+/// The cell attribute of a table cell node, or `null`.
+CellAttr? cellOf(DocumentNode? node) =>
+    CellAttr.tryParse(node?.getMetadataValue(WonkyNodeMetadata.cell));
+
+/// The grid item attribute of a grid item node, or `null`.
+GridItemAttr? gridItemOf(DocumentNode? node) =>
+    GridItemAttr.tryParse(node?.getMetadataValue(WonkyNodeMetadata.gridItem));
+
+/// Whether [node] is a table cell or a grid item (Write 12 §3.1).
+bool isCellNode(DocumentNode? node) =>
+    node?.getMetadataValue(WonkyNodeMetadata.cell) != null ||
+    node?.getMetadataValue(WonkyNodeMetadata.gridItem) != null;
 
 /// The container frames of [node] (outermost first; empty when none).
 List<BoxFrame> boxOf(DocumentNode? node) => node == null

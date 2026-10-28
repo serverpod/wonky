@@ -3,12 +3,18 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_write_core/wonky_write_core.dart'
-    show BoxType, CalloutVariant, GridBullets;
+    show
+        BoxType,
+        CalloutVariant,
+        CellAlign,
+        CellEditException,
+        CellEdits,
+        CellLines,
+        GridBullets;
 
 import '../applier/delta_applier.dart';
 import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
-import '../model/table_model.dart';
 import '../paste/editor_clipboard.dart';
 import 'write_editor_commands.dart';
 
@@ -717,7 +723,8 @@ List<EditorCommandSpec> editorCommandCatalog() {
       ),
     ),
 
-    // Tables (§18.4).
+    // Tables (§18.4, Write 12 §3.5). `nodeId` is any cell of the table (or
+    // the table id); `index` defaults to the caret's row or column.
     EditorCommandSpec(
       id: 'write.table.insertRow',
       title: 'Insert row',
@@ -728,18 +735,20 @@ List<EditorCommandSpec> editorCommandCatalog() {
           'index': JsonSchema.integer(minimum: 0),
           'position': JsonSchema.string(enumValues: ['above', 'below']),
         },
-        required: ['index'],
       ),
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
-      run: (t, a) => _result(
-        t.commands.editTable(
-          (table) => table.insertRow(
-            a.integer('index')! + (a.string('position') == 'above' ? 0 : 1),
+      run: (t, a) {
+        final row = a.integer('index') ?? t.commands.caretCell()?.$1;
+        if (row == null) return _result(false);
+        final at = row + (a.string('position') == 'above' ? 0 : 1);
+        return _result(
+          t.commands.editCells(
+            (run) => CellEdits.insertRow(run.doc, run.id, at),
+            nodeId: a.string('nodeId'),
+            label: t.controller.strings().undoInsertRow,
           ),
-          nodeId: a.string('nodeId'),
-          label: t.controller.strings().undoInsertRow,
-        ),
-      ),
+        );
+      },
     ),
     EditorCommandSpec(
       id: 'write.table.insertColumn',
@@ -751,18 +760,20 @@ List<EditorCommandSpec> editorCommandCatalog() {
           'index': JsonSchema.integer(minimum: 0),
           'position': JsonSchema.string(enumValues: ['left', 'right']),
         },
-        required: ['index'],
       ),
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
-      run: (t, a) => _result(
-        t.commands.editTable(
-          (table) => table.insertColumn(
-            a.integer('index')! + (a.string('position') == 'left' ? 0 : 1),
+      run: (t, a) {
+        final col = a.integer('index') ?? t.commands.caretCell()?.$2;
+        if (col == null) return _result(false);
+        final at = col + (a.string('position') == 'left' ? 0 : 1);
+        return _result(
+          t.commands.editCells(
+            (run) => CellEdits.insertColumn(run.doc, run.id, at),
+            nodeId: a.string('nodeId'),
+            label: t.controller.strings().undoInsertColumn,
           ),
-          nodeId: a.string('nodeId'),
-          label: t.controller.strings().undoInsertColumn,
-        ),
-      ),
+        );
+      },
     ),
     EditorCommandSpec(
       id: 'write.table.deleteRow',
@@ -771,18 +782,28 @@ List<EditorCommandSpec> editorCommandCatalog() {
       argsSchema: const JsonSchema.object(
         properties: {
           'nodeId': JsonSchema.string(),
-          'index': JsonSchema.integer(minimum: 1),
+          'index': JsonSchema.integer(minimum: 0),
         },
-        required: ['index'],
       ),
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
-      run: (t, a) => _result(
-        t.commands.editTable(
-          (table) => table.deleteRow(a.integer('index')!),
-          nodeId: a.string('nodeId'),
-          label: t.controller.strings().undoDeleteRow,
-        ),
-      ),
+      run: (t, a) {
+        final row = a.integer('index') ?? t.commands.caretCell()?.$1;
+        if (row == null) return _result(false);
+        return _result(
+          t.commands.editCells(
+            (run) {
+              // The header row stays while there are body rows (it can be
+              // emptied, Write 12 §3.5).
+              if (row == 0 && run.table!.rows.length > 1) {
+                throw const CellEditException('The header row stays');
+              }
+              return CellEdits.deleteRow(run.doc, run.id, row);
+            },
+            nodeId: a.string('nodeId'),
+            label: t.controller.strings().undoDeleteRow,
+          ),
+        );
+      },
     ),
     EditorCommandSpec(
       id: 'write.table.deleteColumn',
@@ -793,16 +814,19 @@ List<EditorCommandSpec> editorCommandCatalog() {
           'nodeId': JsonSchema.string(),
           'index': JsonSchema.integer(minimum: 0),
         },
-        required: ['index'],
       ),
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
-      run: (t, a) => _result(
-        t.commands.editTable(
-          (table) => table.deleteColumn(a.integer('index')!),
-          nodeId: a.string('nodeId'),
-          label: t.controller.strings().undoDeleteColumn,
-        ),
-      ),
+      run: (t, a) {
+        final col = a.integer('index') ?? t.commands.caretCell()?.$2;
+        if (col == null) return _result(false);
+        return _result(
+          t.commands.editCells(
+            (run) => CellEdits.deleteColumn(run.doc, run.id, col),
+            nodeId: a.string('nodeId'),
+            label: t.controller.strings().undoDeleteColumn,
+          ),
+        );
+      },
     ),
     EditorCommandSpec(
       id: 'write.table.moveRow',
@@ -818,8 +842,13 @@ List<EditorCommandSpec> editorCommandCatalog() {
       ),
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
       run: (t, a) => _result(
-        t.commands.editTable(
-          (table) => table.moveRow(a.integer('from')!, a.integer('to')!),
+        t.commands.editCells(
+          (run) => CellEdits.moveRow(
+            run.doc,
+            run.id,
+            a.integer('from')!,
+            a.integer('to')!,
+          ),
           nodeId: a.string('nodeId'),
           label: t.controller.strings().undoMoveRow,
         ),
@@ -839,8 +868,13 @@ List<EditorCommandSpec> editorCommandCatalog() {
       ),
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
       run: (t, a) => _result(
-        t.commands.editTable(
-          (table) => table.moveColumn(a.integer('from')!, a.integer('to')!),
+        t.commands.editCells(
+          (run) => CellEdits.moveColumn(
+            run.doc,
+            run.id,
+            a.integer('from')!,
+            a.integer('to')!,
+          ),
           nodeId: a.string('nodeId'),
           label: t.controller.strings().undoMoveColumn,
         ),
@@ -858,19 +892,34 @@ List<EditorCommandSpec> editorCommandCatalog() {
             enumValues: ['none', 'left', 'center', 'right'],
           ),
         },
-        required: ['index', 'align'],
+        required: ['align'],
       ),
+      radio: true,
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
-      run: (t, a) => _result(
-        t.commands.editTable(
-          (table) => table.setColumnAlignment(
-            a.integer('index')!,
-            TableAlign.parse(a.string('align')),
+      checked: (t, a) {
+        final run = t.commands.tableRunAt(nodeId: a.string('nodeId'));
+        final col = a.integer('index') ?? t.commands.caretCell()?.$2;
+        if (run == null || col == null || col >= run.table!.columnCount) {
+          return null;
+        }
+        return (run.table!.align[col]?.value ?? 'none') == a.string('align');
+      },
+      run: (t, a) {
+        final col = a.integer('index') ?? t.commands.caretCell()?.$2;
+        if (col == null) return _result(false);
+        return _result(
+          t.commands.editCells(
+            (run) => CellEdits.setColumnAlignment(
+              run.doc,
+              run.id,
+              col,
+              CellAlign.tryParse(a.string('align')),
+            ),
+            nodeId: a.string('nodeId'),
+            label: t.controller.strings().undoColumnAlignment,
           ),
-          nodeId: a.string('nodeId'),
-          label: t.controller.strings().undoColumnAlignment,
-        ),
-      ),
+        );
+      },
     ),
     EditorCommandSpec(
       id: 'write.table.setCell',
@@ -887,11 +936,13 @@ List<EditorCommandSpec> editorCommandCatalog() {
       ),
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
       run: (t, a) => _result(
-        t.commands.editTable(
-          (table) => table.setCell(
+        t.commands.editCells(
+          (run) => CellEdits.setCell(
+            run.doc,
+            run.id,
             a.integer('row')!,
             a.integer('col')!,
-            a.requireString('markdown'),
+            CellLines.markdown(a.requireString('markdown')),
           ),
           nodeId: a.string('nodeId'),
           label: t.controller.strings().undoEditTable,
@@ -906,8 +957,13 @@ List<EditorCommandSpec> editorCommandCatalog() {
         properties: {'nodeId': JsonSchema.string()},
       ),
       enabled: (t, a) => t.commands.canEditTable(nodeId: a.string('nodeId')),
-      run: (t, a) =>
-          _result(t.commands.deleteBlock(nodeId: a.string('nodeId'))),
+      run: (t, a) => _result(
+        t.commands.editCells(
+          (run) => CellEdits.deleteTable(run.doc, run.id),
+          nodeId: a.string('nodeId'),
+          label: t.controller.strings().undoDelete,
+        ),
+      ),
     ),
 
     // View (§29, not undoable).

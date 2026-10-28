@@ -13,12 +13,11 @@ import '../../../l10n/write_l10n.dart';
 import '../applier/delta_applier.dart';
 import '../commands/write_editor_commands.dart';
 import '../components/box_frames.dart';
+import '../components/cell_layout.dart';
 import '../components/editor_services.dart';
-import '../mapping/wonky_embed_node.dart';
 import '../components/grid_component.dart';
 import '../components/youtube_component.dart';
 import '../components/inline_pills.dart';
-import '../grid/inline_grid_editing.dart';
 import '../components/wonky_components.dart';
 import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
@@ -42,7 +41,6 @@ import '../setup/editor_factory.dart' show selectionGuard;
 import '../styles/editor_theme.dart';
 import '../styles/style_phases.dart';
 import '../styles/write_stylesheet.dart';
-import '../tables/inline_table_editing.dart';
 
 /// The Write document editor surface (Write 04): `SuperEditor` (Editing,
 /// Suggesting) or `SuperReader` (Viewing, suggestion previews) over the
@@ -76,7 +74,6 @@ class WonkyEditor extends StatefulWidget {
     this.extraStylePhases = const [],
     this.emojiSuggestions,
     this.onDropFiles,
-    this.inlineTableEditing = true,
     this.externalDrops,
     this.endInset = 0,
     this.compactPadding,
@@ -141,9 +138,6 @@ class WonkyEditor extends StatefulWidget {
   /// drops are pasted by the editor itself.
   final void Function(List<DroppedFile> files, int blockIndex)? onDropFiles;
 
-  /// In-place table cell editing (SE-4, Write 04 §18.4).
-  final bool inlineTableEditing;
-
   /// Pages mode: width at the end of the canvas that something is drawn over
   /// (the comment margin). The page centers in the rest — moving left, down
   /// to an 8 px gutter — so it stays clear of it when there is room.
@@ -180,6 +174,12 @@ class WonkyEditorState extends State<WonkyEditor> {
     zoom: 1,
   );
   final _direction = TextDirectionStylePhase();
+  // Table cells and grid items laid out side by side (Write 12 §3.2), one
+  // layout per document shown (the document, a suggestion preview).
+  WriteCellLayout? _mainCells;
+  WriteCellLayout? _previewCells;
+  late final _cellPhase = CellStylePhase(_cellsFor(controller.document));
+  WriteCellLayout? _cellsInBuild;
   final _pillSpacing = PillSpacingStylePhase();
   final _slashPicker = PickerController<SlashItem>();
   final _mentionPicker = PickerController<MentionCandidate>();
@@ -191,8 +191,6 @@ class WonkyEditorState extends State<WonkyEditor> {
     skipTraversal: true,
   );
   late TextDragController _textDrag;
-  late InlineTableEditing _tables;
-  late InlineGridEditing _grids;
   ExternalDropSource? _drops;
 
   /// The slash menu items in the UI language (set in [didChangeDependencies]).
@@ -228,9 +226,6 @@ class WonkyEditorState extends State<WonkyEditor> {
 
   /// The pagination state (page count for the status bar).
   PaginationController get pagination => _pagination;
-
-  /// In-place table cell editing (SE-4).
-  InlineTableEditing get tableEditing => _tables;
 
   /// Drag and drop of the selection (Write 04 §24).
   TextDragController get textDrag => _textDrag;
@@ -275,20 +270,6 @@ class WonkyEditorState extends State<WonkyEditor> {
       commands: _commands,
       indicator: _dropIndicator,
     );
-    _tables = InlineTableEditing(
-      controller: controller,
-      commands: _commands,
-      onUndo: widget.shortcutCallbacks?.onUndo,
-      onRedo: widget.shortcutCallbacks?.onRedo,
-    )..focusParent = _outerFocus;
-    controller.tableEditing = _tables;
-    _grids = InlineGridEditing(
-      controller: controller,
-      commands: _commands,
-      onUndo: widget.shortcutCallbacks?.onUndo,
-      onRedo: widget.shortcutCallbacks?.onRedo,
-    )..focusParent = _outerFocus;
-    controller.gridEditing = _grids;
     controller.addListener(_onControllerChanged);
     controller.view.addListener(_onViewChanged);
     controller.pillBoundary.addListener(_updateLinkCardFromCaret);
@@ -302,8 +283,6 @@ class WonkyEditorState extends State<WonkyEditor> {
   }
 
   void _detach(WriteEditorController old) {
-    // First: disposing the inline editors below commits pending edits,
-    // which notifies the controller.
     old.removeListener(_onControllerChanged);
     old.view.removeListener(_onViewChanged);
     old.pillBoundary.removeListener(_updateLinkCardFromCaret);
@@ -312,10 +291,6 @@ class WonkyEditorState extends State<WonkyEditor> {
     _triggers.emoji.removeListener(_onEmoji);
     _triggers.dispose();
     _textDrag.cancel();
-    if (identical(old.tableEditing, _tables)) old.tableEditing = null;
-    if (identical(old.gridEditing, _grids)) old.gridEditing = null;
-    _tables.dispose();
-    _grids.dispose();
     _drops?.detach();
   }
 
@@ -329,8 +304,29 @@ class WonkyEditorState extends State<WonkyEditor> {
     }
   }
 
+  /// The cell layout of [document] (made when the document changes).
+  WriteCellLayout _cellsFor(Document document) {
+    final main = identical(document, controller.document);
+    var cells = main ? _mainCells : _previewCells;
+    if (cells == null || !identical(cells.slots.document, document)) {
+      cells?.slots.dispose();
+      cells?.dispose();
+      cells = WriteCellLayout(CellSlots(document), pagination: _pagination);
+      if (main) {
+        _mainCells = cells;
+      } else {
+        _previewCells = cells;
+      }
+    }
+    return cells;
+  }
+
   @override
   void dispose() {
+    for (final cells in [_mainCells, _previewCells]) {
+      cells?.slots.dispose();
+      cells?.dispose();
+    }
     _detach(controller);
     _hoverTimer?.cancel();
     _previewTimer?.cancel();
@@ -481,7 +477,6 @@ class WonkyEditorState extends State<WonkyEditor> {
         return true;
       }
     }
-    if (_tableKeys(event)) return true;
     if (_triggers.slash.value != null && _slashPicker.items.isNotEmpty) {
       return _slashPicker.handleKey(
         event,
@@ -509,37 +504,6 @@ class WonkyEditorState extends State<WonkyEditor> {
       return true;
     }
     return false;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Tables (SE-4, §18.4).
-
-  /// Enter or F2 on a selected table starts editing its first cell.
-  bool _tableKeys(KeyEvent event) {
-    if (event is! KeyDownEvent || !widget.inlineTableEditing) return false;
-    final key = event.logicalKey;
-    if (key != LogicalKeyboardKey.enter && key != LogicalKeyboardKey.f2) {
-      return false;
-    }
-    final keyboard = HardwareKeyboard.instance;
-    if (keyboard.isShiftPressed ||
-        keyboard.isAltPressed ||
-        keyboard.isMetaPressed ||
-        keyboard.isControlPressed) {
-      return false;
-    }
-    final selection = controller.composer.selection;
-    if (selection == null ||
-        selection.isCollapsed ||
-        selection.base.nodeId != selection.extent.nodeId) {
-      return false;
-    }
-    final node = controller.document.getNodeById(selection.base.nodeId);
-    if (node is WonkyEmbedNode && _grids.canEdit(node.id)) {
-      return _grids.activate(node.id, 0);
-    }
-    if (node is! TableBlockNode || !_tables.canEdit(node.id)) return false;
-    return _tables.activate(node.id, 0, 0, selectAll: true);
   }
 
   // ---------------------------------------------------------------------------
@@ -648,13 +612,16 @@ class WonkyEditorState extends State<WonkyEditor> {
     final layout = controller.documentLayout;
     if (layout == null) return;
     final local = layout.getDocumentOffsetFromAncestorOffset(event.position);
+    // The character under the pointer: right of a line ending in a link
+    // (or button) is not on the link.
     final position = layout.getDocumentPositionAtOffset(local) == null
         ? null
-        : DocumentGeometry.characterAt(layout, local);
+        : DocumentGeometry.characterUnder(layout, controller.document, local);
     final offset = position == null
         ? null
         : controller.mirror.offsetOf(position);
-    final run = offset == null ? null : _commands.linkAt(offset);
+    var run = offset == null ? null : _commands.linkAt(offset);
+    if (run != null && (offset! < run.start || offset >= run.end)) run = null;
     _hoverTimer?.cancel();
     if (run == null) {
       _hoverTimer = Timer(const Duration(milliseconds: 200), () {
@@ -781,12 +748,6 @@ class WonkyEditorState extends State<WonkyEditor> {
             ),
             lastBlockBottom: compact,
           );
-    _tables
-      ..onUndo = widget.shortcutCallbacks?.onUndo
-      ..onRedo = widget.shortcutCallbacks?.onRedo;
-    _grids
-      ..onUndo = widget.shortcutCallbacks?.onUndo
-      ..onRedo = widget.shortcutCallbacks?.onRedo;
 
     // The SuperEditor/SuperReader widget is reused while its inputs are the
     // same: a new instance rebuilds super_editor's layout, which walks every
@@ -996,6 +957,20 @@ class WonkyEditorState extends State<WonkyEditor> {
       callbacks: widget.blockCallbacks,
       editable: editable,
     );
+    // Tables and grids are framed as a whole (Write 12 §3.2).
+    final cells = _cellsFor(doc)
+      ..update(
+        theme: theme,
+        zoom: zoom,
+        editable: editable,
+        callbacks: widget.blockCallbacks,
+        frames:
+            framed(const ParagraphComponentBuilder())
+                as BoxFrameComponentBuilder,
+      );
+    _cellPhase.layout = cells;
+    _direction.cells = cells.slots;
+    _cellsInBuild = cells;
     return [
       for (final builder in _unframedBuilders(
         theme,
@@ -1034,12 +1009,7 @@ class WonkyEditorState extends State<WonkyEditor> {
             ? _pagination.contentHeight
             : null,
       ),
-      WonkyTableComponentBuilder(
-        theme: theme,
-        callbacks: widget.blockCallbacks,
-        editable: editable,
-        inlineEditing: editable && widget.inlineTableEditing ? _tables : null,
-      ),
+      WonkyTableComponentBuilder(theme: theme),
       WonkyTaskComponentBuilder(
         controller.editor,
         editable: editable,
@@ -1061,13 +1031,7 @@ class WonkyEditorState extends State<WonkyEditor> {
         editable: editable,
       ),
       WonkyRuleComponentBuilder(theme: theme),
-      WonkyGridComponentBuilder(
-        theme: theme,
-        zoom: zoom,
-        editing: editable ? _grids : null,
-        callbacks: widget.blockCallbacks,
-        editable: editable,
-      ),
+      WonkyGridComponentBuilder(theme: theme, zoom: zoom),
       WonkyYouTubeComponentBuilder(
         services: widget.imageServices,
         theme: theme,
@@ -1117,6 +1081,7 @@ class WonkyEditorState extends State<WonkyEditor> {
       selectionStyle: style.selectionStyles,
       customStylePhases: [
         _boxPhase,
+        _cellPhase,
         _pillSpacing,
         if (pages) _paginationPhase,
         _codeHighlight,
@@ -1124,6 +1089,7 @@ class WonkyEditorState extends State<WonkyEditor> {
         ...widget.extraStylePhases,
       ],
       componentBuilders: _componentBuilders(theme, style.zoom, editable: true),
+      cellLayout: _cellsInBuild,
       contentDragDelegate: _textDrag,
       documentUnderlayBuilders: [
         if (pages)
@@ -1159,6 +1125,7 @@ class WonkyEditorState extends State<WonkyEditor> {
         popoverKeys: _popoverKeys,
         builtInShortcuts: widget.builtInShortcuts,
         callbacks: callbacks,
+        directionOf: _direction.directionOf,
       ),
       contentTapDelegateFactories: [
         (editContext) => WonkyLinkTapHandler(
@@ -1166,6 +1133,12 @@ class WonkyEditorState extends State<WonkyEditor> {
           composer: controller.composer,
           requireModifier: true,
           onOpenLink: widget.onOpenLink,
+        ),
+        (editContext) => PillBoundaryTapHandler(
+          document: controller.document,
+          composer: controller.composer,
+          boundary: controller.pillBoundary,
+          directionOf: _direction.directionOf,
         ),
         superEditorAddEmptyParagraphTapHandlerFactory,
       ],
@@ -1194,6 +1167,7 @@ class WonkyEditorState extends State<WonkyEditor> {
       stylesheet: stylesheet,
       customStylePhases: [
         _boxPhase,
+        _cellPhase,
         _pillSpacing,
         // Pages also for previews (Viewing mode shows one).
         if (pages) _paginationPhase,
@@ -1207,6 +1181,7 @@ class WonkyEditorState extends State<WonkyEditor> {
         editable: false,
         document: editor.document,
       ),
+      cellLayout: _cellsInBuild,
       documentUnderlayBuilders: [
         if (pages)
           _ReaderPageChromeLayerBuilder(

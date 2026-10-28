@@ -1,349 +1,155 @@
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:super_editor/super_editor_test.dart';
-import 'package:wonky_write/features/editor/grid/inline_grid_editing.dart';
-import 'package:wonky_write/features/editor/styles/editor_theme.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' show MarkdownFlavor;
+import 'package:super_editor/super_editor.dart';
+import 'package:wonky_write/features/editor/applier/delta_applier.dart';
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show CellGrid, CellRuns, DocumentLine, MarkdownFlavor, WonkyDocument;
 
+import '../support/editor_harness.dart';
 import '../ui/wonky_editor_test.dart' show pumpEditor;
 
-Finder _item(int i) => find.byKey(ValueKey('write.editor.gridItem.g1.$i'));
+/// A paragraph, a grid of three items in three columns and a paragraph.
+Delta _gridDoc() {
+  const grid = {
+    'grid': {'id': 'g1', 'columns': 3, 'bullets': 'check'},
+  };
+  return Delta()
+    ..insert('Above\n')
+    ..insert('One')
+    ..insert('\n', grid)
+    ..insert('Two')
+    ..insert('\n', grid)
+    ..insert('Three')
+    ..insert('\n', grid)
+    ..insert('Below\n');
+}
+
+List<String> _items(EditorHarness h) {
+  final grid = CellRuns.grid(WonkyDocument(h.delta), 'g1');
+  return [for (final l in grid?.items ?? const <DocumentLine>[]) l.text];
+}
+
+String _caretText(EditorHarness h) {
+  final s = h.controller.composer.selection!;
+  final node = h.controller.document.getNodeById(s.extent.nodeId)! as TextNode;
+  return node.text.toPlainText();
+}
+
+Offset _center(WidgetTester tester, String text) =>
+    tester.getCenter(find.text(text, findRichText: true).first);
 
 void main() {
-  testWidgets(
-    'Given an item being edited when another item is pressed then editing '
-    'moves there without stopping in between',
-    (tester) async {
-      final h = await pumpEditor(
-        tester,
-        Delta()
-          ..insert('Above\n')
-          ..insert({
-            'grid': {
-              'id': 'g1',
-              'columns': 3,
-              'items': ['One', 'Two', 'Three'],
-            },
-          })
-          ..insert('\nBelow\n'),
-      );
+  group('Given a grid of item lines (Write 12 §1.2)', () {
+    testWidgets('when it is laid out then the items flow side by side', (
+      tester,
+    ) async {
+      final h = await pumpEditor(tester, _gridDoc());
       h.controller.markdownFlavor = () => MarkdownFlavor.wonky;
-      final editing = h.controller.gridEditing!;
-      expect(editing.activate('g1', 0), isTrue);
-      await tester.pumpAndSettle();
-      final selection = h.controller.selection;
+      final one = _center(tester, 'One');
+      final two = _center(tester, 'Two');
+      final three = _center(tester, 'Three');
+      expect(two.dy, closeTo(one.dy, 1));
+      expect(three.dy, closeTo(one.dy, 1));
+      expect(two.dx, greaterThan(one.dx + 50));
+      expect(three.dx, greaterThan(two.dx + 50));
+      expect(_center(tester, 'Below').dy, greaterThan(one.dy + 5));
+    });
 
-      final states = <GridItemRef?>[];
-      void record() => states.add(editing.active);
-      editing.addListener(record);
-      addTearDown(() => editing.removeListener(record));
+    testWidgets(
+      'when clicking an item then the caret is there and double-clicking '
+      'selects its word',
+      (tester) async {
+        final h = await pumpEditor(tester, _gridDoc());
+        await tester.tapAt(
+          _center(tester, 'Two'),
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pump(kDoubleTapTimeout + const Duration(milliseconds: 50));
+        expect(_caretText(h), 'Two');
 
-      final gesture = await tester.startGesture(
-        tester.getCenter(_item(1)),
-        kind: PointerDeviceKind.mouse,
-      );
-      await tester.pump();
-      // Pressed, not released: the first item is still being edited.
-      expect(editing.active, const GridItemRef('g1', 0));
-      expect(h.controller.selection, selection);
+        // The middle of "Three"'s third character.
+        final three = h.controller.document.firstWhere(
+          (n) => n is TextNode && n.text.toPlainText() == 'Three',
+        );
+        final layout = h.controller.documentLayout!;
+        final at = layout.getGlobalOffsetFromDocumentOffset(
+          layout
+              .getRectForPosition(
+                DocumentPosition(
+                  nodeId: three.id,
+                  nodePosition: const TextNodePosition(offset: 2),
+                ),
+              )!
+              .center,
+        );
+        await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+        await tester.pump(const Duration(milliseconds: 40));
+        await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+        await tester.pumpAndSettle();
+        final s = h.controller.composer.selection!;
+        expect(_caretText(h), 'Three');
+        expect((s.base.nodePosition as TextNodePosition).offset, 0);
+        expect((s.extent.nodePosition as TextNodePosition).offset, 5);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
 
-      await gesture.up();
-      await tester.pumpAndSettle();
-
-      expect(editing.active, const GridItemRef('g1', 1));
-      expect(states, isNot(contains(null)));
-      expect(h.controller.selection, selection);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
-
-  testWidgets(
-    'Given an item being edited when a word is double-clicked then it is '
-    'selected',
-    (tester) async {
-      final h = await pumpEditor(
-        tester,
-        Delta()
-          ..insert({
-            'grid': {
-              'id': 'g1',
-              'columns': 1,
-              'items': ['Alpha Beta Gamma'],
-            },
-          })
-          ..insert('\nBelow\n'),
-      );
-      h.controller.markdownFlavor = () => MarkdownFlavor.wonky;
-      final editing = h.controller.gridEditing!;
-      expect(editing.activate('g1', 0), isTrue);
-      await tester.pumpAndSettle();
-
-      final field = find.byType(TextField);
-      final box = tester.getRect(field);
-      // "Beta": a little right of the field's middle third's start.
-      final at = Offset(box.left + box.width * 0.0 + 50, box.center.dy);
-      final gesture = await tester.startGesture(
-        at,
-        kind: PointerDeviceKind.mouse,
-      );
-      await gesture.up();
-      await tester.pump(const Duration(milliseconds: 50));
-      await gesture.down(at);
-      await gesture.up();
-      await tester.pumpAndSettle();
-
-      final s = editing.text.selection;
-      // ignore: avoid_print
-      print('selection $s of "${editing.text.text}"');
-      expect(s.isCollapsed, isFalse);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
-
-  testWidgets(
-    'Given a grid not being edited when a word of an item is double-clicked '
-    'then editing starts with that word selected',
-    (tester) async {
-      final h = await pumpEditor(
-        tester,
-        Delta()
-          ..insert({
-            'grid': {
-              'id': 'g1',
-              'columns': 1,
-              'items': ['Alpha Beta Gamma'],
-            },
-          })
-          ..insert('\nBelow\n'),
-      );
-      h.controller.markdownFlavor = () => MarkdownFlavor.wonky;
-      final editing = h.controller.gridEditing!;
-      final paragraph = tester.renderObject<RenderParagraph>(
-        find.text('Alpha Beta Gamma', findRichText: true),
-      );
-      // In "Beta" (offsets 6–10).
-      final at = paragraph.localToGlobal(
-        paragraph.getOffsetForCaret(const TextPosition(offset: 8), Rect.zero) +
-            Offset(0, paragraph.size.height / 2),
-      );
-
-      final gesture = await tester.startGesture(
-        at,
-        kind: PointerDeviceKind.mouse,
-      );
-      await gesture.up();
-      await tester.pump(const Duration(milliseconds: 40));
-      expect(editing.active, const GridItemRef('g1', 0));
-      await gesture.down(at);
-      await gesture.up();
-      await tester.pumpAndSettle();
-
-      expect(
-        editing.text.selection,
-        const TextSelection(baseOffset: 6, extentOffset: 10),
-      );
-
-      // A fast double click: the second click lands before the field is
-      // built, on the rendered item (here: another item, then back).
-      editing.deactivate();
-      await tester.pumpAndSettle();
-      await tester.pump(const Duration(milliseconds: 400));
-      // (Later than the clicks above: a new series.)
-      final fast = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await fast.down(at, timeStamp: const Duration(seconds: 10));
-      await fast.up(timeStamp: const Duration(seconds: 10, milliseconds: 10));
-      await fast.down(
-        at,
-        timeStamp: const Duration(seconds: 10, milliseconds: 20),
-      );
-      await fast.up(timeStamp: const Duration(seconds: 10, milliseconds: 30));
-      await tester.pumpAndSettle();
-
-      expect(
-        editing.text.selection,
-        const TextSelection(baseOffset: 6, extentOffset: 10),
-      );
-      // The editor's selection color, not Material's.
-      final theme = TextSelectionTheme.of(
-        tester.element(find.byType(EditableText)),
-      );
-      expect(
-        theme.selectionColor,
-        EditorTheme.fallback(Brightness.light).selectionColor,
-      );
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
-
-  testWidgets(
-    'Given the caret in the text when an item is clicked then the grid '
-    'becomes the selection only once its field has the focus',
-    (tester) async {
-      final h = await pumpEditor(
-        tester,
-        Delta()
-          ..insert('Above\n')
-          ..insert({
-            'grid': {
-              'id': 'g1',
-              'columns': 2,
-              'items': ['Alpha', 'Beta'],
-            },
-          })
-          ..insert('\nBelow\n'),
-      );
-      h.controller.markdownFlavor = () => MarkdownFlavor.wonky;
-      await tester.placeCaretInParagraph(h.controller.document.first.id, 2);
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(h.controller.focusNode.hasPrimaryFocus, isTrue);
-
-      // Selecting the grid while the editor still had the focus let the
-      // editor take the text input back from the field.
-      final editorFocusedAtSelection = <bool>[];
-      void record() {
-        final s = h.controller.selection;
-        if (s != null && !s.isCollapsed) {
-          editorFocusedAtSelection.add(h.controller.focusNode.hasPrimaryFocus);
-        }
-      }
-
-      h.controller.addListener(record);
-      addTearDown(() => h.controller.removeListener(record));
-
-      final gesture = await tester.startGesture(
-        tester.getCenter(_item(1)),
-        kind: PointerDeviceKind.mouse,
-      );
-      await gesture.up();
-      await tester.pumpAndSettle();
-
-      expect(h.controller.gridEditing!.focusNode.hasFocus, isTrue);
-      expect(editorFocusedAtSelection, isNotEmpty);
-      expect(editorFocusedAtSelection, everyElement(isFalse));
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
-
-  testWidgets(
-    'Given an unsaved item when the editor is disposed then the edit is '
-    'saved without errors',
-    (tester) async {
-      final h = await pumpEditor(
-        tester,
-        Delta()
-          ..insert({
-            'grid': {
-              'id': 'g1',
-              'columns': 1,
-              'items': ['Alpha'],
-            },
-          })
-          ..insert('\nBelow\n'),
-      );
-      h.controller.markdownFlavor = () => MarkdownFlavor.wonky;
-      h.controller.gridEditing!.activate('g1', 0);
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'Alpha more');
+    testWidgets('when pressing Enter in an item then the next item is added, '
+        'and Backspace in an empty item removes it (AC-12.7)', (tester) async {
+      final h = await pumpEditor(tester, _gridDoc());
+      h.controller.select(DeltaSelection.collapsed('Above\nOne'.length));
       await tester.pump();
 
-      await tester.pumpWidget(const SizedBox());
-
-      expect(tester.takeException(), isNull);
-      final grid = (h.delta.operations.first.data! as Map)['grid'] as Map;
-      expect(grid['items'], ['Alpha more']);
-    },
-  );
-
-  testWidgets(
-    'Given an item being edited when its field is clicked then the editor '
-    'neither moves its caret nor takes the focus',
-    (tester) async {
-      final h = await pumpEditor(
-        tester,
-        Delta()
-          ..insert('Above\n')
-          ..insert({
-            'grid': {
-              'id': 'g1',
-              'columns': 2,
-              'items': ['Alpha beta', 'Gamma'],
-            },
-          })
-          ..insert('\nBelow\n'),
-      );
-      h.controller.markdownFlavor = () => MarkdownFlavor.wonky;
-      final editing = h.controller.gridEditing!;
-      final first = await tester.startGesture(
-        tester.getCenter(_item(0)),
-        kind: PointerDeviceKind.mouse,
-      );
-      await first.up();
+      h.controller.editor.execute([
+        InsertNewlineAtCaretRequest(Editor.createNodeId()),
+      ]);
       await tester.pumpAndSettle();
-      await tester.pump(const Duration(milliseconds: 400));
-      final selection = h.controller.selection;
-      expect(selection?.isCollapsed, isFalse);
+      expect(_items(h), ['One', '', 'Two', 'Three']);
+      expect(_caretText(h), '');
 
-      // The left half of the grid: the editor would put its caret before it.
-      final field = tester.getRect(find.byType(TextField));
-      final click = await tester.startGesture(
-        Offset(field.left + 4, field.center.dy),
-        kind: PointerDeviceKind.mouse,
-      );
-      await click.up();
+      h.controller.editor.execute([const DeleteUpstreamRequest()]);
       await tester.pumpAndSettle();
+      expect(_items(h), ['One', 'Two', 'Three']);
+      expect(_caretText(h), 'One');
+    });
 
-      expect(editing.active, const GridItemRef('g1', 0));
-      expect(editing.focusNode.hasFocus, isTrue);
-      expect(h.controller.selection, selection);
-      expect(editing.text.selection.baseOffset, lessThan(3));
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
-
-  testWidgets(
-    'Given an item being edited when it is triple-clicked then its text is '
-    'selected',
-    (tester) async {
-      final h = await pumpEditor(
-        tester,
-        Delta()
-          ..insert({
-            'grid': {
-              'id': 'g1',
-              'columns': 1,
-              'items': ['Alpha Beta Gamma'],
-            },
-          })
-          ..insert('\nBelow\n'),
+    testWidgets('when pressing Enter in the empty last item then it leaves '
+        'the grid', (tester) async {
+      final h = await pumpEditor(tester, _gridDoc());
+      h.controller.select(
+        DeltaSelection.collapsed('Above\nOne\nTwo\nThree'.length),
       );
-      h.controller.markdownFlavor = () => MarkdownFlavor.wonky;
-      final editing = h.controller.gridEditing!;
-      expect(editing.activate('g1', 0), isTrue);
+      await tester.pump();
+      h.controller.editor.execute([
+        InsertNewlineAtCaretRequest(Editor.createNodeId()),
+      ]);
       await tester.pumpAndSettle();
-      await tester.pump(const Duration(milliseconds: 400));
+      expect(_items(h), ['One', 'Two', 'Three', '']);
 
-      final field = tester.getRect(find.byType(TextField));
-      final at = Offset(field.left + 30, field.center.dy);
-      final gesture = await tester.startGesture(
-        at,
-        kind: PointerDeviceKind.mouse,
-      );
-      await gesture.up();
-      for (var i = 0; i < 2; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-        await gesture.down(at);
-        await gesture.up();
-      }
+      h.controller.editor.execute([
+        InsertNewlineAtCaretRequest(Editor.createNodeId()),
+      ]);
       await tester.pumpAndSettle();
+      expect(_items(h), ['One', 'Two', 'Three']);
+      final grid = CellRuns.of(WonkyDocument(h.delta)).single as CellGrid;
+      expect(h.delta.toList().last.data, '\nBelow\n');
+      expect(grid.items, hasLength(3));
+    });
 
-      expect(
-        editing.text.selection,
-        const TextSelection(baseOffset: 0, extentOffset: 16),
-      );
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
+    testWidgets('when pressing Tab then the next item is selected and Tab in '
+        'the last item appends one', (tester) async {
+      final h = await pumpEditor(tester, _gridDoc());
+      await tester.tapAt(_center(tester, 'Two'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(_caretText(h), 'Three');
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(_items(h), ['One', 'Two', 'Three', '']);
+      expect(_caretText(h), '');
+    });
+  });
 }

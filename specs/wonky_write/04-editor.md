@@ -1070,20 +1070,19 @@ import within Wonky (07 handles external rewriting).
 ## 18. Tables
 
 ### 18.1 Model recap
-The Delta `table` embed is `{id, align[], rows[][]}`. Row 0 is the header and cells are inline
-Markdown. `super_editor` maps it to a **read-only** `TableBlockNode(cells: List<List<TextNode>>)`,
-with cell alignment in the cell `TextNode` metadata `TextNodeMetadata.textAlign`. The node is
-selectable only as a whole.
+Tables are **native document text** ([12](12-native-cells.md)): each cell is a line with the
+`cell` line attribute `{table, row, align?}`, row 0 is the header, and cells hold ordinary inline
+content (formatting, links, mentions, chips, comments). Each cell is a `ParagraphNode` with
+`WonkyNodeMetadata.cell`. Legacy `table` embeds still render read-only (`TableBlockNode`) until
+the server upgrades them (12 §1.5).
 
-### 18.2 Rendering (`WonkyTableComponentBuilder`)
-- It wraps `MarkdownTableComponentBuilder` (which must also stay in the list, §2.2). Styling
-  comes from `TableStyles` in the theme (borders, header background, cell padding), with
-  light and dark variants.
-- Wide tables scroll horizontally with the built-in scrollbar. Cells wrap text up to a minimum
-  column width of 64 px.
-- **Affordances** on hover or selection: an **Edit table** button (pencil, top-right of the
-  table, opens the table editor popover). Clicking a cell edits it in place
-  (§18.4).
+### 18.2 Rendering
+- `WriteCellLayout` (super_editor SE-15, 12 §3.2) lays a table's cell components out in rows:
+  columns share the width, each row is as tall as its tallest cell, borders and the header
+  background are painted behind the cells (theme `tableBorderColor`, `tableHeaderBackground`).
+  `CellStylePhase` gives cells their padding, alignment and the header's weight (12 §3.3).
+- **Affordances** on hover: an **Edit table** button (pencil, top-right of the table, opens the
+  table editor popover). The context menu in a cell has the row and column commands (12 §3.7).
 
 ### 18.3 Insert
 - `write.insert.table {rows, cols}`. Defaults 3×3 (rows include the header row). Bounds 1–2,000
@@ -1091,43 +1090,16 @@ selectable only as a whole.
 - UI: the toolbar table button opens `WonkyTableSizePicker` (10×10 growing to 20×20). Insert ›
   Table ▸ has the same picker plus *Custom size…* (a dialog with two `WonkyNumberStepper`s).
   Slash `/table` inserts 3×3.
-- Inserts the embed (empty cells, `align` all `null`) after the current block, or replaces an
-  empty paragraph. Then it starts **in-place editing** of cell (0,0) (the popover when in-place
-  editing is unavailable). The insertion is its own undo step, "Insert table".
+- Inserts the cell lines (empty cells) after the current block, or replaces an empty paragraph,
+  and puts the caret in the first cell. The insertion is its own undo step, "Insert table".
 
 ### 18.4 Table editor
-**In-place editing** (patch **SE-4**, `features/editor/tables/inline_table_editing.dart`,
-`write.table.editCell {nodeId?, row?, col?}`): clicking a cell (or Enter / F2 on a selected
-table) turns it into a text field holding the cell's **inline Markdown source**; other cells keep
-their rendering. While a cell is edited the local selection (presence) is the table embed, set
-once the field has the focus: set while the document editor still had it (the field is built a
-frame later), the editor took the text input back, so typing went to the editor, which moved its
-caret before or after the table. Cells (rendered and edited) opt out of the editor's own
-gestures (`DocumentGestureOptOut`, super_editor SE-14): its interactor wraps the document, so
-without that a click in a cell also took the editor's focus and put its caret before or after
-the table.
-The cells share the field's tap region group, so pressing another cell is not a tap outside the
-field (which would end editing and show the editor's selection for a moment): editing moves
-straight to it. The click puts the field's caret where it was (the rendered offset mapped to the
-source, skipping markup: `FieldClicks`), a double click selects the word there and a triple
-click the text, counted from raw pointer events on the rendered cell and the field alike (the
-field misses the click that created it, and on the web its own double click doesn't fire), the
-selection kept against the field's late single click; the field uses the editor's selection
-color.
-- Tab / Shift+Tab: next / previous cell (Tab selects the cell's text; Tab in the last cell appends
-  a row). Enter: cell below; in the last row it appends a row. Shift+Enter: cell above. ↑ ↓: row
-  above / below; ← → at the text edges: previous / next cell. Leaving the first or last cell (or
-  the top / bottom row) puts the caret before / after the table.
-- Mod+B / I / E, Mod+Shift+X wrap the field selection in `**`, `*`, `` ` ``, `~~`; Mod+K wraps it
-  as `[text]()`.
-- Esc leaves the cell with the table selected; Mod+Enter leaves it with the caret after the table.
-- Commits: on leaving the cell, on focus loss, and after 1.5 s without typing (so collaborators
-  see the edit). Each commit is one `table` embed replacement and one undo step "Edit cell";
-  appended rows are their own step "Insert row". Mod+Z in a field with draft history undoes the
-  draft; in a clean field it runs the document undo.
-- Concurrency: a remote change to other cells updates the field when it is clean; a dirty draft
-  wins when committed (last writer wins, per cell). If the table or the cell disappears, editing
-  stops with a notice.
+Cells are edited in place like any text: the caret, clicks, double and triple clicks, drags and
+typing are the editor's (12 §3.4). Tab / Shift+Tab walk the cells (Tab in the last cell appends a
+row), Enter goes to the cell below (appending a row in the last row), Shift+Enter to the cell
+above, ↑ ↓ keep the column, Backspace and Delete never merge cells, and deleting a selection
+across cells clears their text and keeps the table's shape (12 §3.4). Structural commands are in
+12 §3.5.
 
 The **`TableEditorPopover`** (below) remains for bulk operations (structure, alignment, paste
 grid, sort) and narrow screens.
@@ -1652,7 +1624,8 @@ takes < 100 ms on a 100-page document.
 - **Scope**:
   - Visible blocks first, then the rest at idle. Re-checks changed nodes only.
   - Skipped: code blocks, inline code, links, mentions, URLs, emails, words with digits,
-    ALL-CAPS (setting), CamelCase, and words under 2 chars.
+    ALL-CAPS (setting), CamelCase, words under 2 chars, and words in a script the dictionary has
+    no letters of (Arabic or Hebrew in an English document: no red squiggles, §38).
   - Suggestions: a block is checked as it reads with its suggestions accepted — suggested
     deletions are left out, so `~~qi~~qu` + `ick` is checked as "quick", and struck text is never
     flagged.
@@ -2141,21 +2114,35 @@ feature flag.
 ## 38. RTL and bidirectional text
 
 - Per-paragraph direction is detected by `TextDirectionStylePhase` from the first strong
-  character (`intl` `Bidi.estimateDirectionOfText`, falling back to the document language's
-  direction). It is applied as `textDirection` in component view models. `super_editor`
-  supports RTL layout per text component (see its `demo_rtl` example). Nothing is stored in
-  the Delta.
-- For RTL blocks: list markers, checkboxes and indentation mirror to the right; quote borders
-  mirror.
-- Caret movement: ←/→ move **visually**. Word jumps follow the visual direction.
-  Home/End use the logical line start/end.
+  character (`detectTextDirection`, falling back to the document's direction: left to right, as
+  documents have no language yet). It is applied as `textDirection` in component view models;
+  alignment stays `start` (the stylesheet's), so it follows. `super_editor` supports RTL layout
+  per text component. Nothing is stored in the Delta.
+- For RTL blocks: list markers, checkboxes and indentation mirror to the right (super_editor's
+  list and task rows are in the block's `Directionality`); quote bars and their indent move to
+  the right (`quoteIndent` in the stylesheet, `quoteBar(rtl:)`); a numbered heading's step badge
+  is right of the text. A quote whose lines differ in direction has its bar per line.
+- Caret movement: ←/→ move **visually** at the block level: in an RTL block ← moves downstream
+  and → upstream, also by word (⌥/Ctrl) and line (⌘), with Shift extending
+  (`editor_keyboard.dart`, before super_editor's logical handling and, on the web, the
+  browser's). Mixed-direction runs inside a line follow the block's direction (as in Google
+  Docs), not per-run visual order. ← at an RTL block's visual left end moves to the next block.
+  Home/End use the logical line start/end; ↑/↓ keep the x position.
+  At the end of a chip, button or arrow link, ← moves out of it and → back in
+  ([11](11-wonky-markdown.md) §7.4).
 - Mixed-direction runs inside a line rely on Flutter's bidi layout. Selection highlights use
-  the per-box rects (possibly several per visual line).
-- Table cell alignment `null` means start-aligned per cell direction.
+  the per-box rects (possibly several per visual line), painted from the text's top left also in
+  an RTL block (super_editor SE-5), like spelling and comment underlines.
+- Tables and grids have a direction for their layout (column order, flow, bullets) from their
+  first strong character; a cell without one takes its table's; columns without an alignment are
+  start-aligned ([12](12-native-cells.md) §3.10).
 - An RTL application chrome (mirrored menus and panels) is P2 and is not covered by this spec.
 
 **AC-38.1** A paragraph starting with Arabic text renders right-aligned with its bullet on the
-right. → moves the caret visually right.
+right. ← moves the caret visually left (to the next character), ⌥← to the word's visual left end.
+**AC-38.2** An Arabic quote has its bar on the right; an Arabic task its checkbox on the right; an
+Arabic numbered heading its badge on the right.
+**AC-38.3** Selecting a word of an Arabic paragraph highlights that word.
 
 ## 39. Robustness and edge cases
 

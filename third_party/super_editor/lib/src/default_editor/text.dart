@@ -1348,17 +1348,24 @@ class TextComponentState extends State<TextComponent> with DocumentComponent imp
     return TextNodePosition.fromTextPosition(positionOneLineDown);
   }
 
+  // WONKY PATCH SE-5: the text layout's line start and end are the
+  // positions at the line's left and right edges, which right-to-left text
+  // has the other way around.
+  bool get _isRtl => widget.textDirection == TextDirection.rtl;
+
   @override
   TextNodePosition getPositionAtEndOfLine(TextNodePosition textPosition) {
     return TextNodePosition.fromTextPosition(
-      textLayout.getPositionAtEndOfLine(textPosition),
+      _isRtl ? textLayout.getPositionAtStartOfLine(textPosition) : textLayout.getPositionAtEndOfLine(textPosition),
     );
   }
 
   @override
   TextNodePosition getPositionAtStartOfLine(TextNodePosition textNodePosition) {
     return TextNodePosition.fromTextPosition(
-      textLayout.getPositionAtStartOfLine(textNodePosition),
+      _isRtl
+          ? textLayout.getPositionAtEndOfLine(textNodePosition)
+          : textLayout.getPositionAtStartOfLine(textNodePosition),
     );
   }
 
@@ -1403,6 +1410,10 @@ class TextComponentState extends State<TextComponent> with DocumentComponent imp
         overflow: widget.overflow,
         layerBeneathBuilder: (context, textLayout) {
           return Stack(
+            // WONKY PATCH SE-5: the layers paint in the text layout's
+            // coordinates from its top left, also in a right-to-left
+            // Directionality (where topStart is the top right).
+            alignment: Alignment.topLeft,
             children: [
               // Selection highlight beneath the text.
               if (widget.text.length > 0)

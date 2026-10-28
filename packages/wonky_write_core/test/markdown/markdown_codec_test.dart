@@ -1,4 +1,5 @@
 import 'package:test/test.dart';
+import 'package:wonky_write_core/testing.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 import '../property/markdown_round_trip_test.dart' show checkRoundTrip;
@@ -223,19 +224,33 @@ void main() {
             'a ragged table',
             '| a | b |\n|---|:-:|\n| 1 |\n',
             [
+              {'insert': 'a'},
               {
-                'insert': {
-                  'table': {
-                    'id': 'id0',
-                    'align': [null, 'center'],
-                    'rows': [
-                      ['a', 'b'],
-                      ['1', ''],
-                    ],
-                  },
+                'insert': '\n',
+                'attributes': {
+                  'cell': {'table': 'id0', 'row': 'r0'},
                 },
               },
-              {'insert': '\n'},
+              {'insert': 'b'},
+              {
+                'insert': '\n',
+                'attributes': {
+                  'cell': {'table': 'id0', 'row': 'r0', 'align': 'center'},
+                },
+              },
+              {'insert': '1'},
+              {
+                'insert': '\n',
+                'attributes': {
+                  'cell': {'table': 'id0', 'row': 'r1'},
+                },
+              },
+              {
+                'insert': '\n',
+                'attributes': {
+                  'cell': {'table': 'id0', 'row': 'r1', 'align': 'center'},
+                },
+              },
             ],
             {},
           ),
@@ -252,7 +267,8 @@ void main() {
       test('when importing $name then the delta and warnings match', () {
         final r = imp(md);
 
-        expect(r.delta.toJson(), equals(expected));
+        // Row ids are random: compared in the canonical form.
+        expect(CellCanon.canonical(r.delta).toJson(), equals(expected));
         expect(r.warnings.map((w) => w.kind).toSet(), equals(warnings));
       });
     }

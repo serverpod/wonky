@@ -6,6 +6,7 @@ import '../applier/delta_applier.dart';
 import '../commands/write_editor_commands.dart';
 import '../controller/editor_types.dart';
 import '../controller/write_editor_controller.dart';
+import 'cell_keys.dart';
 import '../mapping/wonky_schema.dart' show isQuotedListNode;
 import '../model/document_queries.dart';
 import '../reactions/pill_boundary.dart';
@@ -65,6 +66,7 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
   bool builtInShortcuts = true,
   EditorShortcutCallbacks callbacks = const EditorShortcutCallbacks(),
   bool ime = true,
+  TextDirection Function(String nodeId)? directionOf,
 }) {
   ExecutionInstruction handler({
     required SuperEditorContext editContext,
@@ -73,10 +75,17 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
     if (popoverKeys != null && popoverKeys(keyEvent)) {
       return ExecutionInstruction.haltExecution;
     }
+    if (cellKeys(keyEvent, controller)) {
+      return ExecutionInstruction.haltExecution;
+    }
     if (keymap != null && keymap(keyEvent)) {
       return ExecutionInstruction.haltExecution;
     }
-    if (_pillBoundaryArrow(keyEvent, controller)) {
+    if (_pillBoundaryArrow(keyEvent, controller, directionOf)) {
+      return ExecutionInstruction.haltExecution;
+    }
+    if (directionOf != null &&
+        _rightToLeftArrow(keyEvent, editContext, directionOf)) {
       return ExecutionInstruction.haltExecution;
     }
     if (builtInShortcuts &&
@@ -109,10 +118,67 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
   ];
 }
 
+/// ← and → move the caret visually (Write 04 §38): in a right-to-left block
+/// ← moves downstream and → upstream, with super_editor's modifiers (word,
+/// line). The caret's block decides, so mixed runs inside a line follow the
+/// block's direction. super_editor's own handling (and, on the web, the
+/// browser's) moves logically.
+bool _rightToLeftArrow(
+  KeyEvent event,
+  SuperEditorContext editContext,
+  TextDirection Function(String nodeId) directionOf,
+) {
+  if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+  final key = event.logicalKey;
+  if (key != LogicalKeyboardKey.arrowLeft &&
+      key != LogicalKeyboardKey.arrowRight) {
+    return false;
+  }
+  final selection = editContext.composer.selection;
+  if (selection == null ||
+      directionOf(selection.extent.nodeId) != TextDirection.rtl) {
+    return false;
+  }
+  // Composing on the web: the browser's candidate list takes the keys.
+  if (kIsWeb && editContext.composer.composingRegion.value != null) {
+    return false;
+  }
+  final keyboard = HardwareKeyboard.instance;
+  final windows = defaultTargetPlatform == TargetPlatform.windows;
+  if (windows && keyboard.isAltPressed) return false;
+  MovementModifier? modifier;
+  if ((windows || defaultTargetPlatform == TargetPlatform.linux) &&
+      keyboard.isControlPressed) {
+    modifier = MovementModifier.word;
+  } else if (_isApple && keyboard.isMetaPressed) {
+    modifier = MovementModifier.line;
+  } else if (_isApple && keyboard.isAltPressed) {
+    modifier = MovementModifier.word;
+  }
+  final ops = editContext.commonOps;
+  if (key == LogicalKeyboardKey.arrowLeft) {
+    ops.moveCaretDownstream(
+      expand: keyboard.isShiftPressed,
+      movementModifier: modifier,
+    );
+  } else {
+    ops.moveCaretUpstream(
+      expand: keyboard.isShiftPressed,
+      movementModifier: modifier,
+    );
+  }
+  // Also at the document's end: the key must not move the other way.
+  return true;
+}
+
 /// → at the end of a chip, button or arrow link moves the caret out of it
 /// without moving it (typing goes after the element); ← there moves it back
-/// in (Write 11 §7.4).
-bool _pillBoundaryArrow(KeyEvent event, WriteEditorController controller) {
+/// in (Write 11 §7.4). In a right-to-left block the keys swap.
+bool _pillBoundaryArrow(
+  KeyEvent event,
+  WriteEditorController controller,
+  TextDirection Function(String nodeId)? directionOf,
+) {
   if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
   final key = event.logicalKey;
   if (key != LogicalKeyboardKey.arrowRight &&
@@ -136,12 +202,16 @@ bool _pillBoundaryArrow(KeyEvent event, WriteEditorController controller) {
   final boundary = controller.pillBoundary;
   final outside = boundary.isOutsideAt(selection.extent);
   final preferences = controller.composer.preferences;
-  if (key == LogicalKeyboardKey.arrowRight && !outside) {
+  final rtl = directionOf?.call(node.id) == TextDirection.rtl;
+  final forward = rtl
+      ? LogicalKeyboardKey.arrowLeft
+      : LogicalKeyboardKey.arrowRight;
+  if (key == forward && !outside) {
     boundary.leaveAt(selection.extent);
     preferences.removeStyles(pill);
     return true;
   }
-  if (key == LogicalKeyboardKey.arrowLeft && outside) {
+  if (key != forward && outside) {
     boundary.clear();
     preferences.addStyles(pill);
     return true;

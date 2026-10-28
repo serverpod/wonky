@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+// WONKY PATCH SE-15
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
@@ -8,6 +10,8 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
 import 'package:super_editor/src/default_editor/layout_single_column/_presenter.dart';
+// WONKY PATCH SE-15
+import 'package:super_editor/src/default_editor/layout_single_column/_cell_layout.dart';
 
 /// Displays a document in a single-column layout.
 ///
@@ -32,6 +36,8 @@ class SingleColumnDocumentLayout extends StatefulWidget {
     this.onBuildScheduled,
     this.wrapWithSliverAdapter = true,
     this.showDebugPaint = false,
+    // WONKY PATCH SE-15
+    this.cellLayout,
   }) : super(key: key);
 
   /// Presenter that provides a view model for a complete single-column
@@ -63,6 +69,13 @@ class SingleColumnDocumentLayout extends StatefulWidget {
   /// Adds a debugging UI to the document layout, when true.
   final bool showDebugPaint;
 
+  /// WONKY PATCH SE-15: places components in cell groups. Maximal runs of
+  /// consecutive components whose placements share a group id are laid out
+  /// side by side by a [DocumentCellGroupView] (wrapped by
+  /// [DocumentCellLayout.wrapGroup]) instead of being stacked in the column.
+  /// The layout rebuilds when the cell layout notifies.
+  final DocumentCellLayout? cellLayout;
+
   @override
   State createState() => _SingleColumnDocumentLayoutState();
 }
@@ -82,6 +95,11 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   final GlobalKey _boxKey = GlobalKey();
   BuildContext get boxContext => _boxKey.currentContext!;
 
+  // WONKY PATCH SE-15: the cell group runs of the last build (indices into
+  // [_topToBottomComponentKeys]) and the run of every grouped component.
+  final List<_CellGroupRun> _cellGroupRuns = [];
+  final Map<GlobalKey, _CellGroupRun> _componentKeysToCellGroupRuns = {};
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +109,8 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       onViewModelChange: _onViewModelChange,
     );
     widget.presenter.addChangeListener(_presenterListener);
+    // WONKY PATCH SE-15
+    widget.cellLayout?.addListener(_onCellLayoutChange);
 
     // Build the view model now, so that any further changes to the
     // presenter send us a dirty notification.
@@ -107,12 +127,34 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
 
       widget.presenter.updateViewModel();
     }
+
+    // WONKY PATCH SE-15
+    if (widget.cellLayout != oldWidget.cellLayout) {
+      oldWidget.cellLayout?.removeListener(_onCellLayoutChange);
+      widget.cellLayout?.addListener(_onCellLayoutChange);
+    }
   }
 
   @override
   void dispose() {
     widget.presenter.removeChangeListener(_presenterListener);
+    // WONKY PATCH SE-15
+    widget.cellLayout?.removeListener(_onCellLayoutChange);
     super.dispose();
+  }
+
+  /// WONKY PATCH SE-15: placements changed, regroup the components.
+  void _onCellLayoutChange() {
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      // Notified during a build or layout: rebuild after this frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
+    setState(() {
+      // Re-flow the whole layout.
+    });
   }
 
   Future<void> _onPresenterMarkedDirty() async {
@@ -213,6 +255,11 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     }
 
     final componentKey = _topToBottomComponentKeys.first;
+    // WONKY PATCH SE-15: a group starts at its box's top.
+    final groupRect = _cellGroupRectOf(componentKey);
+    if (groupRect != null) {
+      return documentOffset.dy < groupRect.top;
+    }
     final componentBox = componentKey.currentContext!.findRenderObject() as RenderBox;
     final offsetAtComponent = _componentOffset(componentBox, documentOffset);
 
@@ -227,6 +274,12 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     }
 
     final componentKey = _topToBottomComponentKeys.last;
+    // WONKY PATCH SE-15: a group ends at its box's bottom (its last
+    // component may be shorter than another cell of the last row).
+    final groupRect = _cellGroupRectOf(componentKey);
+    if (groupRect != null) {
+      return documentOffset.dy > groupRect.bottom;
+    }
     final componentBox = componentKey.currentContext!.findRenderObject() as RenderBox;
     final offsetAtComponent = _componentOffset(componentBox, documentOffset);
 
@@ -408,6 +461,23 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     for (int i = componentSearchStartIndex; i < _topToBottomComponentKeys.length; i++) {
       final componentKey = _topToBottomComponentKeys[i];
       editorLayoutLog.info(' - considering component "$componentKey"');
+
+      // WONKY PATCH SE-15: components of a cell group sit side by side, so a
+      // component that doesn't overlap the region doesn't end the search
+      // inside a group. A group that doesn't overlap at all is skipped (or
+      // ends the search, like any component below the region).
+      final cellGroupRun = _componentKeysToCellGroupRuns[componentKey];
+      if (cellGroupRun != null && i == cellGroupRun.start) {
+        final groupRect = _cellGroupRectOf(componentKey);
+        if (groupRect != null && !region.overlaps(groupRect)) {
+          if (topNodeId != null) {
+            break;
+          }
+          i = cellGroupRun.end;
+          continue;
+        }
+      }
+
       if (componentKey.currentState is! DocumentComponent) {
         editorLayoutLog.info(' - found unknown component: ${componentKey.currentState}');
         continue;
@@ -453,7 +523,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         bottomNodeId = _componentKeysToNodeIds[componentKey];
         bottomNodeBasePosition = _getNodePositionForComponentOffset(component, componentBaseOffset);
         bottomNodeExtentPosition = _getNodePositionForComponentOffset(component, componentExtentOffset);
-      } else if (topNodeId != null) {
+      } else if (topNodeId != null && cellGroupRun == null) {
         // We already found an overlapping component and the current component doesn't
         // overlap with the region.
         // Because we're iterating through components from top to bottom,
@@ -461,6 +531,26 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         // so we can skip the rest of the list.
         break;
       }
+    }
+
+    // WONKY PATCH SE-15: an end of the region inside a cell group resolves to
+    // the cell at that point (the nearest one), not to the first overlapping
+    // component in document order (which may be an earlier cell of the row).
+    final baseCell = _cellGroupComponentNearestTo(baseOffset);
+    final extentCell = _cellGroupComponentNearestTo(extentOffset);
+    if (baseCell != null || extentCell != null) {
+      return _cellAwareSelectionInRegion(
+        baseOffset: baseOffset,
+        extentOffset: extentOffset,
+        baseCell: baseCell,
+        extentCell: extentCell,
+        topNodeId: topNodeId,
+        topNodeBasePosition: topNodeBasePosition,
+        topNodeExtentPosition: topNodeExtentPosition,
+        bottomNodeId: bottomNodeId,
+        bottomNodeBasePosition: bottomNodeBasePosition,
+        bottomNodeExtentPosition: bottomNodeExtentPosition,
+      );
     }
 
     if (topNodeId == null || bottomNodeId == null) {
@@ -502,6 +592,55 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         ),
       );
     }
+  }
+
+  /// WONKY PATCH SE-15: [getDocumentSelectionInRegion] when its base and/or
+  /// extent lies in a cell group: such an end is the position in [baseCell] /
+  /// [extentCell] at the offset; another end comes from the region search
+  /// (top or bottom node, by drag direction), or else from the nearest
+  /// position.
+  DocumentSelection? _cellAwareSelectionInRegion({
+    required Offset baseOffset,
+    required Offset extentOffset,
+    required GlobalKey? baseCell,
+    required GlobalKey? extentCell,
+    required String? topNodeId,
+    required dynamic topNodeBasePosition,
+    required dynamic topNodeExtentPosition,
+    required String? bottomNodeId,
+    required dynamic bottomNodeBasePosition,
+    required dynamic bottomNodeExtentPosition,
+  }) {
+    DocumentPosition? positionInCell(GlobalKey cellKey, Offset offset) {
+      final component = cellKey.currentState as DocumentComponent;
+      final componentBox = cellKey.currentContext!.findRenderObject() as RenderBox;
+      final nodePosition = _getNodePositionForComponentOffset(component, _componentOffset(componentBox, offset));
+      if (nodePosition == null) {
+        return null;
+      }
+      return DocumentPosition(nodeId: _componentKeysToNodeIds[cellKey]!, nodePosition: nodePosition);
+    }
+
+    final isDraggingDown = baseOffset.dy < extentOffset.dy;
+    DocumentPosition? regionPosition({required bool isBase}) {
+      // The base is the top node when dragging down, the extent the bottom one.
+      final useTop = isBase == isDraggingDown;
+      final nodeId = useTop ? topNodeId : bottomNodeId;
+      final nodePosition = useTop
+          ? (isBase ? topNodeBasePosition : topNodeExtentPosition)
+          : (isBase ? bottomNodeBasePosition : bottomNodeExtentPosition);
+      if (nodeId != null && nodePosition is NodePosition) {
+        return DocumentPosition(nodeId: nodeId, nodePosition: nodePosition);
+      }
+      return getDocumentPositionNearestToOffset(isBase ? baseOffset : extentOffset);
+    }
+
+    final base = baseCell != null ? positionInCell(baseCell, baseOffset) : regionPosition(isBase: true);
+    final extent = extentCell != null ? positionInCell(extentCell, extentOffset) : regionPosition(isBase: false);
+    if (base == null || extent == null) {
+      return null;
+    }
+    return DocumentSelection(base: base, extent: extent);
   }
 
   /// Returns the overlapping `Rect` between the given `region` and the given
@@ -568,10 +707,121 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         return componentKey;
       }
     }
+
+    // WONKY PATCH SE-15: a point in a cell's slot outside its component (the
+    // empty area below a short cell, its padding) belongs to that cell.
+    for (final run in _cellGroupRuns) {
+      final groupRect = _cellGroupRectOf(_topToBottomComponentKeys[run.start]);
+      if (groupRect == null || !groupRect.contains(documentOffset)) {
+        continue;
+      }
+      for (int i = run.start; i <= run.end; i++) {
+        final componentKey = _topToBottomComponentKeys[i];
+        if (componentKey.currentState is! DocumentComponent) {
+          continue;
+        }
+        final slot = _cellSlotRectOf(componentKey);
+        if (slot != null && slot.contains(documentOffset)) {
+          return componentKey;
+        }
+      }
+    }
     return null;
   }
 
+  /// WONKY PATCH SE-15: the component of the cell group whose vertical extent
+  /// contains [documentOffset] that is nearest to it (2D distance to the
+  /// slots, selectable components only), or `null` when [documentOffset] is
+  /// not beside a cell group.
+  GlobalKey? _cellGroupComponentNearestTo(Offset documentOffset) {
+    for (final run in _cellGroupRuns) {
+      final groupRect = _cellGroupRectOf(_topToBottomComponentKeys[run.start]);
+      if (groupRect == null || documentOffset.dy < groupRect.top || documentOffset.dy > groupRect.bottom) {
+        continue;
+      }
+      GlobalKey? nearest;
+      double nearestDistance = double.infinity;
+      for (int i = run.start; i <= run.end; i++) {
+        final componentKey = _topToBottomComponentKeys[i];
+        final state = componentKey.currentState;
+        if (state is! DocumentComponent || !state.isVisualSelectionSupported()) {
+          continue;
+        }
+        final slot = _cellSlotRectOf(componentKey);
+        if (slot == null) {
+          continue;
+        }
+        final distance = _distanceToRect(slot, documentOffset);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearest = componentKey;
+        }
+      }
+      return nearest;
+    }
+    return null;
+  }
+
+  /// WONKY PATCH SE-15: the [RenderDocumentCellGroup] that lays out the
+  /// component of [componentKey], or `null` when it isn't in a cell group.
+  RenderDocumentCellGroup? _cellGroupBoxOf(GlobalKey componentKey) {
+    if (!_componentKeysToCellGroupRuns.containsKey(componentKey)) {
+      return null;
+    }
+    final layoutBox = _boxKey.currentContext?.findRenderObject();
+    RenderObject? renderObject = componentKey.currentContext?.findRenderObject();
+    while (renderObject != null && renderObject != layoutBox) {
+      if (renderObject is RenderDocumentCellGroup) {
+        return renderObject;
+      }
+      renderObject = renderObject.parent;
+    }
+    return null;
+  }
+
+  /// WONKY PATCH SE-15: the bounds of the cell group of [componentKey] in
+  /// document coordinates, or `null` when it isn't in a cell group.
+  Rect? _cellGroupRectOf(GlobalKey componentKey) {
+    final groupBox = _cellGroupBoxOf(componentKey);
+    if (groupBox == null || !groupBox.hasSize) {
+      return null;
+    }
+    final offset = groupBox.localToGlobal(Offset.zero, ancestor: boxContext.findRenderObject());
+    return offset & groupBox.size;
+  }
+
+  /// WONKY PATCH SE-15: the slot (column width × row height) of the grouped
+  /// component of [componentKey] in document coordinates, or `null` when it
+  /// isn't in a cell group.
+  Rect? _cellSlotRectOf(GlobalKey componentKey) {
+    final groupBox = _cellGroupBoxOf(componentKey);
+    final nodeId = _componentKeysToNodeIds[componentKey];
+    if (groupBox == null || nodeId == null || !groupBox.hasSize) {
+      return null;
+    }
+    final slot = groupBox.slotRectOf(nodeId);
+    if (slot == null) {
+      return null;
+    }
+    final offset = groupBox.localToGlobal(Offset.zero, ancestor: boxContext.findRenderObject());
+    return slot.shift(offset);
+  }
+
+  /// WONKY PATCH SE-15: the 2D distance between [offset] and [rect] (0 inside).
+  double _distanceToRect(Rect rect, Offset offset) {
+    final dx = offset.dx < rect.left ? rect.left - offset.dx : (offset.dx > rect.right ? offset.dx - rect.right : 0.0);
+    final dy = offset.dy < rect.top ? rect.top - offset.dy : (offset.dy > rect.bottom ? offset.dy - rect.bottom : 0.0);
+    return sqrt(dx * dx + dy * dy);
+  }
+
   GlobalKey? _findComponentClosestToOffset(Offset documentOffset) {
+    // WONKY PATCH SE-15: beside a cell group (within its vertical extent),
+    // the nearest cell of that group.
+    final nearestCell = _cellGroupComponentNearestTo(documentOffset);
+    if (nearestCell != null) {
+      return nearestCell;
+    }
+
     GlobalKey? nearestComponentKey;
     double nearestDistance = double.infinity;
     for (final componentKey in _nodeIdsToComponentKeys.values) {
@@ -585,6 +835,23 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       final componentBox = componentKey.currentContext!.findRenderObject() as RenderBox;
       if (_isOffsetInComponent(componentBox, documentOffset)) {
         return componentKey;
+      }
+
+      // WONKY PATCH SE-15: a component in a cell group shares its rows with
+      // others, so its distance is the 2D distance to its slot (a point in
+      // the slot is in the cell). An ordinary component spans the layout's
+      // width, so its distance stays vertical.
+      final slot = _cellSlotRectOf(componentKey);
+      if (slot != null) {
+        final distance = _distanceToRect(slot, documentOffset);
+        if (distance == 0) {
+          return componentKey;
+        }
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestComponentKey = componentKey;
+        }
+        continue;
       }
 
       final distance = _getDistanceToComponent(componentBox, documentOffset);
@@ -636,6 +903,9 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
 
   /// Returns the vertical distance between the given [documentOffset] and the
   /// bounds of the given [componentBox].
+  ///
+  /// WONKY PATCH SE-15: components in cell groups use the 2D distance to their
+  /// slot instead, see [_findComponentClosestToOffset].
   double _getDistanceToComponent(RenderBox componentBox, Offset documentOffset) {
     final documentLayoutBox = boxContext.findRenderObject() as RenderBox;
     final componentOffset = componentBox.localToGlobal(Offset.zero, ancestor: documentLayoutBox);
@@ -736,7 +1006,8 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
-        children: _buildDocComponents(),
+        // WONKY PATCH SE-15: cell groups.
+        children: _groupCells(context, _buildDocComponents()),
       ),
     );
 
@@ -804,6 +1075,74 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     return docComponents;
   }
 
+  /// WONKY PATCH SE-15: puts maximal runs of consecutive components whose
+  /// placements share a group id into one [DocumentCellGroupView], wrapped by
+  /// [DocumentCellLayout.wrapGroup]. [components] are in
+  /// [_topToBottomComponentKeys] order.
+  List<Widget> _groupCells(BuildContext context, List<Widget> components) {
+    _cellGroupRuns.clear();
+    _componentKeysToCellGroupRuns.clear();
+    final cellLayout = widget.cellLayout;
+    if (cellLayout == null) {
+      return components;
+    }
+
+    final placements = [
+      for (final key in _topToBottomComponentKeys) cellLayout.placementOf(_componentKeysToNodeIds[key]!),
+    ];
+    final children = <Widget>[];
+    final occurrences = <String, int>{};
+    int i = 0;
+    while (i < components.length) {
+      final placement = placements[i];
+      if (placement == null) {
+        children.add(components[i]);
+        i += 1;
+        continue;
+      }
+
+      int end = i;
+      while (end + 1 < components.length && placements[end + 1]?.group == placement.group) {
+        end += 1;
+      }
+      final run = _CellGroupRun(i, end);
+      _cellGroupRuns.add(run);
+      for (int j = i; j <= end; j++) {
+        _componentKeysToCellGroupRuns[_topToBottomComponentKeys[j]] = run;
+      }
+
+      final group = DocumentCellGroup(
+        id: placement.group,
+        kind: placement.kind,
+        nodeIds: [for (int j = i; j <= end; j++) _componentKeysToNodeIds[_topToBottomComponentKeys[j]]!],
+      );
+      final occurrence = occurrences[placement.group] = (occurrences[placement.group] ?? -1) + 1;
+      // The group is as wide as its first component would be ([_Component]).
+      final viewModels = widget.presenter.viewModel.componentViewModels;
+      final maxWidth = i < viewModels.length ? viewModels[i].maxWidth : null;
+      children.add(
+        KeyedSubtree(
+          key: ValueKey('wonky-cell-group:${placement.group}#$occurrence'),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth ?? double.infinity),
+            child: cellLayout.wrapGroup(
+              context,
+              group,
+              DocumentCellGroupView(
+                group: group,
+                placements: [for (int j = i; j <= end; j++) placements[j]!],
+                cellLayout: cellLayout,
+                children: components.sublist(i, end + 1),
+              ),
+            ),
+          ),
+        ),
+      );
+      i = end + 1;
+    }
+    return children;
+  }
+
   /// Obtains a `GlobalKey` that should be attached to the component
   /// that represents the given [nodeId].
   ///
@@ -829,7 +1168,16 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     if (_topToBottomComponentKeys.isEmpty) {
       return -1;
     }
-    return _binarySearchComponentIndexAtOffset(dy, 0, _topToBottomComponentKeys.length - 1);
+    final index = _binarySearchComponentIndexAtOffset(dy, 0, _topToBottomComponentKeys.length - 1);
+    // WONKY PATCH SE-15: start at the first component of a cell group (the
+    // search treats a group as one block, see [_getComponentBoundsByIndex]).
+    if (index >= 0) {
+      final run = _componentKeysToCellGroupRuns[_topToBottomComponentKeys[index]];
+      if (run != null) {
+        return run.start;
+      }
+    }
+    return index;
   }
 
   /// Performs a binary search starting from [minIndex] to [maxIndex] to find
@@ -875,14 +1223,30 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   }
 
   /// Gets the component bounds of the component at [componentIndex] from top to bottom order.
+  ///
+  /// WONKY PATCH SE-15: for a component in a cell group, the bounds of the
+  /// whole group, so that the bounds are ordered top to bottom.
   Rect _getComponentBoundsByIndex(int componentIndex) {
     final componentKey = _topToBottomComponentKeys[componentIndex];
+    final groupRect = _cellGroupRectOf(componentKey);
+    if (groupRect != null) {
+      return groupRect;
+    }
     final component = componentKey.currentState as DocumentComponent;
 
     final componentBox = component.context.findRenderObject() as RenderBox;
     final contentOffset = componentBox.localToGlobal(Offset.zero, ancestor: boxContext.findRenderObject());
     return contentOffset & componentBox.size;
   }
+}
+
+/// WONKY PATCH SE-15: the components of a cell group, as indices (inclusive)
+/// into the layout's top-to-bottom component keys.
+class _CellGroupRun {
+  const _CellGroupRun(this.start, this.end);
+
+  final int start;
+  final int end;
 }
 
 class _PresenterComponentBuilder extends StatefulWidget {

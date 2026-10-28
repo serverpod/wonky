@@ -7,6 +7,7 @@ import '../import/import_api.dart';
 import '../delta/embeds.dart';
 import '../ir/doc_tree.dart';
 import 'front_matter.dart';
+import 'inline_markdown.dart';
 import 'inline_writer.dart';
 import 'markdown_importer.dart';
 import 'wonky_to_gfm.dart';
@@ -195,11 +196,7 @@ final class MarkdownExporter {
       ':::grid{columns=${grid.columns} bullets=${grid.bullets.value}}',
       '',
       for (final item in grid.items)
-        switch (InlineMarkdownWriter.write(
-          _rewriteLinks(item),
-          context: InlineContext.tableCell,
-          flavor: options.flavor,
-        )) {
+        switch (_cell(item)) {
           '' => '- <!-- -->',
           final text => '- $text',
         },
@@ -296,6 +293,29 @@ final class MarkdownExporter {
     return fallback!;
   }
 
+  /// A table cell or grid item as inline Markdown: the first emphasis
+  /// style whose output reads back as [runs] (as for paragraphs).
+  String _cell(List<InlineRun> runs) {
+    final merged = InlineRun.merge(_rewriteLinks(runs));
+    final expected = _written(merged);
+    for (final style in EmphasisStyle.values) {
+      final text = InlineMarkdownWriter.write(
+        merged,
+        context: InlineContext.tableCell,
+        style: style,
+        flavor: options.flavor,
+      );
+      if (style == EmphasisStyle.html ||
+          _sameRuns(
+            InlineMarkdown.parse(text, flavor: options.flavor),
+            expected,
+          )) {
+        return text;
+      }
+    }
+    throw StateError('unreachable');
+  }
+
   /// [runs] as the flavor writes them (GFM drops chips and link styles).
   List<InlineRun> _written(List<InlineRun> runs) => _wonky
       ? runs
@@ -342,7 +362,10 @@ final class MarkdownExporter {
     String row(List<String> cells) =>
         '| ${cells.map(_escapeCell).join(' | ')} |';
     final cols = t.columnCount;
-    final header = t.cellMarkdown.first;
+    final cells = [
+      for (final r in t.rows) [for (final c in r) _cell(c)],
+    ];
+    final header = cells.first;
     final delim = [
       for (var c = 0; c < cols; c++)
         switch (c < t.align.length ? t.align[c] : null) {
@@ -355,7 +378,7 @@ final class MarkdownExporter {
     return [
       row(header),
       '| ${delim.join(' | ')} |',
-      for (final r in t.cellMarkdown.skip(1)) row(r),
+      for (final r in cells.skip(1)) row(r),
     ].join('\n');
   }
 

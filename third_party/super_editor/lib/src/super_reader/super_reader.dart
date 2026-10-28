@@ -16,6 +16,8 @@ import 'package:super_editor/src/default_editor/document_scrollable.dart';
 import 'package:super_editor/src/default_editor/horizontal_rule.dart';
 import 'package:super_editor/src/default_editor/image.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_presenter.dart';
+// WONKY PATCH SE-15
+import 'package:super_editor/src/default_editor/layout_single_column/_cell_layout.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_per_component.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_shylesheet.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_user_selection.dart';
@@ -72,6 +74,8 @@ class SuperReader extends StatefulWidget {
     this.createOverlayControlsClipper,
     this.debugPaint = const DebugPaintConfig(),
     this.shrinkWrap = false,
+    // WONKY PATCH SE-15
+    this.cellLayout,
   })  : stylesheet = stylesheet ?? readOnlyDefaultStylesheet,
         selectionStyles = selectionStyle ?? readOnlyDefaultSelectionStyle,
         keyboardActions = keyboardActions ?? superReaderDefaultKeyboardActions,
@@ -160,6 +164,11 @@ class SuperReader extends StatefulWidget {
   /// each visual component displayed in the document layout, e.g.,
   /// paragraph component, image component, horizontal rule component, etc.
   final List<ComponentBuilder> componentBuilders;
+
+  /// WONKY PATCH SE-15: places components in cell groups that are laid out
+  /// side by side (table rows, grids), see [DocumentCellLayout] and
+  /// [SingleColumnDocumentLayout.cellLayout].
+  final DocumentCellLayout? cellLayout;
 
   /// All actions that this editor takes in response to key
   /// events, e.g., text entry, newlines, character deletion,
@@ -402,6 +411,8 @@ class SuperReaderState extends State<SuperReader> {
             presenter: _docLayoutPresenter!,
             componentBuilders: widget.componentBuilders,
             shrinkWrap: widget.shrinkWrap,
+            // WONKY PATCH SE-15
+            cellLayout: widget.cellLayout,
             underlays: [
               // Add any underlays that were provided by the client.
               for (final underlayBuilder in widget.documentUnderlayBuilders) //

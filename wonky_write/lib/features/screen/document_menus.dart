@@ -151,17 +151,43 @@ List<WonkyMenuEntry> contextMenuEntries(
   }
 
   if (doc.inTable) {
+    // The caret's row and column (Write 12 §3.7).
     return [
       ...out,
-      ui.item('write.table.editCell', label: l.menuEditCells),
+      const WonkyMenuSeparator(),
+      ui.item(
+        'write.table.insertRow',
+        args: const {'position': 'above'},
+        label: l.tableEditorInsertRowAbove,
+        keyName: 'write.table.insertRow.above',
+      ),
+      ui.item(
+        'write.table.insertRow',
+        args: const {'position': 'below'},
+        label: l.tableEditorInsertRowBelow,
+        keyName: 'write.table.insertRow.below',
+      ),
+      ui.item(
+        'write.table.insertColumn',
+        args: const {'position': 'left'},
+        label: l.tableEditorInsertColumnLeft,
+        keyName: 'write.table.insertColumn.left',
+      ),
+      ui.item(
+        'write.table.insertColumn',
+        args: const {'position': 'right'},
+        label: l.tableEditorInsertColumnRight,
+        keyName: 'write.table.insertColumn.right',
+      ),
+      ui.item('write.table.deleteRow', label: l.tableEditorDeleteRow),
+      ui.item('write.table.deleteColumn', label: l.tableEditorDeleteColumn),
+      const WonkyMenuSeparator(),
       ui.item('write.table.edit'),
       const WonkyMenuSeparator(),
       ui.item('write.edit.copyAsMarkdown', label: l.docMenuCopyMarkdown),
       ui.item('write.table.copyAsTsv'),
       ui.item('shell.comments.create', label: l.menuComment),
       const WonkyMenuSeparator(),
-      ui.item('write.block.moveUp', label: l.docMenuMoveUp),
-      ui.item('write.block.moveDown', label: l.docMenuMoveDown),
       ui.item('write.table.delete'),
     ];
   }

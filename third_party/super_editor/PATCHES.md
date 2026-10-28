@@ -97,10 +97,22 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
    `default_editor/text.dart`.
 5. **Undo/redo keyboard actions exported** (`lib/src/undo_redo.dart`) so apps can remove them from
    the default keyboard action lists. `lib/super_editor.dart`.
+6. **Right-to-left task checkbox**: its padding (16 before, 4 after) was fixed left/right, so a
+   right-to-left task had 4 px between the checkbox and its text; now `EdgeInsetsDirectional`
+   (the row is in the task's `Directionality`). `default_editor/tasks.dart`.
+7. **Right-to-left line start and end**: `TextComponent.getPositionAtStartOfLine` /
+   `getPositionAtEndOfLine` took super_text_layout's positions at the line's left and right
+   edges, so in right-to-left text ⌘←/⌘→ (and Home/End) went to the wrong end, and the
+   auto-wrap adjustment made the line end offset −1. Swapped for right-to-left components.
+   `default_editor/text.dart`.
+8. **Right-to-left selection highlight**: the layers beneath a `TextComponent`'s text (selection
+   highlight, underlines) are zero-size painters in a `Stack`, aligned top start; in the
+   right-to-left `Directionality` of a paragraph, list item or task that is the top right, so
+   they painted a block's width to the right of the text. Aligned top left. `default_editor/text.dart`.
 
 - **Tests**: `test/wonky_patches/se5_fixes_test.dart`, `se3_node_change_events_test.dart`,
   `se2_document_patch_test.dart`
-- **Upstream**: 1–5 are general fixes; to be filed upstream.
+- **Upstream**: 1–8 are general fixes; to be filed upstream.
 
 ## SE-6 — Content drag delegate (drag and drop of the selection)
 
@@ -252,6 +264,52 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
 - **Tests**: the file above.
 - **Spec**: Write 04 §18.4, Write 11 §7.4
 - **Upstream**: generally useful (embedded interactive content); to be proposed.
+
+## SE-15 — Cell groups lay out components side by side
+
+- **Reason**: Wonky Write makes every table cell and grid item an ordinary `ParagraphNode`
+  (native document text instead of overlay text fields), so the single-column layout must place
+  those components in 2D: table rows and flowing grids.
+- **Changes**:
+  - New public API (`layout_single_column/_cell_layout.dart`): `DocumentCellLayout` (supplied by
+    the app, a `Listenable`: `placementOf(nodeId)`, `wrapGroup`, `paintGroup`),
+    `DocumentCellPlacement.rows(group, row, column, minColumnWidth = 64, gap, spaceBefore)` /
+    `.flow(group, index, maxColumns, minColumnWidth = 160, gap, spaceBefore)`,
+    `DocumentCellGroupKind`, `DocumentCellGroup` (id, kind, node ids in document order),
+    `DocumentCellGroupGeometry` (size, row/column counts, `columnEdges`, `rowEdges`, `rowBottoms`,
+    `slotRects` per node) and the render widget `DocumentCellGroupView` /
+    `RenderDocumentCellGroup`. The group-wide values (`minColumnWidth`, `gap`, `maxColumns`) come
+    from the group's first placement.
+  - `SingleColumnDocumentLayout(cellLayout:)`: maximal runs of consecutive components whose
+    placements share a group id become one `DocumentCellGroupView` (wrapped by `wrapGroup`) in
+    the column; components keep their keys and presenter builders. Rebuilds when the cell layout
+    notifies (after the frame when it notifies during build/layout) or is replaced.
+  - Rows: columns share the width equally (minus gaps), never narrower than `minColumnWidth`
+    (they overflow); a row is as tall as its tallest cell; missing cells are empty space; the
+    largest `spaceBefore` of a row is added above it (outside the row's edges and slots). Flow:
+    the column count drops from `maxColumns` while columns would be narrower than
+    `minColumnWidth` (a single column takes the available width); items fill rows in index
+    order. `paintGroup` paints behind the cells; dry layout and intrinsics are supported.
+  - 2D geometry: a point in a cell's slot outside its component (below a short cell, padding)
+    resolves to that cell (`getDocumentPositionAtOffset`, `getDesiredCursorAtOffset`); the
+    nearest component beside a group is the cell with the nearest slot (2D distance; ordinary
+    components keep the vertical distance, they span the width); the start/end-of-content checks
+    use the group's bounds; the binary search used by region selection treats a group as one
+    block and starts at its first cell, and a cell that doesn't overlap the region no longer
+    ends the search; a region end inside a group resolves to the cell at that point (so a drag
+    from a later cell of a row starts there).
+  - `SuperEditor(cellLayout:)`, `SuperReader(cellLayout:)` → `DocumentScaffold` → layout.
+    Keyboard caret movement (document order) is unchanged.
+  - A group is no wider than its first component's `maxWidth` (like `_Component`).
+  - `DocumentCellPlacement(textDirection:)` (group-wide): right to left, column 0 (rows) and
+    the first item (flows) are on the right. `columnEdges` still run left to right (visual
+    columns); `slotRects`, hit testing and region selection follow the mirrored slots.
+- **Files**: `lib/src/default_editor/layout_single_column/{_cell_layout.dart (new),_layout.dart,layout_single_column.dart}`,
+  `lib/src/infrastructure/documents/document_scaffold.dart`, `lib/src/default_editor/super_editor.dart`,
+  `lib/src/super_reader/super_reader.dart`; test: `test/wonky_patches/se15_cell_groups_test.dart` (new).
+- **Tests**: the file above; the package's layout and selection tests.
+- **Spec**: Write 12 §3.2
+- **Upstream**: generally useful (tables and grids of ordinary components); to be proposed.
 
 ## Infra
 

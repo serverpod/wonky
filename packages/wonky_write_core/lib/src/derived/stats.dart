@@ -4,6 +4,7 @@ library;
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import '../delta/attributes.dart';
+import '../delta/cells.dart';
 import '../delta/document.dart';
 import '../delta/embeds.dart';
 
@@ -123,6 +124,7 @@ final class DocumentStatsCalculator {
     final comments = <String>{};
     final suggestions = <String>{};
     String? prevCodeLanguage;
+    String? prevTable;
     var inWord = false;
 
     for (final line in doc.lines) {
@@ -191,6 +193,11 @@ final class DocumentStatsCalculator {
         continue;
       }
       prevCodeLanguage = null;
+      // A table counts once; cells and grid items are not paragraphs.
+      final cell = CellAttr.of(line.attributes);
+      if (cell != null && cell.table != prevTable) tables++;
+      prevTable = cell?.table;
+      if (cell != null || GridItemAttr.of(line.attributes) != null) continue;
       if (line.isEmbedLine) continue;
       if (f.type == BlockType.heading) headings++;
       if (f.isList) listItems++;

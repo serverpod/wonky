@@ -112,25 +112,19 @@ List<Command<CommandArgs>> extrasCommands(ShellServices s) => [
       },
     ),
     needsEditable: true,
-    enabled: (d, a) =>
-        d.editor.tableEditing != null &&
-        d.commands.canEditTable(nodeId: a.string('nodeId')),
+    enabled: (d, a) => d.commands.canEditTable(nodeId: a.string('nodeId')),
     run: (ctx, d, a) {
-      final table = d.commands.tableOf(nodeId: a.string('nodeId'));
-      final editing = d.editor.tableEditing;
       final l = writeL10nOf(s);
-      if (table == null || editing == null) {
+      if (d.commands.tableRunAt(nodeId: a.string('nodeId')) == null) {
         return CommandResult.failed(l.commandToastNoTableSelected);
       }
-      return okIf(
-        editing.activate(
-          table.id,
-          a.integer('row') ?? 0,
-          a.integer('col') ?? 0,
-          selectAll: true,
-        ),
-        l.reasonNotAvailable,
+      final ok = d.commands.selectCell(
+        a.integer('row') ?? 0,
+        a.integer('col') ?? 0,
+        nodeId: a.string('nodeId'),
       );
+      if (ok) d.focusEditor();
+      return okIf(ok, l.reasonNotAvailable);
     },
   ),
 ];

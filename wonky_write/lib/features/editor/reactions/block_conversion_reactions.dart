@@ -14,11 +14,7 @@ import 'wonky_shortcuts.dart';
 /// The prefix must be exactly the text before the caret, and the caret must be
 /// right after the space that was just typed. Never applies in code blocks.
 class BlockPrefixConversionReaction extends EditReaction {
-  BlockPrefixConversionReaction({
-    required this.newEmbedId,
-    this.isWonky,
-    this.onGridInserted,
-  });
+  BlockPrefixConversionReaction({required this.newEmbedId, this.isWonky});
 
   /// Creates ids for new embeds (UUIDv7).
   final String Function() newEmbedId;
@@ -28,7 +24,6 @@ class BlockPrefixConversionReaction extends EditReaction {
   final bool Function()? isWonky;
 
   /// Called with the id of a grid the `:::grid ` shortcut inserted.
-  final void Function(String gridId)? onGridInserted;
 
   static final _step = RegExp(r'^\((\d{1,4})\) $');
 
@@ -239,7 +234,8 @@ class BlockPrefixConversionReaction extends EditReaction {
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
           position: DocumentPosition(
-            nodeId: node.id,
+            // A new grid gets the caret in its first item (Write 11 §7.5).
+            nodeId: insertedGrid ?? node.id,
             nodePosition: const TextNodePosition(offset: 0),
           ),
         ),
@@ -247,7 +243,6 @@ class BlockPrefixConversionReaction extends EditReaction {
         SelectionReason.contentChange,
       ),
     ]);
-    if (insertedGrid != null) onGridInserted?.call(insertedGrid);
   }
 
   /// Metadata that survives a node type conversion (line-end overlays).

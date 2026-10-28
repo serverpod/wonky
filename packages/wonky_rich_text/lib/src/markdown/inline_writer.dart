@@ -392,6 +392,9 @@ abstract final class InlineMarkdownWriter {
       hashIndex = to - 1;
     }
     String? prevOut;
+    // The last character written (a backtick only ends a code span: text
+    // backticks are written as `&#96;`).
+    String? lastWritten;
     var recent = '';
     for (var i = from; i < to; i++) {
       final t = toks[i];
@@ -400,10 +403,12 @@ abstract final class InlineMarkdownWriter {
         case _Markup(:final s):
           b.write(s);
           prevOut = s[s.length - 1];
+          lastWritten = prevOut;
           recent = '';
         case _Break():
           b.write('<br>');
           prevOut = '>';
+          lastWritten = prevOut;
           recent = '';
         case _Char(:final ch):
           final atStart = i == from;
@@ -422,11 +427,12 @@ abstract final class InlineMarkdownWriter {
           );
           // package:markdown does not decode a character reference right
           // after a backtick; an empty HTML comment separates them.
-          if (prevOut == '`' && escaped.startsWith('&') && escaped != '&') {
+          if (lastWritten == '`' && escaped.startsWith('&') && escaped != '&') {
             b.write('<!-- -->');
           }
           b.write(escaped);
           prevOut = ch;
+          lastWritten = escaped[escaped.length - 1];
           recent = (recent + ch).length > 4
               ? (recent + ch).substring((recent + ch).length - 4)
               : recent + ch;

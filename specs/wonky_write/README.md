@@ -17,6 +17,7 @@ real-time sync via Quill Delta OT over typed Serverpod streams. Read the
 | 09 | [MCP & AI](09-mcp-and-ai.md) | Headless `write.*` tools, `ui.write.*` bridge tools, resources, AI assistant and inline AI |
 | 10 | [Implementation plan](10-implementation-plan.md) | Workstreams WS-W*, contracts, dependency graph, spikes, definition of done |
 | 11 | [Wonky Markdown](11-wonky-markdown.md) | The second Markdown flavor: Serverpod blog directives (callouts, details, cards, grids, buttons, arrow links, chips, numbered headings), the flavor setting, schema, codec, editing, themes and exports |
+| 12 | [Native table and grid cells](12-native-cells.md) | Tables and grids as ordinary document text: `cell`/`grid` line attributes, the legacy embed upgrade, `CellEdits`, the 2D cell layout (super_editor SE-15), keys, commands, pagination. **Supersedes** the `table`/`grid` embed parts of 02, 04 §18 and 11 §2.3 |
 
 Authority order when specs disagree: suite specs for cross-cutting rules → 02/03 for content
 and sync semantics → feature specs. Fix the disagreement in the same change that finds it.

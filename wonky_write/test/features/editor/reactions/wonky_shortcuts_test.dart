@@ -1,9 +1,7 @@
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wonky_write_core/wonky_write_core.dart' show MarkdownFlavor;
-
-import 'package:wonky_write/features/editor/commands/write_editor_commands.dart';
-import 'package:wonky_write/features/editor/grid/inline_grid_editing.dart';
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show CellGrid, CellRuns, MarkdownFlavor, WonkyDocument;
 
 import '../support/editor_harness.dart';
 
@@ -74,19 +72,19 @@ void main() {
     test('when typing ":::grid " then a grid is inserted before the line and '
         'its first item gets the caret', () async {
       h = _wonky(Delta()..insert('\n'))..select(0);
-      final grids = h.controller.gridEditing = InlineGridEditing(
-        controller: h.controller,
-        commands: WriteEditorCommands(h.controller),
-      );
-      addTearDown(grids.dispose);
       h.type(':::grid ');
       await pumpEventQueue();
-      final grid = h.delta.operations.first.data! as Map;
-      expect((grid['grid'] as Map)['columns'], 3);
-      expect((grid['grid'] as Map)['items'], ['', '', '']);
+      final grid = CellRuns.of(WonkyDocument(h.delta)).single as CellGrid;
+      expect(grid.columns, 3);
+      expect(grid.items.map((l) => l.text), ['', '', '']);
+      // The caret is in the first item; typing goes there.
+      h.type('Fast');
       expect(
-        grids.active,
-        GridItemRef((grid['grid'] as Map)['id'] as String, 0),
+        (CellRuns.of(WonkyDocument(h.delta)).single as CellGrid)
+            .items
+            .first
+            .text,
+        'Fast',
       );
     });
 

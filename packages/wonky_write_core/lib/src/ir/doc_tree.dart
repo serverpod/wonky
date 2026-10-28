@@ -3,7 +3,7 @@ library;
 
 import 'package:collection/collection.dart';
 import 'package:wonky_rich_text/wonky_rich_text.dart'
-    show InlineRun, MarkdownFlavor;
+    show InlineContext, InlineMarkdownWriter, InlineRun, MarkdownFlavor;
 
 import '../delta/boxes.dart';
 import '../delta/embeds.dart';
@@ -261,19 +261,20 @@ final class RuleBlock extends DocBlock {
   final String id;
 }
 
-/// A table.
+/// A table: a run of cell lines (Write 12 §2), or a legacy table embed.
 final class TableBlock extends DocBlock {
   /// Creates a table.
   const TableBlock(
     this.id,
     this.align,
     this.rows, {
-    required this.cellMarkdown,
+    this.rowIds,
+    this.cellFlavor = MarkdownFlavor.wonky,
     super.deltaStart,
     super.deltaLength,
   });
 
-  /// Embed id.
+  /// The table's id.
   final String id;
 
   /// Column alignment.
@@ -282,14 +283,29 @@ final class TableBlock extends DocBlock {
   /// Parsed cells: rows → cells → runs. Row 0 is the header.
   final List<List<List<InlineRun>>> rows;
 
-  /// The original inline-Markdown cell strings (same shape as [rows]).
-  final List<List<String>> cellMarkdown;
+  /// The row ids of the cell lines (same length as [rows]), when the table
+  /// was read from a document; new ids are made otherwise.
+  final List<String>? rowIds;
+
+  /// The inline syntax of [cellMarkdown]: chips and styled links are
+  /// directives in [MarkdownFlavor.wonky] and plain in [MarkdownFlavor.gfm].
+  final MarkdownFlavor cellFlavor;
 
   /// Number of columns.
   int get columnCount => align.length;
 
-  /// As an embed.
-  TableEmbed toEmbed() => TableEmbed(id: id, align: align, rows: cellMarkdown);
+  /// The cells as inline Markdown (same shape as [rows]).
+  List<List<String>> get cellMarkdown => [
+    for (final r in rows)
+      [
+        for (final c in r)
+          InlineMarkdownWriter.write(
+            c,
+            context: InlineContext.tableCell,
+            flavor: cellFlavor,
+          ),
+      ],
+  ];
 }
 
 /// A Wonky Markdown container (callout, details, card; Write 11 §6) and the
@@ -324,7 +340,8 @@ final class ContainerBlock extends DocBlock {
   List<DocBlock> get body => summary == null ? children : children.sublist(1);
 }
 
-/// A Wonky Markdown grid (Write 11 §2.3).
+/// A Wonky Markdown grid (Write 11 §2.3): a run of grid item lines (Write
+/// 12 §2), or a legacy grid embed.
 final class GridBlock extends DocBlock {
   /// Creates a grid block.
   const GridBlock(
@@ -332,12 +349,11 @@ final class GridBlock extends DocBlock {
     this.columns,
     this.bullets,
     this.items, {
-    required this.itemMarkdown,
     super.deltaStart,
     super.deltaLength,
   });
 
-  /// Embed id.
+  /// The grid's id.
   final String id;
 
   /// Number of columns, 1–4.
@@ -349,16 +365,11 @@ final class GridBlock extends DocBlock {
   /// Parsed items.
   final List<List<InlineRun>> items;
 
-  /// The stored inline-Markdown items (same shape as [items]).
-  final List<String> itemMarkdown;
-
-  /// As an embed.
-  GridEmbed toEmbed() => GridEmbed(
-    id: id,
-    columns: columns,
-    bullets: bullets,
-    items: itemMarkdown,
-  );
+  /// The items as inline Markdown (Wonky syntax; same shape as [items]).
+  List<String> get itemMarkdown => [
+    for (final runs in items)
+      InlineMarkdownWriter.write(runs, context: InlineContext.tableCell),
+  ];
 }
 
 /// A Wonky Markdown YouTube video (Write 11 §2.3).

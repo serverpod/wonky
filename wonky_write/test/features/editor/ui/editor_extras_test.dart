@@ -12,6 +12,8 @@ import 'package:wonky_app/platform.dart';
 import 'package:wonky_write/features/editor/keyboard/editor_keyboard.dart';
 import 'package:wonky_write/features/editor/popovers/editor_popovers.dart';
 import 'package:wonky_write/features/editor/ui/wonky_editor.dart';
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show CellRuns, WonkyDocument;
 
 import '../support/editor_harness.dart';
 
@@ -84,219 +86,303 @@ Future<_Pumped> _pump(
   return _Pumped(h, key, drops);
 }
 
-Delta _tableDoc() => Delta()
-  ..insert('Intro\n')
-  ..insert({
-    'table': {
-      'id': 't1',
-      'align': [null, null],
-      'rows': [
-        ['Name', 'Qty'],
-        ['Apples', '3'],
-      ],
-    },
-  })
-  ..insert('\n')
-  ..insert('Outro\n');
+/// A paragraph, a 2×2 table of cell lines and a paragraph.
+Delta _tableDoc() {
+  Map<String, dynamic> cell(String row) => {
+    'cell': {'table': 't1', 'row': row},
+  };
+  return Delta()
+    ..insert('Intro\n')
+    ..insert('Name')
+    ..insert('\n', cell('r0'))
+    ..insert('Qty')
+    ..insert('\n', cell('r0'))
+    ..insert('Apples')
+    ..insert('\n', cell('r1'))
+    ..insert('3')
+    ..insert('\n', cell('r1'))
+    ..insert('Outro\n');
+}
 
+/// The table's cell texts, row by row.
 List<List<String>> _rows(Delta delta) {
-  for (final op in delta.operations) {
-    final data = op.data;
-    if (data is Map && data['table'] is Map) {
-      return [
-        for (final row in (data['table'] as Map)['rows'] as List)
-          [for (final c in row as List) '$c'],
-      ];
-    }
-  }
-  return const [];
+  final t = CellRuns.table(WonkyDocument(delta), 't1');
+  if (t == null) return const [];
+  return [
+    for (final r in t.rows) [for (final c in r.cells) c.text],
+  ];
+}
+
+/// The text of the node with the caret and the caret's offset in it.
+(String, int, int) _caret(EditorHarness h) {
+  final s = h.controller.composer.selection!;
+  final node = h.controller.document.getNodeById(s.extent.nodeId)! as TextNode;
+  return (
+    node.text.toPlainText(),
+    (s.base.nodePosition as TextNodePosition).offset,
+    (s.extent.nodePosition as TextNodePosition).offset,
+  );
 }
 
 Offset _center(WidgetTester tester, String text) =>
     tester.getCenter(find.text(text, findRichText: true).first);
 
 void main() {
-  group('Given a table in the document (SE-4 in-place editing)', () {
-    testWidgets('when tapping a cell then it becomes a field with its '
-        'Markdown source', (tester) async {
-      final p = await _pump(tester, _tableDoc());
-
-      await tester.tapAt(_center(tester, 'Apples'));
-      await tester.pump();
-
-      final field = tester.widget<TextField>(find.byType(TextField));
-      expect(field.controller!.text, 'Apples');
-      expect(p.state.tableEditing.active?.row, 1);
-      expect(p.state.tableEditing.active?.column, 0);
+  group('Given a table of cell lines (Write 12)', () {
+    testWidgets('when it is laid out then the cells of a row are side by side '
+        'and the rows stacked', (tester) async {
+      await _pump(tester, _tableDoc());
+      final name = _center(tester, 'Name');
+      final qty = _center(tester, 'Qty');
+      final apples = _center(tester, 'Apples');
+      expect(qty.dy, closeTo(name.dy, 1));
+      expect(qty.dx, greaterThan(name.dx + 50));
+      expect(apples.dy, greaterThan(name.dy + 5));
+      expect(apples.dx, closeTo(name.dx, 30));
     });
 
+    testWidgets('when clicking a word in a cell then the caret is there, and '
+        'double-clicking another word of that cell selects it (AC-12.1)', (
+      tester,
+    ) async {
+      final p = await _pump(tester, _tableDoc());
+      await tester.tapAt(
+        _center(tester, 'Apples'),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pump(kDoubleTapTimeout + const Duration(milliseconds: 50));
+      expect(_caret(p.h).$1, 'Apples');
+
+      // Another word of the same cell, while the caret is in it.
+      p.h.controller.applyRemote(
+        Delta()
+          ..retain('Intro\nName\nQty\nApples'.length)
+          ..insert(' and pears'),
+      );
+      await tester.pumpAndSettle();
+      final s = p.h.controller.composer.selection!;
+      final layout = p.h.controller.documentLayout!;
+      final rect = layout.getRectForPosition(
+        DocumentPosition(
+          nodeId: s.extent.nodeId,
+          nodePosition: const TextNodePosition(offset: 13),
+        ),
+      )!;
+      final at = layout.getGlobalOffsetFromDocumentOffset(rect.center);
+      await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+      expect(_caret(p.h), ('Apples and pears', 11, 16));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets(
-      'when another cell is pressed while editing then editing moves there '
-      'without stopping in between',
+      'when dragging from inside one cell into the next then the selection '
+      'runs from the drag start to its end',
       (tester) async {
         final p = await _pump(tester, _tableDoc());
-        await tester.tapAt(_center(tester, 'Apples'));
-        await tester.pumpAndSettle();
-        final editing = p.state.tableEditing;
-        final stops = <Object?>[];
-        void record() {
-          if (editing.active == null) stops.add(null);
+        final layout = p.h.controller.documentLayout!;
+        Offset at(String text, int offset) {
+          final node = p.h.controller.document.firstWhere(
+            (n) => n is TextNode && n.text.toPlainText() == text,
+          );
+          return layout.getGlobalOffsetFromDocumentOffset(
+            layout
+                .getRectForPosition(
+                  DocumentPosition(
+                    nodeId: node.id,
+                    nodePosition: TextNodePosition(offset: offset),
+                  ),
+                )!
+                .center,
+          );
         }
 
-        editing.addListener(record);
-        addTearDown(() => editing.removeListener(record));
-
+        final from = at('Name', 2);
+        final to = at('Qty', 1);
         final gesture = await tester.startGesture(
-          _center(tester, '3'),
+          from,
           kind: PointerDeviceKind.mouse,
         );
         await tester.pump();
-        expect(editing.active?.column, 0);
+        // A hand moves a few pixels first: the drag starts where it is
+        // recognized (beyond the 2 px mouse slop).
+        await gesture.moveTo(from + const Offset(0, 3));
+        await tester.pump(const Duration(milliseconds: 16));
+        for (var i = 1; i <= 10; i++) {
+          await gesture.moveTo(Offset.lerp(from, to, i / 10)!);
+          await tester.pump(const Duration(milliseconds: 16));
+        }
         await gesture.up();
         await tester.pumpAndSettle();
-
-        expect(editing.active?.row, 1);
-        expect(editing.active?.column, 1);
-        expect(stops, isEmpty);
-      },
-      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-    );
-
-    testWidgets(
-      'when a word of a cell is double-clicked then editing starts with the '
-      'word selected',
-      (tester) async {
-        final p = await _pump(tester, _tableDoc());
-        final at = _center(tester, 'Apples');
-        final gesture = await tester.startGesture(
-          at,
-          kind: PointerDeviceKind.mouse,
-        );
-        await gesture.up();
-        await tester.pump(const Duration(milliseconds: 40));
-        await gesture.down(at);
-        await gesture.up();
-        await tester.pumpAndSettle();
-
-        expect(p.state.tableEditing.active?.row, 1);
+        final s = p.h.controller.composer.selection!;
+        final doc = p.h.controller.document;
         expect(
-          p.state.tableEditing.text.selection,
-          const TextSelection(baseOffset: 0, extentOffset: 6),
+          (doc.getNodeById(s.base.nodeId)! as TextNode).text.toPlainText(),
+          'Name',
+        );
+        expect((s.base.nodePosition as TextNodePosition).offset, 2);
+        expect(
+          (doc.getNodeById(s.extent.nodeId)! as TextNode).text.toPlainText(),
+          'Qty',
         );
       },
       variant: TargetPlatformVariant.only(TargetPlatform.macOS),
     );
 
-    testWidgets('when typing and pressing Tab then the cell is replaced in '
-        'one "Edit cell" step and the next cell is edited', (tester) async {
-      final p = await _pump(tester, _tableDoc());
-      await tester.tapAt(_center(tester, 'Apples'));
-      await tester.pump();
-
-      await tester.enterText(find.byType(TextField), 'Pears **ripe**');
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.pump();
-
-      expect(_rows(p.h.delta)[1], ['Pears **ripe**', '3']);
-      expect(p.h.changes.where((c) => c.label == 'Edit cell'), hasLength(1));
-      expect(p.state.tableEditing.active?.column, 1);
-      final field = tester.widget<TextField>(find.byType(TextField));
-      expect(field.controller!.text, '3');
+    testWidgets('when clicking below a short cell then the caret goes into '
+        'that cell', (tester) async {
+      final p = await _pump(
+        tester,
+        _tableDoc().compose(
+          Delta()
+            ..retain('Intro\nName\n'.length)
+            ..insert(
+              'A long header that wraps over several lines in its column '
+              'so the row is much taller than the first cell ',
+            ),
+        ),
+      );
+      final name = tester.getRect(find.text('Name', findRichText: true).first);
+      await tester.tapAt(Offset(name.center.dx, name.bottom + 30));
+      await tester.pumpAndSettle();
+      expect(_caret(p.h).$1, 'Name');
     });
 
-    testWidgets('when pressing Tab in the last cell then a row is appended', (
+    testWidgets('when typing in a cell then the text goes into that cell', (
       tester,
     ) async {
       final p = await _pump(tester, _tableDoc());
-      await tester.tapAt(_center(tester, '3'));
-      await tester.pump();
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.pump();
-
-      expect(_rows(p.h.delta), hasLength(3));
-      expect(p.h.changes.last.label, 'Insert row');
-      expect(p.state.tableEditing.active?.row, 2);
-      expect(p.state.tableEditing.active?.column, 0);
+      await tester.tapAt(_center(tester, 'Apples'));
+      await tester.pumpAndSettle();
+      p.h.controller.select(
+        DeltaSelection.collapsed('Intro\nName\nQty\nApples'.length),
+      );
+      await tester.typeImeText('!');
+      await tester.pumpAndSettle();
+      expect(_rows(p.h.delta), [
+        ['Name', 'Qty'],
+        ['Apples!', '3'],
+      ]);
     });
 
-    testWidgets('when pressing Enter in the last row then a row is added '
-        'below and Shift+Enter goes back up', (tester) async {
+    testWidgets('when pressing Tab then the next cell is selected and Tab in '
+        'the last cell appends a row (AC-12.2)', (tester) async {
       final p = await _pump(tester, _tableDoc());
-      await tester.tapAt(_center(tester, '3'));
-      await tester.pump();
+      await tester.tapAt(_center(tester, 'Apples'));
+      await tester.pumpAndSettle();
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      await tester.pump();
-      expect(_rows(p.h.delta), hasLength(3));
-      expect(p.state.tableEditing.active?.row, 2);
-      expect(p.state.tableEditing.active?.column, 1);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(_caret(p.h), ('3', 0, 1));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(_rows(p.h.delta), [
+        ['Name', 'Qty'],
+        ['Apples', '3'],
+        ['', ''],
+      ]);
+      expect(_caret(p.h), ('', 0, 0));
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-      await tester.pump();
-      expect(p.state.tableEditing.active?.row, 1);
+      await tester.pumpAndSettle();
+      expect(_caret(p.h), ('3', 0, 1));
     });
 
-    testWidgets('when pressing Mod+B over the field selection then it is '
-        'wrapped in ** and Esc leaves the cell with the table selected', (
+    testWidgets('when pressing ↑ and ↓ then the caret keeps its column', (
       tester,
     ) async {
       final p = await _pump(tester, _tableDoc());
-      await tester.tapAt(_center(tester, 'Apples'));
-      await tester.pump();
-      final field = tester.widget<TextField>(find.byType(TextField));
-      field.controller!.selection = const TextSelection(
-        baseOffset: 0,
-        extentOffset: 6,
-      );
+      await tester.tapAt(_center(tester, '3'));
+      await tester.pumpAndSettle();
 
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-      await tester.pump();
-      expect(field.controller!.text, '**Apples**');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(_caret(p.h).$1, 'Qty');
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pump();
-      expect(_rows(p.h.delta)[1][0], '**Apples**');
-      expect(p.state.tableEditing.active, isNull);
-      expect(find.byType(TextField), findsNothing);
-      expect(p.h.selection, const DeltaSelection(6, 7));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(_caret(p.h).$1, 'Intro');
+
+      await tester.tapAt(_center(tester, 'Name'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(_caret(p.h).$1, 'Apples');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(_caret(p.h).$1, 'Outro');
     });
 
-    testWidgets('when a collaborator deletes the table while editing then '
-        'editing stops', (tester) async {
+    testWidgets('when pressing Enter in a cell then the caret goes to the cell '
+        'below, and in the last row a row is added', (tester) async {
       final p = await _pump(tester, _tableDoc());
-      await tester.tapAt(_center(tester, 'Apples'));
-      await tester.pump();
+      await tester.tapAt(_center(tester, 'Qty'));
+      await tester.pumpAndSettle();
 
-      p.h.controller.applyRemote(
-        Delta()
-          ..retain(6)
-          ..delete(2),
-      );
-      await tester.pump();
+      p.h.controller.editor.execute([
+        InsertNewlineAtCaretRequest(Editor.createNodeId()),
+      ]);
+      await tester.pumpAndSettle();
+      expect(_caret(p.h).$1, '3');
 
-      expect(p.state.tableEditing.active, isNull);
-      expect(find.byType(TextField), findsNothing);
+      p.h.controller.editor.execute([
+        InsertNewlineAtCaretRequest(Editor.createNodeId()),
+      ]);
+      await tester.pumpAndSettle();
+      expect(_rows(p.h.delta), hasLength(3));
+      expect(_rows(p.h.delta)[2], ['', '']);
+      expect(_caret(p.h), ('', 0, 0));
     });
 
-    testWidgets('when undoing in a clean cell then the document undo runs', (
+    testWidgets('when deleting a selection across cells then their text is '
+        'cleared, the shape stays and undo restores it (AC-12.3)', (
       tester,
     ) async {
-      var undos = 0;
-      await _pump(tester, _tableDoc(), onUndo: () => undos += 1);
-      await tester.tapAt(_center(tester, 'Apples'));
+      final p = await _pump(tester, _tableDoc());
+      // From "Na|me" to "App|les".
+      p.h.controller.select(
+        DeltaSelection('Intro\nNa'.length, 'Intro\nName\nQty\nApp'.length),
+      );
       await tester.pump();
 
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyZ);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      p.h.controller.editor.execute([
+        const DeleteSelectionRequest(TextAffinity.downstream),
+      ]);
+      await tester.pumpAndSettle();
+      expect(_rows(p.h.delta), [
+        ['Na', ''],
+        ['les', '3'],
+      ]);
+      expect(_caret(p.h), ('Na', 2, 2));
+
+      expect(p.h.changes, hasLength(1));
+      p.h.undo(p.h.changes.last);
+      await tester.pumpAndSettle();
+      expect(_rows(p.h.delta), [
+        ['Name', 'Qty'],
+        ['Apples', '3'],
+      ]);
+    });
+
+    testWidgets('when pressing Backspace at the start of a cell then the '
+        'caret goes to the previous cell without merging', (tester) async {
+      final p = await _pump(tester, _tableDoc());
+      p.h.controller.select(
+        DeltaSelection.collapsed('Intro\nName\nQty\n'.length),
+      );
       await tester.pump();
 
-      expect(undos, 1);
+      p.h.controller.editor.execute([const DeleteUpstreamRequest()]);
+      await tester.pumpAndSettle();
+      expect(_rows(p.h.delta), [
+        ['Name', 'Qty'],
+        ['Apples', '3'],
+      ]);
+      expect(_caret(p.h), ('Qty', 3, 3));
     });
   });
 

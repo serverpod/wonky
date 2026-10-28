@@ -83,6 +83,10 @@ restart), like a quoted and an unquoted list (02 §1.2).
 
 ### 2.3 Block embeds `grid` and `youtube`
 
+> **Grids are native lines now** ([12 §1.2](12-native-cells.md)): each item is a line with the
+> `grid` line attribute `{id, columns, bullets}`. The `grid` embed below is the legacy form,
+> still read (and upgraded by the server, 12 §1.5) but never written.
+
 | Embed | Value | Markdown (Wonky) |
 |-------|-------|------------------|
 | `grid` | `{"id", "columns": 1–4, "bullets": "check"\|"circle"\|"none", "items": [cellMarkdown, …]}` | `:::grid{columns=3 bullets=check}` + one `- item` line per item + `:::` |
@@ -350,10 +354,15 @@ and exports show details expanded (HTML: `<details open>`).
   last glyph, not after the room for the pill's padding or the arrow (the last character's
   letter spacing; `PillBoundary.caretRect` through super_editor SE-12). → moves the caret
   *outside* without moving it (typing follows the element; the caret is drawn past the pill's
-  edge or the arrow), ← moves it back inside; a click splits the last character at its glyph's
+  edge or the arrow), ← moves it back inside (in a right-to-left block ← moves out and → back
+  in); a click past the element's end, beyond its last character's box (right of it; left of it
+  in a right-to-left block), puts the caret outside too (`PillBoundaryTapHandler`), and a click
+  on the element's end puts it inside; a click splits the last character at its glyph's
   middle, not its box's, which includes that room (super_editor SE-13), and a click on what is
   under the pointer (a link to open, the link card) takes the character whose box holds the
-  point (`DocumentGeometry.characterAt`), so the arrow belongs to its link; the link card also
+  point (`DocumentGeometry.characterAt`), so the arrow belongs to its link; the hover card
+  needs a character under the pointer (`DocumentGeometry.characterUnder`), so the pointer
+  right of a line ending in a link or button shows none; the link card also
   shows at the end of a button or arrow link while the caret is inside it (a one-character
   button can be edited); at the *start* of a chip or button after a space the caret (typed
   text goes before the element) is drawn before the pill, not on its first glyph; any other caret move ends the state. An element made by an

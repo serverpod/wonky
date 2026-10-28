@@ -1,38 +1,23 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shad/shad.dart' show LucideIcons;
 import 'package:super_editor/super_editor.dart';
 import 'package:wonky_write_core/wonky_write_core.dart'
     show GridBullets, GridEmbed, InlineMarkdown, InlineRun, WonkyEmbed;
 
 import '../../../l10n/write_l10n.dart';
-import '../grid/inline_grid_editing.dart';
 import '../mapping/wonky_embed_node.dart';
 import '../mapping/wonky_schema.dart';
-import '../model/field_clicks.dart';
 import '../styles/editor_theme.dart';
-import 'editor_services.dart';
-import 'wonky_components.dart';
 
-/// The Wonky Markdown grid (Write 11 §7.2): its items in `columns` columns
-/// (fewer when the content is narrow), each with its bullet; items are
-/// edited in place ([InlineGridEditing]).
+/// A legacy Wonky Markdown grid embed (Write 11 §7.2), read-only until the
+/// server upgrades it to grid item lines (Write 12 §1.5): its items in
+/// `columns` columns (fewer when the content is narrow), each with its
+/// bullet.
 class WonkyGridComponentBuilder implements ComponentBuilder {
-  const WonkyGridComponentBuilder({
-    required this.theme,
-    required this.zoom,
-    this.editing,
-    this.callbacks = const EditorBlockCallbacks(),
-    this.editable = true,
-  });
+  const WonkyGridComponentBuilder({required this.theme, required this.zoom});
 
   final EditorTheme theme;
   final double zoom;
-  final InlineGridEditing? editing;
-  final EditorBlockCallbacks callbacks;
-  final bool editable;
 
   @override
   SingleColumnLayoutComponentViewModel? createViewModel(
@@ -58,75 +43,23 @@ class WonkyGridComponentBuilder implements ComponentBuilder {
         selection is UpstreamDownstreamNodeSelection && !selection.isCollapsed;
     final l = writeL10n(componentContext.context);
     final grid = viewModel.grid;
-    final gridCallbacks = editable ? callbacks.grid : null;
-    final chrome = gridCallbacks == null
-        ? null
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Builder(
-                builder: (c) => EditorChromeButton(
-                  key: ValueKey('write.editor.grid.columns.${grid.id}'),
-                  label: l.editorGridColumns(grid.columns),
-                  tooltip: l.cmdGridSetColumns,
-                  onTap: (rect) => gridCallbacks.onColumnsTap(grid.id, rect),
-                ),
-              ),
-              const SizedBox(width: 4),
-              EditorChromeButton(
-                key: ValueKey('write.editor.grid.bullets.${grid.id}'),
-                icon: switch (grid.bullets) {
-                  GridBullets.check => LucideIcons.check,
-                  GridBullets.circle => LucideIcons.circleSmall,
-                  GridBullets.none => LucideIcons.minus,
-                },
-                tooltip: l.cmdGridSetBullets,
-                onTap: (rect) => gridCallbacks.onBulletsTap(grid.id, rect),
-              ),
-              const SizedBox(width: 4),
-              EditorChromeButton(
-                key: ValueKey('write.editor.grid.add.${grid.id}'),
-                icon: LucideIcons.plus,
-                tooltip: l.cmdGridAddItem,
-                onTap: (_) => gridCallbacks.onAddItem(grid.id),
-              ),
-              const SizedBox(width: 4),
-              EditorChromeButton(
-                key: ValueKey('write.editor.grid.menu.${grid.id}'),
-                icon: LucideIcons.ellipsis,
-                tooltip: l.editorGridMenu,
-                onTap: (rect) => gridCallbacks.onMenu(grid.id, rect),
-              ),
-            ],
-          );
     return Semantics(
       label: l.editorGridLabel(grid.items.length, grid.columns),
       child: BoxComponent(
         key: componentContext.componentKey,
-        child: EditorHoverChrome(
-          showAlways: isSelected,
-          above: true,
-          chrome: chrome,
-          child: DecoratedBox(
-            position: DecorationPosition.foreground,
-            decoration: BoxDecoration(
-              border: isSelected
-                  ? Border.all(color: theme.ringColor, width: 2)
-                  : null,
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            border: isSelected
+                ? Border.all(color: theme.ringColor, width: 2)
+                : null,
+          ),
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: theme.wonky.gridSpaceBefore * zoom,
+              bottom: theme.wonky.gridSpaceAfter * zoom,
             ),
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: theme.wonky.gridSpaceBefore * zoom,
-                bottom: theme.wonky.gridSpaceAfter * zoom,
-                right: chrome == null ? 0 : 4,
-              ),
-              child: _GridItems(
-                grid: grid,
-                theme: theme,
-                zoom: zoom,
-                editing: editable ? editing : null,
-              ),
-            ),
+            child: _GridItems(grid: grid, theme: theme, zoom: zoom),
           ),
         ),
       ),
@@ -178,13 +111,11 @@ class _GridItems extends StatelessWidget {
     required this.grid,
     required this.theme,
     required this.zoom,
-    required this.editing,
   });
 
   final GridEmbed grid;
   final EditorTheme theme;
   final double zoom;
-  final InlineGridEditing? editing;
 
   /// The columns that fit [width] (px): two need 320 px and three 480 px at
   /// 100 % (Write 11 §7.2).
@@ -222,7 +153,6 @@ class _GridItems extends StatelessWidget {
                             index: start + c,
                             theme: theme,
                             zoom: zoom,
-                            editing: editing,
                           )
                         : const SizedBox(),
                   ),
@@ -248,81 +178,21 @@ class _GridItem extends StatelessWidget {
     required this.index,
     required this.theme,
     required this.zoom,
-    required this.editing,
   });
 
   final GridEmbed grid;
   final int index;
   final EditorTheme theme;
   final double zoom;
-  final InlineGridEditing? editing;
 
   TextStyle get _base =>
       theme.body.copyWith(fontSize: (theme.body.fontSize ?? 14.67) * zoom);
 
   @override
   Widget build(BuildContext context) {
-    final style = theme.wonky;
     final size = (_base.fontSize ?? 14.67) * 1.3;
-    final bullet = switch (grid.bullets) {
-      GridBullets.check => Icon(
-        LucideIcons.check,
-        size: size,
-        color: style.gridBulletColor,
-      ),
-      GridBullets.circle => Icon(
-        LucideIcons.circleSmall,
-        size: size,
-        color: style.gridBulletColor,
-      ),
-      GridBullets.none => null,
-    };
-    final editing = this.editing;
-    final content = editing == null
-        ? _rendered(context)
-        : ListenableBuilder(
-            listenable: editing,
-            builder: (context, _) {
-              if (editing.active == GridItemRef(grid.id, index)) {
-                return DocumentGestureOptOut(child: _field(editing));
-              }
-              if (!editing.canEdit(grid.id)) return _rendered(context);
-              // In the field's tap region group: pressing another item is
-              // not a tap outside the item being edited, which would end
-              // editing (the editor showed its selection for a moment)
-              // before this tap moves the editing here.
-              return DocumentGestureOptOut(
-                child: TapRegion(
-                  groupId: editing,
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.text,
-                    child: Listener(
-                      onPointerDown: editing.clicks.down,
-                      onPointerUp: editing.clicks.up,
-                      child: Builder(
-                        builder: (item) => GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          // The caret where the click was.
-                          // (A fast second click can still land here:
-                          // it selects the word.)
-                          onTapUp: (details) {
-                            final clicks = editing.clicks.count;
-                            editing.activate(
-                              grid.id,
-                              index,
-                              caret: _caretAt(item, details.globalPosition),
-                            );
-                            editing.selectForClicks(clicks);
-                          },
-                          child: _rendered(context),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
+    final bullet = gridBullet(theme, grid.bullets, size);
+    final content = _rendered(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -336,20 +206,6 @@ class _GridItem extends StatelessWidget {
         Expanded(child: content),
       ],
     );
-  }
-
-  /// The source offset of the rendered text at [global].
-  int? _caretAt(BuildContext item, Offset global) {
-    final source = grid.items[index];
-    final plain = InlineRun.plainText(InlineMarkdown.parseCell(source));
-    if (plain.isEmpty) return 0;
-    final offset = FieldClicks.renderedOffsetAt(
-      item.findRenderObject(),
-      global,
-    );
-    return offset == null
-        ? null
-        : FieldClicks.sourceOffset(source, plain, offset);
   }
 
   Widget _rendered(BuildContext context) {
@@ -406,53 +262,20 @@ class _GridItem extends StatelessWidget {
     }
     return TextSpan(text: r.text.replaceAll(' ', ' '), style: s);
   }
-
-  Widget _field(InlineGridEditing editing) {
-    return Focus(
-      parentNode: editing.focusParent,
-      canRequestFocus: false,
-      skipTraversal: true,
-      // After the field handled the click (a microtask), a double click's
-      // second click selects the word.
-      child: Listener(
-        onPointerDown: editing.clicks.down,
-        onPointerUp: (event) {
-          final clicks = editing.clicks.up(event);
-          if (clicks > 1) {
-            scheduleMicrotask(() => editing.selectForClicks(clicks));
-          }
-        },
-        child: _textField(editing),
-      ),
-    );
-  }
-
-  Widget _textField(InlineGridEditing editing) {
-    return TextSelectionTheme(
-      // The editor's selection color, not Material's.
-      data: TextSelectionThemeData(
-        selectionColor: theme.selectionColor,
-        cursorColor: theme.caretColor,
-      ),
-      child: TextField(
-        key: editing.fieldKey,
-        controller: editing.text,
-        focusNode: editing.focusNode,
-        groupId: editing,
-        undoController: editing.undo,
-        style: _base,
-        maxLines: null,
-        cursorColor: theme.caretColor,
-        cursorWidth: 2,
-        decoration: const InputDecoration.collapsed(hintText: ''),
-        inputFormatters: [
-          FilteringTextInputFormatter.deny(
-            RegExp(r'[\r\n]+'),
-            replacementString: ' ',
-          ),
-        ],
-        onChanged: editing.onChanged,
-      ),
-    );
-  }
 }
+
+/// The bullet of a grid item (Write 11 §7.2), `null` for [GridBullets.none].
+Widget? gridBullet(EditorTheme theme, GridBullets bullets, double size) =>
+    switch (bullets) {
+      GridBullets.check => Icon(
+        LucideIcons.check,
+        size: size,
+        color: theme.wonky.gridBulletColor,
+      ),
+      GridBullets.circle => Icon(
+        LucideIcons.circleSmall,
+        size: size,
+        color: theme.wonky.gridBulletColor,
+      ),
+      GridBullets.none => null,
+    };

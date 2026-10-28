@@ -5,6 +5,7 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 
 import 'attributes.dart';
 import 'boxes.dart';
+import 'cells.dart';
 import 'delta_utils.dart';
 import 'document.dart';
 import 'embeds.dart';
@@ -369,6 +370,10 @@ final class WonkyDeltaNormalizer {
         stampAt,
       );
       final isCode = blockOut.containsKey(WonkyAttr.codeBlock);
+      // A table cell or grid item is one line (Write 12 §1.4).
+      final isCell =
+          blockOut.containsKey(WonkyAttr.cell) ||
+          blockOut.containsKey(WonkyAttr.grid);
 
       // Group segments into text runs and embeds (after embed validation).
       final groups = <_Group>[];
@@ -460,6 +465,7 @@ final class WonkyDeltaNormalizer {
               b,
               fixes,
               isCode: isCode,
+              isCell: isCell,
               codeLineAttrs: blockOut,
               stampAt: stampAt,
             );
@@ -523,6 +529,7 @@ final class WonkyDeltaNormalizer {
     _Builder b,
     Set<NormalizationFix> fixes, {
     required bool isCode,
+    bool isCell = false,
     required Map<String, dynamic> codeLineAttrs,
     required ({Set<int> offsets, int at})? stampAt,
   }) {
@@ -592,6 +599,12 @@ final class WonkyDeltaNormalizer {
           ...Attributes.overlays(attrsOut),
         };
         b.insert('\n', Attributes.orNull(nlAttrs));
+        runStart = i + 1;
+        fixes.add(NormalizationFix.replacedCharacters);
+      } else if (isSoft && isCell) {
+        flush(i);
+        b.delete(1);
+        b.insert(' ', attrsOut);
         runStart = i + 1;
         fixes.add(NormalizationFix.replacedCharacters);
       } else if (u == 0x2029) {
@@ -795,6 +808,7 @@ final class WonkyDeltaNormalizer {
         fixes.add(NormalizationFix.removedAttributes);
       }
     }
+    _normalizeCell(attrs, out, fixes);
     for (final key in attrs.keys) {
       if (!WonkyAttr.isBlock(key) && !WonkyAttr.isOverlay(key)) {
         fixes.add(NormalizationFix.removedAttributes);
@@ -809,6 +823,38 @@ final class WonkyDeltaNormalizer {
     );
     if (overlays != null) out.addAll(overlays);
     return out;
+  }
+
+  /// A table cell or grid item line (Write 12 §1.4): its canonical `cell`
+  /// or `grid` value, and no other block attribute than `box`.
+  static void _normalizeCell(
+    Map<String, dynamic> attrs,
+    Map<String, dynamic> out,
+    Set<NormalizationFix> fixes,
+  ) {
+    final hasCell = attrs.containsKey(WonkyAttr.cell);
+    final hasGrid = attrs.containsKey(WonkyAttr.grid);
+    if (!hasCell && !hasGrid) return;
+    final cell = hasCell ? CellAttr.tryParse(attrs[WonkyAttr.cell]) : null;
+    final grid = cell == null && hasGrid
+        ? GridItemAttr.tryParse(attrs[WonkyAttr.grid])
+        : null;
+    final value = cell?.toJson() ?? grid?.toJson();
+    if (value == null) {
+      fixes.add(NormalizationFix.removedAttributes);
+      return;
+    }
+    for (final key in [...out.keys]) {
+      if (key != WonkyAttr.box && WonkyAttr.isBlock(key)) {
+        out.remove(key);
+        fixes.add(NormalizationFix.removedAttributes);
+      }
+    }
+    final key = cell != null ? WonkyAttr.cell : WonkyAttr.grid;
+    out[key] = value;
+    if (!_deepEquals(value, attrs[key]) || (hasCell && hasGrid)) {
+      fixes.add(NormalizationFix.removedAttributes);
+    }
   }
 
   /// The canonical `box` value of [value]: valid frames only (Write 11

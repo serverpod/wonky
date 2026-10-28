@@ -5,6 +5,7 @@ import 'package:super_editor/super_editor.dart';
 import 'package:wonky_code/wonky_code.dart';
 
 import '../attributions/wonky_attributions.dart';
+import '../components/cell_layout.dart' show CellSlots;
 import '../mapping/wonky_schema.dart';
 import 'write_stylesheet.dart';
 
@@ -250,42 +251,60 @@ class PillSpacingStylePhase extends SingleColumnLayoutStylePhase {
 }
 
 /// Lays out right-to-left paragraphs right-to-left (Write 04 §38): direction
-/// from the first strong character; nothing is stored in the Delta.
+/// from the first strong character; nothing is stored in the Delta. A block
+/// without one takes [fallback], a table cell or grid item its table's or
+/// grid's direction (Write 12 §3.10). Alignment is left to the other phases:
+/// `start` (the stylesheet's) follows the direction.
 class TextDirectionStylePhase extends SingleColumnLayoutStylePhase {
   TextDirectionStylePhase({this.fallback = TextDirection.ltr});
 
   /// Direction of the document language (for blocks without strong chars).
   TextDirection fallback;
 
+  /// The cell slots of the document being styled, for the direction of
+  /// cells without strong characters. They are rebuilt on every document
+  /// change before the layout restyles (they listen first).
+  CellSlots? cells;
+
+  var _directions = const <String, TextDirection>{};
+
+  /// The direction of [nodeId]'s block in the last styling pass, e.g. for
+  /// the arrow keys.
+  TextDirection directionOf(String nodeId) => _directions[nodeId] ?? fallback;
+
   @override
   SingleColumnLayoutViewModel style(
     Document document,
     SingleColumnLayoutViewModel viewModel,
   ) {
-    return SingleColumnLayoutViewModel(
+    final directions = <String, TextDirection>{};
+    final result = SingleColumnLayoutViewModel(
       padding: viewModel.padding,
       componentViewModels: [
         for (final model in viewModel.componentViewModels)
-          if (model is TextComponentViewModel) _withDirection(model) else model,
+          if (model is TextComponentViewModel)
+            _withDirection(model, directions)
+          else
+            model,
       ],
     );
+    _directions = directions;
+    return result;
   }
 
   SingleColumnLayoutComponentViewModel _withDirection(
     SingleColumnLayoutComponentViewModel model,
+    Map<String, TextDirection> directions,
   ) {
     final textModel = model as TextComponentViewModel;
     final direction = detectTextDirection(
       textModel.text.toPlainText(),
-      fallback: fallback,
+      fallback: cells?[model.nodeId]?.direction ?? fallback,
     );
+    directions[model.nodeId] = direction;
     if (direction == textModel.textDirection) return model;
     final copy = model.copy();
-    (copy as TextComponentViewModel)
-      ..textDirection = direction
-      ..textAlignment = direction == TextDirection.rtl
-          ? TextAlign.right
-          : TextAlign.left;
+    (copy as TextComponentViewModel).textDirection = direction;
     return copy;
   }
 }

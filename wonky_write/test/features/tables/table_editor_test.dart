@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wonky_write_core/wonky_write_core.dart'
+    show CellRuns, CellTable, WonkyDocument;
 import 'package:shad/shad.dart';
 import 'package:wonky_core/wonky_core.dart'
     show CommandResult, CommandStatus, InvocationSource;
@@ -478,25 +480,15 @@ void main() {
   });
 
   group('Given a document with a table and write.table.edit', () {
-    String tableId(Delta delta) => delta
-        .toList()
-        .map((op) => op.data)
-        .whereType<Map<String, dynamic>>()
-        .map((data) => data['table'])
-        .whereType<Map<String, dynamic>>()
-        .map((table) => '${table['id']}')
-        .single;
+    String tableId(Delta delta) =>
+        CellRuns.of(WonkyDocument(delta)).whereType<CellTable>().single.id;
 
-    List<Object?> rowsOf(Delta delta) =>
-        delta
-                .toList()
-                .map((op) => op.data)
-                .whereType<Map<String, dynamic>>()
-                .map((data) => data['table'])
-                .whereType<Map<String, dynamic>>()
-                .map((table) => table['rows'])
-                .single
-            as List<Object?>;
+    List<Object?> rowsOf(Delta delta) => [
+      for (final row in CellRuns.of(
+        WonkyDocument(delta),
+      ).whereType<CellTable>().single.rows)
+        [for (final c in row.cells) c.text],
+    ];
 
     testWidgets('when editing a cell in the editor and pressing Done then '
         'the table changes in one undo step', (tester) async {

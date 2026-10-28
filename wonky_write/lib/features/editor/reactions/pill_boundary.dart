@@ -1,18 +1,30 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart' show Rect;
+import 'package:flutter/painting.dart' show Rect, TextDirection;
+import 'package:flutter/services.dart' show HardwareKeyboard;
 import 'package:super_editor/super_editor.dart';
 
 import '../attributions/wonky_attributions.dart';
 
 /// The caret at the end of a chip, button or arrow link (Write 11 §7.4):
 /// inside by default (typed text extends the element), outside after → (typed
-/// text follows it). ← at the same place goes back inside. The state belongs
+/// text follows it) or a click past the element. ← at the same place goes
+/// back inside (in right-to-left blocks the keys swap). The state belongs
 /// to one caret position and ends when the caret moves.
 class PillBoundary extends ChangeNotifier {
   DocumentPosition? _outside;
 
   /// Whether a caret at [position] types after the element ending there.
   bool isOutsideAt(DocumentPosition position) => _outside == position;
+
+  /// Like [isOutsideAt], whatever the caret's affinity.
+  bool _outsideAtOffset(String nodeId, int offset) {
+    final outside = _outside;
+    final p = outside?.nodePosition;
+    return outside != null &&
+        outside.nodeId == nodeId &&
+        p is TextNodePosition &&
+        p.offset == offset;
+  }
 
   /// Puts a caret at [position] outside the element ending there.
   void leaveAt(DocumentPosition position) {
@@ -109,5 +121,71 @@ class PillBoundary extends ChangeNotifier {
       if (pill.any((a) => a is LinkStyleAttribution))
         ...before.whereType<LinkAttribution>(),
     };
+  }
+}
+
+/// A click past the end of a chip, button or arrow link, beyond its last
+/// character's box (right of it; left in a right-to-left block), puts the
+/// caret outside the element, like → does; a click on the element's end
+/// puts it inside (Write 11 §7.4). The caret itself is placed by
+/// super_editor after this delegate.
+class PillBoundaryTapHandler extends ContentTapDelegate {
+  PillBoundaryTapHandler({
+    required this.document,
+    required this.composer,
+    required this.boundary,
+    this.directionOf,
+  });
+
+  final Document document;
+  final DocumentComposer composer;
+  final PillBoundary boundary;
+  final TextDirection Function(String nodeId)? directionOf;
+
+  @override
+  TapHandlingInstruction onTap(DocumentTapDetails details) {
+    // Shift+click extends the selection.
+    if (HardwareKeyboard.instance.isShiftPressed) {
+      return TapHandlingInstruction.continueHandling;
+    }
+    final layout = details.documentLayout;
+    final position = layout.getDocumentPositionNearestToOffset(
+      details.layoutOffset,
+    );
+    final p = position?.nodePosition;
+    final node = position == null
+        ? null
+        : document.getNodeById(position.nodeId);
+    if (position == null || p is! TextNodePosition || node is! TextNode) {
+      return TapHandlingInstruction.continueHandling;
+    }
+    final pill = PillBoundary.endingAt(node.text, p.offset);
+    if (pill.isEmpty) return TapHandlingInstruction.continueHandling;
+    final last = layout.getRectForSelection(
+      DocumentPosition(
+        nodeId: position.nodeId,
+        nodePosition: TextNodePosition(offset: p.offset - 1),
+      ),
+      position,
+    );
+    if (last == null) return TapHandlingInstruction.continueHandling;
+    // A click on the edge itself (where the caret is drawn) is on the
+    // element.
+    const edge = 2.0;
+    final x = details.layoutOffset.dx;
+    final past = directionOf?.call(position.nodeId) == TextDirection.rtl
+        ? x < last.left - edge
+        : x > last.right + edge;
+    // The typing attributes follow when the caret moves; set here too, for a
+    // click at the caret's own position.
+    final preferences = composer.preferences;
+    if (past) {
+      boundary.leaveAt(position);
+      preferences.removeStyles(pill);
+    } else if (boundary._outsideAtOffset(position.nodeId, p.offset)) {
+      boundary.clear();
+      preferences.addStyles(pill);
+    }
+    return TapHandlingInstruction.continueHandling;
   }
 }
