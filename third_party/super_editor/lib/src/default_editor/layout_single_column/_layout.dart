@@ -1117,17 +1117,23 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         nodeIds: [for (int j = i; j <= end; j++) _componentKeysToNodeIds[_topToBottomComponentKeys[j]]!],
       );
       final occurrence = occurrences[placement.group] = (occurrences[placement.group] ?? -1) + 1;
+      // The group is as wide as its first component would be ([_Component]).
+      final viewModels = widget.presenter.viewModel.componentViewModels;
+      final maxWidth = i < viewModels.length ? viewModels[i].maxWidth : null;
       children.add(
         KeyedSubtree(
           key: ValueKey('wonky-cell-group:${placement.group}#$occurrence'),
-          child: cellLayout.wrapGroup(
-            context,
-            group,
-            DocumentCellGroupView(
-              group: group,
-              placements: [for (int j = i; j <= end; j++) placements[j]!],
-              cellLayout: cellLayout,
-              children: components.sublist(i, end + 1),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth ?? double.infinity),
+            child: cellLayout.wrapGroup(
+              context,
+              group,
+              DocumentCellGroupView(
+                group: group,
+                placements: [for (int j = i; j <= end; j++) placements[j]!],
+                cellLayout: cellLayout,
+                children: components.sublist(i, end + 1),
+              ),
             ),
           ),
         ),

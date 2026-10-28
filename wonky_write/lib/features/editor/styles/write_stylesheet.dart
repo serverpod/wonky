@@ -129,13 +129,22 @@ class WriteStylesheetBuilder {
     double px(double value) => value * scale;
     // List and task items; inside a quote they sit in the quote's indent
     // and their spacing is inside the bar (WonkyParagraphComponentBuilder).
-    CascadingPadding listItemPadding(DocumentNode node) =>
-        isQuotedListNode(node)
+    // The indent of a quote's bar, on the start side of the block (Write 04
+    // §38).
+    CascadingPadding quoteIndent(DocumentNode node) => isRtlNode(node)
         ? CascadingPadding.only(
-            left: px(theme.quoteBarWidth + 12),
+            right: px(theme.quoteBarWidth + 12),
             top: 0,
             bottom: 0,
           )
+        : CascadingPadding.only(
+            left: px(theme.quoteBarWidth + 12),
+            top: 0,
+            bottom: 0,
+          );
+    CascadingPadding listItemPadding(DocumentNode node) =>
+        isQuotedListNode(node)
+        ? quoteIndent(node)
         : CascadingPadding.only(
             top: px(theme.listItemSpacing),
             bottom: px(theme.listItemSpacing),
@@ -179,11 +188,7 @@ class WriteStylesheetBuilder {
           // The space above and below each quote line is inside the bar
           // (WonkyParagraphComponentBuilder), so consecutive lines and
           // paragraphs of one quote share one unbroken bar (Write 04 §14).
-          Styles.padding: CascadingPadding.only(
-            left: px(theme.quoteBarWidth + 12),
-            top: 0,
-            bottom: 0,
-          ),
+          Styles.padding: quoteIndent(node),
         };
       }),
       // Space around the block; the box itself (background, corners, border,
@@ -465,12 +470,16 @@ class WriteInlineStyler {
 TextDirection detectTextDirection(
   String text, {
   TextDirection fallback = TextDirection.ltr,
-}) {
+}) => strongTextDirection(text) ?? fallback;
+
+/// The direction of [text]'s first strong character, `null` when it has
+/// none (digits, punctuation and spaces are neutral).
+TextDirection? strongTextDirection(String text) {
   for (final rune in text.runes) {
     if (_isRtl(rune)) return TextDirection.rtl;
     if (_isStrongLtr(rune)) return TextDirection.ltr;
   }
-  return fallback;
+  return null;
 }
 
 bool _isRtl(int rune) =>

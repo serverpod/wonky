@@ -8,6 +8,7 @@ import '../../../l10n/write_l10n.dart';
 import '../mapping/wonky_schema.dart';
 import '../pagination/pagination.dart';
 import '../styles/editor_theme.dart';
+import '../styles/write_stylesheet.dart' show strongTextDirection;
 import 'box_frames.dart';
 import 'editor_services.dart';
 import 'wonky_components.dart';
@@ -21,6 +22,7 @@ class CellSlot {
     required this.row,
     required this.column,
     required this.align,
+    this.direction = TextDirection.ltr,
   }) : index = 0,
        columns = 0,
        bullets = GridBullets.none;
@@ -30,6 +32,7 @@ class CellSlot {
     required this.index,
     required this.columns,
     required this.bullets,
+    this.direction = TextDirection.ltr,
   }) : row = 0,
        column = 0,
        align = null;
@@ -45,6 +48,28 @@ class CellSlot {
   /// The column's alignment (the header cell's, Write 12 §1.1).
   final CellAlign? align;
 
+  /// The table's or grid's direction (Write 12 §3.10): its first strong
+  /// character's, in document order.
+  final TextDirection direction;
+
+  bool get isRtl => direction == TextDirection.rtl;
+
+  CellSlot withDirection(TextDirection direction) => isCell
+      ? CellSlot.cell(
+          group: group,
+          row: row,
+          column: column,
+          align: align,
+          direction: direction,
+        )
+      : CellSlot.item(
+          group: group,
+          index: index,
+          columns: columns,
+          bullets: bullets,
+          direction: direction,
+        );
+
   bool get isCell => columns == 0;
 
   @override
@@ -56,11 +81,20 @@ class CellSlot {
       other.index == index &&
       other.columns == columns &&
       other.bullets == bullets &&
-      other.align == align;
+      other.align == align &&
+      other.direction == direction;
 
   @override
-  int get hashCode =>
-      Object.hash(group, row, column, index, columns, bullets, align);
+  int get hashCode => Object.hash(
+    group,
+    row,
+    column,
+    index,
+    columns,
+    bullets,
+    align,
+    direction,
+  );
 }
 
 /// The slots of every table cell and grid item of a document, kept current
@@ -84,6 +118,13 @@ class CellSlots extends ChangeNotifier {
   /// Recomputes the slots; whether any changed.
   bool _rebuild() {
     final next = <String, CellSlot>{};
+    // Group → its direction, from its first strong character.
+    final directions = <String, TextDirection?>{};
+    void detect(String group, DocumentNode node) {
+      if (directions[group] != null || node is! TextNode) return;
+      directions[group] = strongTextDirection(node.text.toPlainText());
+    }
+
     String? table;
     String? row;
     var r = -1;
@@ -109,6 +150,7 @@ class CellSlots extends ChangeNotifier {
           c = 0;
         }
         if (r == 0) header.add(cell.align);
+        detect('t:${cell.table}', node);
         next[node.id] = CellSlot.cell(
           group: 't:${cell.table}',
           row: r,
@@ -129,6 +171,7 @@ class CellSlots extends ChangeNotifier {
           columns = g.columns;
           bullets = g.bullets;
         }
+        detect('g:${g.id}', node);
         next[node.id] = CellSlot.item(
           group: 'g:${g.id}',
           index: item++,
@@ -138,6 +181,11 @@ class CellSlots extends ChangeNotifier {
         continue;
       }
       grid = null;
+    }
+    for (final e in next.entries) {
+      if (directions[e.value.group] == TextDirection.rtl) {
+        next[e.key] = e.value.withDirection(TextDirection.rtl);
+      }
     }
     final changed = !_sameMaps(next, _slots);
     _slots = next;
@@ -217,7 +265,7 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
 
   double get _bulletSize => (theme.body.fontSize ?? 14.67) * zoom * 1.3;
 
-  /// The left room of a grid item for its bullet.
+  /// The room of a grid item for its bullet (on its start side).
   double bulletRoom(GridBullets bullets) =>
       bullets == GridBullets.none ? 0 : _bulletSize * 1.45;
 
@@ -236,6 +284,7 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
         column: slot.column,
         minColumnWidth: 48 * zoom,
         spaceBefore: _gaps[nodeId] ?? 0,
+        textDirection: slot.direction,
       );
     }
     return DocumentCellPlacement.flow(
@@ -246,6 +295,7 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
       minColumnWidth: 140 * zoom,
       gap: theme.wonky.gridColumnGap * zoom,
       spaceBefore: _gaps[nodeId] ?? 0,
+      textDirection: slot.direction,
     );
   }
 
@@ -432,10 +482,13 @@ class WriteCellLayout extends ChangeNotifier implements DocumentCellLayout {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
+    final rtl = first?.isRtl ?? false;
     for (final rect in geometry.slotRects.values) {
       painter.paint(
         canvas,
-        rect.topLeft + offset + Offset(0, size * 0.05 + _textTopInset),
+        (rtl ? rect.topRight - Offset(painter.width, 0) : rect.topLeft) +
+            offset +
+            Offset(0, size * 0.05 + _textTopInset),
       );
     }
     painter.dispose();
@@ -483,10 +536,12 @@ class CellStylePhase extends SingleColumnLayoutStylePhase {
       final text = copy as TextComponentViewModel;
       if (slot.isCell) {
         copy.padding = layout.cellPadding;
+        // No alignment: the start of the cell's own text (Write 04 §38).
         text.textAlignment = switch (slot.align) {
+          CellAlign.left => TextAlign.left,
           CellAlign.center => TextAlign.center,
           CellAlign.right => TextAlign.right,
-          _ => TextAlign.left,
+          null => TextAlign.start,
         };
         if (slot.row == 0) {
           final base = text.textStyleBuilder;
@@ -494,7 +549,10 @@ class CellStylePhase extends SingleColumnLayoutStylePhase {
               base(attributions).copyWith(fontWeight: FontWeight.w600);
         }
       } else {
-        copy.padding = EdgeInsets.only(left: layout.bulletRoom(slot.bullets));
+        final room = layout.bulletRoom(slot.bullets);
+        copy.padding = slot.isRtl
+            ? EdgeInsets.only(right: room)
+            : EdgeInsets.only(left: room);
       }
       changed = true;
       models.add(copy);

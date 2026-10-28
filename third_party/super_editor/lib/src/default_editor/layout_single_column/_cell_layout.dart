@@ -12,14 +12,15 @@ enum DocumentCellGroupKind {
   /// Every placement names its row and column (a table).
   rows,
 
-  /// Items fill rows left to right in index order (a grid).
+  /// Items fill rows in index order (a grid), from the start side of the
+  /// group's text direction.
   flow,
 }
 
 /// Where a node's component goes inside a cell group.
 ///
-/// The group-wide values ([minColumnWidth], [gap] and, for flows,
-/// [maxColumns]) are taken from the group's first placement.
+/// The group-wide values ([minColumnWidth], [gap], [textDirection] and, for
+/// flows, [maxColumns]) are taken from the group's first placement.
 @immutable
 class DocumentCellPlacement {
   /// A table cell: [row] and [column] inside group [group].
@@ -30,6 +31,7 @@ class DocumentCellPlacement {
     this.minColumnWidth = 64,
     this.gap = 0,
     this.spaceBefore = 0,
+    this.textDirection = TextDirection.ltr,
   })  : kind = DocumentCellGroupKind.rows,
         index = 0,
         maxColumns = 0;
@@ -43,6 +45,7 @@ class DocumentCellPlacement {
     this.minColumnWidth = 160,
     this.gap = 0,
     this.spaceBefore = 0,
+    this.textDirection = TextDirection.ltr,
   })  : kind = DocumentCellGroupKind.flow,
         row = 0,
         column = 0;
@@ -75,6 +78,10 @@ class DocumentCellPlacement {
   /// placements is used), e.g. to push a row to the next page.
   final double spaceBefore;
 
+  /// The group's direction: [TextDirection.rtl] puts column 0 (rows) or the
+  /// first item (flows) on the right.
+  final TextDirection textDirection;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -87,10 +94,12 @@ class DocumentCellPlacement {
           other.maxColumns == maxColumns &&
           other.minColumnWidth == minColumnWidth &&
           other.gap == gap &&
-          other.spaceBefore == spaceBefore;
+          other.spaceBefore == spaceBefore &&
+          other.textDirection == textDirection;
 
   @override
-  int get hashCode => Object.hash(group, kind, row, column, index, maxColumns, minColumnWidth, gap, spaceBefore);
+  int get hashCode =>
+      Object.hash(group, kind, row, column, index, maxColumns, minColumnWidth, gap, spaceBefore, textDirection);
 
   @override
   String toString() => kind == DocumentCellGroupKind.rows
@@ -146,9 +155,10 @@ class DocumentCellGroupGeometry {
   final int rowCount;
   final int columnCount;
 
-  /// `columnCount + 1` x positions: the left edge of every column, then the
-  /// right edge of the last column (with a gap, a column ends `gap` before the
-  /// next one starts).
+  /// `columnCount + 1` x positions from left to right: the left edge of every
+  /// visual column, then the right edge of the rightmost one (with a gap, a
+  /// column ends `gap` before the next one starts). In a right-to-left group
+  /// column 0 is the rightmost.
   final List<double> columnEdges;
 
   /// `rowCount + 1` y positions: the top of every row, then the bottom of the
@@ -298,6 +308,8 @@ class RenderDocumentCellGroup extends RenderBox
 
   double get _minColumnWidth => max(0.0, _first?.minColumnWidth ?? 0.0);
 
+  bool get _isRtl => _first?.textDirection == TextDirection.rtl;
+
   /// Assigns every child (by index) a row and a column, and returns the
   /// column count.
   _CellGrid _grid(double width) {
@@ -371,9 +383,13 @@ class RenderDocumentCellGroup extends RenderBox
       rowSpaceBefore[row] = max(rowSpaceBefore[row], max(0.0, _placements[i].spaceBefore));
     }
 
+    final contentWidth = grid.columnCount > 0 ? grid.columnCount * columnWidth + (grid.columnCount - 1) * gap : 0.0;
+    // Right to left, the columns end at the right edge (or, when they
+    // overflow, start at 0 like left to right).
+    final start = _isRtl && width.isFinite ? max(0.0, width - contentWidth) : 0.0;
     final columnEdges = <double>[
-      for (int c = 0; c < grid.columnCount; c++) c * (columnWidth + gap),
-      if (grid.columnCount > 0) grid.columnCount * columnWidth + (grid.columnCount - 1) * gap else 0,
+      for (int c = 0; c < grid.columnCount; c++) start + c * (columnWidth + gap),
+      start + contentWidth,
     ];
 
     final rowTops = <double>[];
@@ -390,7 +406,7 @@ class RenderDocumentCellGroup extends RenderBox
     final slotRects = <String, Rect>{};
     for (int i = 0; i < grid.rows.length; i++) {
       final row = grid.rows[i];
-      final column = grid.columns[i];
+      final column = _isRtl ? grid.columnCount - 1 - grid.columns[i] : grid.columns[i];
       final slot = Rect.fromLTWH(columnEdges[column], rowTops[row], columnWidth, rowHeights[row]);
       if (i < _group.nodeIds.length) {
         slotRects[_group.nodeIds[i]] = slot;
@@ -398,7 +414,6 @@ class RenderDocumentCellGroup extends RenderBox
       childOffsets?.add(slot.topLeft);
     }
 
-    final contentWidth = columnEdges.last;
     return DocumentCellGroupGeometry(
       group: _group,
       size: Size(width.isFinite ? width : contentWidth, y),

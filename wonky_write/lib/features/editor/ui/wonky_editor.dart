@@ -966,6 +966,7 @@ class WonkyEditorState extends State<WonkyEditor> {
                 as BoxFrameComponentBuilder,
       );
     _cellPhase.layout = cells;
+    _direction.cells = cells.slots;
     _cellsInBuild = cells;
     return [
       for (final builder in _unframedBuilders(
@@ -1121,6 +1122,7 @@ class WonkyEditorState extends State<WonkyEditor> {
         popoverKeys: _popoverKeys,
         builtInShortcuts: widget.builtInShortcuts,
         callbacks: callbacks,
+        directionOf: _direction.directionOf,
       ),
       contentTapDelegateFactories: [
         (editContext) => WonkyLinkTapHandler(

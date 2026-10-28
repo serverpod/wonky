@@ -705,14 +705,16 @@ Widget quoteBar(
   required double zoom,
   required double spacing,
   required Widget child,
+  bool rtl = false,
 }) => Semantics(
   label: writeL10n(context).editorQuoteLabel,
   child: CustomPaint(
     painter: _QuoteBarPainter(
       color: theme.quoteBarColor,
       width: theme.quoteBarWidth * zoom,
+      rtl: rtl,
       // The stylesheet indents quotes by bar width + 12 px; the bar sits in
-      // that indent, left of the text.
+      // that indent, before the text (right of right-to-left text).
       gap: 12 * zoom,
     ),
     child: Padding(
@@ -721,6 +723,11 @@ Widget quoteBar(
     ),
   ),
 );
+
+/// Whether [viewModel]'s text is laid out right to left (Write 04 §38).
+bool _isRtl(SingleColumnLayoutComponentViewModel viewModel) =>
+    viewModel is TextComponentViewModel &&
+    viewModel.textDirection == TextDirection.rtl;
 
 /// super_editor's list items; inside a quote with the quote bar.
 class WonkyListItemComponentBuilder implements ComponentBuilder {
@@ -756,6 +763,7 @@ class WonkyListItemComponentBuilder implements ComponentBuilder {
       theme: theme,
       zoom: zoom,
       spacing: theme.listItemSpacing,
+      rtl: _isRtl(viewModel),
       child: component,
     );
   }
@@ -813,6 +821,7 @@ class WonkyParagraphComponentBuilder implements ComponentBuilder {
         theme: theme,
         zoom: zoom,
         spacing: quoteLineSpacing,
+        rtl: _isRtl(viewModel),
         child: component,
       );
     }
@@ -852,6 +861,7 @@ class WonkyParagraphComponentBuilder implements ComponentBuilder {
                     fontSize: (theme.headings[level - 1].fontSize ?? 20) * zoom,
                     theme: theme,
                     onTap: editable ? callbacks.onStepTap : null,
+                    textDirection: viewModel.textDirection,
                     child: component,
                   );
           },
@@ -871,11 +881,13 @@ class _StepHeading extends StatelessWidget {
     required this.fontSize,
     required this.theme,
     required this.onTap,
+    required this.textDirection,
     required this.child,
   });
 
   final String nodeId;
   final int step;
+  final TextDirection textDirection;
   final double fontSize;
   final EditorTheme theme;
   final void Function(String nodeId, Rect globalRect)? onTap;
@@ -925,7 +937,9 @@ class _StepHeading extends StatelessWidget {
         ),
       );
     }
+    // The badge before the heading: right of a right-to-left one.
     return Row(
+      textDirection: textDirection,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         badge,
@@ -941,16 +955,23 @@ class _QuoteBarPainter extends CustomPainter {
     required this.color,
     required this.width,
     required this.gap,
+    required this.rtl,
   });
 
   final Color color;
   final double width;
   final double gap;
+  final bool rtl;
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(
-      Rect.fromLTWH(-(width + gap), 0, width, size.height),
+      Rect.fromLTWH(
+        rtl ? size.width + gap : -(width + gap),
+        0,
+        width,
+        size.height,
+      ),
       Paint()..color = color,
     );
   }
@@ -966,7 +987,8 @@ class _QuoteBarPainter extends CustomPainter {
   bool shouldRepaint(_QuoteBarPainter oldDelegate) =>
       oldDelegate.color != color ||
       oldDelegate.width != width ||
-      oldDelegate.gap != gap;
+      oldDelegate.gap != gap ||
+      oldDelegate.rtl != rtl;
 }
 
 class _CodeBlockChrome extends StatelessWidget {
@@ -1431,6 +1453,7 @@ class WonkyTaskComponentBuilder implements ComponentBuilder {
       theme: theme,
       zoom: zoom,
       spacing: theme.listItemSpacing,
+      rtl: _isRtl(viewModel),
       child: task,
     );
   }

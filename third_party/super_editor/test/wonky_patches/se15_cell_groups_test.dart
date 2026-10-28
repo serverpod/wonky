@@ -227,6 +227,87 @@ void main() {
       });
     });
 
+    group('right to left >', () {
+      testWidgetsOnAllPlatforms('puts column 0 on the right and resolves points there', (tester) async {
+        const rtl = TextDirection.rtl;
+        final harness = await _pumpEditor(
+          tester,
+          nodes: [
+            for (final id in ['a', 'b', 'c', 'd']) _paragraph(id, id.toUpperCase())
+          ],
+          cellLayout: _TestCellLayout({
+            'a': const DocumentCellPlacement.rows(group: 't', row: 0, column: 0, gap: 10, textDirection: rtl),
+            'b': const DocumentCellPlacement.rows(group: 't', row: 0, column: 1, gap: 10, textDirection: rtl),
+            'c': const DocumentCellPlacement.rows(group: 't', row: 0, column: 2, gap: 10, textDirection: rtl),
+            'd': const DocumentCellPlacement.rows(group: 't', row: 1, column: 0, gap: 10, textDirection: rtl),
+          }),
+        );
+
+        final geometry = harness.geometry();
+        const columnWidth = (600 - 2 * 10) / 3;
+        // The edges still run left to right.
+        expect(geometry.columnEdges, [0, columnWidth + 10, 2 * columnWidth + 20, 3 * columnWidth + 20]);
+        expect(geometry.slotRects['a']!.left, 2 * columnWidth + 20);
+        expect(geometry.slotRects['b']!.left, columnWidth + 10);
+        expect(geometry.slotRects['c']!.left, 0);
+        expect(geometry.slotRects['d']!.left, 2 * columnWidth + 20);
+        expect(harness.componentRect('a').topLeft, harness.slotRect('a').topLeft);
+        expect(harness.componentRect('c').left, 0);
+
+        // A point in the rightmost slot is in column 0.
+        final layout = harness.layout;
+        final right = harness.slotRect('a').centerRight - const Offset(2, 0);
+        expect(layout.getDocumentPositionAtOffset(right)!.nodeId, 'a');
+        expect(layout.getDocumentPositionNearestToOffset(right + const Offset(0, 1))!.nodeId, 'a');
+      });
+
+      testWidgetsOnAllPlatforms('fills a flow from the right', (tester) async {
+        final harness = await _pumpEditor(
+          tester,
+          nodes: [for (int i = 0; i < 4; i++) _paragraph('i$i', 'Item $i')],
+          cellLayout: _TestCellLayout({
+            for (int i = 0; i < 4; i++)
+              'i$i': DocumentCellPlacement.flow(
+                group: 'g',
+                index: i,
+                maxColumns: 3,
+                textDirection: TextDirection.rtl,
+              ),
+          }),
+        );
+
+        final geometry = harness.geometry();
+        expect(geometry.columnEdges, [0, 200, 400, 600]);
+        expect(geometry.slotRects['i0']!.left, 400);
+        expect(geometry.slotRects['i1']!.left, 200);
+        expect(geometry.slotRects['i2']!.left, 0);
+        expect(geometry.slotRects['i3']!.left, 400);
+        expect(geometry.slotRects['i3']!.top, geometry.rowEdges[1]);
+      });
+    });
+
+    testWidgetsOnAllPlatforms('a group is no wider than its first component may be', (tester) async {
+      // The default stylesheet's maxWidth is 640; the paragraphs are centered.
+      final harness = await _pumpEditor(
+        tester,
+        width: 800,
+        nodes: [
+          _paragraph('above', 'Above'),
+          _paragraph('a', 'A'),
+          _paragraph('b', 'B'),
+        ],
+        cellLayout: _TestCellLayout({
+          'a': const DocumentCellPlacement.rows(group: 't', row: 0, column: 0),
+          'b': const DocumentCellPlacement.rows(group: 't', row: 0, column: 1),
+        }),
+      );
+
+      expect(harness.componentRect('above').width, 640);
+      expect(harness.group().size.width, 640);
+      expect(harness.slotRect('a').left, harness.componentRect('above').left);
+      expect(harness.slotRect('b').right, harness.componentRect('above').right);
+    });
+
     group('flow >', () {
       Map<String, DocumentCellPlacement> flowPlacements({double spaceBeforeOfFourth = 0}) => {
             for (int i = 0; i < 5; i++)

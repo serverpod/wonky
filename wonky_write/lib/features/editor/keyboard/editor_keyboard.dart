@@ -66,6 +66,7 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
   bool builtInShortcuts = true,
   EditorShortcutCallbacks callbacks = const EditorShortcutCallbacks(),
   bool ime = true,
+  TextDirection Function(String nodeId)? directionOf,
 }) {
   ExecutionInstruction handler({
     required SuperEditorContext editContext,
@@ -78,6 +79,10 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
       return ExecutionInstruction.haltExecution;
     }
     if (keymap != null && keymap(keyEvent)) {
+      return ExecutionInstruction.haltExecution;
+    }
+    if (directionOf != null &&
+        _rightToLeftArrow(keyEvent, editContext, directionOf)) {
       return ExecutionInstruction.haltExecution;
     }
     if (_pillBoundaryArrow(keyEvent, controller)) {
@@ -111,6 +116,59 @@ List<SuperEditorKeyboardAction> wonkyKeyboardActions({
     _backspaceInQuotedListItem,
     ...defaults.where((action) => !removed.contains(action)),
   ];
+}
+
+/// ← and → move the caret visually (Write 04 §38): in a right-to-left block
+/// ← moves downstream and → upstream, with super_editor's modifiers (word,
+/// line). The caret's block decides, so mixed runs inside a line follow the
+/// block's direction. super_editor's own handling (and, on the web, the
+/// browser's) moves logically.
+bool _rightToLeftArrow(
+  KeyEvent event,
+  SuperEditorContext editContext,
+  TextDirection Function(String nodeId) directionOf,
+) {
+  if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+  final key = event.logicalKey;
+  if (key != LogicalKeyboardKey.arrowLeft &&
+      key != LogicalKeyboardKey.arrowRight) {
+    return false;
+  }
+  final selection = editContext.composer.selection;
+  if (selection == null ||
+      directionOf(selection.extent.nodeId) != TextDirection.rtl) {
+    return false;
+  }
+  // Composing on the web: the browser's candidate list takes the keys.
+  if (kIsWeb && editContext.composer.composingRegion.value != null) {
+    return false;
+  }
+  final keyboard = HardwareKeyboard.instance;
+  final windows = defaultTargetPlatform == TargetPlatform.windows;
+  if (windows && keyboard.isAltPressed) return false;
+  MovementModifier? modifier;
+  if ((windows || defaultTargetPlatform == TargetPlatform.linux) &&
+      keyboard.isControlPressed) {
+    modifier = MovementModifier.word;
+  } else if (_isApple && keyboard.isMetaPressed) {
+    modifier = MovementModifier.line;
+  } else if (_isApple && keyboard.isAltPressed) {
+    modifier = MovementModifier.word;
+  }
+  final ops = editContext.commonOps;
+  if (key == LogicalKeyboardKey.arrowLeft) {
+    ops.moveCaretDownstream(
+      expand: keyboard.isShiftPressed,
+      movementModifier: modifier,
+    );
+  } else {
+    ops.moveCaretUpstream(
+      expand: keyboard.isShiftPressed,
+      movementModifier: modifier,
+    );
+  }
+  // Also at the document's end: the key must not move the other way.
+  return true;
 }
 
 /// → at the end of a chip, button or arrow link moves the caret out of it

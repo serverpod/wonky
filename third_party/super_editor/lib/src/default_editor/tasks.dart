@@ -380,7 +380,8 @@ class _TaskComponentState extends State<TaskComponent> with ProxyDocumentCompone
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 16, right: 4),
+            // WONKY PATCH SE-5: mirrored for right-to-left tasks.
+            padding: const EdgeInsetsDirectional.only(start: 16, end: 4),
             child: Checkbox(
               visualDensity: Theme.of(context).visualDensity,
               value: widget.viewModel.isComplete,

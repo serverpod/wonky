@@ -164,8 +164,11 @@ abstract class DocumentCellLayout implements Listenable {
   tallest cell, and every cell's **slot** has that height, so borders line up (the cell's
   component keeps its natural height; a click in the slot below its text goes to the cell).
   Missing cells of ragged rows are empty space. A placement's `spaceBefore` adds space above its
-  row (pagination, §3.8). `DocumentCellGroupGeometry` gives the column edges, row tops and bottoms
-  and every node's slot.
+  row (pagination, §3.8). A group is no wider than its first component's `maxWidth` (the text
+  column), like any component. A placement's `textDirection` (group-wide) mirrors the group:
+  right to left, column 0 and the first item are on the right (§3.10).
+  `DocumentCellGroupGeometry` gives the column edges (left to right), row tops and bottoms and
+  every node's slot.
 - `paintGroup` paints behind the cells with the cell rectangles (table borders, header background);
   `wrapGroup` wraps the whole group (container frames, chrome); both come from the app.
 - The layout rebuilds when `placementOf` changes (the cell layout notifies).
@@ -183,15 +186,16 @@ Write's `WriteCellLayout` (`components/cell_layout.dart`) provides placements fr
 (every cell's row and column and every item's index, recomputed in one pass when the document
 changes; it notifies when a slot changes), table borders and the header background (theme
 `tableBorderColor`, `tableHeaderBackground`), grid bullets (painted in `paintGroup` at each item
-slot's top left), grid gaps from the theme (minimum column width 140 px at 100 %: three columns from about 480 px), container
+slot's top left, top right in a right-to-left grid), grid gaps from the theme (minimum column width 140 px at 100 %: three columns from about 480 px), container
 frames around a group (`BoxFrameComponentBuilder.frameGroup`, using the group's first and last
 node) and the chrome (§3.7).
 
 ### 3.3 Styling
 
 `CellStylePhase` (after the container phase, before pagination) gives cell and item view models
-their padding (table cells 8 × 4 px at 100 %; grid items room on the left for their bullet), the
-header row a semi-bold text style and a cell its column's alignment as text alignment (block
+their padding (table cells 8 × 4 px at 100 %; grid items room for their bullet on the grid's
+start side), the header row a semi-bold text style and a cell its column's alignment as text
+alignment; a column without one is start-aligned, i.e. per the cell text's direction (block
 spacing goes). Containers do not frame cell components one by one; `WriteCellLayout.wrapGroup`
 frames the group.
 
@@ -295,6 +299,22 @@ while another inserts a row: the new row lacks the new column's cell), shown wit
 completed by the next structural command. Two users deleting the same row converge (the second
 delete is empty after the transform).
 
+### 3.10 Direction
+
+A table or grid has one direction for its layout: that of its **first strong character** in
+document order (the first cell or item with one; Write 04 §38), else the document's (left to
+right). Nothing is stored. `CellSlots` computes it in its pass and the placements carry it:
+
+- **Right to left**, column 0 is the rightmost column and a grid fills its rows from the right;
+  grid bullets and their room are on the right. Tab and Enter still walk the cells in document
+  order (Tab goes to the cell on the left); ↑/↓ keep the visual column.
+- **Each cell's text** has its own direction (its first strong character). A cell without one
+  (empty, digits) takes the table's, so an empty cell of an Arabic table has its caret on the
+  right. Columns without an alignment are start-aligned; explicit `left`/`right` alignments
+  (`:---`, `---:`) are literal, as in GFM.
+- Typing the first strong character into a table flips its layout at once; Markdown and the
+  other exports are unchanged (their readers apply their own bidi rules).
+
 ## 4. Server, MCP and AI
 
 - `CellEdits` (`wonky_write_core/edit/cell_edits.dart`) builds every structural change from a
@@ -318,10 +338,12 @@ delete is empty after the transform).
   line table (golden text where present), OT convergence fuzz with tables and grids
   (`EditGen`/`DeltaGen` generate cell and grid lines).
 - **super_editor (SE-15)**: rows and flow layout geometry, nearest-component in 2D, hit testing,
-  caret and selection rectangles in a group, rebuild on placement change, `SuperReader`.
+  caret and selection rectangles in a group, rebuild on placement change, `SuperReader`, right to
+  left rows and flows, the group's maximum width.
 - **Editor**: typing, click and double click inside a cell (the caret and word land in that cell),
   every key in §3.4, deletion across cells, paste and copy, every command (one undo step each),
-  container frame around a table, pagination of rows, the legacy read-only path.
+  container frame around a table, pagination of rows, the legacy read-only path, right-to-left
+  tables and grids (`test/features/editor/ui/rtl_test.dart`).
 - **Server**: upgrade on load and after a legacy commit (one system op, idempotent), MCP table and
   grid tools on line tables.
 
@@ -340,6 +362,9 @@ editable; its Markdown export is unchanged by the upgrade.
 **AC-12.6** Bold, links, chips and mentions in a cell export to Markdown, HTML, PDF and DOCX.
 **AC-12.7** A grid item: Enter adds the next item, Backspace in an empty item removes it, the
 chrome changes columns and bullets.
+**AC-12.8** A table whose first cell is Arabic has its first column on the right, right-aligned
+cells (also empty ones) and Tab moving left; an Arabic grid fills from the right with its
+bullets on the right. A table is never wider than the text column.
 
 ## 6. Removed
 

@@ -97,10 +97,18 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
    `default_editor/text.dart`.
 5. **Undo/redo keyboard actions exported** (`lib/src/undo_redo.dart`) so apps can remove them from
    the default keyboard action lists. `lib/super_editor.dart`.
+6. **Right-to-left task checkbox**: its padding (16 before, 4 after) was fixed left/right, so a
+   right-to-left task had 4 px between the checkbox and its text; now `EdgeInsetsDirectional`
+   (the row is in the task's `Directionality`). `default_editor/tasks.dart`.
+7. **Right-to-left line start and end**: `TextComponent.getPositionAtStartOfLine` /
+   `getPositionAtEndOfLine` took super_text_layout's positions at the line's left and right
+   edges, so in right-to-left text ⌘←/⌘→ (and Home/End) went to the wrong end, and the
+   auto-wrap adjustment made the line end offset −1. Swapped for right-to-left components.
+   `default_editor/text.dart`.
 
 - **Tests**: `test/wonky_patches/se5_fixes_test.dart`, `se3_node_change_events_test.dart`,
   `se2_document_patch_test.dart`
-- **Upstream**: 1–5 are general fixes; to be filed upstream.
+- **Upstream**: 1–7 are general fixes; to be filed upstream.
 
 ## SE-6 — Content drag delegate (drag and drop of the selection)
 
@@ -288,6 +296,10 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
     from a later cell of a row starts there).
   - `SuperEditor(cellLayout:)`, `SuperReader(cellLayout:)` → `DocumentScaffold` → layout.
     Keyboard caret movement (document order) is unchanged.
+  - A group is no wider than its first component's `maxWidth` (like `_Component`).
+  - `DocumentCellPlacement(textDirection:)` (group-wide): right to left, column 0 (rows) and
+    the first item (flows) are on the right. `columnEdges` still run left to right (visual
+    columns); `slotRects`, hit testing and region selection follow the mirrored slots.
 - **Files**: `lib/src/default_editor/layout_single_column/{_cell_layout.dart (new),_layout.dart,layout_single_column.dart}`,
   `lib/src/infrastructure/documents/document_scaffold.dart`, `lib/src/default_editor/super_editor.dart`,
   `lib/src/super_reader/super_reader.dart`; test: `test/wonky_patches/se15_cell_groups_test.dart` (new).
