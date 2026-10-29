@@ -76,6 +76,62 @@ void main() {
     );
 
     test(
+      'when the Google login is linked to an existing account then the IDP '
+      'keeps its auth profile instead of creating a second one',
+      () async {
+        final anna = await TestUsers.create(sessionBuilder, name: 'Anna');
+        final session = sessionBuilder.build();
+        // The auth profile the email sign-up created.
+        await auth.UserProfile.db.insertRow(
+          session,
+          auth.UserProfile(authUserId: anna.authUserId, email: anna.email),
+        );
+        final (authUser, account) = await newGoogleAccount(anna.email);
+        await afterGoogleAccountCreated(
+          session,
+          authUser,
+          account,
+          transaction: null,
+        );
+
+        // What `GoogleIdp.login` does next for a new Google account.
+        await const LinkedAccountUserProfiles().createUserProfile(
+          session,
+          account.authUserId,
+          auth.UserProfileData(fullName: 'Anna Google', email: anna.email),
+        );
+
+        final profiles = await auth.UserProfile.db.find(
+          session,
+          where: (t) => t.authUserId.equals(anna.authUserId),
+        );
+        expect(profiles, hasLength(1));
+        expect(profiles.single.fullName, isNull);
+      },
+    );
+
+    test(
+      'when the Google account is new then the IDP creates its auth profile',
+      () async {
+        final session = sessionBuilder.build();
+        final email = 'new.${clock.now().microsecondsSinceEpoch}@example.test';
+        final (authUser, _) = await newGoogleAccount(email);
+
+        await const LinkedAccountUserProfiles().createUserProfile(
+          session,
+          authUser.id,
+          auth.UserProfileData(fullName: 'Grace Hopper', email: email),
+        );
+
+        final profile = await auth.UserProfile.db.findFirstRow(
+          session,
+          where: (t) => t.authUserId.equals(authUser.id),
+        );
+        expect(profile!.fullName, 'Grace Hopper');
+      },
+    );
+
+    test(
       'when the email is new then a profile is created with the Google name',
       () async {
         final session = sessionBuilder.build();
