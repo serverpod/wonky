@@ -65,8 +65,10 @@ OAuth2 authorization code + PKCE in a popup (the single-window exception of
   ([01 §2.4](01-architecture.md)).
 - **Accounts**: Google's default validation requires a verified email and a name. A first
   Google sign-in for an email that already has a Wonky account signs in to **that** account
-  (the Google account is linked to it and the auth user the IDP just created is deleted);
-  otherwise a new `UserProfile` is created with Google's full name. Later sign-ins use the
+  (the Google account is linked to it and the auth user the IDP just created is deleted;
+  the IDP still treats the account as new and creates its Serverpod auth profile, so the
+  config passes `LinkedAccountUserProfiles`, which returns the linked account's existing
+  auth profile instead of inserting a second one); otherwise a new `UserProfile` is created with Google's full name. Later sign-ins use the
   linked account.
 - **Client** (`auth/google_web_flow.dart`, `google_popup_web.dart`): Wonky runs the popup
   itself instead of `GoogleWebSignInService`/`flutter_web_auth_2`. The apps are

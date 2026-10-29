@@ -3,7 +3,15 @@ import 'dart:io';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_auth_idp_server/core.dart'
-    show AuthUser, AuthUserModel;
+    show
+        AuthUser,
+        AuthUserModel,
+        AuthUsers,
+        TokenManager,
+        UserImageSource,
+        UserProfileData,
+        UserProfileModel,
+        UserProfiles;
 import 'package:serverpod_auth_idp_server/providers/google.dart';
 
 import '../common/models.dart' show UserProfile;
@@ -66,11 +74,63 @@ String? googleWebClientId() => googleClientSecret()?.clientId;
 GoogleIdpConfig? wonkyGoogleIdpConfig() {
   final secret = googleClientSecret();
   if (secret == null) return null;
-  return GoogleIdpConfig(
+  return _WonkyGoogleIdpConfig(
     clientSecret: secret,
     getExtraGoogleInfoCallback: rememberGoogleDetails,
     onAfterGoogleAccountCreated: afterGoogleAccountCreated,
   );
+}
+
+/// [GoogleIdpConfig] whose IDP keeps the existing auth profile of an account
+/// that [afterGoogleAccountCreated] linked the Google account to.
+class _WonkyGoogleIdpConfig extends GoogleIdpConfig {
+  _WonkyGoogleIdpConfig({
+    required super.clientSecret,
+    super.getExtraGoogleInfoCallback,
+    super.onAfterGoogleAccountCreated,
+  });
+
+  @override
+  GoogleIdp build({
+    required TokenManager tokenManager,
+    required AuthUsers authUsers,
+    required UserProfiles userProfiles,
+  }) => super.build(
+    tokenManager: tokenManager,
+    authUsers: authUsers,
+    userProfiles: LinkedAccountUserProfiles(config: userProfiles.config),
+  );
+}
+
+/// [UserProfiles] that returns the existing auth profile instead of creating
+/// a second one. The Google IDP creates the profile of every new Google
+/// account, also when [afterGoogleAccountCreated] linked it to an existing
+/// account, which already has one (unique per auth user).
+class LinkedAccountUserProfiles extends UserProfiles {
+  const LinkedAccountUserProfiles({super.config});
+
+  @override
+  Future<UserProfileModel> createUserProfile(
+    Session session,
+    UuidValue authUserId,
+    UserProfileData userProfile, {
+    Transaction? transaction,
+    UserImageSource? imageSource,
+  }) async {
+    final existing = await maybeFindUserProfileByUserId(
+      session,
+      authUserId,
+      transaction: transaction,
+    );
+    if (existing != null) return existing;
+    return super.createUserProfile(
+      session,
+      authUserId,
+      userProfile,
+      transaction: transaction,
+      imageSource: imageSource,
+    );
+  }
 }
 
 /// Google's account details of the request, between the two callbacks.
