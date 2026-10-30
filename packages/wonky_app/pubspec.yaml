@@ -29,7 +29,7 @@ dependencies:
   serverpod_auth_idp_client: 4.1.0-rc.1
   serverpod_auth_idp_flutter: 4.1.0-rc.1
   serverpod_flutter: 4.1.0-rc.1
-  shad: ^0.99.4
+  shad: ^1.0.2
   shared_preferences: ^2.5.6
   sqlite_async: ^0.14.5
   url_launcher: ^6.3.3

@@ -39,14 +39,14 @@ class Toasts {
               title: Text(title),
               description: description == null ? null : Text(description),
               action: action,
-              duration: duration,
+              displayDuration: duration,
             )
           : ShadToast(
               id: id,
               title: Text(title),
               description: description == null ? null : Text(description),
               action: action,
-              duration: duration,
+              displayDuration: duration,
             ),
     );
     return id;
@@ -112,7 +112,7 @@ class Toasts {
                   child: Text(cancelLabel),
                 ),
               ),
-        duration: duration,
+        displayDuration: duration,
       ),
     );
     return id;

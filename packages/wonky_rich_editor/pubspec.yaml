@@ -16,7 +16,7 @@ dependencies:
   flutter_test:
     sdk: flutter
   markdown: ^7.3.1
-  shad: ^0.99.4
+  shad: ^1.0.2
   # The vendored, patched super_editor (pubspec_overrides.yaml at the root).
   super_editor: ^0.3.0-dev.52
   wonky_rich_text:

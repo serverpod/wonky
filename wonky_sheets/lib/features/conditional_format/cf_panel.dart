@@ -8,6 +8,7 @@ import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_sheets_core/formula.dart' show GridRect, validateFormula;
 import 'package:wonky_sheets_core/model.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 import '../../l10n/sheets_l10n.dart';
 import '../common/range_input.dart';
@@ -1162,11 +1163,7 @@ class _TextFieldState extends State<_TextField> {
     enabled: widget.enabled,
     placeholder: widget.placeholder == null ? null : Text(widget.placeholder!),
     style: widget.mono
-        ? const TextStyle(
-            fontFamily: 'GeistMono',
-            package: 'shad',
-            fontSize: 13,
-          )
+        ? const TextStyle(fontFamily: WonkyFonts.geistMono, fontSize: 13)
         : null,
     onChanged: widget.onChanged,
   );

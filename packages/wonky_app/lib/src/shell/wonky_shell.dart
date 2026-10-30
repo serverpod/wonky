@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:provider/provider.dart';
+import 'package:shad/material.dart' show ShadMaterial;
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
@@ -386,24 +387,29 @@ class _WonkyShellState extends State<WonkyShell> {
             WonkyUiLocalizations.delegate,
             ...config.localizationsDelegates,
           ],
-          builder: (context, child) => WonkyThemeScope(
-            data: WonkyThemeExtension(
-              density: s.prefs.wonkyDensity,
-              reduceMotion: s.prefs.reduceMotion,
-            ),
-            child: KeymapScope(
-              scope: KeyScope.global,
-              keymap: s.keymap,
-              child: config.wrap(
-                context,
-                s,
-                McpBridgeScope(
-                  services: s,
-                  appTools: config.mcpUiTools(s),
-                  child: ShellOverlays(
+          // ShadMaterial: the Material theme, Material and localizations
+          // that super_editor, SelectableText, re_editor and the Material
+          // Scrollbar need (shad 1.0.1 no longer installs them).
+          builder: (context, child) => ShadMaterial(
+            child: WonkyThemeScope(
+              data: WonkyThemeExtension(
+                density: s.prefs.wonkyDensity,
+                reduceMotion: s.prefs.reduceMotion,
+              ),
+              child: KeymapScope(
+                scope: KeyScope.global,
+                keymap: s.keymap,
+                child: config.wrap(
+                  context,
+                  s,
+                  McpBridgeScope(
                     services: s,
-                    ready: _ready,
-                    child: child ?? const SizedBox.shrink(),
+                    appTools: config.mcpUiTools(s),
+                    child: ShellOverlays(
+                      services: s,
+                      ready: _ready,
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   ),
                 ),
               ),

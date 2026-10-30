@@ -46,7 +46,7 @@ dependencies:
     path: ../packages/wonky_write_core
   wonky_ui:
     path: ../packages/wonky_ui
-  shad: ^0.99.4
+  shad: ^1.0.2
   wonky_app:
     path: ../packages/wonky_app
   wonky_client:

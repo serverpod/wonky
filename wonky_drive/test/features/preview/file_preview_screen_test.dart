@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shad/material.dart' show ShadMaterial;
 import 'package:shad/shad.dart' show ShadApp;
 import 'package:wonky_app/fonts.dart';
 import 'package:wonky_app/wonky_app.dart';
@@ -670,6 +671,7 @@ void main() {
       );
       await tester.pumpWidget(
         ShadApp(
+          builder: (context, child) => ShadMaterial(child: child!),
           home: TextFileViewer(controller: active(), fonts: fonts),
         ),
       );

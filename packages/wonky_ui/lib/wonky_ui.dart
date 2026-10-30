@@ -8,6 +8,7 @@ export 'src/ink/one_euro_filter.dart';
 export 'src/keys/key_names.dart';
 export 'src/l10n/wonky_ui_localizations.dart';
 export 'src/theme/wonky_colors.dart';
+export 'src/theme/wonky_fonts.dart';
 export 'src/theme/wonky_theme.dart';
 export 'src/widgets/brand_logos/google_logo.dart';
 export 'src/widgets/color_picker/color_picker.dart';

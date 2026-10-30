@@ -45,7 +45,7 @@ void main() {
     });
 
     test('when Inter is used then the shad-bundled face renders on screen', () {
-      expect(WriteFonts.screenFamilyFor('Inter'), WriteFonts.shadInter);
+      expect(WriteFonts.screenFamilyFor('Inter'), WriteFonts.inter);
       expect(WriteFonts.exportFamilyFor('Inter'), 'Open Sans');
     });
 

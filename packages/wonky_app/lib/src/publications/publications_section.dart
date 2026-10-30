@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 import '../bootstrap/app_urls.dart';
 import '../data/api.dart';
@@ -438,7 +439,7 @@ class _PublicationsSectionState extends State<PublicationsSection> {
       child: Text(
         text,
         style: TextStyle(
-          fontFamily: 'packages/shad/GeistMono',
+          fontFamily: WonkyFonts.geistMono,
           fontSize: 12,
           color: theme.colorScheme.foreground,
         ),

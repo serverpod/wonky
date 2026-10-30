@@ -387,7 +387,7 @@ controls: toasts for people, none for agents), `WonkyFindBar`, `showConflictRevi
   `third_party/syntax_highlight` and its `pubspec_overrides.yaml` entry are gone. `highlight`
   0.7.x (highlight.js port) is a dependency of `wonky_code` only (`HighlightJsTokenizer`).
 - `sqlite3_web` pinned to a version compatible with `sqlite_async` (toptap pins 0.9.4).
-- `shad` `^0.99.4`.
+- `shad` `^1.0.2` (ships no fonts since 1.0: `wonky_ui` bundles Inter, Geist and GeistMono, 02 §2).
 
 ### 2.3 Vendored packages (local copies)
 

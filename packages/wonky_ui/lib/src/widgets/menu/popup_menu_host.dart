@@ -69,7 +69,8 @@ class WonkyPopupMenuHostState extends State<WonkyPopupMenuHost> {
 
   void _changed() {
     if (_wasOpen && !_controller.isOpen) {
-      _built = null;
+      // [_built] stays: shad keeps the closing menu on screen while it
+      // animates out, and it should not shrink to an empty menu meanwhile.
       final cb = _onClosed;
       _onClosed = null;
       cb?.call();
@@ -168,7 +169,7 @@ class WonkyPopupMenuHostState extends State<WonkyPopupMenuHost> {
             anchor: _at == null ? null : ShadGlobalAnchor(_at!),
             constraints: const BoxConstraints(minWidth: 220),
             onTapOutside: (_) => _controller.hide(),
-            items: _controller.isOpen && entries != null
+            items: entries != null && (_controller.isOpen || _built != null)
                 ? [
                     _PlacementProbe(key: _probe, onLaidOut: _place),
                     Opacity(

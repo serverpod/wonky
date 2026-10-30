@@ -18,7 +18,7 @@ suite specs they build on.
 | Who is it for? | Writers, teams and agents who want Google-Docs-level collaboration and portable, diff-able, AI-friendly Markdown. See personas in [../00-product-overview.md](../00-product-overview.md) §2. |
 | How is it different from Google Docs? | Content is always valid Markdown. Appearance comes only from themes. Every action is a command that can be undone and invoked through MCP. Export to `.md` loses nothing except comments, which are kept separately. |
 | How is it different from a Markdown editor? | WYSIWYG (no visible syntax), real-time multi-user editing (OT), comments and suggestions, version history, pages and print layout, and themes for PDF/DOCX/EPUB export. |
-| Tech | `super_editor` (**vendored** copy based on 0.3.0-dev.52 with our patches SE-1…SE-5, see [04 §2.2](04-editor.md)) for the editing surface; `dart_quill_delta` 9.x for OT; Serverpod streams for sync; `shad` 0.99.4 + `wonky_ui` for the chrome. |
+| Tech | `super_editor` (**vendored** copy based on 0.3.0-dev.52 with our patches SE-1…SE-5, see [04 §2.2](04-editor.md)) for the editing surface; `dart_quill_delta` 9.x for OT; Serverpod streams for sync; `shad` 1.0.2 + `wonky_ui` for the chrome. |
 
 ## 2. Write-specific principles
 

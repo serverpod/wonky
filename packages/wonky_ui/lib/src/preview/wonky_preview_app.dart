@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shad/material.dart' show ShadMaterial;
 import 'package:shad/shad.dart';
 
 import '../l10n/wonky_ui_localizations.dart';
@@ -32,8 +32,8 @@ class WonkyTestApp extends StatelessWidget {
       theme: WonkyTheme.light(config),
       darkTheme: WonkyTheme.dark(config),
       themeMode: brightness == Brightness.dark
-          ? ThemeMode.dark
-          : ThemeMode.light,
+          ? ShadThemeMode.dark
+          : ShadThemeMode.light,
       locale: locale,
       supportedLocales: const [Locale('en')],
       localizationsDelegates: [
@@ -41,6 +41,7 @@ class WonkyTestApp extends StatelessWidget {
         ...extraDelegates,
         GlobalWidgetsLocalizations.delegate,
       ],
+      builder: (context, child) => ShadMaterial(child: child!),
       home: WonkyThemeScope(
         data: WonkyThemeExtension(density: config.density),
         child: wrap == null ? child : Builder(builder: (c) => wrap!(c, child)),

@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shad/material.dart' show ShadMaterial;
 import 'package:shad/shad.dart';
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
@@ -357,8 +357,7 @@ class PreviewTestbed {
           WonkyUiLocalizations.delegate,
           ...config.localizationsDelegates,
         ],
-        builder: (context, child) =>
-            Material(type: MaterialType.transparency, child: child),
+        builder: (context, child) => ShadMaterial(child: child!),
       ),
     );
     if (settle) await settleImages(tester);

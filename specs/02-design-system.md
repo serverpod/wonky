@@ -1,6 +1,6 @@
 # 02 · Design System — `wonky_ui`
 
-All UI is built with **`shad`** (Serverpod's high-fidelity shadcn/ui port, `shad: ^0.99.4`,
+All UI is built with **`shad`** (Serverpod's high-fidelity shadcn/ui port, `shad: ^1.0.2`,
 docs: <https://shad.serverpod.dev/>; the package ships an agent skill at
 `skills/shad-overview/SKILL.md` — read it before building UI). Where shad lacks a component,
 we build a **matching widget** in `packages/wonky_ui` that uses only shad tokens
@@ -9,7 +9,11 @@ we build a **matching widget** in `packages/wonky_ui` that uses only shad tokens
 follows light/dark automatically.
 
 Material widgets are **not** used directly in feature code (shad derives a Material `ThemeData`
-for interop only; `Scaffold`-free layouts are preferred). `wonky_ui` must not depend on Serverpod,
+for interop only; `Scaffold`-free layouts are preferred). Since shad 1.0.1 the core library does not
+depend on Material: the shell's `ShadApp` builder wraps the app in `ShadMaterial`
+(`package:shad/material.dart`), which installs that theme, a transparent `Material` and the Material
+and Cupertino localizations for the third-party widgets that need them (super_editor, re_editor,
+`SelectableText`, `Scrollbar`). Tests that pump their own `ShadApp` need it too. `wonky_ui` must not depend on Serverpod,
 the client, or any feature package — pure presentation.
 
 ## 1. App setup
@@ -19,9 +23,10 @@ ShadApp.router(
   title: 'Wonky Write',
   theme: WonkyTheme.light(prefs),     // ShadThemeData
   darkTheme: WonkyTheme.dark(prefs),
-  themeMode: prefs.themeMode,         // system | light | dark
+  themeMode: prefs.themeMode,         // ShadThemeMode: system | light | dark
   routerConfig: router,
   localizationsDelegates: [GlobalShadLocalizations.delegate, ...WonkyL10n.delegates],
+  builder: (context, child) => ShadMaterial(child: child!),
 )
 ```
 
@@ -59,8 +64,9 @@ on `ShadColorScheme`), each defined for light and dark:
 | `success`, `warning`, `info` | Status badges, toasts |
 | `offline` | Offline banner |
 
-Typography: shad bundles **Inter**, **Geist** and **GeistMono**. App chrome uses Geist (UI) and
-GeistMono (formulas, code, shortcuts). Document fonts (Write themes, Sheets cell fonts) come from
+Typography: `wonky_ui` bundles **Inter**, **Geist** and **GeistMono** (`fonts:` in its pubspec,
+family names in `WonkyFonts`; shad shipped them until 1.0 and now ships no fonts). App chrome
+uses Geist (UI) and GeistMono (formulas, code, shortcuts). Document fonts (Write themes, Sheets cell fonts) come from
 a curated font list (see each app spec) loaded via bundled assets (no runtime Google Fonts on
 web for privacy/offline; `google_fonts` is used only at build-time to fetch files into assets).
 

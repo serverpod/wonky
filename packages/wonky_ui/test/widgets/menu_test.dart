@@ -334,4 +334,109 @@ void main() {
       expect(field.hasFocus, isTrue);
     },
   );
+
+  testWidgets(
+    'Given an open menubar menu when hovering another title then only the new menu shows, at once',
+    (tester) async {
+      await pumpWonky(
+        tester,
+        Align(
+          alignment: Alignment.topLeft,
+          child: WonkyMenubar(
+            menus: [
+              WonkyMenubarMenu(
+                id: 'edit',
+                label: 'Edit',
+                entries: () => const [WonkyMenuItem(label: 'Undo')],
+              ),
+              WonkyMenubarMenu(
+                id: 'view',
+                label: 'View',
+                entries: () => const [WonkyMenuItem(label: 'Zoom in')],
+              ),
+            ],
+          ),
+        ),
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      final edit = tester.getCenter(find.byKey(const ValueKey('menubar.edit')));
+      await mouse.moveTo(edit);
+      await mouse.down(edit);
+      await mouse.up();
+      await tester.pumpAndSettle();
+      expect(find.text('Undo'), findsOneWidget);
+
+      await mouse.moveTo(
+        tester.getCenter(find.byKey(const ValueKey('menubar.view'))),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      // shad 1.0 animates a closing menu out; the menubar's close at once
+      // instead of showing over the new one.
+      expect(find.text('Undo'), findsNothing);
+      expect(find.text('Zoom in'), findsOneWidget);
+      expect(find.byType(IntrinsicWidth), findsOneWidget, reason: 'one menu');
+    },
+  );
+
+  testWidgets(
+    'Given an open dropdown when it closes then it keeps its items while it animates out',
+    (tester) async {
+      await pumpWonky(tester, _dropdown([]), center: true);
+      await tester.tap(find.byKey(const ValueKey('trigger')));
+      await tester.pumpAndSettle();
+      final size = tester.getSize(find.byType(IntrinsicWidth).first);
+
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+      // Still on screen while it animates out, and not as an empty (slim)
+      // menu.
+      expect(find.text('Open'), findsOneWidget);
+      expect(tester.getSize(find.byType(IntrinsicWidth).first), size);
+
+      await tester.pumpAndSettle();
+      expect(find.text('Open'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Given an item focused with the keyboard when another item is hovered then the focus follows the pointer',
+    (tester) async {
+      final log = <String>[];
+      await pumpWonky(
+        tester,
+        WonkyDropdownMenu(
+          entries: () => [
+            for (final l in ['a', 'b', 'c', 'd'])
+              WonkyMenuItem(label: l, onSelected: () => log.add(l)),
+          ],
+          builder: (context, c) => ShadButton(
+            key: const ValueKey('trigger'),
+            onPressed: c.toggle,
+            child: const Text('Menu'),
+          ),
+        ),
+        center: true,
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await tester.tap(find.byKey(const ValueKey('trigger')));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+
+      await mouse.moveTo(tester.getCenter(find.text('c')));
+      await tester.pumpAndSettle();
+      // One highlighted item: `a` lost the keyboard focus to `c`, and the
+      // arrows continue from there.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(log, ['d']);
+    },
+  );
 }

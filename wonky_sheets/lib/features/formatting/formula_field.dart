@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_sheets_core/formula.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 import '../../l10n/sheets_l10n.dart';
 import '../../theme/sheets_tokens.dart';
@@ -305,8 +306,7 @@ class FormulaFieldState extends State<FormulaField> {
     final parse = _parseError();
     final error = parse != null ? l.formulaParseError(parse) : widget.error;
     final mono = theme.textTheme.small.copyWith(
-      fontFamily: 'GeistMono',
-      package: 'shad',
+      fontFamily: WonkyFonts.geistMono,
       fontSize: 13,
     );
     return Column(
@@ -326,8 +326,7 @@ class FormulaFieldState extends State<FormulaField> {
                 ? null
                 : Text(widget.placeholder!),
             style: const TextStyle(
-              fontFamily: 'GeistMono',
-              package: 'shad',
+              fontFamily: WonkyFonts.geistMono,
               fontSize: 13,
             ),
           ),

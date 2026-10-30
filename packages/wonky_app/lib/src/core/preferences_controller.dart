@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:shad/shad.dart' show ShadThemeMode;
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_ui/wonky_ui.dart';
 
@@ -35,10 +35,10 @@ class PreferencesController extends ChangeNotifier {
   final Map<String, Object?> _deviceValues = {};
 
   AppThemeMode get appTheme => _theme;
-  ThemeMode get themeMode => switch (_theme) {
-    AppThemeMode.system => ThemeMode.system,
-    AppThemeMode.light => ThemeMode.light,
-    AppThemeMode.dark => ThemeMode.dark,
+  ShadThemeMode get themeMode => switch (_theme) {
+    AppThemeMode.system => ShadThemeMode.system,
+    AppThemeMode.light => ShadThemeMode.light,
+    AppThemeMode.dark => ShadThemeMode.dark,
   };
   UiDensity get density => _density;
   WonkyDensity get wonkyDensity => _density == UiDensity.compact

@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_sheets_core/model.dart';
-import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
+import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton, WonkyFonts;
 
 import '../../l10n/sheets_l10n.dart';
 import 'mcp_dialog_state.dart';
@@ -174,7 +174,7 @@ class _CustomNumberFormatDialogState
       (l.numFmtSampleZero, const NumberValue(0)),
       (l.numFmtSampleText, const TextValue('Text')),
     ];
-    const mono = TextStyle(fontFamily: 'GeistMono', package: 'shad');
+    const mono = TextStyle(fontFamily: WonkyFonts.geistMono);
     Widget example(String p) => ShadButton.ghost(
       key: ValueKey<String>('dialog.customNumberFormat.example.$p'),
       size: ShadButtonSize.sm,

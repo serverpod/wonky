@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show Material, MaterialType, ThemeMode;
+import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -30,8 +30,8 @@ Future<void> pumpScreen(
         theme: WonkyTheme.light(),
         darkTheme: WonkyTheme.dark(),
         themeMode: brightness == Brightness.dark
-            ? ThemeMode.dark
-            : ThemeMode.light,
+            ? ShadThemeMode.dark
+            : ShadThemeMode.light,
         localizationsDelegates: const [
           WonkyAppLocalizations.delegate,
           WonkyUiLocalizations.delegate,

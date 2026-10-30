@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 
 import 'wonky_colors.dart';
+import 'wonky_fonts.dart';
 
 /// UI density (user preference, suite 04 §4 Appearance).
 enum WonkyDensity { comfortable, compact }
@@ -68,7 +69,7 @@ abstract final class WonkyTheme {
       ), () => _build(brightness, config));
 
   /// The monospace font family (formulas, code, shortcuts).
-  static const monoFamily = kDefaultFontFamilyMono;
+  static const monoFamily = WonkyFonts.geistMono;
 
   static ShadThemeData _build(Brightness brightness, WonkyThemeConfig config) {
     final tokens = WonkyPalette.tokens(brightness);
@@ -92,7 +93,7 @@ abstract final class WonkyTheme {
       colorScheme: scheme,
       style: ShadStyleTokens.vega,
       spacing: ShadSpacing(step: compact ? 3.5 : 4),
-      textTheme: ShadTextTheme(family: 'Geist', package: 'shad'),
+      textTheme: ShadTextTheme(family: WonkyFonts.geist),
     );
   }
 

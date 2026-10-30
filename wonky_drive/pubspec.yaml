@@ -23,7 +23,7 @@ dependencies:
   # File previews: signed-URL fetches (Drive 02 §6.1).
   http: ^1.6.0
   intl: ^0.20.3
-  shad: ^0.99.4
+  shad: ^1.0.2
   wonky_app:
     path: ../packages/wonky_app
   wonky_client:
