@@ -576,7 +576,7 @@ instances (the `pdf` package does not support variable fonts or CFF-flavoured OT
 | 20 | IBM Plex Mono | Mono | 400 R/I, 700 R | OFL 1.1 |
 | 21 | Source Code Pro | Mono | 400 R/I, 700 R | OFL 1.1 |
 | 22 | Courier Prime | Mono (typewriter) | 400 R/I, 700 R/I | OFL 1.1 |
-| 23 | Geist / Geist Mono | Sans / Mono | 400, 600, 700 (already bundled by shad for UI; registered as document fonts too) | OFL 1.1 |
+| 23 | Geist / Geist Mono | Sans / Mono | 400, 600, 700 (already bundled by `wonky_ui` for UI; registered as document fonts too) | OFL 1.1 |
 
 **Fallback fonts** (not user-selectable, loaded on demand when glyphs are missing): Noto Sans,
 Noto Serif, Noto Sans Mono, Noto Sans Symbols 2, Noto Emoji (monochrome; PDF can't embed color
@@ -589,7 +589,7 @@ likewise on demand. All OFL 1.1. License texts are included in the About › Lic
 > registry live in the shared package `packages/wonky_fonts` (`fonts/` as package assets,
 > manifest `BundledFonts`); Write loads Open Sans, EB Garamond and JetBrains Mono from it
 > (`packages/wonky_fonts/fonts/…`; OFL-1.1, licenses in the same folder and on the About › Licenses page). Families that are not bundled are
-> substituted by category (sans → Inter from `shad` on screen / Open Sans in PDFs, serif → EB
+> substituted by category (sans → Inter from `wonky_ui` on screen / Open Sans in PDFs, serif → EB
 > Garamond, mono → JetBrains Mono) by `WriteFonts` (`features/themes/write_fonts.dart`); Open
 > Sans is the PDF glyph fallback (Latin Extended, Greek, Cyrillic). CJK/Arabic fallbacks and the
 > full curated set are a TODO. The server has the same TTFs in `wonky_server/web/fonts/`

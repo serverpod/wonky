@@ -48,6 +48,15 @@ class _WonkyDropdownMenuState extends State<WonkyDropdownMenu> {
   ShadContextMenuController? _own;
   bool _wasOpen = false;
 
+  /// The entries the open menu shows. shad keeps a closing menu on screen
+  /// while it animates out, so it goes on showing them instead of an empty
+  /// (slim) menu.
+  List<WonkyMenuEntry> _entries = const [];
+
+  /// The open menu's height limit, kept while it animates out: the trigger
+  /// may be leaving too (a closing drawer) and cannot be measured then.
+  double? _openMaxHeight;
+
   ShadContextMenuController get _controller =>
       widget.controller ?? (_own ??= ShadContextMenuController());
 
@@ -110,15 +119,6 @@ class _WonkyDropdownMenuState extends State<WonkyDropdownMenu> {
   @override
   Widget build(BuildContext context) {
     final anchor = widget.anchor ?? _defaultAnchor;
-    final items = _controller.isOpen
-        ? buildWonkyMenuItems(
-            context,
-            widget.entries(),
-            onClose: _controller.hide,
-            requestFocus: true,
-            maxHeight: () => _maxHeight(anchor),
-          )
-        : const <Widget>[SizedBox.shrink()];
     return ShadContextMenu(
       controller: _controller,
       // A manual anchor never moves the menu back onto the screen.
@@ -126,7 +126,15 @@ class _WonkyDropdownMenuState extends State<WonkyDropdownMenu> {
           ? WonkyMenuPlacement.onScreen(anchor)
           : anchor,
       constraints: widget.constraints ?? const BoxConstraints(minWidth: 200),
-      items: items,
+      itemsBuilder: (_) => buildWonkyMenuItems(
+        context,
+        _controller.isOpen ? _entries = widget.entries() : _entries,
+        onClose: _controller.hide,
+        requestFocus: true,
+        maxHeight: () => _controller.isOpen
+            ? _openMaxHeight = _maxHeight(anchor)
+            : _openMaxHeight,
+      ),
       onTapOutside: (_) => _controller.hide(),
       child: Builder(
         builder: (context) => widget.builder(context, _controller),
@@ -182,6 +190,10 @@ class _LazyContextMenuRegion extends StatefulWidget {
 class _LazyContextMenuRegionState extends State<_LazyContextMenuRegion> {
   final _controller = ShadContextMenuController();
 
+  /// The entries of the open menu, kept while it animates out (see
+  /// [_WonkyDropdownMenuState._entries]).
+  List<WonkyMenuEntry> _entries = const [];
+
   /// Where the last pointer went down: the menu opens there (shad flips it
   /// above the pointer when it does not fit below and keeps it on screen
   /// horizontally), so it may be as tall as the larger side.
@@ -224,17 +236,12 @@ class _LazyContextMenuRegionState extends State<_LazyContextMenuRegion> {
     return ShadContextMenuRegion(
       controller: _controller,
       constraints: const BoxConstraints(minWidth: 220),
-      items: [
-        if (_controller.isOpen)
-          ...buildWonkyMenuItems(
-            context,
-            widget.entries(),
-            onClose: _controller.hide,
-            maxHeight: _maxHeight,
-          )
-        else
-          const SizedBox.shrink(),
-      ],
+      itemsBuilder: (_) => buildWonkyMenuItems(
+        context,
+        _controller.isOpen ? _entries = widget.entries() : _entries,
+        onClose: _controller.hide,
+        maxHeight: _maxHeight,
+      ),
       child: Listener(
         // Also over empty space, where shad's detector opens the menu too.
         behavior: HitTestBehavior.translucent,

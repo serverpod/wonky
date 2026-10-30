@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show Material, MaterialType, ThemeMode;
+import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -50,8 +50,8 @@ void main() {
           theme: WonkyTheme.light(),
           darkTheme: WonkyTheme.dark(),
           themeMode: brightness == Brightness.dark
-              ? ThemeMode.dark
-              : ThemeMode.light,
+              ? ShadThemeMode.dark
+              : ShadThemeMode.light,
           locale: locale,
           supportedLocales: const [Locale('en'), pseudoLocale],
           localizationsDelegates: const [

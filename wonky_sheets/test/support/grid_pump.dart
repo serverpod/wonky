@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shad/material.dart' show ShadMaterial;
 import 'package:shad/shad.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart' show KeyScope;
@@ -34,16 +34,14 @@ Future<void> pumpSheets(
           WonkyUiLocalizations.delegate,
           SheetsLocalizations.delegate,
         ],
-        home: Material(
-          type: MaterialType.transparency,
-          child: WonkyThemeScope(
-            data: const WonkyThemeExtension(),
-            child: KeymapScope(
-              scope: KeyScope.global,
-              keymap: s.services.keymap,
-              child:
-                  child ?? GridArea(controller: s.editor, services: s.services),
-            ),
+        builder: (context, child) => ShadMaterial(child: child!),
+        home: WonkyThemeScope(
+          data: const WonkyThemeExtension(),
+          child: KeymapScope(
+            scope: KeyScope.global,
+            keymap: s.services.keymap,
+            child:
+                child ?? GridArea(controller: s.editor, services: s.services),
           ),
         ),
       ),

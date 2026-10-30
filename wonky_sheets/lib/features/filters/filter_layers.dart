@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show Listenable;
 import 'package:flutter/widgets.dart' show Brightness;
 import 'package:flutter/rendering.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 import 'package:wonky_sheets_core/formula.dart' show GridRect;
 
 import '../../theme/sheets_tokens.dart';
@@ -292,7 +293,7 @@ class StickyRowLayer extends GridLayer {
           style: TextStyle(
             fontSize: fontSize,
             color: t.sheetBackground,
-            fontFamily: 'packages/shad/Inter',
+            fontFamily: WonkyFonts.inter,
             fontWeight: FontWeight.w600,
           ),
         ),

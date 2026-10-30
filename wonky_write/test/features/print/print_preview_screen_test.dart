@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,8 +58,8 @@ Future<CommandTestHarness> _pumpPreview(
         theme: WonkyTheme.light(),
         darkTheme: WonkyTheme.dark(),
         themeMode: brightness == Brightness.dark
-            ? ThemeMode.dark
-            : ThemeMode.light,
+            ? ShadThemeMode.dark
+            : ShadThemeMode.light,
         routerConfig: h.services.router,
         localizationsDelegates: const [
           WonkyAppLocalizations.delegate,

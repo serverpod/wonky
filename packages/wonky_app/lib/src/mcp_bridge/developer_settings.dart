@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 
 import '../commands/shell_commands/general_commands.dart' show mcpUrl;
@@ -261,7 +262,7 @@ class _McpDeveloperSettingsState extends State<McpDeveloperSettings> {
                 Text(
                   '${t.prefix}… · ${t.scopes.join(', ')}',
                   style: theme.textTheme.muted.copyWith(
-                    fontFamily: 'packages/shad/GeistMono',
+                    fontFamily: WonkyFonts.geistMono,
                     fontSize: 12,
                   ),
                 ),
@@ -305,7 +306,7 @@ class _McpDeveloperSettingsState extends State<McpDeveloperSettings> {
       child: Text(
         text,
         style: TextStyle(
-          fontFamily: 'packages/shad/GeistMono',
+          fontFamily: WonkyFonts.geistMono,
           fontSize: 12,
           color: theme.colorScheme.foreground,
         ),
@@ -349,7 +350,7 @@ class _McpDeveloperSettingsState extends State<McpDeveloperSettings> {
                         child: Text(
                           created.secret,
                           style: TextStyle(
-                            fontFamily: 'packages/shad/GeistMono',
+                            fontFamily: WonkyFonts.geistMono,
                             color: theme.colorScheme.foreground,
                           ),
                         ),

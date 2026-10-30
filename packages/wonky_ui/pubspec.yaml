@@ -17,10 +17,25 @@ dependencies:
   flutter_test:
     sdk: flutter
   intl: ^0.20.3
-  shad: ^0.99.4
+  shad: ^1.0.2
 
 dev_dependencies:
   wonky_lints:
     path: ../wonky_lints
 flutter:
   generate: true
+  # The UI and default document typefaces (WonkyFonts). shad bundled them
+  # until 1.0; these are the same variable fonts, under their OFL licenses.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: "fonts/Inter[opsz,wght].ttf"
+    - family: Geist
+      fonts:
+        - asset: "fonts/Geist[wght].ttf"
+    - family: GeistMono
+      fonts:
+        - asset: "fonts/GeistMono[wght].ttf"
+  assets:
+    - fonts/OFL-Inter.txt
+    - fonts/OFL-Geist.txt

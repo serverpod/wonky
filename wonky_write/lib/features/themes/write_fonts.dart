@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 /// One bundled static TTF face (a `wonky_fonts` package asset,
@@ -33,10 +34,10 @@ abstract final class WriteFonts {
   static const ebGaramond = 'EB Garamond';
   static const jetBrainsMono = 'JetBrains Mono';
 
-  /// Inter / Geist ship with `shad` (variable fonts, screen only).
-  static const shadInter = 'packages/shad/Inter';
-  static const shadGeist = 'packages/shad/Geist';
-  static const shadGeistMono = 'packages/shad/GeistMono';
+  /// Inter / Geist ship with `wonky_ui` (variable fonts, screen only).
+  static const inter = WonkyFonts.inter;
+  static const geist = WonkyFonts.geist;
+  static const geistMono = WonkyFonts.geistMono;
 
   /// Write's bundled faces: the Open Sans, EB Garamond and JetBrains Mono
   /// faces of the shared `wonky_fonts` package assets.
@@ -77,17 +78,17 @@ abstract final class WriteFonts {
   static String screenFamilyFor(String family) {
     switch (family) {
       case 'Inter':
-        return shadInter;
+        return inter;
       case 'Geist':
-        return shadGeist;
+        return geist;
       case 'Geist Mono':
-        return shadGeistMono;
+        return geistMono;
     }
     if (_bundledFamilies.contains(family)) return family;
     return switch (categoryOf(family)) {
       FontCategory.serif => ebGaramond,
       FontCategory.mono => jetBrainsMono,
-      FontCategory.sans => shadInter,
+      FontCategory.sans => inter,
     };
   }
 

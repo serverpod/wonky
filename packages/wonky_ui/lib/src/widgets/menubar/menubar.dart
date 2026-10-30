@@ -150,6 +150,14 @@ class WonkyMenubar extends StatefulWidget {
 class _WonkyMenubarState extends State<WonkyMenubar> {
   WonkyMenubarController? _own;
 
+  /// The entries each menu showed when it was last open. shad keeps a
+  /// closing menu on screen while it animates out (switching menus, choosing
+  /// an item), so it goes on showing them instead of an empty, slim menu.
+  final Map<int, List<WonkyMenuEntry>> _shown = {};
+
+  /// The height limit of the open menu, measured only while a menu is open.
+  double? _openMaxHeight;
+
   WonkyMenubarController get _controller =>
       widget.controller ?? (_own ??= WonkyMenubarController());
 
@@ -194,6 +202,39 @@ class _WonkyMenubarState extends State<WonkyMenubar> {
     return WonkyMenuPlacement.itemsMaxHeightBeside(context, rect, gap: 4);
   }
 
+  ShadThemeData? _instantCloseBase;
+  ShadThemeData? _instantCloseTheme;
+
+  /// [theme] with menus that close without an exit animation (cached per
+  /// theme, which is itself cached by `WonkyTheme`).
+  ShadThemeData _instantClose(ShadThemeData theme) {
+    if (!identical(theme, _instantCloseBase)) {
+      _instantCloseBase = theme;
+      _instantCloseTheme = theme.copyWith(
+        contextMenuTheme: theme.contextMenuTheme.copyWith(
+          popoverReverseDuration: Duration.zero,
+        ),
+      );
+    }
+    return _instantCloseTheme!;
+  }
+
+  /// The items of menu [i]: its current entries while [open], else the ones
+  /// it showed last (see [_shown]). Never empty: without items
+  /// `ShadContextMenu` drops its popover and remounts the title.
+  List<Widget> _items(int i, {required bool open}) {
+    final items = buildWonkyMenuItems(
+      context,
+      open ? _shown[i] = widget.menus[i].entries() : _shown[i] ?? const [],
+      onClose: _controller.close,
+      // Also when opened with the pointer: the menu takes the keys (Escape,
+      // ↑/↓, type-ahead) instead of a focused document editor behind it.
+      requestFocus: true,
+      maxHeight: () => open ? _openMaxHeight = _maxHeight() : _openMaxHeight,
+    );
+    return items.isEmpty ? const [SizedBox.shrink()] : items;
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = _controller.._menus = widget.menus;
@@ -210,43 +251,38 @@ class _WonkyMenubarState extends State<WonkyMenubar> {
         // scroll the strip horizontally instead of overflowing.
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: ShadMenubar(
-            controller: controller._shad,
-            border: ShadBorder.none,
-            padding: EdgeInsets.zero,
-            backgroundColor: theme.colorScheme.background,
-            items: [
-              for (var i = 0; i < widget.menus.length; i++)
-                ShadMenubarItem(
-                  key: ValueKey<String>('menubar.${widget.menus[i].id}'),
-                  focusNode: controller._focusAt(i),
-                  controller: controller._popoverAt(i),
-                  height: widget.height - 4,
-                  buttonPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  // shad's default anchor, kept on screen (a menu at the
-                  // end of a narrow strip ran off the right edge).
-                  anchor: _anchor,
-                  constraints: const BoxConstraints(minWidth: 240),
-                  items: selected == i
-                      ? buildWonkyMenuItems(
-                          context,
-                          widget.menus[i].entries(),
-                          onClose: controller.close,
-                          // Also when opened with the pointer: the menu takes
-                          // the keys (Escape, ↑/↓, type-ahead) instead of a
-                          // focused document editor behind it.
-                          requestFocus: true,
-                          maxHeight: _maxHeight,
-                        )
-                      : const [SizedBox.shrink()],
-                  child: Text(
-                    widget.menus[i].label,
-                    style: theme.textTheme.small.copyWith(
-                      fontWeight: FontWeight.normal,
+          // Menus close at once, as in 0.99 and native menubars: since shad
+          // 1.0 a menu animates out, and switching menus (hovering another
+          // title) showed the old one over the new one for 150 ms.
+          child: ShadTheme(
+            data: _instantClose(theme),
+            child: ShadMenubar(
+              controller: controller._shad,
+              border: ShadBorder.none,
+              padding: EdgeInsets.zero,
+              backgroundColor: theme.colorScheme.background,
+              items: [
+                for (var i = 0; i < widget.menus.length; i++)
+                  ShadMenubarItem(
+                    key: ValueKey<String>('menubar.${widget.menus[i].id}'),
+                    focusNode: controller._focusAt(i),
+                    controller: controller._popoverAt(i),
+                    height: widget.height - 4,
+                    buttonPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    // shad's default anchor, kept on screen (a menu at the
+                    // end of a narrow strip ran off the right edge).
+                    anchor: _anchor,
+                    constraints: const BoxConstraints(minWidth: 240),
+                    items: _items(i, open: selected == i),
+                    child: Text(
+                      widget.menus[i].label,
+                      style: theme.textTheme.small.copyWith(
+                        fontWeight: FontWeight.normal,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

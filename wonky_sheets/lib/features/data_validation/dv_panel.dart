@@ -898,7 +898,7 @@ class _RuleEditorState extends State<_RuleEditor> {
     controller: c,
     placeholder: Text(d.kind == DvKind.customFormula ? '=B2>A2' : placeholder),
     style: d.kind == DvKind.customFormula
-        ? const TextStyle(fontFamily: 'packages/shad/GeistMono', fontSize: 13)
+        ? const TextStyle(fontFamily: WonkyFonts.geistMono, fontSize: 13)
         : null,
     onChanged: (_) {
       _changed();

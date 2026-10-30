@@ -331,8 +331,7 @@ class _CustomDateTimeDialogState extends McpDialogState<CustomDateTimeDialog> {
                   child: Text(
                     _pattern,
                     style: theme.textTheme.muted.copyWith(
-                      fontFamily: 'GeistMono',
-                      package: 'shad',
+                      fontFamily: WonkyFonts.geistMono,
                       fontSize: 12,
                     ),
                   ),

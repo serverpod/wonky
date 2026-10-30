@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 /// The asset folder of the bundled static faces: `wonky_fonts`' package
 /// assets, shared with the other apps (the server keeps a copy in
@@ -207,11 +208,11 @@ abstract final class CellFonts {
     final shown = displayFamily(family);
     switch (shown) {
       case inter:
-        return 'packages/shad/Inter';
+        return WonkyFonts.inter;
       case geist:
-        return 'packages/shad/Geist';
+        return WonkyFonts.geist;
       case geistMono:
-        return 'packages/shad/GeistMono';
+        return WonkyFonts.geistMono;
     }
     if (!_loaded.contains(shown)) unawaited(ensureLoaded(shown));
     return shown;
@@ -231,7 +232,7 @@ abstract final class CellFonts {
   }
 
   /// Fallback families for glyphs missing in the cell font.
-  static const fallback = ['packages/shad/Inter', 'packages/shad/Geist'];
+  static const fallback = [WonkyFonts.inter, WonkyFonts.geist];
 
   static final Set<String> _loaded = {};
   static final Map<String, Future<void>> _loading = {};

@@ -16,7 +16,7 @@ dependencies:
   flutter_scene: ^0.24.3
   # The shared chart widgets (ChartView tooltips, data table dialog, chart
   # type icons, ChartStyleEditor) are built with shad (02).
-  shad: ^0.99.4
+  shad: ^1.0.2
   # Color picker of the ChartStyleEditor.
   wonky_ui:
     path: ../wonky_ui

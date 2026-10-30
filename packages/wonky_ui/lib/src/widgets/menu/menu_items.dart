@@ -107,6 +107,20 @@ class _TypeAheadMenuBodyState extends State<_TypeAheadMenuBody> {
     return true;
   }
 
+  /// Focus follows the pointer, as in Radix menus: an item is highlighted
+  /// while hovered or focused, so an item focused with the keyboard stayed
+  /// highlighted next to the hovered one. The arrows continue from it.
+  void _onPointerEnter(int i) {
+    if (_focusItem(i)) return;
+    if (_wrappers.any((w) => w.hasFocus)) _root.requestFocus();
+  }
+
+  /// The pointer left item [i] (for another item, a separator or outside
+  /// the menu): it gives the focus back to the menu.
+  void _onPointerExit(int i) {
+    if (i < _wrappers.length && _wrappers[i].hasFocus) _root.requestFocus();
+  }
+
   KeyEventResult _move(int delta, {bool fromEdge = false}) {
     final count = _labels.length;
     if (count == 0) return KeyEventResult.ignored;
@@ -198,11 +212,19 @@ class _TypeAheadMenuBodyState extends State<_TypeAheadMenuBody> {
         _ => '',
       });
       children.add(
-        Focus(
-          focusNode: _wrapperAt(i),
-          canRequestFocus: false,
-          skipTraversal: true,
-          child: _buildEntry(context, e, leading),
+        MouseRegion(
+          // Opaque (the default) with deferToChild: a non-opaque region
+          // reports a miss from hit testing, which would hide taps on the
+          // item from the menu's TapRegion.
+          hitTestBehavior: HitTestBehavior.deferToChild,
+          onEnter: (_) => _onPointerEnter(i),
+          onExit: (_) => _onPointerExit(i),
+          child: Focus(
+            focusNode: _wrapperAt(i),
+            canRequestFocus: false,
+            skipTraversal: true,
+            child: _buildEntry(context, e, leading),
+          ),
         ),
       );
     }

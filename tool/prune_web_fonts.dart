@@ -8,8 +8,8 @@
 //
 // - the Lucide stroke-weight families (`Lucide100`…`Lucide600`): only Slides
 //   draws icons with other stroke widths (`wonky_slides_core` lucide_glyphs);
-// - shad's `Inter`: the UI uses Geist; only chart text (Sheets, Slides) uses
-//   it (`wonky_charts_flutter` chart_painter);
+// - `wonky_ui`'s `Inter`: the UI uses Geist; only chart text (Sheets,
+//   Slides) uses it (`wonky_charts_flutter` chart_painter);
 // - `golden_toolkit`'s Roboto, a test package (in case it comes back as a
 //   regular dependency of the vendored super_editor).
 //
@@ -23,8 +23,8 @@ import 'dart:io';
 
 /// Families each app's build drops.
 const Map<String, Set<String>> unusedFamilies = {
-  'drive': {..._lucideWeights, _shadInter, _testRoboto},
-  'write': {..._lucideWeights, _shadInter, _testRoboto},
+  'drive': {..._lucideWeights, _inter, _testRoboto},
+  'write': {..._lucideWeights, _inter, _testRoboto},
   'sheets': {..._lucideWeights, _testRoboto},
   'slides': {_testRoboto},
 };
@@ -37,7 +37,7 @@ const _lucideWeights = {
   'packages/lucide_icons_flutter/Lucide500',
   'packages/lucide_icons_flutter/Lucide600',
 };
-const _shadInter = 'packages/shad/Inter';
+const _inter = 'packages/wonky_ui/Inter';
 const _testRoboto = 'packages/golden_toolkit/Roboto';
 
 void main(List<String> args) {

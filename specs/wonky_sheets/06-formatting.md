@@ -511,13 +511,13 @@ Curated **bundled** cell fonts (no runtime Google Fonts; suite 02 §2), files un
 
 | Group | Fonts |
 |-------|-------|
-| Default / UI-like | **Inter** (default, ships with shad), Roboto, Open Sans, Lato, Source Sans 3, Noto Sans, Nunito, Montserrat, Oswald |
+| Default / UI-like | **Inter** (default, ships with `wonky_ui`), Roboto, Open Sans, Lato, Source Sans 3, Noto Sans, Nunito, Montserrat, Oswald |
 | Serif | Merriweather, Lora, Playfair Display, Noto Serif |
 | Mono | JetBrains Mono, Roboto Mono, Source Code Pro (Courier Prime is not offered: JetBrains Mono is the suite's monospace face) |
 | Handwriting/display | Caveat, Comfortaa |
 | Metric-compatible (XLSX fidelity) | Arimo (≈ Arial/Helvetica), Tinos (≈ Times New Roman), Cousine (≈ Courier New), Carlito (≈ Calibri), Caladea (≈ Cambria), Gelasio (≈ Georgia) |
 
-> **As built (phase 2).** Bundled: Inter, Geist, Geist Mono (from `shad`) and static OFL faces of
+> **As built (phase 2).** Bundled: Inter, Geist, Geist Mono (from `wonky_ui`) and static OFL faces of
 > Open Sans, EB Garamond and JetBrains Mono (`wonky_fonts`' package assets, `packages/wonky_fonts/fonts/` — Sheets' own copy was dropped in CQ-64g —, loaded on demand by
 > `CellFonts`, `features/formatting/cell_fonts.dart`). Every other name — including the theme
 > presets' fonts — is stored unchanged and displayed by category (serif → EB Garamond, mono →

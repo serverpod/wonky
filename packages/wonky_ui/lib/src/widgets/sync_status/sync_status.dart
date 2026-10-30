@@ -6,6 +6,7 @@ import 'package:shad/shad.dart';
 
 import '../../l10n/wonky_ui_localizations.dart';
 import '../../theme/wonky_colors.dart';
+import '../../theme/wonky_fonts.dart';
 import '../dialog/dialog_close_button.dart';
 
 /// The sync states shown by [SyncStatusIndicator] (suite 02 §4.14).
@@ -241,7 +242,7 @@ class _SyncStatusIndicatorState extends State<SyncStatusIndicator> {
                                     Text(
                                       time.format(e.at.toLocal()),
                                       style: theme.textTheme.muted.copyWith(
-                                        fontFamily: 'packages/shad/GeistMono',
+                                        fontFamily: WonkyFonts.geistMono,
                                         fontSize: 12,
                                       ),
                                     ),

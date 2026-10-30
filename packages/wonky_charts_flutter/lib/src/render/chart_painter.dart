@@ -6,24 +6,22 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/rendering.dart';
 import 'package:wonky_charts/wonky_charts.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 import '../three_d/chart3d_gpu.dart';
 
 /// Font used for chart text when the spec names none (or one that isn't
-/// bundled): the app UI font shipped with `shad`.
-const String kChartDefaultFont = 'packages/shad/Inter';
+/// bundled): Inter, shipped with `wonky_ui`.
+const String kChartDefaultFont = WonkyFonts.inter;
 
-const List<String> _fallbackFonts = [
-  'packages/shad/Inter',
-  'packages/shad/Geist',
-];
+const List<String> _fallbackFonts = [WonkyFonts.inter, WonkyFonts.geist];
 
 /// Families the app can render (bundled fonts); others fall back to
 /// [kChartDefaultFont] so layout and paint use the same metrics.
 const Set<String> _bundled = {
-  'packages/shad/Inter',
-  'packages/shad/Geist',
-  'packages/shad/GeistMono',
+  WonkyFonts.inter,
+  WonkyFonts.geist,
+  WonkyFonts.geistMono,
 };
 
 /// The bundled Flutter family chart text of family [f] is drawn with
@@ -34,9 +32,9 @@ String _family(String? f) {
   if (f == null || f.isEmpty) return kChartDefaultFont;
   if (_bundled.contains(f)) return f;
   return switch (f.toLowerCase()) {
-    'inter' => 'packages/shad/Inter',
-    'geist' => 'packages/shad/Geist',
-    'geist mono' || 'geistmono' => 'packages/shad/GeistMono',
+    'inter' => WonkyFonts.inter,
+    'geist' => WonkyFonts.geist,
+    'geist mono' || 'geistmono' => WonkyFonts.geistMono,
     _ => kChartDefaultFont,
   };
 }
