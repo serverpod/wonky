@@ -1,12 +1,40 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shad/shad.dart' show LucideIcons;
 import 'package:super_editor/super_editor.dart';
 
 import '../attributions/wonky_attributions.dart';
 import '../styles/editor_theme.dart';
+
+/// A pill's padding left of its first character, in em (the right padding
+/// is its last character's letter spacing, [PillGapAttribution.pill]).
+const pillPaddingLeft = 0.55;
+
+/// The inset of a left-to-right, start-aligned paragraph whose text starts
+/// with a chip or button (Write 11 §7.2): the pill's left padding, so the
+/// pill starts at the text margin instead of hanging over it (and over the
+/// page or a container's edge). Zero for any other paragraph.
+EdgeInsets leadingPillInset(ParagraphComponentViewModel viewModel) {
+  final text = viewModel.text;
+  if (text.isEmpty ||
+      viewModel.textDirection != TextDirection.ltr ||
+      !const {
+        TextAlign.left,
+        TextAlign.start,
+        TextAlign.justify,
+      }.contains(viewModel.textAlignment)) {
+    return EdgeInsets.zero;
+  }
+  final attributions = text.getAllAttributionsAt(0);
+  if (!attributions.any(
+    (a) => a is ChipAttribution || (a is LinkStyleAttribution && a.isButton),
+  )) {
+    return EdgeInsets.zero;
+  }
+  final em = viewModel.textStyleBuilder(attributions).fontSize ?? 14.67;
+  return EdgeInsets.only(left: em * pillPaddingLeft);
+}
 
 /// Paints the Wonky Markdown inline elements of a text component (Write 11
 /// §7.2): the pills behind chips and buttons and the arrow after arrow
@@ -43,6 +71,13 @@ class InlinePillComponentBuilder implements ComponentBuilder {
       range: SpanRange(0, text.length),
     )) {
       final a = span.attribution;
+      // The font size at the pill's first character, as [leadingPillInset]
+      // reads it (the editor's text isn't scaled).
+      double em() =>
+          viewModel
+              .textStyleBuilder(text.getAllAttributionsAt(span.start))
+              .fontSize ??
+          14.67;
       pills.add(switch (a) {
         ChipAttribution() => _PillSpan(
           span.start,
@@ -50,7 +85,7 @@ class InlinePillComponentBuilder implements ComponentBuilder {
           fill: style.chipBackground,
           radius: style.chipRadius,
           padY: 0.28,
-          lineHeight: 1.8,
+          em: em(),
         ),
         LinkStyleAttribution(isButton: true) => _PillSpan(
           span.start,
@@ -60,7 +95,7 @@ class InlinePillComponentBuilder implements ComponentBuilder {
               : style.buttonBackground,
           radius: style.buttonRadius,
           padY: 0.5,
-          lineHeight: 2.3,
+          em: em(),
         ),
         _ => _PillSpan(span.start, span.end, arrow: style.arrowColor),
       });
@@ -81,7 +116,7 @@ class _PillSpan {
     this.fill,
     this.radius = 0,
     this.padY = 0,
-    this.lineHeight = 1,
+    this.em = 0,
     this.arrow,
   });
 
@@ -96,9 +131,8 @@ class _PillSpan {
   /// Vertical padding of the pill in em.
   final double padY;
 
-  /// The line height of the pill's text (`write_stylesheet.dart`): its
-  /// character boxes are this many em high.
-  final double lineHeight;
+  /// The font size of the pill's text in px, the unit of its padding.
+  final double em;
 
   /// The arrow color of an arrow link.
   final Color? arrow;
@@ -164,11 +198,11 @@ class _PillPainter extends CustomPainter {
       final rects = _lineRects(component, composable, pill.start, pill.end + 1);
       if (rects.isEmpty) continue;
       if (pill.fill != null) {
-        final em = _emAt(component, pill, rects.first);
+        final em = pill.em;
         for (final r in rects) {
           final rect = r.shift(origin);
           final pillRect = Rect.fromLTRB(
-            rect.left - em * 0.55,
+            rect.left - em * pillPaddingLeft,
             rect.top - em * pill.padY,
             // The last character's letter spacing (0.45 em) is in `rect`.
             rect.right - em * 0.05,
@@ -205,23 +239,6 @@ class _PillPainter extends CustomPainter {
         );
       }
     }
-  }
-
-  /// The font size at the pill's first character: its caret is 1.2 em high
-  /// (SE-11; the character boxes take the pill text's taller line height).
-  /// On Android and iOS, where the caret spans the line, from the box.
-  static double _emAt(DocumentComponent component, _PillSpan pill, Rect box) {
-    final start = pill.start;
-    final mobile =
-        defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
-    if (!mobile) {
-      final edge = component.getEdgeForPosition(
-        TextNodePosition(offset: start + 1),
-      );
-      if (edge.height > 0) return edge.height / 1.2;
-    }
-    return box.height / pill.lineHeight;
   }
 
   /// Per-line rectangles of `[from, to)` in the component's coordinates.

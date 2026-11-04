@@ -298,7 +298,12 @@ covered by the frame backgrounds), from the component's selection rectangles, on
 line. `PillSpacingStylePhase` adds a presentation-only `PillGapAttribution` (letter spacing,
 never saved): 0.45 em after a pill's last character, 0.6 em on a space next to a pill and
 1.05 em after an arrow link's last character, where its ↗ is painted; so neighbouring pills
-never touch. Line heights inside callouts grow to fit button pills.
+never touch. A pill reaches 0.55 em left of its first character (into the widened space
+before it), so a left-to-right, start-aligned paragraph, heading or quote line whose text
+starts with a chip or button is inset by 0.55 em (`leadingPillInset`, inside the quote bar and
+the step badge): the pill starts at the text margin instead of hanging past it. The em of a
+pill is the font size of its first character's text style, the same for the inset and the
+painter. Line heights inside callouts grow to fit button pills.
 
 ### 7.3 Details collapse
 

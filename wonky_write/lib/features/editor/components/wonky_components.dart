@@ -18,6 +18,7 @@ import '../model/embeds.dart';
 import '../styles/editor_theme.dart';
 import 'editor_services.dart';
 import 'image_size_cache.dart';
+import 'inline_pills.dart';
 
 /// Stable widget keys (specs/15 §7).
 abstract final class WonkyEditorKeys {
@@ -808,13 +809,19 @@ class WonkyParagraphComponentBuilder implements ComponentBuilder {
     // styler renders as inline code (pill background, smaller size, one
     // color over the syntax colors): the block's look comes from the
     // stylesheet's code rule and the box instead.
-    final component = _inner.createComponent(
+    final text = _inner.createComponent(
       componentContext,
       blockType == codeAttribution
           ? (viewModel.copy()..blockType = null)
           : viewModel,
     );
-    if (component == null) return null;
+    if (text == null) return null;
+    // Inside the quote bar and the step badge: they stay where they are.
+    final pillInset = leadingPillInset(viewModel);
+    final component =
+        blockType == codeAttribution || pillInset == EdgeInsets.zero
+        ? text
+        : Padding(padding: pillInset, child: text);
     if (blockType == blockquoteAttribution) {
       return quoteBar(
         componentContext.context,
