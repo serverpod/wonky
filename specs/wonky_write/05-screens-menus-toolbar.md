@@ -316,6 +316,10 @@ Write behaviour noted.
 | Find next / previous | `write.find.next` / `previous` | ⌘G / ⌘⇧G | Ctrl+G, F3 / Ctrl+Shift+G, Shift+F3 | query set |
 | Go to heading… | `write.nav.goToHeading` | ⌘⌥G | Ctrl+Alt+G | outline non-empty |
 
+The copy items (Cut, Copy, *Copy as ▸*) form one group, directly above the paste items (Paste,
+Paste without formatting, Paste as Markdown): Write inserts *Copy as ▸* after the shell's Copy
+and *Paste as Markdown* after its *Paste without formatting* (`write_menus.dart`, T-23).
+
 ### 7.3 View
 
 | Item | Command | macOS | Win/Linux | Enabled when |

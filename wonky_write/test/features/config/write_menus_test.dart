@@ -38,6 +38,22 @@ void main() {
       );
     });
 
+    test('when reading the Edit menu then the copy items are together, right '
+        'above the paste items (Write 05 §7.2, T-23)', () {
+      final edit = menus.find(ShellMenuIds.edit)! as MenuSubmenu;
+      final ids = [for (final s in edit.children) s.effectiveId];
+      final cut = ids.indexOf('shell.edit.cut');
+
+      expect(ids.sublist(cut, cut + 6), [
+        'shell.edit.cut',
+        'shell.edit.copy',
+        'edit.copyAs',
+        'shell.edit.paste',
+        'shell.edit.pasteWithoutFormatting',
+        'write.edit.pasteAsMarkdown',
+      ]);
+    });
+
     test('when walking the menubar then menu ids are unique', () {
       final ids = <String>[];
       void walk(List<MenuSpec> specs) {

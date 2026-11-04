@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart' show Material, MaterialType;
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -139,6 +140,53 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     expect(tester.takeException(), isNull);
   });
+
+  for (final dark in [false, true]) {
+    testWidgets('Given an open document (${dark ? 'dark' : 'light'}) when '
+        'opening the Edit menu then the copy items are together, right above '
+        'the paste items (Write 05 §7.2, T-23)', (tester) async {
+      await pumpScreen(tester, dark: dark);
+
+      await tester.tap(find.byKey(const ValueKey('menubar.edit')));
+      await tester.pumpAndSettle();
+
+      // Top to bottom as rendered.
+      const clipboard = [
+        'shell.edit.cut',
+        'shell.edit.copy',
+        'edit.copyAs',
+        'shell.edit.paste',
+        'shell.edit.pasteWithoutFormatting',
+        'write.edit.pasteAsMarkdown',
+      ];
+      final tops = [
+        for (final id in clipboard)
+          tester.getTopLeft(find.byKey(ValueKey('menu.$id'))).dy,
+      ];
+      for (var i = 1; i < tops.length; i++) {
+        expect(
+          tops[i],
+          greaterThan(tops[i - 1]),
+          reason: '${clipboard[i]} below ${clipboard[i - 1]}',
+        );
+      }
+      // Nothing else between the last copy item and the first paste item.
+      final between = find.byWidgetPredicate((w) {
+        final key = w.key;
+        if (key is! ValueKey<String> || !key.value.startsWith('menu.')) {
+          return false;
+        }
+        final top = tester.getTopLeft(find.byWidget(w)).dy;
+        return top > tops[2] && top < tops[3];
+      });
+      expect(between, findsNothing);
+      expect(tester.takeException(), isNull);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+    });
+  }
 
   for (final width in [760.0, 1024.0]) {
     for (final dark in [false, true]) {

@@ -65,13 +65,16 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
       ]);
 
   // ---- Edit (§7.2) ----
+  // The copy items together, right above the paste items.
   root = root
-      .insertAfter('shell.edit.pasteWithoutFormatting', [
+      .insertAfter('shell.edit.copy', [
         MenuSpec.submenu('edit.copyAs', l.menuCopyAs, [
           _c('write.edit.copyAsMarkdown', label: l.menuCopyAsMarkdown),
           _c('write.edit.copyAsPlainText', label: l.menuCopyAsPlainText),
           _c('write.edit.copyAsHtml', label: l.menuCopyAsHtml),
         ]),
+      ])
+      .insertAfter('shell.edit.pasteWithoutFormatting', [
         _c('write.edit.pasteAsMarkdown', label: l.cmdEditPasteAsMarkdown),
       ])
       .insertAfter('shell.edit.selectAll', [_c('write.edit.delete')])
