@@ -38,7 +38,7 @@ Flutter, Dart and what Serverpod needs on your machine. You also need:
 Use Dart's install command to make sure that you are using the right version of Serverpod:
 
 ```bash
-dart install serverpod_cli 4.1.0-rc.1
+dart install serverpod_cli 4.1.1
 ```
 
 This installs the CLI, or updates an existing install to the version Wonky Work
