@@ -104,6 +104,7 @@ class InlinePillComponentBuilder implements ComponentBuilder {
     return _PillPaint(
       componentKey: componentContext.componentKey,
       pills: pills,
+      selection: viewModel.selection,
       child: component,
     );
   }
@@ -142,11 +143,15 @@ class _PillPaint extends StatefulWidget {
   const _PillPaint({
     required this.componentKey,
     required this.pills,
+    required this.selection,
     required this.child,
   });
 
   final GlobalKey componentKey;
   final List<_PillSpan> pills;
+
+  /// The selection in this text, shown over dark pills ([_PillPainter]).
+  final TextSelection? selection;
   final Widget child;
 
   @override
@@ -163,6 +168,7 @@ class _PillPaintState extends State<_PillPaint> {
       paintKey: _key,
       componentKey: widget.componentKey,
       pills: widget.pills,
+      selection: widget.selection,
     ),
     child: widget.child,
   );
@@ -173,11 +179,18 @@ class _PillPainter extends CustomPainter {
     required this.paintKey,
     required this.componentKey,
     required this.pills,
+    this.selection,
   });
 
   final GlobalKey paintKey;
   final GlobalKey componentKey;
   final List<_PillSpan> pills;
+  final TextSelection? selection;
+
+  /// Lightens the selected part of a dark pill: the selection highlight,
+  /// painted over it in the accent color, barely shows on a button filled
+  /// with the same color.
+  static const _selectedOnDark = Color(0x59FFFFFF);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -208,13 +221,12 @@ class _PillPainter extends CustomPainter {
             rect.right - em * 0.05,
             rect.bottom + em * pill.padY,
           );
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              pillRect,
-              Radius.circular(math.min(pill.radius, pillRect.height / 2)),
-            ),
-            Paint()..color = pill.fill!,
+          final rrect = RRect.fromRectAndRadius(
+            pillRect,
+            Radius.circular(math.min(pill.radius, pillRect.height / 2)),
           );
+          canvas.drawRRect(rrect, Paint()..color = pill.fill!);
+          _paintSelection(canvas, component, composable, pill, rrect, origin);
         }
       } else {
         final r = rects.last.shift(origin);
@@ -239,6 +251,40 @@ class _PillPainter extends CustomPainter {
         );
       }
     }
+  }
+
+  /// The selected part of a dark pill ([_selectedOnDark]), within the pill.
+  void _paintSelection(
+    Canvas canvas,
+    DocumentComponent component,
+    TextComposable composable,
+    _PillSpan pill,
+    RRect pillRect,
+    Offset origin,
+  ) {
+    final s = selection;
+    if (s == null || s.isCollapsed) return;
+    if (pill.fill!.computeLuminance() > 0.4) return;
+    final from = math.max(s.start, pill.start);
+    final to = math.min(s.end, pill.end + 1);
+    if (to <= from) return;
+    canvas
+      ..save()
+      ..clipRRect(pillRect);
+    final rects = _lineRects(component, composable, from, to);
+    for (var i = 0; i < rects.length; i++) {
+      final rect = rects[i].shift(origin);
+      // The pill's padding is selected with its first or last character.
+      final left = i == 0 && from == pill.start ? pillRect.left : rect.left;
+      final right = i == rects.length - 1 && to == pill.end + 1
+          ? pillRect.right
+          : rect.right;
+      canvas.drawRect(
+        Rect.fromLTRB(left, pillRect.top, right, pillRect.bottom),
+        Paint()..color = _selectedOnDark,
+      );
+    }
+    canvas.restore();
   }
 
   /// Per-line rectangles of `[from, to)` in the component's coordinates.

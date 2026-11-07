@@ -358,16 +358,20 @@ class WriteInlineStyler {
             color: w.arrowColor,
             fontWeight: w.arrowWeight,
           ),
-          // A taller line box: room for the pill around the label.
+          // A taller line box: room for the pill around the label, split
+          // evenly above and below it, so the box (and the selection
+          // highlight, which fills it) lines up with the pill.
           'buttonSecondary' => style.copyWith(
             color: w.secondaryButtonColor,
             fontWeight: w.buttonWeight,
             height: 2.3,
+            leadingDistribution: TextLeadingDistribution.even,
           ),
           _ => style.copyWith(
             color: w.buttonColor,
             fontWeight: w.buttonWeight,
             height: 2.3,
+            leadingDistribution: TextLeadingDistribution.even,
           ),
         };
       } else if (attribution is ChipAttribution) {
@@ -375,6 +379,7 @@ class WriteInlineStyler {
           color: theme.wonky.chipColor,
           fontWeight: theme.wonky.chipWeight,
           height: 1.8,
+          leadingDistribution: TextLeadingDistribution.even,
         );
       } else if (attribution is PillGapAttribution) {
         style = style.copyWith(

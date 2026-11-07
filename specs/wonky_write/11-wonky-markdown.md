@@ -305,6 +305,13 @@ the step badge): the pill starts at the text margin instead of hanging past it. 
 pill is the font size of its first character's text style, the same for the inset and the
 painter. Line heights inside callouts grow to fit button pills.
 
+**Selection on pills.** The taller line box of a button (2.3 em) or chip (1.8 em) has its
+extra space split evenly above and below the label (`TextLeadingDistribution.even`), so the
+selection highlight, which fills the line box, is centered on the pill instead of riding above
+it. On a dark pill (a button: its fill is the accent, the highlight's own color) the pill
+painter lightens the selected part within the pill (white at 35 %, under the label, reaching
+the pill's padding when the selection covers its first or last character).
+
 ### 7.3 Details collapse
 
 Collapsing is a per-user view state (not synced, not undoable, kept per document for the

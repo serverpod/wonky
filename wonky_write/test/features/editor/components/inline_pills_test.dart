@@ -1,3 +1,5 @@
+import 'dart:ui' show BoxHeightStyle;
+
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +53,48 @@ List<Rect> _pills(WidgetTester tester) {
   }
   return rects;
 }
+
+/// The global box the selection highlight paints for `[from, to)` in the
+/// first paragraph: the text layout's `BoxHeightStyle.max` box, as
+/// super_text_layout paints it.
+Rect _highlightRect(WidgetTester tester, int from, int to) {
+  final component = find.byType(TextComponent).first;
+  final state = tester.state<TextComponentState>(component);
+  final box = state.textLayout
+      .getBoxesForSelection(
+        TextSelection(baseOffset: from, extentOffset: to),
+        boxHeightStyle: BoxHeightStyle.max,
+      )
+      .first
+      .toRect();
+  final text = tester.renderObject<RenderBox>(
+    find
+        .descendant(
+          of: component,
+          matching: find.byWidgetPredicate(
+            (w) => w.runtimeType.toString() == 'SuperText',
+          ),
+        )
+        .first,
+  );
+  return Rect.fromPoints(
+    text.localToGlobal(box.topLeft),
+    text.localToGlobal(box.bottomRight),
+  );
+}
+
+/// The render box of the pill layer.
+RenderBox _pillLayer() =>
+    find
+            .byWidgetPredicate(
+              (w) =>
+                  w is CustomPaint &&
+                  w.painter.runtimeType.toString() == '_PillPainter',
+            )
+            .evaluate()
+            .single
+            .renderObject!
+        as RenderBox;
 
 void main() {
   final macOS = TargetPlatformVariant.only(TargetPlatform.macOS);
@@ -155,6 +199,60 @@ void main() {
         source: LocalChangeSource.undo,
       );
       await expectButton(true);
+    },
+    variant: macOS,
+  );
+  testWidgets(
+    'Given a button and a chip when text in them is selected then the '
+    'selection box is centered on the pill, not riding above it',
+    (tester) async {
+      await pumpEditor(
+        tester,
+        Delta()
+          ..insert('Before ')
+          ..insert('Docs link', {
+            'link': 'https://x.dev',
+            'linkStyle': 'button',
+          })
+          ..insert(' after and ')
+          ..insert('chip text', {'chip': true})
+          ..insert(' end\nPlain line\n'),
+      );
+      final pills = _pills(tester)..sort((a, b) => a.left.compareTo(b.left));
+      expect(pills, hasLength(2));
+
+      for (final (pill, from, to) in [(pills[0], 9, 13), (pills[1], 29, 33)]) {
+        final selection = _highlightRect(tester, from, to);
+        final above = pill.top - selection.top;
+        final below = selection.bottom - pill.bottom;
+        expect(above, greaterThanOrEqualTo(-0.5), reason: '$from');
+        expect((above - below).abs(), lessThan(1.5), reason: '$from');
+      }
+    },
+    variant: macOS,
+  );
+
+  testWidgets(
+    'Given a button when text in it is selected then the selected part is '
+    'lightened (the accent highlight does not show on the accent fill)',
+    (tester) async {
+      final h = await pumpEditor(
+        tester,
+        Delta()
+          ..insert('See ')
+          ..insert('Docs link', {
+            'link': 'https://x.dev',
+            'linkStyle': 'button',
+          })
+          ..insert(' here\nPlain line\n'),
+      );
+      const lighten = Color(0x59FFFFFF);
+      expect(_pillLayer(), isNot(paints..rect(color: lighten)));
+
+      h.select(6, 10);
+      await tester.pumpAndSettle();
+
+      expect(_pillLayer(), paints..rect(color: lighten));
     },
     variant: macOS,
   );
