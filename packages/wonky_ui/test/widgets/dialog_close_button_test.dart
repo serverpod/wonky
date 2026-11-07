@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shad/shad.dart';
@@ -17,6 +18,7 @@ Future<void> _pumpDialog(
   required void Function() onClosed,
   Brightness brightness = Brightness.light,
   bool canPop = true,
+  List<Widget> actions = const [],
 }) async {
   await pumpWonky(
     tester,
@@ -33,6 +35,7 @@ Future<void> _pumpDialog(
               child: ShadDialog(
                 title: const Text('Rename'),
                 closeIcon: closeIcon,
+                actions: actions,
                 child: const Text('Body'),
               ),
             ),
@@ -89,6 +92,35 @@ void main() {
 
       expect(closed, isFalse);
       expect(find.text('Body'), findsOneWidget);
+    });
+
+    testWidgets('when the dialog has actions then there is no X, and Escape '
+        'still closes it (suite 02 §4.20)', (tester) async {
+      var closed = false;
+      await _pumpDialog(
+        tester,
+        closeIcon: const WonkyDialogCloseButton(),
+        onClosed: () => closed = true,
+        actions: [ShadButton(onPressed: () {}, child: const Text('Cancel'))],
+      );
+
+      expect(find.byKey(_close), findsNothing);
+      expect(find.text('Cancel'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(closed, isTrue);
+    });
+
+    testWidgets('when the dialog has actions and the X is always shown then '
+        'it is there', (tester) async {
+      await _pumpDialog(
+        tester,
+        closeIcon: const WonkyDialogCloseButton(always: true),
+        onClosed: () {},
+        actions: [ShadButton(onPressed: () {}, child: const Text('Switch'))],
+      );
+
+      expect(find.byKey(_close), findsOneWidget);
     });
 
     testWidgets('when it has its own onPressed then the X runs it instead '
