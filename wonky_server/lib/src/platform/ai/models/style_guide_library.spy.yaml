@@ -1,0 +1,16 @@
+### The style guides a user can use, the organization's default and (when
+### listed for a document) the document's choice (suite 10 §7).
+class: StyleGuideLibrary
+fields:
+  guides: List<StyleGuideView>
+  ### The user's organization (null = none, e.g. a public mail domain).
+  orgKey: String?
+  orgDefaultRef: String?
+  ### The document's own choice (null = none).
+  documentRef: String?
+  ### What the document uses: its own choice, else the org default.
+  effectiveRef: String?
+  ### Whether the user may change the document's style guide (Editor+).
+  canSetDocument: bool
+  ### Whether the user may set the organization's default.
+  canSetOrgDefault: bool

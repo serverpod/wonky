@@ -30,6 +30,8 @@ import 'package:wonky_client/src/protocol/platform/ai/models/assistant_context_h
     as _ig0xo5zw;
 import 'package:wonky_client/src/protocol/platform/ai/models/assistant_event.dart'
     as _ip81vhc1;
+import 'package:wonky_client/src/protocol/platform/ai/models/assistant_quick_action.dart'
+    as _ivstrbru;
 import 'package:wonky_client/src/protocol/platform/ai/models/assistant_status.dart'
     as _idfnr0x0;
 import 'package:wonky_client/src/protocol/platform/ai/models/assistant_thread_detail.dart'
@@ -42,6 +44,12 @@ import 'package:wonky_client/src/protocol/platform/ai/models/inline_ai_request.d
     as _i31mo4jy;
 import 'package:wonky_client/src/protocol/platform/ai/models/proofread_event.dart'
     as _irtrv5vw;
+import 'package:wonky_client/src/protocol/platform/ai/models/style_guide_input.dart'
+    as _iktt8og5;
+import 'package:wonky_client/src/protocol/platform/ai/models/style_guide_library.dart'
+    as _ivbigio2;
+import 'package:wonky_client/src/protocol/platform/ai/models/style_guide_view.dart'
+    as _ica1x8dq;
 import 'package:wonky_client/src/protocol/platform/analytics/models/analytics_overview.dart'
     as _iu8mc7mo;
 import 'package:wonky_client/src/protocol/platform/analytics/models/usage_app.dart'
@@ -643,6 +651,30 @@ class EndpointAssistant extends _isc.EndpointRef {
         {},
       );
 
+  /// Runs a Write quick action ([threadId] null = new thread): Summarize,
+  /// Proofread, Address comments or Apply style (Write 09 §5.5). Streams
+  /// like [chat]; the action's prompt is not shown in the conversation.
+  _ida.Stream<_ip81vhc1.AssistantEvent> quickAction(
+    int? threadId,
+    _isc.UuidValue itemUuid,
+    _ivstrbru.AssistantQuickAction action,
+    _ig0xo5zw.AssistantContextHints hints,
+  ) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_ip81vhc1.AssistantEvent>,
+        _ip81vhc1.AssistantEvent
+      >(
+        'assistant',
+        'quickAction',
+        {
+          'threadId': threadId,
+          'itemUuid': itemUuid,
+          'action': action,
+          'hints': hints,
+        },
+        {},
+      );
+
   /// Stops a run ([runId]) or every run of [threadId].
   _ida.Future<bool> stop(
     int? threadId,
@@ -758,6 +790,63 @@ class EndpointAssistant extends _isc.EndpointRef {
         },
         {},
       );
+}
+
+/// The assistant's style guide library (suite 10 §7): built-in guides,
+/// the user's own (personal or shared with their organization), the
+/// organization's default and each Write document's guide.
+/// {@category Endpoint}
+class EndpointStyleGuide extends _isc.EndpointRef {
+  EndpointStyleGuide(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'styleGuide';
+
+  /// The guides the user can use; with [itemUuid] also that document's
+  /// choice and whether the user may change it.
+  _ida.Future<_ivbigio2.StyleGuideLibrary> library(_isc.UuidValue? itemUuid) =>
+      caller.callServerEndpoint<_ivbigio2.StyleGuideLibrary>(
+        'styleGuide',
+        'library',
+        {'itemUuid': itemUuid},
+      );
+
+  /// Creates or updates one of the user's guides.
+  _ida.Future<_ica1x8dq.StyleGuideView> save(_iktt8og5.StyleGuideInput input) =>
+      caller.callServerEndpoint<_ica1x8dq.StyleGuideView>(
+        'styleGuide',
+        'save',
+        {'input': input},
+      );
+
+  /// Deletes one of the user's guides.
+  _ida.Future<void> delete(_isc.UuidValue uuid) =>
+      caller.callServerEndpoint<void>(
+        'styleGuide',
+        'delete',
+        {'uuid': uuid},
+      );
+
+  /// Sets (null clears) the default guide of the user's organization.
+  _ida.Future<_ivbigio2.StyleGuideLibrary> setOrgDefault(String? ref) =>
+      caller.callServerEndpoint<_ivbigio2.StyleGuideLibrary>(
+        'styleGuide',
+        'setOrgDefault',
+        {'ref': ref},
+      );
+
+  /// Sets (null clears) the style guide of a Write document (Editor+).
+  _ida.Future<_ivbigio2.StyleGuideLibrary> setDocumentStyle(
+    _isc.UuidValue itemUuid,
+    String? ref,
+  ) => caller.callServerEndpoint<_ivbigio2.StyleGuideLibrary>(
+    'styleGuide',
+    'setDocumentStyle',
+    {
+      'itemUuid': itemUuid,
+      'ref': ref,
+    },
+  );
 }
 
 /// Usage analytics (specs/19): the apps' activity ping, and the admin
@@ -4477,6 +4566,7 @@ class Client extends _isc.ServerpodClientShared {
     jwtRefresh = EndpointJwtRefresh(this);
     activity = EndpointActivity(this);
     assistant = EndpointAssistant(this);
+    styleGuide = EndpointStyleGuide(this);
     analytics = EndpointAnalytics(this);
     board = EndpointBoard(this);
     comment = EndpointComment(this);
@@ -4523,6 +4613,8 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointActivity activity;
 
   late final EndpointAssistant assistant;
+
+  late final EndpointStyleGuide styleGuide;
 
   late final EndpointAnalytics analytics;
 
@@ -4604,6 +4696,7 @@ class Client extends _isc.ServerpodClientShared {
     'jwtRefresh': jwtRefresh,
     'activity': activity,
     'assistant': assistant,
+    'styleGuide': styleGuide,
     'analytics': analytics,
     'board': board,
     'comment': comment,

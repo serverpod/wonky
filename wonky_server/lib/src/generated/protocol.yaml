@@ -19,6 +19,7 @@ assistant:
   - setProviderKey:
   - removeProviderKey:
   - chat:
+  - quickAction:
   - stop:
   - confirm:
   - uiToolResult:
@@ -29,6 +30,12 @@ assistant:
   - revertChange:
   - inline:
   - proofread:
+styleGuide:
+  - library:
+  - save:
+  - delete:
+  - setOrgDefault:
+  - setDocumentStyle:
 analytics:
   - ping:
   - overview:

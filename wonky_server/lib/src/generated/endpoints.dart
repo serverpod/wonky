@@ -22,8 +22,12 @@ import 'package:wonky_server/src/generated/platform/ai/models/ai_quality.dart'
     as _idrzmvpg;
 import 'package:wonky_server/src/generated/platform/ai/models/assistant_context_hints.dart'
     as _ixc2f7d5;
+import 'package:wonky_server/src/generated/platform/ai/models/assistant_quick_action.dart'
+    as _i4hdrkkx;
 import 'package:wonky_server/src/generated/platform/ai/models/inline_ai_request.dart'
     as _i4c3y8bm;
+import 'package:wonky_server/src/generated/platform/ai/models/style_guide_input.dart'
+    as _ih4ocb39;
 import 'package:wonky_server/src/generated/platform/analytics/models/usage_app.dart'
     as _idlxfxe3;
 import 'package:wonky_server/src/generated/platform/board/models/board_area.dart'
@@ -114,6 +118,7 @@ import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
 import '../platform/activity/activity_endpoint.dart' as _id6etezj;
 import '../platform/ai/assistant_endpoint.dart' as _i8k7ge8b;
+import '../platform/ai/style_guide_endpoint.dart' as _idg8him0;
 import '../platform/analytics/analytics_endpoint.dart' as _ihmj012r;
 import '../platform/board/board_endpoint.dart' as _itoz815u;
 import '../platform/comments/comment_endpoint.dart' as _iuwjzuw0;
@@ -178,6 +183,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'assistant',
+          null,
+        ),
+      'styleGuide': _idg8him0.StyleGuideEndpoint()
+        ..initialize(
+          server,
+          'styleGuide',
           null,
         ),
       'analytics': _ihmj012r.AnalyticsEndpoint()
@@ -937,6 +948,46 @@ class Endpoints extends _is.EndpointDispatch {
                 params['hints'],
               ),
         ),
+        'quickAction': _is.MethodStreamConnector(
+          name: 'quickAction',
+          params: {
+            'threadId': _is.ParameterDescription(
+              name: 'threadId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'action': _is.ParameterDescription(
+              name: 'action',
+              type: _is.getType<_i4hdrkkx.AssistantQuickAction>(),
+              nullable: false,
+            ),
+            'hints': _is.ParameterDescription(
+              name: 'hints',
+              type: _is.getType<_ixc2f7d5.AssistantContextHints>(),
+              nullable: false,
+            ),
+          },
+          streamParams: {},
+          returnType: _is.MethodStreamReturnType.streamType,
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+                Map<String, Stream> streamParams,
+              ) => (endpoints['assistant'] as _i8k7ge8b.AssistantEndpoint)
+                  .quickAction(
+                    session,
+                    params['threadId'],
+                    params['itemUuid'],
+                    params['action'],
+                    params['hints'],
+                  ),
+        ),
         'inline': _is.MethodStreamConnector(
           name: 'inline',
           params: {
@@ -992,6 +1043,118 @@ class Endpoints extends _is.EndpointDispatch {
                     params['start'],
                     params['length'],
                   ),
+        ),
+      },
+    );
+    connectors['styleGuide'] = _is.EndpointConnector(
+      name: 'styleGuide',
+      endpoint: endpoints['styleGuide']!,
+      methodConnectors: {
+        'library': _is.MethodConnector(
+          name: 'library',
+          params: {
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['styleGuide'] as _idg8him0.StyleGuideEndpoint)
+                      .library(
+                        session,
+                        params['itemUuid'],
+                      ),
+        ),
+        'save': _is.MethodConnector(
+          name: 'save',
+          params: {
+            'input': _is.ParameterDescription(
+              name: 'input',
+              type: _is.getType<_ih4ocb39.StyleGuideInput>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['styleGuide'] as _idg8him0.StyleGuideEndpoint)
+                      .save(
+                        session,
+                        params['input'],
+                      ),
+        ),
+        'delete': _is.MethodConnector(
+          name: 'delete',
+          params: {
+            'uuid': _is.ParameterDescription(
+              name: 'uuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['styleGuide'] as _idg8him0.StyleGuideEndpoint)
+                      .delete(
+                        session,
+                        params['uuid'],
+                      ),
+        ),
+        'setOrgDefault': _is.MethodConnector(
+          name: 'setOrgDefault',
+          params: {
+            'ref': _is.ParameterDescription(
+              name: 'ref',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['styleGuide'] as _idg8him0.StyleGuideEndpoint)
+                      .setOrgDefault(
+                        session,
+                        params['ref'],
+                      ),
+        ),
+        'setDocumentStyle': _is.MethodConnector(
+          name: 'setDocumentStyle',
+          params: {
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'ref': _is.ParameterDescription(
+              name: 'ref',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['styleGuide'] as _idg8him0.StyleGuideEndpoint)
+                      .setDocumentStyle(
+                        session,
+                        params['itemUuid'],
+                        params['ref'],
+                      ),
         ),
       },
     );

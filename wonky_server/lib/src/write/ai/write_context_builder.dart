@@ -311,6 +311,7 @@ abstract final class WriteContextBuilder {
     String? caretHeadingPath,
     String? localTime,
     String? comments,
+    String? styleGuide,
   }) {
     final b = StringBuffer('<context>\n');
     if (selection != null) {
@@ -329,13 +330,18 @@ abstract final class WriteContextBuilder {
     }
     b
       ..writeln(
-        'Apply mode: ${applyMode == AiApplyMode.suggest ? 'Suggest (your edits become tracked suggestions)' : 'Edit directly'}',
+        applyMode == AiApplyMode.suggest
+            ? 'Your edits become tracked suggestions.'
+            : 'Apply mode: Edit directly',
       )
       ..writeln('User role: $role')
       ..writeln('Document revision: ${c.revision}');
     if (localTime != null) b.writeln('User\'s local time: $localTime');
     if (comments != null) {
       b.writeln('<open_comments>$comments</open_comments>');
+    }
+    if (styleGuide != null) {
+      b.write('The document follows this style guide:\n$styleGuide');
     }
     b.write('</context>');
     return b.toString();

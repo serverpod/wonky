@@ -69,6 +69,27 @@ class AssistantEndpoint extends Endpoint {
     );
   }
 
+  /// Runs a Write quick action ([threadId] null = new thread): Summarize,
+  /// Proofread, Address comments or Apply style (Write 09 §5.5). Streams
+  /// like [chat]; the action's prompt is not shown in the conversation.
+  Stream<AssistantEvent> quickAction(
+    Session session,
+    int? threadId,
+    UuidValue itemUuid,
+    AssistantQuickAction action,
+    AssistantContextHints hints,
+  ) async* {
+    final actor = await UserService.actorOf(session);
+    yield* await AssistantService.quickAction(
+      session,
+      actor,
+      threadId: threadId,
+      itemUuid: itemUuid,
+      action: action,
+      hints: hints,
+    );
+  }
+
   /// Stops a run ([runId]) or every run of [threadId].
   Future<bool> stop(Session session, int? threadId, String? runId) async {
     final actor = await UserService.actorOf(session);
