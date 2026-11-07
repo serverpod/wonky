@@ -338,9 +338,58 @@ void main() {
       await tester.tap(find.text('Bob Stone · bob@example.test'));
       await tester.pumpAndSettle();
 
-      // The chip; the people list is hidden while adding.
-      expect(find.text('bob@example.test'), findsOneWidget);
+      // A chip with the person's name (the email is its tooltip); the
+      // people list is hidden while adding.
+      final chip = _key('dialog.share.chip.bob@example.test');
+      expect(chip, findsOneWidget);
+      expect(
+        find.descendant(of: chip, matching: find.text('Bob Stone')),
+        findsOneWidget,
+      );
       expect(_key('dialog.share.send'), findsOneWidget);
+    });
+
+    testWidgets('when addresses become chips then they flow like words and '
+        'the input continues on the same line', (tester) async {
+      await pumpDialog(tester);
+      await tester.enterText(_key('dialog.share.input'), 'al@ex.co ');
+      await tester.pumpAndSettle();
+      final first = tester.getRect(_key('dialog.share.chip.al@ex.co'));
+      final field = tester.getRect(_key('dialog.share.field'));
+      var input = tester.getRect(_key('dialog.share.input'));
+
+      // The input follows the chip on its line, up to the field's end.
+      expect(input.center.dy, moreOrLessEquals(first.center.dy, epsilon: 1));
+      expect(input.left, greaterThan(first.right));
+      expect(input.right, moreOrLessEquals(field.right, epsilon: 2));
+
+      await tester.enterText(_key('dialog.share.input'), 'bo@ex.co ');
+      await tester.pumpAndSettle();
+      final firstNow = tester.getRect(_key('dialog.share.chip.al@ex.co'));
+      final second = tester.getRect(_key('dialog.share.chip.bo@ex.co'));
+      expect(
+        second.center.dy,
+        moreOrLessEquals(firstNow.center.dy, epsilon: 1),
+      );
+      expect(second.left, greaterThan(firstNow.right));
+      // A third chip that doesn't fit wraps to the next line.
+      await tester.enterText(
+        _key('dialog.share.input'),
+        'a.very.long.address@example.test ',
+      );
+      await tester.pumpAndSettle();
+      final third = tester.getRect(
+        _key('dialog.share.chip.a.very.long.address@example.test'),
+      );
+      final firstLast = tester.getRect(_key('dialog.share.chip.al@ex.co'));
+      expect(third.top, greaterThan(firstLast.bottom));
+      input = tester.getRect(_key('dialog.share.input'));
+      expect(input.top, greaterThanOrEqualTo(third.top));
+
+      // Rounded chips with a remove button.
+      await tester.tap(find.bySemanticsLabel(RegExp('Remove al@ex.co')));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.chip.al@ex.co'), findsNothing);
     });
 
     testWidgets('when an invalid address is entered then no recipient is '

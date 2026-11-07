@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show setEquals;
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
@@ -53,6 +54,10 @@ class _ShareDialogState extends State<ShareDialog> {
   final _inputFocus = FocusNode();
   final _message = TextEditingController();
   final List<String> _recipients = [];
+
+  /// The people picked from suggestions, by email: their chips show the
+  /// name and avatar (a typed address shows itself).
+  final Map<String, UserSummary> _people = {};
   AccessRole _role = AccessRole.editor;
   bool _notify = true;
   List<UserSummary> _suggestions = const [];
@@ -213,8 +218,9 @@ class _ShareDialogState extends State<ShareDialog> {
   /// Longest share message (the server's limit, specs/06 §4).
   static const _maxMessage = 1000;
 
-  void _addRecipient(String raw) {
+  void _addRecipient(String raw, {UserSummary? user}) {
     final v = raw.trim().toLowerCase();
+    if (user != null) _people[v] = user;
     setState(() {
       if (_email.hasMatch(v) && !_recipients.contains(v)) _recipients.add(v);
       _input.clear();
@@ -559,7 +565,7 @@ class _ShareDialogState extends State<ShareDialog> {
                       imageUrl: u.avatarUrl,
                       size: 24,
                     ),
-                    onPressed: () => _addRecipient(u.email),
+                    onPressed: () => _addRecipient(u.email, user: u),
                     child: Expanded(
                       child: Text(
                         '${u.displayName} · ${u.email}',
@@ -624,74 +630,64 @@ class _ShareDialogState extends State<ShareDialog> {
             alignment: AlignmentDirectional.centerStart,
             heightFactor: 1,
             child: Padding(
-              padding: EdgeInsetsDirectional.only(
-                start: _recipients.isEmpty ? 0 : 4,
-              ),
-              child: Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              padding: _recipients.isEmpty
+                  ? EdgeInsets.zero
+                  : const EdgeInsetsDirectional.fromSTEB(4, 3, 0, 3),
+              // Chips flow like words; the input takes the rest of the
+              // last line (the next line when too little is left).
+              child: _InlineFlow(
                 children: [
                   for (final r in _recipients)
-                    ShadBadge.secondary(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(r),
-                          const SizedBox(width: 4),
-                          GestureDetector(
-                            onTap: () => setState(() => _recipients.remove(r)),
-                            child: Semantics(
-                              button: true,
-                              label: l.shareRemoveRecipient(r),
-                              child: const Icon(LucideIcons.x, size: 12),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _RecipientChip(
+                      key: ValueKey<String>('dialog.share.chip.$r'),
+                      email: r,
+                      person: _people[r],
+                      removeLabel: l.shareRemoveRecipient(r),
+                      onRemove: () => setState(() => _recipients.remove(r)),
                     ),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      minWidth: 200,
-                      maxWidth: 360,
-                    ),
-                    child: Focus(
-                      canRequestFocus: false,
-                      skipTraversal: true,
-                      onKeyEvent: _onInputKey,
-                      child: CallbackShortcuts(
-                        bindings: {
-                          const SingleActivator(LogicalKeyboardKey.enter): () {
-                            if (_suggestions.isNotEmpty &&
-                                _input.text.isNotEmpty) {
-                              _addRecipient(_suggestions.first.email);
-                            } else if (_input.text.trim().isNotEmpty) {
-                              _addRecipient(_input.text);
-                            } else {
-                              _send();
-                            }
-                          },
+                  Focus(
+                    canRequestFocus: false,
+                    skipTraversal: true,
+                    onKeyEvent: _onInputKey,
+                    child: CallbackShortcuts(
+                      bindings: {
+                        const SingleActivator(LogicalKeyboardKey.enter): () {
+                          if (_suggestions.isNotEmpty &&
+                              _input.text.isNotEmpty) {
+                            _addRecipient(
+                              _suggestions.first.email,
+                              user: _suggestions.first,
+                            );
+                          } else if (_input.text.trim().isNotEmpty) {
+                            _addRecipient(_input.text);
+                          } else {
+                            _send();
+                          }
                         },
-                        child: ShadInput(
-                          key: const ValueKey<String>('dialog.share.input'),
-                          controller: _input,
-                          focusNode: _inputFocus,
-                          autofocus: true,
-                          // The box around is the field: no second border,
-                          // fill, shadow or focus ring, and no minimum height
-                          // of its own (the box sets it).
-                          decoration: ShadDecoration.none,
-                          constraints: const BoxConstraints(),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: _recipients.isEmpty
-                                ? (padding?.left ?? 10)
-                                : 4,
-                            vertical: padding?.top ?? 4,
-                          ),
-                          placeholder: Text(l.shareAddPeople),
-                          keyboardType: TextInputType.emailAddress,
-                          onChanged: _onInput,
+                      },
+                      child: ShadInput(
+                        key: const ValueKey<String>('dialog.share.input'),
+                        controller: _input,
+                        focusNode: _inputFocus,
+                        autofocus: true,
+                        // The box around is the field: no second border,
+                        // fill, shadow or focus ring, and no minimum height
+                        // of its own (the box sets it).
+                        decoration: ShadDecoration.none,
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: _recipients.isEmpty
+                              ? (padding?.left ?? 10)
+                              : 4,
+                          vertical: padding?.top ?? 4,
                         ),
+                        // Only in the empty field: after chips the
+                        // input reads as the rest of a line of text.
+                        placeholder: _recipients.isEmpty
+                            ? Text(l.shareAddPeople)
+                            : null,
+                        keyboardType: TextInputType.emailAddress,
+                        onChanged: _onInput,
                       ),
                     ),
                   ),
@@ -1045,4 +1041,216 @@ class _ShareDialogState extends State<ShareDialog> {
       ],
     );
   }
+}
+
+/// A recipient in the people field: a rounded chip with the person's
+/// avatar and name (picked from suggestions; the email in a tooltip) or
+/// the typed address, and an × that removes it.
+class _RecipientChip extends StatelessWidget {
+  const _RecipientChip({
+    super.key,
+    required this.email,
+    required this.person,
+    required this.removeLabel,
+    required this.onRemove,
+  });
+
+  final String email;
+  final UserSummary? person;
+  final String removeLabel;
+  final VoidCallback onRemove;
+
+  static const height = 24.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    final cs = theme.colorScheme;
+    final p = person;
+    final chip = Container(
+      height: height,
+      padding: const EdgeInsetsDirectional.fromSTEB(3, 0, 3, 0),
+      decoration: ShapeDecoration(
+        color: cs.secondary,
+        shape: StadiumBorder(side: BorderSide(color: cs.border)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          WonkyAvatar(
+            name: p?.displayName ?? email,
+            color: p == null ? cs.mutedForeground : cs.presence(p.colorIndex),
+            imageUrl: p?.avatarUrl,
+            size: height - 6,
+          ),
+          const SizedBox(width: 5),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: Text(
+              p?.displayName ?? email,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.small.copyWith(
+                color: cs.secondaryForeground,
+                fontWeight: FontWeight.w500,
+                height: 1,
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          Semantics(
+            button: true,
+            label: removeLabel,
+            excludeSemantics: true,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onRemove,
+                child: SizedBox.square(
+                  dimension: height - 6,
+                  child: Icon(
+                    LucideIcons.x,
+                    size: 12,
+                    color: cs.mutedForeground,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    return p == null
+        ? chip
+        : ShadTooltip(builder: (_) => Text(email), child: chip);
+  }
+}
+
+/// Lays out its children like words in a line of text: left to right with
+/// [spacing], wrapping to a new line with [runSpacing], each line's
+/// children centered vertically. The **last** child (the input) gets the
+/// rest of its line, or the whole next line when less than [minLastWidth]
+/// is left.
+class _InlineFlow extends MultiChildRenderObjectWidget {
+  const _InlineFlow({required super.children});
+
+  static const spacing = 4.0;
+  static const runSpacing = 4.0;
+  static const minLastWidth = 120.0;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderInlineFlow();
+}
+
+class _InlineFlowParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderInlineFlow extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _InlineFlowParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _InlineFlowParentData> {
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _InlineFlowParentData) {
+      child.parentData = _InlineFlowParentData();
+    }
+  }
+
+  /// Lays out (or, [dry], measures) the children; returns the size and,
+  /// unless [dry], positions them.
+  Size _layout(BoxConstraints constraints, {required bool dry}) {
+    final maxWidth = constraints.maxWidth.isFinite
+        ? constraints.maxWidth
+        : 600.0;
+    final lines = <List<(RenderBox, Size)>>[[]];
+    var x = 0.0;
+    var child = firstChild;
+    while (child != null) {
+      final last = child == lastChild;
+      Size size;
+      if (last) {
+        var left = maxWidth - x;
+        if (lines.last.isNotEmpty && left < _InlineFlow.minLastWidth) {
+          lines.add([]);
+          x = 0;
+          left = maxWidth;
+        }
+        final c = BoxConstraints.tightFor(width: left);
+        size = dry ? child.getDryLayout(c) : _lay(child, c);
+      } else {
+        final c = BoxConstraints(maxWidth: maxWidth);
+        size = dry ? child.getDryLayout(c) : _lay(child, c);
+        if (lines.last.isNotEmpty && x + size.width > maxWidth) {
+          lines.add([]);
+          x = 0;
+        }
+      }
+      lines.last.add((child, size));
+      x += size.width + _InlineFlow.spacing;
+      child = childAfter(child);
+    }
+    var y = 0.0;
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      if (line.isEmpty) continue;
+      final height = line.fold<double>(
+        0,
+        (h, e) => h > e.$2.height ? h : e.$2.height,
+      );
+      if (!dry) {
+        var lx = 0.0;
+        for (final (box, size) in line) {
+          (box.parentData! as _InlineFlowParentData).offset = Offset(
+            lx,
+            y + (height - size.height) / 2,
+          );
+          lx += size.width + _InlineFlow.spacing;
+        }
+      }
+      y += height + (i < lines.length - 1 ? _InlineFlow.runSpacing : 0);
+    }
+    return constraints.constrain(Size(maxWidth, y));
+  }
+
+  static Size _lay(RenderBox child, BoxConstraints c) {
+    child.layout(c, parentUsesSize: true);
+    return child.size;
+  }
+
+  @override
+  void performLayout() => size = _layout(constraints, dry: false);
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) =>
+      _layout(constraints, dry: true);
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _InlineFlow.minLastWidth;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) {
+    var w = 0.0;
+    var child = firstChild;
+    while (child != null) {
+      w += child.getMaxIntrinsicWidth(height) + _InlineFlow.spacing;
+      child = childAfter(child);
+    }
+    return w;
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      _layout(BoxConstraints(maxWidth: width), dry: true).height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      computeMinIntrinsicHeight(width);
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }

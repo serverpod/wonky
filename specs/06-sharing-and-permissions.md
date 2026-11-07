@@ -289,8 +289,11 @@ notification; the dialog shows them as "Moderator · <publication>" ([18 §5.1](
   the composer — *People with access*, *General access*, ⚙, *Copy link* and *Done* are hidden
   — and the footer is *Cancel* (left) and *Send* (right; *Share* while *Send an email* is
   off). *Cancel* (or Esc) drops the recipients, the typed text and the message and goes back.
-  The composer: a chip per recipient (made on space, comma, semicolon, Enter or picking a
-  suggestion; Backspace in the empty input removes the last chip whole; autocomplete from
+  The composer: a chip per recipient (a rounded pill with an avatar and the person's name —
+  the email in its tooltip — or the typed address, and an × to remove it; made on space,
+  comma, semicolon, Enter or picking a suggestion; Backspace in the empty input removes the
+  last chip whole; chips flow like words and the input takes the rest of the line, wrapping
+  only when less than 120 px is left; autocomplete from
   `user.searchUsers`: related people, members of the caller's organization by name or email
   prefix, anyone by exact email — [04 §6.3](04-auth-and-accounts.md)), role select, the *Send
   an email* checkbox (default on, no subtitle) and the optional message (only while it is on,
