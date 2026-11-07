@@ -2968,7 +2968,8 @@ class EndpointUser extends _isc.EndpointRef {
   );
 
   /// Users for the share dialog and @mentions (people sharing items with the
-  /// caller, or exact email matches).
+  /// caller, members of the caller's organization by name or email prefix,
+  /// or exact email matches; specs/04 §5, §6.3).
   _ida.Future<List<_iq7femvs.UserSummary>> searchUsers(
     String query,
     int limit,
@@ -2982,8 +2983,8 @@ class EndpointUser extends _isc.EndpointRef {
   );
 
   /// Summaries of users by id (authors, participants): only the caller and
-  /// users related to them (who share an item with them, as in
-  /// [searchUsers]); other ids are left out.
+  /// users related to them (who share an item with them or are in their
+  /// organization, as in [searchUsers]); other ids are left out.
   _ida.Future<List<_iq7femvs.UserSummary>> getUsers(List<int> ids) =>
       caller.callServerEndpoint<List<_iq7femvs.UserSummary>>(
         'user',

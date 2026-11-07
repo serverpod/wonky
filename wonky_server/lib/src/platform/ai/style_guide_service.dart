@@ -6,7 +6,7 @@ import '../common/actor.dart';
 import '../common/errors.dart';
 import '../common/models.dart';
 import '../common/time.dart';
-import 'style_guide_orgs.dart';
+import '../organizations/organization_service.dart';
 import 'style_guides/builtin_style_guides.dart';
 
 /// A resolved style guide: what the assistant follows.
@@ -155,7 +155,7 @@ abstract final class StyleGuideService {
   ) async {
     final own = await resolveRef(session, await _documentRef(session, itemId));
     if (own != null) return own;
-    final orgKey = await StyleGuideOrgs.orgKeyOf(session, userId);
+    final orgKey = await OrganizationService.orgKeyOf(session, userId);
     final def = await resolveRef(
       session,
       await _orgDefaultRef(session, orgKey),
@@ -174,7 +174,7 @@ abstract final class StyleGuideService {
     UuidValue? itemUuid,
   }) async {
     final userId = actor.userId;
-    final orgKey = await StyleGuideOrgs.orgKeyOf(session, userId);
+    final orgKey = await OrganizationService.orgKeyOf(session, userId);
     final rows = await StyleGuide.db.find(
       session,
       where: (g) =>
@@ -251,7 +251,7 @@ abstract final class StyleGuideService {
     _validate(input);
     final userId = actor.userId;
     final orgKey = input.shareWithOrg
-        ? await StyleGuideOrgs.orgKeyOf(session, userId)
+        ? await OrganizationService.orgKeyOf(session, userId)
         : null;
     if (input.shareWithOrg && orgKey == null) {
       throw Errors.invalid(
@@ -330,7 +330,7 @@ abstract final class StyleGuideService {
     Actor actor,
     String? ref,
   ) async {
-    final orgKey = await StyleGuideOrgs.orgKeyOf(session, actor.userId);
+    final orgKey = await OrganizationService.orgKeyOf(session, actor.userId);
     if (orgKey == null) {
       throw Errors.forbidden('You are not in an organization.');
     }
@@ -400,7 +400,7 @@ abstract final class StyleGuideService {
         await DocumentStyleGuide.db.deleteRow(session, existing);
       }
     } else {
-      final orgKey = await StyleGuideOrgs.orgKeyOf(session, actor.userId);
+      final orgKey = await OrganizationService.orgKeyOf(session, actor.userId);
       // The current choice stays valid (undo), other guides must be ones
       // the user can pick.
       if (existing?.styleRef != ref &&

@@ -347,8 +347,7 @@ platform-level so Sheets and Slides can use them later).
   the assistant panel's ⋮ (*Style guides…*), *Tools › Assistant › Style guides…* and *File ›
   Style guide…* (the document's choice). Saving, deleting and the org default are undoable on
   the shell stack, the document's choice on the document's stack (`StyleGuideUndoHandler`).
-- **Organizations (stopgap)**: until the organizations of [04](04-auth-and-accounts.md) land,
-  `platform/ai/style_guide_orgs.dart` (marked `STOPGAP(org-sharing)`) derives the org key from
-  the verified profile email's domain, skipping public mail providers; it is to be replaced by
-  `OrganizationService.orgKeyOf`.
+- **Organizations**: the org key of a style guide and of an org default is the organization of
+  [04 §6](04-auth-and-accounts.md) (`OrganizationService.orgKeyOf`): users of a public mail
+  provider have no organization and keep their guides personal.
 
