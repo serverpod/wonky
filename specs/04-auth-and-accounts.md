@@ -288,7 +288,9 @@ key-wise setters (`setDriveDefault`, `setSlidesDefault`, `setSlidesPresenter`; n
 `uploadAvatar()` (upload description flow; the avatar is stored as a 256 × 256 WebP, cropped to
 fill, 12 §1.1 *Image optimization*), `getPreferences()`, `updatePreferences(patch)`,
 `searchUsers(query, limit)` (for share dialog & @mentions; only returns users who share at least
-one item with the caller, or exact email matches), `deleteAccount(confirmation)`.
+one item with the caller, members of the caller's organization by name-word or email prefix, or
+exact email matches — §6.3), `deleteAccount(confirmation)`. `getMe` includes the caller's
+organization key (§6.2).
 
 `GoogleIdpEndpoint` (`googleIdp`): Serverpod's `GoogleIdpBaseEndpoint` (`loginWithCode`, §1.6).
 
@@ -297,3 +299,79 @@ one item with the caller, or exact email matches), `deleteAccount(confirmation)`
 `ui:control`) allows the `board.*` MCP tools of Bugs & improvements ([09](09-mcp.md),
 [16 §14](16-bugs-and-improvements.md)); it never grants admin rights, which come from the
 account's email domain ([16 §9.1](16-bugs-and-improvements.md)).
+
+## 6. Organizations
+
+An **organization** is everyone whose verified account email has the same domain
+(`anna@acme.dev` and `bo@acme.dev` are both in *acme.dev*). It is automatic: there is no org
+admin UI, no invitation and no stored organization row; membership follows from the email and
+the server configuration at every request, so a configuration change takes effect at once.
+Organizations power sharing with "Anyone at <domain>" ([06 §2.3](06-sharing-and-permissions.md))
+and the people search of the share dialog (§6.3); other features (the assistant's
+organization style guides, [10](10-ai-assistant.md)) ask the same service.
+
+### 6.1 Rules
+- **Only verified emails count.** The profile email is verified by construction: email/password
+  accounts exist only after the verification code (§1.1), Google sign-in requires Google's
+  verified email (§1.6), and there is no email-change endpoint (the same reasoning as the board
+  admins, [16 §9.1](16-bugs-and-improvements.md)). A profile created without an email gets
+  `<uuid>@users.invalid`, a reserved name without an organization. If an email-change flow is
+  added later it must keep the old address until the new one is verified.
+- **Public mail providers never form an organization.** A built-in list
+  (`platform/organizations/public_mail_domains.dart`) covers the global and regional free
+  providers (gmail.com, googlemail.com, outlook.com, hotmail.\*, live.\*, msn.com,
+  icloud.com, me.com, mac.com, yahoo.\*, ymail.com, aol.com, proton.me, protonmail.com,
+  pm.me, gmx.\*, web.de, t-online.de, mail.ru, yandex.\*, qq.com, 163.com, naver.com, …;
+  ISP mailboxes such as comcast.net or btinternet.com), privacy relays (duck.com,
+  privaterelay.appleid.com, SimpleLogin, addy.io, Firefox Relay), disposable-address services
+  and names reserved for documentation and tests (`*.test`, `*.example`, `*.invalid`,
+  `*.localhost`, `*.local`, `example.com/net/org`; the test users are `@example.test`).
+  `<brand>.<tld>` and `<brand>.<co|com|net|org|ne|or>.<cc>` match for the multi-country brands
+  (hotmail.co.uk, yahoo.com.br, gmx.at), never deeper names (`mail.acme.com` is an
+  organization). A malformed domain is treated as public. Users of these domains have **no
+  organization** and are shared with by their full email only.
+- **Subdomains are their own organization** (`eu.acme.dev` ≠ `acme.dev`) unless aliased.
+- **Configuration** (`wonky: organizations:` in `config/<runMode>.yaml`; defaults in code,
+  because Serverpod Cloud uploads no config files):
+
+  ```yaml
+  wonky:
+    organizations:
+      enabled: true                 # false: nobody has an organization
+      publicDomains: [isp.example]  # added to the built-in list
+      aliases:                      # domains of one organization; the first is its key/name
+        - [serverpod.dev, serverpod.com]   # the production default
+  ```
+
+  Environment overrides: `WONKY_ORGANIZATIONS_ENABLED`, `WONKY_ORGANIZATIONS_PUBLIC_DOMAINS`
+  (comma-separated), `WONKY_ORGANIZATIONS_ALIASES` (`a.dev,a.com;b.io,b.com`). A public domain
+  inside an alias group is ignored; a domain listed in two groups joins the first.
+
+### 6.2 The organization key
+An organization is identified by its **key**: its first domain (`serverpod.dev`, also for a user
+at `serverpod.com`). Grants to an organization store the key (`DriveItemPermission.orgKey`,
+06 §2); a grant matches every domain of the user's alias group, so adding a domain to a group
+keeps old grants working, reordering a group keeps them working as long as the stored domain
+stays in it, and a domain that later becomes public (or `enabled: false`) makes its grants
+inert without deleting them.
+
+**Server API** (`platform/organizations/organization_service.dart`): `OrganizationService.orgOf(session,
+userId)` → `Organization?` (`key`, `domains`), `orgKeyOf(session, userId)` → `String?`,
+`forEmail(email)`, `forKey(key)`, `sameOrganization(session, a, b)`, `membersAmong(session, org,
+ids)` and `sqlMemberCondition(column, org)` (the domain list inlined into SQL; every domain
+matched `[a-z0-9.-]+`). Profile emails are cached per user id in a bounded map (an email never
+changes). The signed-out viewer (id 0, 06 §2.4) has no organization. `user.getMe` returns
+`UserProfileView.organization` (the key, null without one) for the apps.
+
+### 6.3 People search
+`user.searchUsers` (share dialog, @mentions) returns, never anyone else:
+1. users **related** to the caller (they share an item with them; substring of the name or
+   email, as before);
+2. **members of the caller's organization** whose name has a word starting with the query or
+   whose email starts with it (`"carl"` finds Carla Diaz, `"dia"` finds her too, `"arla d"`
+   does not);
+3. anyone by their **exact email**.
+
+`user.getUsers` and the id checks of comments and sharing (`UserService.relatedIds`) use the
+same sets, so ids never reveal people outside them. A user without an organization (a public
+mail domain) gets 1 and 3 only.

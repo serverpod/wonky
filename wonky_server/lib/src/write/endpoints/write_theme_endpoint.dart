@@ -1,18 +1,29 @@
 import 'package:serverpod/serverpod.dart';
 
 import '../../platform/common/models.dart';
+import '../../platform/common/actor.dart';
+import '../../platform/sharing/anonymous_access.dart';
 import '../../platform/users/user_service.dart';
 import '../themes/theme_service.dart';
 
 /// Write themes (Write 06 §5.5).
+///
+/// `listBuiltins`, `get` and `getMany` also serve signed-out viewers of
+/// link-shared documents (the document's theme, without the owner's email,
+/// specs/06 §2.4); every other call needs an account.
 class WriteThemeEndpoint extends Endpoint {
   @override
-  bool get requireLogin => true;
+  bool get requireLogin => false;
 
   Future<List<WriteThemeView>> listBuiltins(Session session) async {
-    await UserService.actorOf(session);
+    await AnonymousAccess.actorOf(session);
     return ThemeService.listBuiltins(session);
   }
+
+  static WriteThemeView _scrub(Actor actor, WriteThemeView view) =>
+      actor.isAnonymous && view.owner != null
+      ? view.copyWith(owner: view.owner!.copyWith(email: ''))
+      : view;
 
   Future<List<WriteThemeView>> listMine(Session session) async =>
       ThemeService.listMine(session, await UserService.actorOf(session));
@@ -21,23 +32,35 @@ class WriteThemeEndpoint extends Endpoint {
     Session session,
     UuidValue uuid,
     UuidValue? viaDocumentUuid,
-  ) async => ThemeService.get(
-    session,
-    await UserService.actorOf(session),
-    uuid,
-    viaDocumentUuid: viaDocumentUuid,
-  );
+  ) async {
+    final actor = await AnonymousAccess.actorOf(session);
+    return _scrub(
+      actor,
+      await ThemeService.get(
+        session,
+        actor,
+        uuid,
+        viaDocumentUuid: viaDocumentUuid,
+      ),
+    );
+  }
 
   Future<List<WriteThemeView>> getMany(
     Session session,
     List<UuidValue> uuids,
     UuidValue? viaDocumentUuid,
-  ) async => ThemeService.getMany(
-    session,
-    await UserService.actorOf(session),
-    uuids,
-    viaDocumentUuid: viaDocumentUuid,
-  );
+  ) async {
+    final actor = await AnonymousAccess.actorOf(session);
+    return [
+      for (final v in await ThemeService.getMany(
+        session,
+        actor,
+        uuids,
+        viaDocumentUuid: viaDocumentUuid,
+      ))
+        _scrub(actor, v),
+    ];
+  }
 
   Future<WriteThemeView> create(
     Session session,

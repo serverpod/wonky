@@ -115,6 +115,13 @@ class DocumentConnection {
   }
 
   void _send(DocServerMessage m) {
+    // A signed-out viewer sees the text, not the people (specs/06 §2.4).
+    if (actor.isAnonymous &&
+        (m is DocParticipantJoined ||
+            m is DocParticipantLeft ||
+            m is DocRemoteCursor)) {
+      return;
+    }
     if (!_out.isClosed) _out.add(m);
   }
 
@@ -130,7 +137,10 @@ class DocumentConnection {
     _item = item;
     _role = await AccessService.requireRole(session, actor, item, Role.viewer);
     if (_closed) return;
-    await DriveUserStates.recordOpen(session, actor, item, _role);
+    // The signed-out viewer leaves no trace (specs/06 §2.4).
+    if (!actor.isAnonymous) {
+      await DriveUserStates.recordOpen(session, actor, item, _role);
+    }
     _document = doc;
     final state = await DocumentCache.of(session, doc);
     if (_closed) return;
@@ -144,38 +154,10 @@ class DocumentConnection {
     });
     if (_closed) return;
 
-    final profile = await UserService.requireProfile(session, actor.userId);
-    final summary = await UserService.summaryOf(session, profile);
-    if (_closed) return;
-    _me = Participant(
-      sessionId: sessionId,
-      userId: actor.userId,
-      userUuid: actor.authUserId,
-      displayName: summary.displayName,
-      avatarUrl: summary.avatarUrl,
-      colorIndex: summary.colorIndex,
-      role: _role.access,
-      actorKind: actor.kind,
-      state: PresenceState.active,
-      joinedAt: nowUtc(),
-    );
-
     session.messages.addListener(DocumentBus.channel(documentUuid), _onBus);
-    _announced = true;
-    await DocumentBus.post(
-      session,
-      documentUuid,
-      DocBusMessage(
-        type: 'hello',
-        originSessionId: sessionId,
-        participant: _me,
-      ),
-    );
-    if (_closed) {
-      // [_close] may have posted `left` before this `hello` arrived.
-      await _postLeft();
-      return;
-    }
+    // The signed-out viewer is not announced: no presence identity.
+    if (!actor.isAnonymous) await _announce();
+    if (_closed) return;
     // Over the editor limit: join as a viewer.
     final editors = _participants.values
         .where((p) => p.role.index >= AccessRole.editor.index)
@@ -206,7 +188,9 @@ class DocumentConnection {
         meta: _metaOf(_document),
         role: _role.access,
         sessionId: sessionId,
-        participants: [_me!, ..._participants.values],
+        participants: actor.isAnonymous
+            ? const []
+            : [?_me, ..._participants.values],
       ),
     );
     _input = input.listen(
@@ -219,6 +203,41 @@ class DocumentConnection {
       if (_role >= Role.editor) {
         _settle = Timer(rosterSettle, _enforceEditorLimit);
       }
+    }
+  }
+
+  /// Creates [_me] and posts `hello` to the other sessions.
+  Future<void> _announce() async {
+    final profile = await UserService.requireProfile(session, actor.userId);
+    final summary = await UserService.summaryOf(session, profile);
+    if (_closed) return;
+    _me = Participant(
+      sessionId: sessionId,
+      userId: actor.userId,
+      userUuid: actor.authUserId,
+      displayName: summary.displayName,
+      avatarUrl: summary.avatarUrl,
+      colorIndex: summary.colorIndex,
+      role: _role.access,
+      actorKind: actor.kind,
+      state: PresenceState.active,
+      joinedAt: nowUtc(),
+    );
+
+    _announced = true;
+    await DocumentBus.post(
+      session,
+      documentUuid,
+      DocBusMessage(
+        type: 'hello',
+        originSessionId: sessionId,
+        participant: _me,
+      ),
+    );
+    if (_closed) {
+      // [_close] may have posted `left` before this `hello` arrived.
+      await _postLeft();
+      return;
     }
   }
 
@@ -464,8 +483,19 @@ class DocumentConnection {
     try {
       if (m is! DocSubmitOp) debugOnMessage?.call(m);
       switch (m) {
+        case DocSubmitOp() when actor.isAnonymous:
+          // Signed-out viewers never write (specs/06 §2.4).
+          _send(
+            DocOpRejected(
+              clientOpId: m.clientOpId,
+              code: DocRejectCode.forbiddenForRole,
+              message: 'Sign in to edit.',
+            ),
+          );
         case DocSubmitOp():
           await _submit(m);
+        case DocCursorUpdate() when actor.isAnonymous:
+          return;
         case DocCursorUpdate():
           // The client may have seen ops this instance only knows from the
           // bus (another instance committed them).

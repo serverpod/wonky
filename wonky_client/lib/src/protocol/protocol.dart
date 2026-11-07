@@ -242,11 +242,14 @@ import 'platform/sharing/access_request.dart' as _i8scn8dm;
 import 'platform/sharing/access_request_outcome.dart' as _i7trut12;
 import 'platform/sharing/access_request_view.dart' as _iimp60a4;
 import 'platform/sharing/drive_item_permission.dart' as _iuzgacy4;
+import 'platform/sharing/general_access.dart' as _ia6t9w39;
 import 'platform/sharing/invite_resolution.dart' as _ikeljole;
 import 'platform/sharing/item_sharing_settings.dart' as _ih3711er;
+import 'platform/sharing/org_access_view.dart' as _iodj7c7d;
 import 'platform/sharing/ownership_transfer.dart' as _ijwxtu30;
 import 'platform/sharing/ownership_transfer_view.dart' as _iilpsf9g;
 import 'platform/sharing/permission_view.dart' as _iead0ok9;
+import 'platform/sharing/public_item_view.dart' as _iv2hjox5;
 import 'platform/sharing/share_link.dart' as _it712lg1;
 import 'platform/sharing/share_link_view.dart' as _iw2xoohn;
 import 'platform/sharing/sharing_info.dart' as _itd24os1;
@@ -517,11 +520,14 @@ export 'platform/sharing/access_request.dart';
 export 'platform/sharing/access_request_outcome.dart';
 export 'platform/sharing/access_request_view.dart';
 export 'platform/sharing/drive_item_permission.dart';
+export 'platform/sharing/general_access.dart';
 export 'platform/sharing/invite_resolution.dart';
 export 'platform/sharing/item_sharing_settings.dart';
+export 'platform/sharing/org_access_view.dart';
 export 'platform/sharing/ownership_transfer.dart';
 export 'platform/sharing/ownership_transfer_view.dart';
 export 'platform/sharing/permission_view.dart';
+export 'platform/sharing/public_item_view.dart';
 export 'platform/sharing/share_link.dart';
 export 'platform/sharing/share_link_view.dart';
 export 'platform/sharing/sharing_info.dart';
@@ -827,11 +833,14 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i7trut12.AccessRequestOutcome>,
           _isc.getType<_iimp60a4.AccessRequestView>,
           _isc.getType<_iuzgacy4.DriveItemPermission>,
+          _isc.getType<_ia6t9w39.GeneralAccess>,
           _isc.getType<_ikeljole.InviteResolution>,
           _isc.getType<_ih3711er.ItemSharingSettings>,
+          _isc.getType<_iodj7c7d.OrgAccessView>,
           _isc.getType<_ijwxtu30.OwnershipTransfer>,
           _isc.getType<_iilpsf9g.OwnershipTransferView>,
           _isc.getType<_iead0ok9.PermissionView>,
+          _isc.getType<_iv2hjox5.PublicItemView>,
           _isc.getType<_it712lg1.ShareLink>,
           _isc.getType<_iw2xoohn.ShareLinkView>,
           _isc.getType<_itd24os1.SharingInfo>,
@@ -1149,11 +1158,14 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i7trut12.AccessRequestOutcome?>,
           _isc.getType<_iimp60a4.AccessRequestView?>,
           _isc.getType<_iuzgacy4.DriveItemPermission?>,
+          _isc.getType<_ia6t9w39.GeneralAccess?>,
           _isc.getType<_ikeljole.InviteResolution?>,
           _isc.getType<_ih3711er.ItemSharingSettings?>,
+          _isc.getType<_iodj7c7d.OrgAccessView?>,
           _isc.getType<_ijwxtu30.OwnershipTransfer?>,
           _isc.getType<_iilpsf9g.OwnershipTransferView?>,
           _isc.getType<_iead0ok9.PermissionView?>,
+          _isc.getType<_iv2hjox5.PublicItemView?>,
           _isc.getType<_it712lg1.ShareLink?>,
           _isc.getType<_iw2xoohn.ShareLinkView?>,
           _isc.getType<_itd24os1.SharingInfo?>,
@@ -1964,11 +1976,17 @@ class Protocol extends _isc.SerializationManager
     if (t == _iuzgacy4.DriveItemPermission) {
       return _iuzgacy4.DriveItemPermission.fromJson(data) as T;
     }
+    if (t == _ia6t9w39.GeneralAccess) {
+      return _ia6t9w39.GeneralAccess.fromJson(data) as T;
+    }
     if (t == _ikeljole.InviteResolution) {
       return _ikeljole.InviteResolution.fromJson(data) as T;
     }
     if (t == _ih3711er.ItemSharingSettings) {
       return _ih3711er.ItemSharingSettings.fromJson(data) as T;
+    }
+    if (t == _iodj7c7d.OrgAccessView) {
+      return _iodj7c7d.OrgAccessView.fromJson(data) as T;
     }
     if (t == _ijwxtu30.OwnershipTransfer) {
       return _ijwxtu30.OwnershipTransfer.fromJson(data) as T;
@@ -1978,6 +1996,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _iead0ok9.PermissionView) {
       return _iead0ok9.PermissionView.fromJson(data) as T;
+    }
+    if (t == _iv2hjox5.PublicItemView) {
+      return _iv2hjox5.PublicItemView.fromJson(data) as T;
     }
     if (t == _it712lg1.ShareLink) {
       return _it712lg1.ShareLink.fromJson(data) as T;
@@ -3095,6 +3116,10 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_ia6t9w39.GeneralAccess?>()) {
+      return (data != null ? _ia6t9w39.GeneralAccess.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_ikeljole.InviteResolution?>()) {
       return (data != null ? _ikeljole.InviteResolution.fromJson(data) : null)
           as T;
@@ -3103,6 +3128,10 @@ class Protocol extends _isc.SerializationManager
       return (data != null
               ? _ih3711er.ItemSharingSettings.fromJson(data)
               : null)
+          as T;
+    }
+    if (t == _isc.getType<_iodj7c7d.OrgAccessView?>()) {
+      return (data != null ? _iodj7c7d.OrgAccessView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_ijwxtu30.OwnershipTransfer?>()) {
@@ -3117,6 +3146,10 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _isc.getType<_iead0ok9.PermissionView?>()) {
       return (data != null ? _iead0ok9.PermissionView.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iv2hjox5.PublicItemView?>()) {
+      return (data != null ? _iv2hjox5.PublicItemView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_it712lg1.ShareLink?>()) {
@@ -4497,11 +4530,14 @@ class Protocol extends _isc.SerializationManager
       _i7trut12.AccessRequestOutcome => 'AccessRequestOutcome',
       _iimp60a4.AccessRequestView => 'AccessRequestView',
       _iuzgacy4.DriveItemPermission => 'DriveItemPermission',
+      _ia6t9w39.GeneralAccess => 'GeneralAccess',
       _ikeljole.InviteResolution => 'InviteResolution',
       _ih3711er.ItemSharingSettings => 'ItemSharingSettings',
+      _iodj7c7d.OrgAccessView => 'OrgAccessView',
       _ijwxtu30.OwnershipTransfer => 'OwnershipTransfer',
       _iilpsf9g.OwnershipTransferView => 'OwnershipTransferView',
       _iead0ok9.PermissionView => 'PermissionView',
+      _iv2hjox5.PublicItemView => 'PublicItemView',
       _it712lg1.ShareLink => 'ShareLink',
       _iw2xoohn.ShareLinkView => 'ShareLinkView',
       _itd24os1.SharingInfo => 'SharingInfo',
@@ -5015,16 +5051,22 @@ class Protocol extends _isc.SerializationManager
         return 'AccessRequestView';
       case _iuzgacy4.DriveItemPermission():
         return 'DriveItemPermission';
+      case _ia6t9w39.GeneralAccess():
+        return 'GeneralAccess';
       case _ikeljole.InviteResolution():
         return 'InviteResolution';
       case _ih3711er.ItemSharingSettings():
         return 'ItemSharingSettings';
+      case _iodj7c7d.OrgAccessView():
+        return 'OrgAccessView';
       case _ijwxtu30.OwnershipTransfer():
         return 'OwnershipTransfer';
       case _iilpsf9g.OwnershipTransferView():
         return 'OwnershipTransferView';
       case _iead0ok9.PermissionView():
         return 'PermissionView';
+      case _iv2hjox5.PublicItemView():
+        return 'PublicItemView';
       case _it712lg1.ShareLink():
         return 'ShareLink';
       case _iw2xoohn.ShareLinkView():
@@ -5863,11 +5905,17 @@ class Protocol extends _isc.SerializationManager
     if (dataClassName == 'DriveItemPermission') {
       return deserialize<_iuzgacy4.DriveItemPermission>(data['data']);
     }
+    if (dataClassName == 'GeneralAccess') {
+      return deserialize<_ia6t9w39.GeneralAccess>(data['data']);
+    }
     if (dataClassName == 'InviteResolution') {
       return deserialize<_ikeljole.InviteResolution>(data['data']);
     }
     if (dataClassName == 'ItemSharingSettings') {
       return deserialize<_ih3711er.ItemSharingSettings>(data['data']);
+    }
+    if (dataClassName == 'OrgAccessView') {
+      return deserialize<_iodj7c7d.OrgAccessView>(data['data']);
     }
     if (dataClassName == 'OwnershipTransfer') {
       return deserialize<_ijwxtu30.OwnershipTransfer>(data['data']);
@@ -5877,6 +5925,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'PermissionView') {
       return deserialize<_iead0ok9.PermissionView>(data['data']);
+    }
+    if (dataClassName == 'PublicItemView') {
+      return deserialize<_iv2hjox5.PublicItemView>(data['data']);
     }
     if (dataClassName == 'ShareLink') {
       return deserialize<_it712lg1.ShareLink>(data['data']);

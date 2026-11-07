@@ -15,7 +15,9 @@ import 'package:serverpod/serverpod.dart' as _is;
 import '../../platform/common/access_role.dart' as _iv7g6vuy;
 
 /// A role grant on a drive item (specs/06 §2). Grants on folders are
-/// materialized on every descendant with [inheritedFromId].
+/// materialized on every descendant with [inheritedFromId]. A grant holds
+/// exactly one of [userId], [invitedEmail] (pending invite) or [orgKey]
+/// (everyone in an organization, specs/06 §2.3).
 abstract class DriveItemPermission
     implements _is.TableRow<int?>, _is.ProtocolSerialization {
   DriveItemPermission._({
@@ -23,6 +25,7 @@ abstract class DriveItemPermission
     required this.itemId,
     this.userId,
     this.invitedEmail,
+    this.orgKey,
     required this.role,
     this.inheritedFromId,
     required this.grantedById,
@@ -36,6 +39,7 @@ abstract class DriveItemPermission
     required int itemId,
     int? userId,
     String? invitedEmail,
+    String? orgKey,
     required _iv7g6vuy.AccessRole role,
     int? inheritedFromId,
     required int grantedById,
@@ -50,6 +54,7 @@ abstract class DriveItemPermission
       itemId: jsonSerialization['itemId'] as int,
       userId: jsonSerialization['userId'] as int?,
       invitedEmail: jsonSerialization['invitedEmail'] as String?,
+      orgKey: jsonSerialization['orgKey'] as String?,
       role: _iv7g6vuy.AccessRole.fromJson(
         (jsonSerialization['role'] as String),
       ),
@@ -79,6 +84,10 @@ abstract class DriveItemPermission
 
   String? invitedEmail;
 
+  /// (Organizations) The organization key (its first domain, specs/04 §6)
+  /// of an "Anyone at <domain>" grant; userId and invitedEmail are null.
+  String? orgKey;
+
   _iv7g6vuy.AccessRole role;
 
   /// The folder item the grant was inherited from (null = direct).
@@ -104,6 +113,7 @@ abstract class DriveItemPermission
     int? itemId,
     int? userId,
     String? invitedEmail,
+    String? orgKey,
     _iv7g6vuy.AccessRole? role,
     int? inheritedFromId,
     int? grantedById,
@@ -119,6 +129,7 @@ abstract class DriveItemPermission
       'itemId': itemId,
       if (userId != null) 'userId': userId,
       if (invitedEmail != null) 'invitedEmail': invitedEmail,
+      if (orgKey != null) 'orgKey': orgKey,
       'role': role.toJson(),
       if (inheritedFromId != null) 'inheritedFromId': inheritedFromId,
       'grantedById': grantedById,
@@ -136,6 +147,7 @@ abstract class DriveItemPermission
       'itemId': itemId,
       if (userId != null) 'userId': userId,
       if (invitedEmail != null) 'invitedEmail': invitedEmail,
+      if (orgKey != null) 'orgKey': orgKey,
       'role': role.toJson(),
       if (inheritedFromId != null) 'inheritedFromId': inheritedFromId,
       'grantedById': grantedById,
@@ -181,6 +193,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
     required int itemId,
     int? userId,
     String? invitedEmail,
+    String? orgKey,
     required _iv7g6vuy.AccessRole role,
     int? inheritedFromId,
     required int grantedById,
@@ -192,6 +205,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
          itemId: itemId,
          userId: userId,
          invitedEmail: invitedEmail,
+         orgKey: orgKey,
          role: role,
          inheritedFromId: inheritedFromId,
          grantedById: grantedById,
@@ -209,6 +223,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
     int? itemId,
     Object? userId = _Undefined,
     Object? invitedEmail = _Undefined,
+    Object? orgKey = _Undefined,
     _iv7g6vuy.AccessRole? role,
     Object? inheritedFromId = _Undefined,
     int? grantedById,
@@ -221,6 +236,7 @@ class _DriveItemPermissionImpl extends DriveItemPermission {
       itemId: itemId ?? this.itemId,
       userId: userId is int? ? userId : this.userId,
       invitedEmail: invitedEmail is String? ? invitedEmail : this.invitedEmail,
+      orgKey: orgKey is String? ? orgKey : this.orgKey,
       role: role ?? this.role,
       inheritedFromId: inheritedFromId is int?
           ? inheritedFromId
@@ -256,6 +272,11 @@ class DriveItemPermissionUpdateTable
         table.invitedEmail,
         value,
       );
+
+  _is.ColumnValue<String, String> orgKey(String? value) => _is.ColumnValue(
+    table.orgKey,
+    value,
+  );
 
   _is.ColumnValue<_iv7g6vuy.AccessRole, _iv7g6vuy.AccessRole> role(
     _iv7g6vuy.AccessRole value,
@@ -308,6 +329,10 @@ class DriveItemPermissionTable extends _is.Table<int?> {
       'invitedEmail',
       this,
     );
+    orgKey = _is.ColumnString(
+      'orgKey',
+      this,
+    );
     role = _is.ColumnEnum(
       'role',
       this,
@@ -344,6 +369,10 @@ class DriveItemPermissionTable extends _is.Table<int?> {
 
   late final _is.ColumnString invitedEmail;
 
+  /// (Organizations) The organization key (its first domain, specs/04 §6)
+  /// of an "Anyone at <domain>" grant; userId and invitedEmail are null.
+  late final _is.ColumnString orgKey;
+
   late final _is.ColumnEnum<_iv7g6vuy.AccessRole> role;
 
   /// The folder item the grant was inherited from (null = direct).
@@ -364,6 +393,7 @@ class DriveItemPermissionTable extends _is.Table<int?> {
     itemId,
     userId,
     invitedEmail,
+    orgKey,
     role,
     inheritedFromId,
     grantedById,

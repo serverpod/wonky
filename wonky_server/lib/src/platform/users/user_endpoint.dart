@@ -76,7 +76,8 @@ class UserEndpoint extends Endpoint {
   );
 
   /// Users for the share dialog and @mentions (people sharing items with the
-  /// caller, or exact email matches).
+  /// caller, members of the caller's organization by name or email prefix,
+  /// or exact email matches; specs/04 §5, §6.3).
   Future<List<UserSummary>> searchUsers(
     Session session,
     String query,
@@ -89,8 +90,8 @@ class UserEndpoint extends Endpoint {
   );
 
   /// Summaries of users by id (authors, participants): only the caller and
-  /// users related to them (who share an item with them, as in
-  /// [searchUsers]); other ids are left out.
+  /// users related to them (who share an item with them or are in their
+  /// organization, as in [searchUsers]); other ids are left out.
   Future<List<UserSummary>> getUsers(Session session, List<int> ids) async {
     final actor = await UserService.actorOf(session);
     final allowed = await UserService.relatedIds(session, actor, ids.take(200));

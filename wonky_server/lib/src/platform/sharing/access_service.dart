@@ -6,11 +6,16 @@ import '../common/errors.dart';
 import '../common/models.dart';
 import '../common/roles.dart';
 import '../common/time.dart';
+import '../organizations/organization_service.dart';
 
 /// The single source of truth for permissions (specs/06 §3).
 ///
 /// Effective role = max(owner, direct grants, grants inherited from folders,
-/// the link role when link sharing is on). Folder grants are materialized on
+/// grants to the user's organization (direct or inherited, specs/06 §2.3),
+/// the link role when link sharing is on). The signed-out viewer
+/// ([Actor.anonymous]) gets Viewer on link-shared documents, spreadsheets
+/// and presentations that are not in the trash, and nothing else (specs/06
+/// §2.4). Folder grants are materialized on
 /// every descendant as [DriveItemPermission] rows with `inheritedFromId`;
 /// [rebuildInherited] maintains them on share, unshare and move. The owner of
 /// a folder also gets an inherited Editor grant on items other people put
@@ -95,6 +100,9 @@ abstract final class AccessService {
   }) async {
     final result = <int, Role>{};
     if (items.isEmpty) return result;
+    if (userId == Actor.anonymousUserId) {
+      return _anonymousRoles(session, items, transaction: transaction);
+    }
     final others = <int>{};
     for (final item in items) {
       if (item.ownerId == userId) {
@@ -105,11 +113,16 @@ abstract final class AccessService {
     }
     if (others.isEmpty) return result;
     final now = nowUtc();
+    final org = await OrganizationService.orgOf(session, userId);
     final grants = await DriveItemPermission.db.find(
       session,
       where: (t) =>
           t.itemId.inSet(others) &
-          t.userId.equals(userId) &
+          (org == null
+              ? t.userId.equals(userId)
+              : (t.userId.equals(userId) |
+                    (t.userId.equals(null) &
+                        t.orgKey.inSet(org.domains.toSet())))) &
           (t.expiresAt.equals(null) | (t.expiresAt > now)),
       transaction: transaction,
     );
@@ -125,6 +138,34 @@ abstract final class AccessService {
       result[link.itemId] = maxRole(result[link.itemId], link.role!.role)!;
     }
     return result;
+  }
+
+  /// The kinds a signed-out viewer may open by link (specs/06 §2.4);
+  /// folders and uploaded files need an account.
+  static const anonymousKinds = {
+    DriveItemKind.document,
+    DriveItemKind.spreadsheet,
+    DriveItemKind.presentation,
+  };
+
+  /// [rolesFor] the signed-out viewer: Viewer on link-shared
+  /// [anonymousKinds] outside the trash, whatever the link role.
+  static Future<Map<int, Role>> _anonymousRoles(
+    Session session,
+    List<DriveItem> items, {
+    Transaction? transaction,
+  }) async {
+    final candidates = {
+      for (final i in items)
+        if (anonymousKinds.contains(i.kind) && i.trashedAt == null) i.id!,
+    };
+    if (candidates.isEmpty) return {};
+    final links = await ShareLink.db.find(
+      session,
+      where: (t) => t.itemId.inSet(candidates) & t.role.notEquals(null),
+      transaction: transaction,
+    );
+    return {for (final l in links) l.itemId: Role.viewer};
   }
 
   /// Users with a grant or ownership on [item] (not link visitors).
@@ -320,11 +361,12 @@ abstract final class AccessService {
       where: (t) => t.itemId.inSet(nodeIds) & t.inheritedFromId.notEquals(null),
       transaction: transaction,
     );
-    String key(int itemId, int? userId, String? email, int from) =>
-        '$itemId|${userId ?? ''}|${email ?? ''}|$from';
+    String key(int itemId, int? userId, String? email, String? org, int from) =>
+        '$itemId|${userId ?? ''}|${email ?? ''}|${org ?? ''}|$from';
     final existingByKey = {
       for (final p in existing)
-        key(p.itemId, p.userId, p.invitedEmail, p.inheritedFromId!): p,
+        key(p.itemId, p.userId, p.invitedEmail, p.orgKey, p.inheritedFromId!):
+            p,
     };
     final desired = <String, DriveItemPermission>{};
     final now = nowUtc();
@@ -334,13 +376,20 @@ abstract final class AccessService {
         for (final g
             in directByFolder[folderId] ?? const <DriveItemPermission>[]) {
           if (g.userId == node.ownerId) continue;
-          final k = key(node.id!, g.userId, g.invitedEmail, folderId);
+          final k = key(
+            node.id!,
+            g.userId,
+            g.invitedEmail,
+            g.orgKey,
+            folderId,
+          );
           final prev = desired[k];
           if (prev == null || g.role.index > prev.role.index) {
             desired[k] = DriveItemPermission(
               itemId: node.id!,
               userId: g.userId,
               invitedEmail: g.invitedEmail,
+              orgKey: g.orgKey,
               role: g.role,
               inheritedFromId: folderId,
               grantedById: g.grantedById,
@@ -350,7 +399,7 @@ abstract final class AccessService {
           }
         }
         if (folder.ownerId != node.ownerId) {
-          final k = key(node.id!, folder.ownerId, null, folderId);
+          final k = key(node.id!, folder.ownerId, null, null, folderId);
           desired.putIfAbsent(
             k,
             () => DriveItemPermission(
