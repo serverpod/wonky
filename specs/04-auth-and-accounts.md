@@ -317,7 +317,8 @@ admin UI, no invitation and no stored organization row; membership follows from 
 the server configuration at every request, so a configuration change takes effect at once.
 Organizations power sharing with "Anyone at <domain>" ([06 §2.3](06-sharing-and-permissions.md))
 and the people search of the share dialog (§6.3); other features (the assistant's
-organization style guides, [10](10-ai-assistant.md)) ask the same service.
+organization style guides and the organization's shared AI key, [10](10-ai-assistant.md))
+ask the same service.
 
 ### 6.1 Rules
 - **Only verified emails count.** The profile email is verified by construction: email/password

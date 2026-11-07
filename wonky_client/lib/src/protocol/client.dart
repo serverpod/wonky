@@ -631,6 +631,29 @@ class EndpointAssistant extends _isc.EndpointRef {
         {},
       );
 
+  /// Settings › AI providers › Organization key: stores a key shared with
+  /// every member of the caller's organization (anyone signing in with an
+  /// email of its domains), replacing the current one. Any member may.
+  _ida.Future<_idfnr0x0.AssistantStatus> setOrganizationProviderKey(
+    _i9ndea8y.AiProvider provider,
+    String apiKey,
+  ) => caller.callServerEndpoint<_idfnr0x0.AssistantStatus>(
+    'assistant',
+    'setOrganizationProviderKey',
+    {
+      'provider': provider,
+      'apiKey': apiKey,
+    },
+  );
+
+  /// Settings › AI providers › Organization key › Remove (any member may).
+  _ida.Future<_idfnr0x0.AssistantStatus> removeOrganizationProviderKey() =>
+      caller.callServerEndpoint<_idfnr0x0.AssistantStatus>(
+        'assistant',
+        'removeOrganizationProviderKey',
+        {},
+      );
+
   /// Sends a message ([threadId] null = new thread on [itemUuid]) and
   /// streams the run: `started` (thread + run id), text deltas, progress
   /// notes, tool activity, confirmations, usage, then `done`.

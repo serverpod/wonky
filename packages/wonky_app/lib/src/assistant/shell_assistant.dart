@@ -139,6 +139,18 @@ class ShellAssistant extends AssistantHook {
     services.registry.notifyStateChanged();
   }
 
+  /// Settings › AI providers › organization key › Share key.
+  Future<void> setOrgProviderKey(AiProvider provider, String apiKey) async {
+    status.value = await api.setOrgProviderKey(provider, apiKey);
+    services.registry.notifyStateChanged();
+  }
+
+  /// Settings › AI providers › organization key › Remove key.
+  Future<void> removeOrgProviderKey() async {
+    status.value = await api.removeOrgProviderKey();
+    services.registry.notifyStateChanged();
+  }
+
   /// The settings section id of Settings › AI providers.
   static const aiProvidersSection = 'ai-providers';
 
@@ -227,6 +239,15 @@ class _UnavailableApi implements AssistantApi {
 
   @override
   Future<AssistantStatus> removeProviderKey() => getStatus();
+
+  @override
+  Future<AssistantStatus> setOrgProviderKey(
+    AiProvider provider,
+    String apiKey,
+  ) => _fail();
+
+  @override
+  Future<AssistantStatus> removeOrgProviderKey() => getStatus();
 
   @override
   Stream<AssistantEvent> chat({

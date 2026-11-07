@@ -10,6 +10,11 @@ abstract class AssistantApi {
   /// returns it).
   Future<AssistantStatus> setProviderKey(AiProvider provider, String apiKey);
   Future<AssistantStatus> removeProviderKey();
+
+  /// Settings › AI providers › organization key: a key shared with every
+  /// member of the caller's organization (never returned either).
+  Future<AssistantStatus> setOrgProviderKey(AiProvider provider, String apiKey);
+  Future<AssistantStatus> removeOrgProviderKey();
   Stream<AssistantEvent> chat({
     required int? threadId,
     required UuidValue itemUuid,
@@ -75,6 +80,16 @@ class ServerAssistantApi implements AssistantApi {
 
   @override
   Future<AssistantStatus> removeProviderKey() => _a.removeProviderKey();
+
+  @override
+  Future<AssistantStatus> setOrgProviderKey(
+    AiProvider provider,
+    String apiKey,
+  ) => _a.setOrganizationProviderKey(provider, apiKey);
+
+  @override
+  Future<AssistantStatus> removeOrgProviderKey() =>
+      _a.removeOrganizationProviderKey();
 
   @override
   Stream<AssistantEvent> chat({

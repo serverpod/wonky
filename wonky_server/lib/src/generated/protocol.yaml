@@ -18,6 +18,8 @@ assistant:
   - setQuality:
   - setProviderKey:
   - removeProviderKey:
+  - setOrganizationProviderKey:
+  - removeOrganizationProviderKey:
   - chat:
   - quickAction:
   - stop:

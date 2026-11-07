@@ -2601,6 +2601,60 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get aiProvidersManage => 'Manage AI providers';
 
   @override
+  String aiOrgKeyTitle(String organization) {
+    return 'Key for $organization';
+  }
+
+  @override
+  String aiOrgKeyHint(String organization) {
+    return 'Share an API key with everyone at $organization. Whoever has no key of their own uses it.';
+  }
+
+  @override
+  String aiOrgKeyWarning(String organization) {
+    return 'Anyone who signs in with an email address at $organization can use this key, and what they use is billed to the key’s account. Any of them can also replace or remove it.';
+  }
+
+  @override
+  String get aiOrgKeyCurrent => 'Shared key';
+
+  @override
+  String aiOrgKeyCurrentBy(String provider, String last4, String name) {
+    return '$provider key ending in $last4, added by $name';
+  }
+
+  @override
+  String aiOrgKeyInUse(String organization) {
+    return 'You use the key shared with $organization. If you add a key of your own, it is used instead.';
+  }
+
+  @override
+  String get aiOrgKeySave => 'Share key';
+
+  @override
+  String aiOrgKeyConfirmTitle(String organization) {
+    return 'Share this key with $organization?';
+  }
+
+  @override
+  String aiOrgKeySaved(String organization) {
+    return 'Key shared with $organization';
+  }
+
+  @override
+  String aiOrgKeyRemoveTitle(String organization) {
+    return 'Remove the key shared with $organization?';
+  }
+
+  @override
+  String aiOrgKeyRemoveBody(String organization) {
+    return 'AI stops working for everyone at $organization who has no key of their own.';
+  }
+
+  @override
+  String get aiOrgKeyRemoved => 'Shared key removed';
+
+  @override
   String get aiChatHistory => 'Chat history';
 
   @override
@@ -7842,6 +7896,60 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get aiProvidersManage => '[Ṁåñåĝé ÅÎ þŕöṽîðéŕš one tw]';
+
+  @override
+  String aiOrgKeyTitle(String organization) {
+    return '[Ķéý ƒöŕ $organization one]';
+  }
+
+  @override
+  String aiOrgKeyHint(String organization) {
+    return '[Šĥåŕé åñ ÅÞÎ ķéý ŵîţĥ éṽéŕýöñé åţ $organization. Ŵĥöéṽéŕ ĥåš ñö ķéý öƒ ţĥéîŕ öŵñ ûšéš îţ. one two three four fi]';
+  }
+
+  @override
+  String aiOrgKeyWarning(String organization) {
+    return '[Åñýöñé ŵĥö šîĝñš îñ ŵîţĥ åñ éɱåîļ åððŕéšš åţ $organization çåñ ûšé ţĥîš ķéý, åñð ŵĥåţ ţĥéý ûšé îš ƀîļļéð ţö ţĥé ķéý’š åççöûñţ. Åñý öƒ ţĥéɱ çåñ åļšö ŕéþļåçé öŕ ŕéɱöṽé îţ. one two three four five six seven eight nine]';
+  }
+
+  @override
+  String get aiOrgKeyCurrent => '[Šĥåŕéð ķéý one]';
+
+  @override
+  String aiOrgKeyCurrentBy(String provider, String last4, String name) {
+    return '[$provider ķéý éñðîñĝ îñ $last4, åððéð ƀý $name one two]';
+  }
+
+  @override
+  String aiOrgKeyInUse(String organization) {
+    return '[Ýöû ûšé ţĥé ķéý šĥåŕéð ŵîţĥ $organization. Îƒ ýöû åðð å ķéý öƒ ýöûŕ öŵñ, îţ îš ûšéð îñšţéåð. one two three four fiv]';
+  }
+
+  @override
+  String get aiOrgKeySave => '[Šĥåŕé ķéý one]';
+
+  @override
+  String aiOrgKeyConfirmTitle(String organization) {
+    return '[Šĥåŕé ţĥîš ķéý ŵîţĥ $organization? one tw]';
+  }
+
+  @override
+  String aiOrgKeySaved(String organization) {
+    return '[Ķéý šĥåŕéð ŵîţĥ $organization one t]';
+  }
+
+  @override
+  String aiOrgKeyRemoveTitle(String organization) {
+    return '[Ŕéɱöṽé ţĥé ķéý šĥåŕéð ŵîţĥ $organization? one two t]';
+  }
+
+  @override
+  String aiOrgKeyRemoveBody(String organization) {
+    return '[ÅÎ šţöþš ŵöŕķîñĝ ƒöŕ éṽéŕýöñé åţ $organization ŵĥö ĥåš ñö ķéý öƒ ţĥéîŕ öŵñ. one two three four]';
+  }
+
+  @override
+  String get aiOrgKeyRemoved => '[Šĥåŕéð ķéý ŕéɱöṽéð one tw]';
 
   @override
   String get aiChatHistory => '[Çĥåţ ĥîšţöŕý one]';

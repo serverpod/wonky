@@ -81,6 +81,7 @@ import 'platform/activity/activity_trend_point.dart' as _ighcq381;
 import 'platform/activity/activity_type.dart' as _i50cy468;
 import 'platform/activity/activity_viewer.dart' as _ikcwdr17;
 import 'platform/ai/models/ai_apply_mode.dart' as _iyja8k5e;
+import 'platform/ai/models/ai_org_key_view.dart' as _ino0idxi;
 import 'platform/ai/models/ai_provider.dart' as _ir7z75mb;
 import 'platform/ai/models/ai_provider_key_view.dart' as _ic2q2fwi;
 import 'platform/ai/models/ai_quality.dart' as _iviyoyk9;
@@ -372,6 +373,7 @@ export 'platform/activity/activity_trend_point.dart';
 export 'platform/activity/activity_type.dart';
 export 'platform/activity/activity_viewer.dart';
 export 'platform/ai/models/ai_apply_mode.dart';
+export 'platform/ai/models/ai_org_key_view.dart';
 export 'platform/ai/models/ai_provider.dart';
 export 'platform/ai/models/ai_provider_key_view.dart';
 export 'platform/ai/models/ai_quality.dart';
@@ -672,6 +674,7 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i50cy468.ActivityType>,
           _isc.getType<_ikcwdr17.ActivityViewer>,
           _isc.getType<_iyja8k5e.AiApplyMode>,
+          _isc.getType<_ino0idxi.AiOrgKeyView>,
           _isc.getType<_ir7z75mb.AiProvider>,
           _isc.getType<_ic2q2fwi.AiProviderKeyView>,
           _isc.getType<_iviyoyk9.AiQuality>,
@@ -1004,6 +1007,7 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i50cy468.ActivityType?>,
           _isc.getType<_ikcwdr17.ActivityViewer?>,
           _isc.getType<_iyja8k5e.AiApplyMode?>,
+          _isc.getType<_ino0idxi.AiOrgKeyView?>,
           _isc.getType<_ir7z75mb.AiProvider?>,
           _isc.getType<_ic2q2fwi.AiProviderKeyView?>,
           _isc.getType<_iviyoyk9.AiQuality?>,
@@ -1438,6 +1442,7 @@ class Protocol extends _isc.SerializationManager
           'ActivityType',
           'ActivityViewer',
           'AiApplyMode',
+          'AiOrgKeyView',
           'AiProvider',
           'AiProviderKeyView',
           'AiQuality',
@@ -1810,6 +1815,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _iyja8k5e.AiApplyMode) {
       return _iyja8k5e.AiApplyMode.fromJson(data) as T;
+    }
+    if (t == _ino0idxi.AiOrgKeyView) {
+      return _ino0idxi.AiOrgKeyView.fromJson(data) as T;
     }
     if (t == _ir7z75mb.AiProvider) {
       return _ir7z75mb.AiProvider.fromJson(data) as T;
@@ -2811,6 +2819,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _isc.getType<_iyja8k5e.AiApplyMode?>()) {
       return (data != null ? _iyja8k5e.AiApplyMode.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ino0idxi.AiOrgKeyView?>()) {
+      return (data != null ? _ino0idxi.AiOrgKeyView.fromJson(data) : null) as T;
     }
     if (t == _isc.getType<_ir7z75mb.AiProvider?>()) {
       return (data != null ? _ir7z75mb.AiProvider.fromJson(data) : null) as T;
@@ -4774,6 +4785,7 @@ class Protocol extends _isc.SerializationManager
       _i50cy468.ActivityType => 'ActivityType',
       _ikcwdr17.ActivityViewer => 'ActivityViewer',
       _iyja8k5e.AiApplyMode => 'AiApplyMode',
+      _ino0idxi.AiOrgKeyView => 'AiOrgKeyView',
       _ir7z75mb.AiProvider => 'AiProvider',
       _ic2q2fwi.AiProviderKeyView => 'AiProviderKeyView',
       _iviyoyk9.AiQuality => 'AiQuality',
@@ -5127,6 +5139,8 @@ class Protocol extends _isc.SerializationManager
         return 'ActivityViewer';
       case _iyja8k5e.AiApplyMode():
         return 'AiApplyMode';
+      case _ino0idxi.AiOrgKeyView():
+        return 'AiOrgKeyView';
       case _ir7z75mb.AiProvider():
         return 'AiProvider';
       case _ic2q2fwi.AiProviderKeyView():
@@ -5819,6 +5833,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'AiApplyMode') {
       return deserialize<_iyja8k5e.AiApplyMode>(data['data']);
+    }
+    if (dataClassName == 'AiOrgKeyView') {
+      return deserialize<_ino0idxi.AiOrgKeyView>(data['data']);
     }
     if (dataClassName == 'AiProvider') {
       return deserialize<_ir7z75mb.AiProvider>(data['data']);

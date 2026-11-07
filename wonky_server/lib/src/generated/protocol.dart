@@ -108,6 +108,8 @@ import 'platform/activity/activity_viewer.dart' as _ikcwdr17;
 import 'platform/activity/item_view_day.dart' as _ixdmbuaj;
 import 'platform/activity/user_activity_settings.dart' as _ifmsnq1y;
 import 'platform/ai/models/ai_apply_mode.dart' as _iyja8k5e;
+import 'platform/ai/models/ai_org_key.dart' as _ih2of0kj;
+import 'platform/ai/models/ai_org_key_view.dart' as _ino0idxi;
 import 'platform/ai/models/ai_preview_record.dart' as _iuq1eobh;
 import 'platform/ai/models/ai_provider.dart' as _ir7z75mb;
 import 'platform/ai/models/ai_provider_key_view.dart' as _ic2q2fwi;
@@ -483,6 +485,8 @@ export 'platform/activity/activity_viewer.dart';
 export 'platform/activity/item_view_day.dart';
 export 'platform/activity/user_activity_settings.dart';
 export 'platform/ai/models/ai_apply_mode.dart';
+export 'platform/ai/models/ai_org_key.dart';
+export 'platform/ai/models/ai_org_key_view.dart';
 export 'platform/ai/models/ai_preview_record.dart';
 export 'platform/ai/models/ai_provider.dart';
 export 'platform/ai/models/ai_provider_key_view.dart';
@@ -878,6 +882,8 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ixdmbuaj.ItemViewDay>,
           _is.getType<_ifmsnq1y.UserActivitySettings>,
           _is.getType<_iyja8k5e.AiApplyMode>,
+          _is.getType<_ih2of0kj.AiOrgKey>,
+          _is.getType<_ino0idxi.AiOrgKeyView>,
           _is.getType<_iuq1eobh.AiPreviewRecord>,
           _is.getType<_ir7z75mb.AiProvider>,
           _is.getType<_ic2q2fwi.AiProviderKeyView>,
@@ -1306,6 +1312,8 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ixdmbuaj.ItemViewDay?>,
           _is.getType<_ifmsnq1y.UserActivitySettings?>,
           _is.getType<_iyja8k5e.AiApplyMode?>,
+          _is.getType<_ih2of0kj.AiOrgKey?>,
+          _is.getType<_ino0idxi.AiOrgKeyView?>,
           _is.getType<_iuq1eobh.AiPreviewRecord?>,
           _is.getType<_ir7z75mb.AiProvider?>,
           _is.getType<_ic2q2fwi.AiProviderKeyView?>,
@@ -1837,6 +1845,8 @@ class Protocol extends _is.DatabaseSerializationManager
           'ItemViewDay',
           'UserActivitySettings',
           'AiApplyMode',
+          'AiOrgKey',
+          'AiOrgKeyView',
           'AiPreviewRecord',
           'AiProvider',
           'AiProviderKeyView',
@@ -2536,6 +2546,85 @@ class Protocol extends _is.DatabaseSerializationManager
           ],
           type: 'btree',
           isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'ai_org_key',
+      dartName: 'AiOrgKey',
+      schema: 'public',
+      module: 'wonky',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'orgKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'provider',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:AiProvider',
+        ),
+        _isp.ColumnDefinition(
+          name: 'apiKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'addedById',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'ai_org_key_fk_0',
+          columns: ['addedById'],
+          referenceTable: 'user_profile',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.setNull,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'ai_org_key_org_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'orgKey',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
           isPrimary: false,
         ),
       ],
@@ -16133,6 +16222,12 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _iyja8k5e.AiApplyMode) {
       return _iyja8k5e.AiApplyMode.fromJson(data) as T;
     }
+    if (t == _ih2of0kj.AiOrgKey) {
+      return _ih2of0kj.AiOrgKey.fromJson(data) as T;
+    }
+    if (t == _ino0idxi.AiOrgKeyView) {
+      return _ino0idxi.AiOrgKeyView.fromJson(data) as T;
+    }
     if (t == _iuq1eobh.AiPreviewRecord) {
       return _iuq1eobh.AiPreviewRecord.fromJson(data) as T;
     }
@@ -17460,6 +17555,12 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (t == _is.getType<_iyja8k5e.AiApplyMode?>()) {
       return (data != null ? _iyja8k5e.AiApplyMode.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ih2of0kj.AiOrgKey?>()) {
+      return (data != null ? _ih2of0kj.AiOrgKey.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ino0idxi.AiOrgKeyView?>()) {
+      return (data != null ? _ino0idxi.AiOrgKeyView.fromJson(data) : null) as T;
     }
     if (t == _is.getType<_iuq1eobh.AiPreviewRecord?>()) {
       return (data != null ? _iuq1eobh.AiPreviewRecord.fromJson(data) : null)
@@ -19761,6 +19862,8 @@ class Protocol extends _is.DatabaseSerializationManager
       _ixdmbuaj.ItemViewDay => 'ItemViewDay',
       _ifmsnq1y.UserActivitySettings => 'UserActivitySettings',
       _iyja8k5e.AiApplyMode => 'AiApplyMode',
+      _ih2of0kj.AiOrgKey => 'AiOrgKey',
+      _ino0idxi.AiOrgKeyView => 'AiOrgKeyView',
       _iuq1eobh.AiPreviewRecord => 'AiPreviewRecord',
       _ir7z75mb.AiProvider => 'AiProvider',
       _ic2q2fwi.AiProviderKeyView => 'AiProviderKeyView',
@@ -20224,6 +20327,10 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'UserActivitySettings';
       case _iyja8k5e.AiApplyMode():
         return 'AiApplyMode';
+      case _ih2of0kj.AiOrgKey():
+        return 'AiOrgKey';
+      case _ino0idxi.AiOrgKeyView():
+        return 'AiOrgKeyView';
       case _iuq1eobh.AiPreviewRecord():
         return 'AiPreviewRecord';
       case _ir7z75mb.AiProvider():
@@ -21144,6 +21251,12 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (dataClassName == 'AiApplyMode') {
       return deserialize<_iyja8k5e.AiApplyMode>(data['data']);
+    }
+    if (dataClassName == 'AiOrgKey') {
+      return deserialize<_ih2of0kj.AiOrgKey>(data['data']);
+    }
+    if (dataClassName == 'AiOrgKeyView') {
+      return deserialize<_ino0idxi.AiOrgKeyView>(data['data']);
     }
     if (dataClassName == 'AiPreviewRecord') {
       return deserialize<_iuq1eobh.AiPreviewRecord>(data['data']);
@@ -22419,6 +22532,8 @@ class Protocol extends _is.DatabaseSerializationManager
         return _ixdmbuaj.ItemViewDay.t;
       case _ifmsnq1y.UserActivitySettings:
         return _ifmsnq1y.UserActivitySettings.t;
+      case _ih2of0kj.AiOrgKey:
+        return _ih2of0kj.AiOrgKey.t;
       case _iuq1eobh.AiPreviewRecord:
         return _iuq1eobh.AiPreviewRecord.t;
       case _i7i53on7.AiUsage:

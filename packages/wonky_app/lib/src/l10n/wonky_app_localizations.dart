@@ -4594,6 +4594,78 @@ abstract class WonkyAppLocalizations {
   /// **'Manage AI providers'**
   String get aiProvidersManage;
 
+  /// No description provided for @aiOrgKeyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Key for {organization}'**
+  String aiOrgKeyTitle(String organization);
+
+  /// No description provided for @aiOrgKeyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share an API key with everyone at {organization}. Whoever has no key of their own uses it.'**
+  String aiOrgKeyHint(String organization);
+
+  /// No description provided for @aiOrgKeyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who signs in with an email address at {organization} can use this key, and what they use is billed to the key’s account. Any of them can also replace or remove it.'**
+  String aiOrgKeyWarning(String organization);
+
+  /// No description provided for @aiOrgKeyCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared key'**
+  String get aiOrgKeyCurrent;
+
+  /// No description provided for @aiOrgKeyCurrentBy.
+  ///
+  /// In en, this message translates to:
+  /// **'{provider} key ending in {last4}, added by {name}'**
+  String aiOrgKeyCurrentBy(String provider, String last4, String name);
+
+  /// No description provided for @aiOrgKeyInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'You use the key shared with {organization}. If you add a key of your own, it is used instead.'**
+  String aiOrgKeyInUse(String organization);
+
+  /// No description provided for @aiOrgKeySave.
+  ///
+  /// In en, this message translates to:
+  /// **'Share key'**
+  String get aiOrgKeySave;
+
+  /// No description provided for @aiOrgKeyConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this key with {organization}?'**
+  String aiOrgKeyConfirmTitle(String organization);
+
+  /// No description provided for @aiOrgKeySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Key shared with {organization}'**
+  String aiOrgKeySaved(String organization);
+
+  /// No description provided for @aiOrgKeyRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the key shared with {organization}?'**
+  String aiOrgKeyRemoveTitle(String organization);
+
+  /// No description provided for @aiOrgKeyRemoveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'AI stops working for everyone at {organization} who has no key of their own.'**
+  String aiOrgKeyRemoveBody(String organization);
+
+  /// No description provided for @aiOrgKeyRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared key removed'**
+  String get aiOrgKeyRemoved;
+
   /// No description provided for @aiChatHistory.
   ///
   /// In en, this message translates to:

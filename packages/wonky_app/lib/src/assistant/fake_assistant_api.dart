@@ -75,15 +75,65 @@ class FakeAssistantApi implements AssistantApi {
     return status;
   }
 
+  /// Keys shared through [setOrgProviderKey] (provider, key), in order.
+  final List<(AiProvider, String)> savedOrgKeys = [];
+
   @override
-  Future<AssistantStatus> removeProviderKey() async {
+  Future<AssistantStatus> setOrgProviderKey(
+    AiProvider provider,
+    String apiKey,
+  ) async {
+    savedOrgKeys.add((provider, apiKey));
+    final k = apiKey.trim();
+    final own = status.userKey != null;
+    status = status.copyWith(
+      available: true,
+      reason: null,
+      message: null,
+      provider: own ? status.provider : provider,
+      keySource: own ? 'user' : 'organization',
+      orgKey: AiOrgKeyView(
+        provider: provider,
+        last4: k.length <= 4 ? k : k.substring(k.length - 4),
+        updatedAt: DateTime.utc(2026),
+        addedBy: 'Me',
+      ),
+    );
+    return status;
+  }
+
+  @override
+  Future<AssistantStatus> removeOrgProviderKey() async {
+    final own = status.userKey != null;
     status = AssistantStatus(
-      available: false,
-      reason: 'notConfigured',
+      available: own,
+      reason: own ? null : 'notConfigured',
       quality: status.quality,
       tokensUsedToday: status.tokensUsedToday,
       dailyTokenBudget: status.dailyTokenBudget,
+      provider: own ? status.provider : null,
+      keySource: own ? 'user' : null,
       userKeysAllowed: status.userKeysAllowed,
+      userKey: status.userKey,
+      organization: status.organization,
+    );
+    return status;
+  }
+
+  @override
+  Future<AssistantStatus> removeProviderKey() async {
+    final org = status.orgKey;
+    status = AssistantStatus(
+      available: org != null,
+      reason: org != null ? null : 'notConfigured',
+      quality: status.quality,
+      tokensUsedToday: status.tokensUsedToday,
+      dailyTokenBudget: status.dailyTokenBudget,
+      provider: org?.provider,
+      keySource: org != null ? 'organization' : null,
+      userKeysAllowed: status.userKeysAllowed,
+      organization: status.organization,
+      orgKey: org,
     );
     return status;
   }

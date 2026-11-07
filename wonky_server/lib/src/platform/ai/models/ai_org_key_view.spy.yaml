@@ -1,0 +1,9 @@
+### What a client sees of the organization's shared API key: the provider,
+### the last four characters and who added it, never the key.
+class: AiOrgKeyView
+fields:
+  provider: AiProvider
+  last4: String
+  updatedAt: DateTime
+  ### The display name of the member who added or last replaced it.
+  addedBy: String?

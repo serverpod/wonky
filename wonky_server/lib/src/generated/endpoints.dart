@@ -751,6 +751,41 @@ class Endpoints extends _is.EndpointDispatch {
               ) async => (endpoints['assistant'] as _i8k7ge8b.AssistantEndpoint)
                   .removeProviderKey(session),
         ),
+        'setOrganizationProviderKey': _is.MethodConnector(
+          name: 'setOrganizationProviderKey',
+          params: {
+            'provider': _is.ParameterDescription(
+              name: 'provider',
+              type: _is.getType<_i02m7u6n.AiProvider>(),
+              nullable: false,
+            ),
+            'apiKey': _is.ParameterDescription(
+              name: 'apiKey',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['assistant'] as _i8k7ge8b.AssistantEndpoint)
+                  .setOrganizationProviderKey(
+                    session,
+                    params['provider'],
+                    params['apiKey'],
+                  ),
+        ),
+        'removeOrganizationProviderKey': _is.MethodConnector(
+          name: 'removeOrganizationProviderKey',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['assistant'] as _i8k7ge8b.AssistantEndpoint)
+                  .removeOrganizationProviderKey(session),
+        ),
         'stop': _is.MethodConnector(
           name: 'stop',
           params: {

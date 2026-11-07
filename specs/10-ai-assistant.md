@@ -35,6 +35,21 @@ never reach clients). The assistant acts on documents through the **same tool la
   four characters (`AiProviderKeyView`). It is not encrypted at rest (no encryption helper
   exists; see [13 §2](13-security-and-operations.md)). Users can replace or remove it; a server
   that has its own key refuses personal keys.
+- **Organization keys** (*Settings › AI providers › Key for <domain>*, under the same rules as
+  user keys: no server key, `ai.allowUserKeys` on). Any member of an organization
+  ([04 §6](04-auth-and-accounts.md), verified email domain; users of public mail providers have
+  none and don't see it) can add a key **shared with the whole organization**, and any member
+  can replace or remove it (there are no organization admins). The group shows a warning:
+  anyone who signs in with an email at the organization's domains can use the key and their
+  usage is billed to its account; sharing asks for confirmation with the same text. Resolution
+  becomes **server key > the user's own key > their organization's key > none**
+  (`AiKeySource.organization`, `keySource: "organization"`). Stored in `ai_org_key` (one row per
+  organization key, `serverOnly`, `addedById` → who added or last replaced it); clients see the
+  provider, the last four characters and who added it (`AiOrgKeyView`, `AssistantStatus.orgKey`
+  and `.organization`); setting and removing are logged (organization, user, provider, last
+  four). Usage still counts against each user's own daily budget. Endpoints:
+  `assistant.setOrganizationProviderKey(provider, apiKey)`,
+  `assistant.removeOrganizationProviderKey()`.
 - **Models.** "AI quality" maps to a model size and effort:
   | Setting | Model | Effort |
   |---------|-------|--------|

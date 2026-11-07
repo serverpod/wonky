@@ -1731,6 +1731,87 @@
   "aiProvidersRemoveFailed": "Couldn't remove the API key",
   "aiProvidersNotAllowed": "This server doesn't allow personal API keys. Ask an administrator to set up AI.",
   "aiProvidersManage": "Manage AI providers",
+  "aiOrgKeyTitle": "Key for {organization}",
+  "@aiOrgKeyTitle": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyHint": "Share an API key with everyone at {organization}. Whoever has no key of their own uses it.",
+  "@aiOrgKeyHint": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyWarning": "Anyone who signs in with an email address at {organization} can use this key, and what they use is billed to the key’s account. Any of them can also replace or remove it.",
+  "@aiOrgKeyWarning": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyCurrent": "Shared key",
+  "aiOrgKeyCurrentBy": "{provider} key ending in {last4}, added by {name}",
+  "@aiOrgKeyCurrentBy": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "last4": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyInUse": "You use the key shared with {organization}. If you add a key of your own, it is used instead.",
+  "@aiOrgKeyInUse": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeySave": "Share key",
+  "aiOrgKeyConfirmTitle": "Share this key with {organization}?",
+  "@aiOrgKeyConfirmTitle": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeySaved": "Key shared with {organization}",
+  "@aiOrgKeySaved": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyRemoveTitle": "Remove the key shared with {organization}?",
+  "@aiOrgKeyRemoveTitle": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyRemoveBody": "AI stops working for everyone at {organization} who has no key of their own.",
+  "@aiOrgKeyRemoveBody": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyRemoved": "Shared key removed",
   "aiChatHistory": "Chat history",
   "aiChatHistoryHint": "Delete all your assistant chats.",
   "aiClearHistory": "Clear history",
