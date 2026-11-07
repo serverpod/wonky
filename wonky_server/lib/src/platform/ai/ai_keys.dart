@@ -209,6 +209,8 @@ abstract final class AiKeys {
           addedById: userId,
           updatedAt: now,
         ),
+        // Any member may replace it: write only what changes (T1).
+        columns: (t) => [t.provider, t.apiKey, t.addedById, t.updatedAt],
       );
     }
     session.log(
