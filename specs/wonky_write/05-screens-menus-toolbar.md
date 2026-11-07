@@ -291,6 +291,7 @@ Write behaviour noted.
 | ─ | | | | |
 | Language… | `write.doc.languageDialog` → `write.doc.setLanguage` | — | — | role ≥ editor |
 | Page setup… | `write.doc.pageSetup` (dialog §12.6) | — | — | role ≥ editor (viewers: read-only view) |
+| Style guide… | `write.doc.styleGuide` (style guide library for this document, [09](09-mcp-and-ai.md) §5.9; choosing one runs the undoable `write.doc.setStyleGuide {ref}`) | — | — | `aiOn` (choosing: role ≥ editor) |
 | Print *(shell)* | `write.file.print` (→ `/d/:uuid/print`) | ⌘P | Ctrl+P | `copyAllowed` |
 
 ### 7.2 Edit
@@ -414,10 +415,13 @@ Preferences*, spelling underlines in *Tools › Spelling*.
 | Word count | `write.tools.wordCount` | ⌘⇧C | Ctrl+Shift+C | always |
 | Language… | `write.doc.languageDialog` | — | — | role ≥ editor |
 | ─ | | | | |
-| Assistant *(shell)* | `shell.ai.togglePanel` | ⌘J | Ctrl+J | `aiOn` |
-| AI ▸ Summarize document | `write.ai.summarizeDocument` | — | — | `aiOn` |
-| AI ▸ Generate outline | `write.ai.generateOutline` | — | — | `aiOn`, role ≥ editor |
-| AI ▸ Proofread document | `write.ai.proofread` | — | — | `aiOn` |
+| Assistant ▸ Open assistant | `write.ai.openAssistant` (the panel toggles with ⌘J / Ctrl+J, `shell.ai.togglePanel`) | — | — | `aiOn` |
+| Assistant ▸ Summarize | `write.ai.summarizeDocument` (quick action, [09](09-mcp-and-ai.md) §5.5) | — | — | `aiOn` |
+| Assistant ▸ Proofread | `write.ai.proofreadDocument` | — | — | `aiOn`, role ≥ commenter |
+| Assistant ▸ Address comments | `write.ai.addressComments` | — | — | `aiOn`, role ≥ commenter |
+| Assistant ▸ Apply style | `write.ai.applyStyle` | — | — | `aiOn`, role ≥ commenter |
+| Assistant ▸ Generate outline | `write.ai.generateOutline` | — | — | `aiOn`, role ≥ editor |
+| Assistant ▸ Style guides… | `write.ai.manageStyleGuides` (library dialog, suite 10 §7) | — | — | `aiOn` |
 | ─ | | | | |
 | Preferences ▸ Markdown shortcuts (check) | `write.prefs.setMarkdownShortcuts` | — | — | always |
 | Preferences ▸ Smart quotes and dashes (check, P1) | `write.prefs.setSmartTypography` | — | — | always |
@@ -559,9 +563,11 @@ Details in [08](08-comments-suggestions-history.md).
 
 ### 10.4 Assistant panel
 Shared shell `AssistantPanel` (suite 10 §3) with Write context chips ("Selection: 2
-paragraphs", "Heading: Budget"), quick prompts (Summarize, Improve selection, Generate outline,
-Continue writing), apply-mode toggle (*Edit directly* / *Suggest*). Tool chips *Show* jump to
-and flash-highlight the changed range in the editor (1.5 s `findMatchActive` pulse).
+paragraphs", "Heading: Budget") and the quick actions *Summarize*, *Proofread*, *Address
+comments* and *Apply style* ([09](09-mcp-and-ai.md) §5.5) above the composer. There is no
+apply-mode toggle: the assistant's edits are always suggestions. The ⋮ menu adds *Style
+guides…*. Tool chips *Show* jump to and flash-highlight the changed range in the editor (1.5 s
+`findMatchActive` pulse).
 
 ### 10.5 Find and replace panel (`FindPanel`) — 04 §25
 ```
@@ -691,7 +697,7 @@ setup yet and exports don't preselect the default format (TODO.md).
 | **No comments or suggestions** | The comment margin is not shown (§10.2) |
 | **Find: no results** | "No results for 'xyz'" muted; with regex error: destructive "Invalid regular expression" |
 | **Version history: only current** | "No earlier versions yet. Versions are saved automatically as you edit." + *Name current version* |
-| **Assistant empty** | Shell empty state + Write quick prompts |
+| **Assistant empty** | Shell empty state + the Write quick actions |
 | **Image failed / unavailable** | 04 §17.3 placeholders |
 | **Fatal editor error** | Error card in canvas (suite 03 §4): "Something went wrong displaying this document" + **Reload document** + **Copy error details**; pending outbox preserved |
 | **Server rejected role / view-only** | Toolbar view-only + mode switcher "Viewing" + *Request edit access* |
