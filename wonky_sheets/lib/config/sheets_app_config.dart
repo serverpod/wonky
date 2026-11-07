@@ -163,6 +163,35 @@ class SheetsAppConfig extends WonkyAppConfig {
     name: name,
   );
 
+  /// Link-shared spreadsheets open signed out, view-only (specs/06 §2.4).
+  @override
+  bool get allowsGuestViewing => true;
+
+  /// Sheets commands that need an account (the assistant, comments,
+  /// history, files, scripts and macros, print, protection, …).
+  @override
+  bool guestAllowsCommand(String id) =>
+      super.guestAllowsCommand(id) && !_guestBlocked.any(id.startsWith);
+
+  static const _guestBlocked = [
+    'sheets.ai.',
+    'sheets.comments.',
+    'sheets.conflicts.',
+    'sheets.file.',
+    'sheets.history.',
+    'sheets.macro.',
+    'sheets.namedFunctions.',
+    'sheets.notifications.',
+    'sheets.presence.',
+    'sheets.print.',
+    'sheets.protect.',
+    'sheets.script.',
+    'sheets.settings.',
+    'sheets.theme.',
+    'sheets.chip.openFile',
+    'sheets.tools.personalDictionary',
+  ];
+
   @override
   Widget buildEditor(BuildContext context, GoRouterState state, String uuid) =>
       SheetEditorScreen(

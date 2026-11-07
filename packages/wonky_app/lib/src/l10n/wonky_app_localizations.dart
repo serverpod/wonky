@@ -1168,6 +1168,12 @@ abstract class WonkyAppLocalizations {
   /// **'Share'**
   String get cmdShare;
 
+  /// No description provided for @cmdSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get cmdSignIn;
+
   /// No description provided for @cmdSignOut.
   ///
   /// In en, this message translates to:
@@ -2344,6 +2350,36 @@ abstract class WonkyAppLocalizations {
   /// **'You need access'**
   String get noAccessTitle;
 
+  /// No description provided for @guestNoAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to open this'**
+  String get guestNoAccessTitle;
+
+  /// No description provided for @guestNoAccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This file isn\'t shared with anyone who has the link. Sign in to open it.'**
+  String get guestNoAccessBody;
+
+  /// No description provided for @guestViewing.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewing as a guest'**
+  String get guestViewing;
+
+  /// No description provided for @guestSignInHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to comment or edit'**
+  String get guestSignInHint;
+
+  /// No description provided for @guestSignInToUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to use this'**
+  String get guestSignInToUse;
+
   /// No description provided for @notAllowed.
   ///
   /// In en, this message translates to:
@@ -3208,6 +3244,12 @@ abstract class WonkyAppLocalizations {
   /// **'Add people by name or email'**
   String get shareAddPeople;
 
+  /// General access option in the share dialog: everyone in the user's organization. The organization is named by its email domain.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone at {domain}'**
+  String shareAnyoneAtOrg(String domain);
+
   /// No description provided for @shareAnyoneWithLink.
   ///
   /// In en, this message translates to:
@@ -3256,11 +3298,17 @@ abstract class WonkyAppLocalizations {
   /// **'From folder “{folder}”'**
   String shareInherited(String folder);
 
-  /// No description provided for @shareLinkHint.
+  /// Under 'Anyone with the link' for documents, spreadsheets and presentations: visitors who are signed out can only view; signed-in visitors get the link's role.
   ///
   /// In en, this message translates to:
-  /// **'Anyone signed in who has the link can open it'**
-  String get shareLinkHint;
+  /// **'{role, select, commenter{Anyone with the link can view, and comment when signed in} editor{Anyone with the link can view, and edit when signed in} other{Anyone with the link can view, also without signing in}}'**
+  String shareLinkHint(String role);
+
+  /// Under 'Anyone with the link' for uploaded files and folders, which need signing in.
+  ///
+  /// In en, this message translates to:
+  /// **'{role, select, commenter{Anyone signed in who has the link can comment} editor{Anyone signed in who has the link can edit} other{Anyone signed in who has the link can view}}'**
+  String shareLinkHintSignIn(String role);
 
   /// No description provided for @shareMessage.
   ///
@@ -3273,6 +3321,18 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Notify people'**
   String get shareNotify;
+
+  /// Under 'Anyone at <domain>' in the share dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'{role, select, commenter{Anyone at {domain} can comment} editor{Anyone at {domain} can edit} other{Anyone at {domain} can view}}'**
+  String shareOrgHint(String domain, String role);
+
+  /// Under general access when a parent folder is shared with the whole organization.
+  ///
+  /// In en, this message translates to:
+  /// **'{role, select, commenter{Anyone at {domain} can also comment through “{folder}”} editor{Anyone at {domain} can also edit through “{folder}”} other{Anyone at {domain} can also view through “{folder}”}}'**
+  String shareOrgInherited(String domain, String role, String folder);
 
   /// No description provided for @sharePending.
   ///
@@ -3325,7 +3385,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @shareRestrictedHint.
   ///
   /// In en, this message translates to:
-  /// **'Only people with access can open with the link'**
+  /// **'Only people with access can open'**
   String get shareRestrictedHint;
 
   /// No description provided for @shareRotateLink.
@@ -3333,6 +3393,18 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Reset link'**
   String get shareRotateLink;
+
+  /// Under the add-people field when the search finds no one and the user has no organization.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the full email address to add someone'**
+  String get shareSearchFullEmail;
+
+  /// Under the add-people field when the search finds no one: only people in the user's organization are found by name.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the full email to add someone outside {domain}'**
+  String shareSearchOutsideOrg(String domain);
 
   /// No description provided for @shareSent.
   ///

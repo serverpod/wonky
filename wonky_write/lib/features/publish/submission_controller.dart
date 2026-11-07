@@ -43,7 +43,8 @@ class SubmissionController extends ChangeNotifier {
 
   /// Starts loading and following the submission (idempotent).
   void start() {
-    if (_started || _repo == null) return;
+    // Guests (signed out) have no submissions (specs/06 §2.4).
+    if (_started || _repo == null || services.isGuest) return;
     _started = true;
     _changes = services.driveChanges.listen((c) {
       if (c.itemUuid == itemUuid) unawaited(refresh());

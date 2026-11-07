@@ -323,6 +323,7 @@
   "cmdSetTheme": "App theme",
   "cmdSettings": "Settings",
   "cmdShare": "Share",
+  "cmdSignIn": "Sign in",
   "cmdSignOut": "Sign out",
   "cmdStar": "Star",
   "cmdStopAgent": "Stop agent control",
@@ -679,6 +680,11 @@
     }
   },
   "noAccessTitle": "You need access",
+  "guestNoAccessTitle": "Sign in to open this",
+  "guestNoAccessBody": "This file isn't shared with anyone who has the link. Sign in to open it.",
+  "guestViewing": "Viewing as a guest",
+  "guestSignInHint": "Sign in to comment or edit",
+  "guestSignInToUse": "Sign in to use this",
   "notAllowed": "Not allowed",
   "notFoundBody": "The page you're looking for doesn't exist.",
   "notFoundTitle": "Page not found",
@@ -1031,6 +1037,16 @@
   "settingsUiLanguage": "Language",
   "settingsWrite": "Wonky Write",
   "shareAddPeople": "Add people by name or email",
+  "shareAnyoneAtOrg": "Anyone at {domain}",
+  "@shareAnyoneAtOrg": {
+    "description": "General access option in the share dialog: everyone in the user's organization. The organization is named by its email domain.",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "acme.dev"
+      }
+    }
+  },
   "shareAnyoneWithLink": "Anyone with the link",
   "shareApprove": "Approve",
   "shareButton": "Share",
@@ -1046,9 +1062,59 @@
       }
     }
   },
-  "shareLinkHint": "Anyone signed in who has the link can open it",
+  "shareLinkHint": "{role, select, commenter{Anyone with the link can view, and comment when signed in} editor{Anyone with the link can view, and edit when signed in} other{Anyone with the link can view, also without signing in}}",
+  "@shareLinkHint": {
+    "description": "Under 'Anyone with the link' for documents, spreadsheets and presentations: visitors who are signed out can only view; signed-in visitors get the link's role.",
+    "placeholders": {
+      "role": {
+        "type": "String",
+        "description": "The link's role: viewer, commenter or editor."
+      }
+    }
+  },
+  "shareLinkHintSignIn": "{role, select, commenter{Anyone signed in who has the link can comment} editor{Anyone signed in who has the link can edit} other{Anyone signed in who has the link can view}}",
+  "@shareLinkHintSignIn": {
+    "description": "Under 'Anyone with the link' for uploaded files and folders, which need signing in.",
+    "placeholders": {
+      "role": {
+        "type": "String",
+        "description": "The link's role: viewer, commenter or editor."
+      }
+    }
+  },
   "shareMessage": "Message",
   "shareNotify": "Notify people",
+  "shareOrgHint": "{role, select, commenter{Anyone at {domain} can comment} editor{Anyone at {domain} can edit} other{Anyone at {domain} can view}}",
+  "@shareOrgHint": {
+    "description": "Under 'Anyone at <domain>' in the share dialog.",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "acme.dev"
+      },
+      "role": {
+        "type": "String",
+        "description": "The organization's role: viewer, commenter or editor."
+      }
+    }
+  },
+  "shareOrgInherited": "{role, select, commenter{Anyone at {domain} can also comment through “{folder}”} editor{Anyone at {domain} can also edit through “{folder}”} other{Anyone at {domain} can also view through “{folder}”}}",
+  "@shareOrgInherited": {
+    "description": "Under general access when a parent folder is shared with the whole organization.",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "acme.dev"
+      },
+      "role": {
+        "type": "String",
+        "description": "The inherited role: viewer, commenter or editor."
+      },
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
   "sharePending": "Pending invite",
   "sharePeopleWithAccess": "People with access",
   "shareRemoveAccess": "Remove access",
@@ -1081,8 +1147,22 @@
     }
   },
   "shareRestricted": "Restricted",
-  "shareRestrictedHint": "Only people with access can open with the link",
+  "shareRestrictedHint": "Only people with access can open",
   "shareRotateLink": "Reset link",
+  "shareSearchFullEmail": "Enter the full email address to add someone",
+  "@shareSearchFullEmail": {
+    "description": "Under the add-people field when the search finds no one and the user has no organization."
+  },
+  "shareSearchOutsideOrg": "Enter the full email to add someone outside {domain}",
+  "@shareSearchOutsideOrg": {
+    "description": "Under the add-people field when the search finds no one: only people in the user's organization are found by name.",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "acme.dev"
+      }
+    }
+  },
   "shareSent": "{count, plural, =1{Shared with 1 person} other{Shared with {count} people}}",
   "@shareSent": {
     "placeholders": {

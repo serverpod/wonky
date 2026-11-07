@@ -216,10 +216,14 @@ import 'package:wonky_server/src/generated/platform/revlog/models/rev_page.dart'
     as _i4qoa0fo;
 import 'package:wonky_server/src/generated/platform/revlog/models/rev_page_request.dart'
     as _iynxab9u;
+import 'package:wonky_server/src/generated/platform/sharing/general_access.dart'
+    as _i3ig34yn;
 import 'package:wonky_server/src/generated/platform/sharing/invite_resolution.dart'
     as _ir129i67;
 import 'package:wonky_server/src/generated/platform/sharing/item_sharing_settings.dart'
     as _i55sl7s1;
+import 'package:wonky_server/src/generated/platform/sharing/public_item_view.dart'
+    as _i3dep0k3;
 import 'package:wonky_server/src/generated/platform/sharing/sharing_info.dart'
     as _ibhys9d2;
 import 'package:wonky_server/src/generated/platform/users/access_token_view.dart'
@@ -505,6 +509,8 @@ class TestEndpoints {
 
   late final _SubmissionEndpoint submission;
 
+  late final _PublicItemEndpoint publicItem;
+
   late final _SharingEndpoint sharing;
 
   late final _AccessTokenEndpoint accessToken;
@@ -628,6 +634,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
     submission = _SubmissionEndpoint(
+      endpoints,
+      serializationManager,
+    );
+    publicItem = _PublicItemEndpoint(
       endpoints,
       serializationManager,
     );
@@ -6854,6 +6864,48 @@ class _SubmissionEndpoint {
   }
 }
 
+class _PublicItemEndpoint {
+  _PublicItemEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<_i3dep0k3.PublicItemView> get(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue uuid,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'publicItem',
+            method: 'get',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'publicItem',
+          methodName: 'get',
+          parameters: _ist.testObjectToJson({'uuid': uuid}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i3dep0k3.PublicItemView>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
 class _SharingEndpoint {
   _SharingEndpoint(
     this._endpointDispatch,
@@ -7102,6 +7154,43 @@ class _SharingEndpoint {
           methodName: 'setLink',
           parameters: _ist.testObjectToJson({
             'itemUuid': itemUuid,
+            'role': role,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ibhys9d2.SharingInfo>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ibhys9d2.SharingInfo> setGeneralAccess(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue itemUuid,
+    _i3ig34yn.GeneralAccess access,
+    _i9nsco4y.AccessRole? role,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'sharing',
+            method: 'setGeneralAccess',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'sharing',
+          methodName: 'setGeneralAccess',
+          parameters: _ist.testObjectToJson({
+            'itemUuid': itemUuid,
+            'access': access,
             'role': role,
           }),
           serializationManager: _serializationManager,

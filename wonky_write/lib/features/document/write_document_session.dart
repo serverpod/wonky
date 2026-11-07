@@ -368,8 +368,11 @@ class WriteDocumentSession extends ChangeNotifier {
     if (_opened || _disposed) return;
     _opened = true;
     try {
-      final offline =
-          await (_offlineLookup?.call() ?? WriteOffline.ready(services));
+      // A guest (signed out, link-shared, specs/06 §2.4) keeps nothing on
+      // the device: no local copy, outbox or undo history.
+      final offline = _guest
+          ? null
+          : await (_offlineLookup?.call() ?? WriteOffline.ready(services));
       if (_disposed) return;
       _offline = offline;
       var stored = await _loadStored(offline);
@@ -458,8 +461,14 @@ class WriteDocumentSession extends ChangeNotifier {
     }
   }
 
+  /// Whether the session is a guest's: signed out on a link-shared
+  /// document, view-only (specs/06 §2.4).
+  bool get _guest => services.isGuest;
+
   /// The drive item from the server, or — offline — from the drive cache.
+  /// A guest gets the link-shared item (`publicItem.get`), view-only.
   Future<DriveItemView> _loadItem() async {
+    if (_guest) return services.loadGuestItem(itemUuid);
     if (services.connectivity.online) {
       try {
         return await api.getItem(itemUuid);
@@ -557,7 +566,9 @@ class WriteDocumentSession extends ChangeNotifier {
     _setItem(v);
   }
 
-  void _setRole(Role r) {
+  void _setRole(Role role) {
+    // A guest only views, whatever the link allows (specs/06 §2.4).
+    final r = _guest ? Role.viewer : role;
     if (_role.value == r) return;
     _role.value = r;
     _applyRoleToMode();

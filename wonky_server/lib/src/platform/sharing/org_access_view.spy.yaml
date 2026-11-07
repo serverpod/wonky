@@ -1,0 +1,9 @@
+### An "Anyone at <domain>" grant in the share dialog (specs/06 §2.3).
+class: OrgAccessView
+fields:
+  ### The organization's name: its first domain (`serverpod.dev`).
+  domain: String
+  role: AccessRole
+  ### The folder the grant is inherited from (null = set on this item).
+  inheritedFromUuid: UuidValue?
+  inheritedFromName: String?

@@ -11,6 +11,16 @@ fields:
   permissions: List<PermissionView>
   ### Null when the caller may not see the link (viewers/commenters).
   link: ShareLinkView?
+  ### (Organizations) The caller's organization (its first domain), null
+  ### without one; the dialog offers "Anyone at <domain>" only with it or
+  ### an existing organization grant (specs/06 §2.3).
+  organization: String?
+  ### The organization grant set on this item, if any.
+  orgAccess: OrgAccessView?
+  ### The highest organization grant inherited from a folder, if any.
+  inheritedOrgAccess: OrgAccessView?
+  ### Restricted, organization (orgAccess) or link (link.role).
+  generalAccess: GeneralAccess
   settings: ItemSharingSettings
   ### Only for callers who can share.
   pendingRequests: List<AccessRequestView>

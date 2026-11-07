@@ -18,6 +18,7 @@ import '../core/connectivity_service.dart';
 import '../core/local_store.dart';
 import '../data/collab_repositories.dart';
 import '../data/file_repository.dart';
+import '../data/public_item_repository.dart';
 import '../data/sharing_repository.dart';
 import '../shell/shell_services.dart';
 import '../spellcheck/dictionaries.dart';
@@ -38,7 +39,14 @@ class TestAppConfig extends WonkyAppConfig {
     this.app = WonkyAppKind.write,
     this.extraCommands = const [],
     this.scope,
+    this.guestViewing = false,
   });
+
+  /// Returned by [allowsGuestViewing].
+  final bool guestViewing;
+
+  @override
+  bool get allowsGuestViewing => guestViewing;
 
   @override
   final WonkyAppKind app;
@@ -109,6 +117,7 @@ class CommandTestHarness {
     ActivityRepository? activity,
     BoardRepository? board,
     PublicationRepository? publications,
+    PublicItemRepository? publicItems,
     LocalStore? store,
     UuidV7Generator? ids,
     StorageController? storage,
@@ -144,6 +153,7 @@ class CommandTestHarness {
         activity: activity,
         board: board,
         publications: publications ?? FakePublicationRepository(),
+        publicItems: publicItems ?? const NoPublicItemRepository(),
       ),
       urls: urls,
       crossApp: crossApp ?? FakeCrossApp(urls),
@@ -152,7 +162,10 @@ class CommandTestHarness {
       ids: ids,
       storage: storage,
     );
-    services.currentUser.value = this.users.profile;
+    // Signed out: no profile (a guest, specs/06 §2.4).
+    if (authRepository.isSignedIn) {
+      services.currentUser.value = this.users.profile;
+    }
     if (registerShellCommands) {
       services.registry.registerAll(
         allShellCommands(

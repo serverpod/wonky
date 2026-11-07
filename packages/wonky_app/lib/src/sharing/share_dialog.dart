@@ -56,11 +56,14 @@ class _ShareDialogState extends State<ShareDialog> {
   AccessRole _role = AccessRole.editor;
   bool _notify = true;
   List<UserSummary> _suggestions = const [];
+
+  /// The last search found no one (the field then hints at full emails).
+  bool _noMatches = false;
   Timer? _debounce;
 
-  // The link selects follow `_info` (also after a failed change).
-  final _linkMode = ShadSelectController<String>();
-  final _linkRole = ShadSelectController<AccessRole>();
+  // The general access selects follow `_info` (also after a failed change).
+  final _accessMode = ShadSelectController<GeneralAccess>();
+  final _accessRole = ShadSelectController<AccessRole>();
 
   ShellServices get s => widget.services;
 
@@ -76,8 +79,8 @@ class _ShareDialogState extends State<ShareDialog> {
     _inputFocus.dispose();
     _message.dispose();
     _debounce?.cancel();
-    _linkMode.dispose();
-    _linkRole.dispose();
+    _accessMode.dispose();
+    _accessRole.dispose();
     super.dispose();
   }
 
@@ -95,15 +98,30 @@ class _ShareDialogState extends State<ShareDialog> {
     _syncLinkSelects();
   }
 
-  /// Shows the link mode and role of `_info` in the link selects.
+  /// Shows the general access and its role of `_info` in their selects.
   void _syncLinkSelects() {
-    final role = _info?.link?.role;
-    final mode = {role == null ? 'restricted' : 'link'};
-    if (!setEquals(_linkMode.value, mode)) _linkMode.value = mode;
-    if (role != null && !setEquals(_linkRole.value, {role})) {
-      _linkRole.value = {role};
+    final info = _info;
+    if (info == null) return;
+    final mode = {info.generalAccess};
+    if (!setEquals(_accessMode.value, mode)) _accessMode.value = mode;
+    final role = _generalRole(info);
+    if (role != null && !setEquals(_accessRole.value, {role})) {
+      _accessRole.value = {role};
     }
   }
+
+  /// The role of the organization or link access (null when restricted).
+  static AccessRole? _generalRole(SharingInfo info) =>
+      switch (info.generalAccess) {
+        GeneralAccess.restricted => null,
+        GeneralAccess.organization => info.orgAccess?.role,
+        GeneralAccess.link => info.link?.role,
+      };
+
+  void _setGeneralAccess(GeneralAccess access, AccessRole? role) => _run(
+    () =>
+        s.repositories.sharing.setGeneralAccess(widget.item.uuid, access, role),
+  );
 
   /// Runs a sharing change; false (after an error toast) when it failed.
   Future<bool> _run(Future<SharingInfo> Function() op) async {
@@ -133,14 +151,20 @@ class _ShareDialogState extends State<ShareDialog> {
     _debounce?.cancel();
     final q = v.trim();
     if (q.length < 2) {
-      setState(() => _suggestions = const []);
+      setState(() {
+        _suggestions = const [];
+        _noMatches = false;
+      });
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 200), () async {
       try {
         final r = await s.repositories.users.searchUsers(q, limit: 6);
         if (mounted && _input.text.trim() == q) {
-          setState(() => _suggestions = r);
+          setState(() {
+            _suggestions = r;
+            _noMatches = r.isEmpty;
+          });
         }
       } catch (_) {}
     });
@@ -154,6 +178,7 @@ class _ShareDialogState extends State<ShareDialog> {
       if (_email.hasMatch(v) && !_recipients.contains(v)) _recipients.add(v);
       _input.clear();
       _suggestions = const [];
+      _noMatches = false;
     });
     _inputFocus.requestFocus();
   }
@@ -313,7 +338,7 @@ class _ShareDialogState extends State<ShareDialog> {
               ),
             ),
         if (canShare) ...[
-          _composer(context),
+          _composer(context, info),
           const SizedBox(height: 14),
         ] else
           Padding(
@@ -382,10 +407,12 @@ class _ShareDialogState extends State<ShareDialog> {
     );
   }
 
-  Widget _composer(BuildContext context) {
+  Widget _composer(BuildContext context, SharingInfo info) {
     final l = WonkyAppLocalizations.of(context);
     final theme = ShadTheme.of(context);
     final expanded = _recipients.isNotEmpty;
+    final query = _input.text.trim();
+    final org = info.organization;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -393,85 +420,7 @@ class _ShareDialogState extends State<ShareDialog> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                constraints: const BoxConstraints(minHeight: 36),
-                decoration: BoxDecoration(
-                  // Same fill as a plain field, so chips + input read as one.
-                  color: theme.inputTheme.decoration?.color,
-                  border: Border.all(color: theme.colorScheme.input),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    for (final r in _recipients)
-                      ShadBadge.secondary(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(r),
-                            const SizedBox(width: 4),
-                            GestureDetector(
-                              onTap: () =>
-                                  setState(() => _recipients.remove(r)),
-                              child: Semantics(
-                                button: true,
-                                label: l.shareRemoveRecipient(r),
-                                child: const Icon(LucideIcons.x, size: 12),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minWidth: 200,
-                        maxWidth: 360,
-                      ),
-                      child: CallbackShortcuts(
-                        bindings: {
-                          const SingleActivator(LogicalKeyboardKey.enter): () {
-                            if (_suggestions.isNotEmpty &&
-                                _input.text.isNotEmpty) {
-                              _addRecipient(_suggestions.first.email);
-                            } else if (_input.text.trim().isNotEmpty) {
-                              _addRecipient(_input.text);
-                            } else {
-                              _send();
-                            }
-                          },
-                        },
-                        child: ShadInput(
-                          key: const ValueKey<String>('dialog.share.input'),
-                          controller: _input,
-                          focusNode: _inputFocus,
-                          autofocus: true,
-                          // The bordered container is the field: no second
-                          // fill or border inside it.
-                          decoration: const ShadDecoration(
-                            color: Color(0x00000000),
-                            border: ShadBorder.none,
-                            focusedBorder: ShadBorder.none,
-                            disableSecondaryBorder: true,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          placeholder: Text(l.shareAddPeople),
-                          keyboardType: TextInputType.emailAddress,
-                          onChanged: _onInput,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            Expanded(child: _peopleField(context)),
             const SizedBox(width: 8),
             _roleSelect(
               context,
@@ -481,6 +430,17 @@ class _ShareDialogState extends State<ShareDialog> {
             ),
           ],
         ),
+        if (_noMatches && query.isNotEmpty && !_email.hasMatch(query))
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              org == null
+                  ? l.shareSearchFullEmail
+                  : l.shareSearchOutsideOrg(org),
+              key: const ValueKey<String>('dialog.share.searchHint'),
+              style: theme.textTheme.muted.copyWith(fontSize: 12),
+            ),
+          ),
         if (_suggestions.isNotEmpty)
           Container(
             margin: const EdgeInsets.only(top: 4),
@@ -541,6 +501,110 @@ class _ShareDialogState extends State<ShareDialog> {
           ),
         ],
       ],
+    );
+  }
+
+  /// The recipients' chips and the search input, drawn as one field: the
+  /// theme's field decoration (border, fill, focus ring) is on the box, the
+  /// input inside has none, and the box is as tall as a select next to it.
+  Widget _peopleField(BuildContext context) {
+    final l = WonkyAppLocalizations.of(context);
+    final theme = ShadTheme.of(context);
+    final padding = theme.inputTheme.padding?.resolve(
+      Directionality.of(context),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      excludeFromSemantics: true,
+      onTap: _inputFocus.requestFocus,
+      child: ConstrainedBox(
+        key: const ValueKey<String>('dialog.share.field'),
+        constraints: BoxConstraints(
+          minHeight: theme.selectTheme.minHeight ?? 36,
+        ),
+        child: ListenableBuilder(
+          listenable: _inputFocus,
+          builder: (context, child) => ShadDecorator(
+            decoration: theme.inputTheme.decoration,
+            focused: _inputFocus.hasFocus,
+            child: child,
+          ),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            heightFactor: 1,
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(
+                start: _recipients.isEmpty ? 0 : 4,
+              ),
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  for (final r in _recipients)
+                    ShadBadge.secondary(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(r),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () => setState(() => _recipients.remove(r)),
+                            child: Semantics(
+                              button: true,
+                              label: l.shareRemoveRecipient(r),
+                              child: const Icon(LucideIcons.x, size: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 200,
+                      maxWidth: 360,
+                    ),
+                    child: CallbackShortcuts(
+                      bindings: {
+                        const SingleActivator(LogicalKeyboardKey.enter): () {
+                          if (_suggestions.isNotEmpty &&
+                              _input.text.isNotEmpty) {
+                            _addRecipient(_suggestions.first.email);
+                          } else if (_input.text.trim().isNotEmpty) {
+                            _addRecipient(_input.text);
+                          } else {
+                            _send();
+                          }
+                        },
+                      },
+                      child: ShadInput(
+                        key: const ValueKey<String>('dialog.share.input'),
+                        controller: _input,
+                        focusNode: _inputFocus,
+                        autofocus: true,
+                        // The box around is the field: no second border,
+                        // fill, shadow or focus ring, and no minimum height
+                        // of its own (the box sets it).
+                        decoration: ShadDecoration.none,
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: _recipients.isEmpty
+                              ? (padding?.left ?? 10)
+                              : 4,
+                          vertical: padding?.top ?? 4,
+                        ),
+                        placeholder: Text(l.shareAddPeople),
+                        keyboardType: TextInputType.emailAddress,
+                        onChanged: _onInput,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -721,22 +785,55 @@ class _ShareDialogState extends State<ShareDialog> {
   Widget _generalAccess(BuildContext context, SharingInfo info) {
     final l = WonkyAppLocalizations.of(context);
     final theme = ShadTheme.of(context);
-    final linkRole = info.link?.role;
-    final restricted = linkRole == null;
+    final access = info.generalAccess;
+    final role = _generalRole(info);
+    // The organization option: the caller's, or the one the item is
+    // already shared with (an outside editor keeps seeing it).
+    final domain = info.orgAccess?.domain ?? info.organization;
+    final roleName = (role ?? AccessRole.viewer).name;
+    // Signed-out visitors can view documents, spreadsheets and
+    // presentations; files and folders need signing in.
+    final signInOnly =
+        info.itemKind == DriveItemKind.file ||
+        info.itemKind == DriveItemKind.folder;
+    final hint = switch (access) {
+      GeneralAccess.restricted => l.shareRestrictedHint,
+      GeneralAccess.organization => l.shareOrgHint(domain ?? '', roleName),
+      GeneralAccess.link =>
+        signInOnly
+            ? l.shareLinkHintSignIn(roleName)
+            : l.shareLinkHint(roleName),
+    };
+    final inherited = info.inheritedOrgAccess;
+    String label(GeneralAccess a) => switch (a) {
+      GeneralAccess.restricted => l.shareRestricted,
+      GeneralAccess.organization => l.shareAnyoneAtOrg(domain ?? ''),
+      GeneralAccess.link => l.shareAnyoneWithLink,
+    };
+    IconData icon(GeneralAccess a) => switch (a) {
+      GeneralAccess.restricted => LucideIcons.lock,
+      GeneralAccess.organization => LucideIcons.building2,
+      GeneralAccess.link => LucideIcons.globe,
+    };
+    final muted = theme.textTheme.muted.copyWith(fontSize: 12);
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: restricted
-                ? theme.colorScheme.muted
-                : theme.colorScheme.success.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
+        Padding(
+          // Level with the select (as tall as a field).
+          padding: EdgeInsets.only(
+            top: ((theme.selectTheme.minHeight ?? 36) - 32) / 2,
           ),
-          child: Icon(
-            restricted ? LucideIcons.lock : LucideIcons.globe,
-            size: 16,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: access == GeneralAccess.restricted
+                  ? theme.colorScheme.muted
+                  : theme.colorScheme.success.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon(access), size: 16),
           ),
         ),
         const SizedBox(width: 10),
@@ -744,47 +841,78 @@ class _ShareDialogState extends State<ShareDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ShadSelect<String>(
+              ShadSelect<GeneralAccess>(
                 key: const ValueKey<String>('dialog.share.linkMode'),
-                controller: _linkMode,
+                controller: _accessMode,
                 enabled: info.canShare && !_busy,
                 options: [
-                  ShadOption(
-                    value: 'restricted',
-                    child: Text(l.shareRestricted),
-                  ),
-                  ShadOption(value: 'link', child: Text(l.shareAnyoneWithLink)),
+                  for (final a in GeneralAccess.values)
+                    if (a != GeneralAccess.organization || domain != null)
+                      ShadOption(
+                        value: a,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 8,
+                          children: [
+                            Icon(icon(a), size: 14),
+                            Flexible(
+                              child: Text(
+                                label(a),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                 ],
-                selectedOptionBuilder: (context, v) => Text(
-                  v == 'restricted' ? l.shareRestricted : l.shareAnyoneWithLink,
-                ),
+                selectedOptionBuilder: (context, v) =>
+                    Text(label(v), overflow: TextOverflow.ellipsis),
                 onChanged: (v) {
-                  if (v == null) return;
-                  _run(
-                    () => s.repositories.sharing.setLink(
-                      widget.item.uuid,
-                      v == 'restricted' ? null : AccessRole.viewer,
-                    ),
+                  if (v == null || v == _info?.generalAccess) return;
+                  _setGeneralAccess(
+                    v,
+                    v == GeneralAccess.restricted ? null : AccessRole.viewer,
                   );
                 },
               ),
               const SizedBox(height: 2),
               Text(
-                restricted ? l.shareRestrictedHint : l.shareLinkHint,
-                style: theme.textTheme.muted.copyWith(fontSize: 12),
+                hint,
+                key: const ValueKey<String>('dialog.share.accessHint'),
+                style: muted,
               ),
+              if (inherited != null &&
+                  access != GeneralAccess.organization) ...[
+                const SizedBox(height: 2),
+                Text(
+                  l.shareOrgInherited(
+                    inherited.domain,
+                    inherited.role.name,
+                    inherited.inheritedFromName ?? '',
+                  ),
+                  key: const ValueKey<String>('dialog.share.orgInherited'),
+                  style: muted,
+                ),
+              ],
             ],
           ),
         ),
-        if (!restricted) ...[
+        if (role != null) ...[
           const SizedBox(width: 8),
           _roleSelect(
             context,
-            linkRole,
-            (r) =>
-                _run(() => s.repositories.sharing.setLink(widget.item.uuid, r)),
-            key: 'dialog.share.linkRole',
-            controller: _linkRole,
+            role,
+            (r) {
+              final current = _info?.generalAccess;
+              if (current == null || current == GeneralAccess.restricted) {
+                return;
+              }
+              _setGeneralAccess(current, r);
+            },
+            key: access == GeneralAccess.organization
+                ? 'dialog.share.orgRole'
+                : 'dialog.share.linkRole',
+            controller: _accessRole,
             enabled: info.canShare,
           ),
         ],

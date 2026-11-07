@@ -53,8 +53,10 @@ class _Unimplemented {
 }
 
 class _FakeAuth extends ChangeNotifier with _NoSuch implements AuthRepository {
+  _FakeAuth({required this.isSignedIn});
+
   @override
-  bool get isSignedIn => true;
+  final bool isSignedIn;
 
   @override
   UuidValue? get authUserId => null;
@@ -127,6 +129,30 @@ class FakeFiles implements FileRepository {
 }
 
 class _FakeMeta extends _Unimplemented implements MetaRepository {}
+
+/// The document as anyone with the link sees it (`publicItem.get`);
+/// [shared] false answers `notFound`. [calls] counts the requests.
+class FakePublicItems implements PublicItemRepository {
+  bool shared = true;
+  int calls = 0;
+
+  @override
+  Future<PublicItemView> get(UuidValue uuid) async {
+    calls++;
+    if (!shared) {
+      throw WonkyException(code: WonkyErrorCode.notFound, message: 'Not found');
+    }
+    final item = driveItem();
+    return PublicItemView(
+      uuid: item.uuid,
+      kind: item.kind,
+      name: item.name,
+      contentRef: item.contentRef!,
+      ownerName: item.owner.displayName,
+      modifiedAt: item.modifiedAt,
+    );
+  }
+}
 
 /// In-memory comment threads (`CommentRepository`).
 class FakeComments implements CommentRepository {
@@ -242,8 +268,14 @@ class FakeWriteApi implements WriteDocumentApi {
   DriveItemView item;
   final List<(String, String)> metaWrites = [];
 
+  /// How often [getItem] was called (a guest never calls it).
+  int getItemCalls = 0;
+
   @override
-  Future<DriveItemView> getItem(UuidValue itemUuid) async => item;
+  Future<DriveItemView> getItem(UuidValue itemUuid) async {
+    getItemCalls++;
+    return item;
+  }
 
   @override
   DocumentSyncTransport transport(UuidValue documentUuid) =>
@@ -272,11 +304,12 @@ class SessionHarness {
     this.server, {
     int userId = 1,
     AccessRole role = AccessRole.editor,
+    bool signedIn = true,
   }) : comments = FakeComments() {
     ShellSpelling.debugDictionaries ??= noSpellDictionaries();
     services = ShellServices(
       config: const _Config(),
-      auth: AuthController(_FakeAuth()),
+      auth: AuthController(_FakeAuth(isSignedIn: signedIn)),
       repositories: ShellRepositories(
         drive: _FakeDrive(),
         users: _FakeUsers(),
@@ -288,15 +321,18 @@ class SessionHarness {
         files: files,
         meta: _FakeMeta(),
         publications: publications,
+        publicItems: publicItems,
       ),
       urls: const AppUrls(apiUrl: 'http://localhost:8080/', apps: {}),
       connectivity: ConnectivityService(ping: () async {}),
       deviceStore: MemoryStore(),
     );
-    services.currentUser.value = UserProfileView(
-      summary: userSummary(userId),
-      createdAt: DateTime.utc(2026),
-    );
+    if (signedIn) {
+      services.currentUser.value = UserProfileView(
+        summary: userSummary(userId),
+        createdAt: DateTime.utc(2026),
+      );
+    }
     api = FakeWriteApi(server, userId: userId, role: role);
     keeper = SimpleConnectionKeeper(minDelay: Duration.zero);
     session = WriteDocumentSession(
@@ -311,6 +347,9 @@ class SessionHarness {
 
   /// Publications and submissions (specs/18).
   final FakePublicationRepository publications = FakePublicationRepository();
+
+  /// Link-shared items (signed out, specs/06 §2.4).
+  final FakePublicItems publicItems = FakePublicItems();
 
   /// Uploads (images, the cover image of a submission).
   final FakeFiles files = FakeFiles();

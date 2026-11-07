@@ -194,10 +194,14 @@ import 'package:wonky_client/src/protocol/platform/revlog/models/rev_page.dart'
     as _ivzrugmo;
 import 'package:wonky_client/src/protocol/platform/revlog/models/rev_page_request.dart'
     as _isw8g0pp;
+import 'package:wonky_client/src/protocol/platform/sharing/general_access.dart'
+    as _ih8b5pei;
 import 'package:wonky_client/src/protocol/platform/sharing/invite_resolution.dart'
     as _idoq825d;
 import 'package:wonky_client/src/protocol/platform/sharing/item_sharing_settings.dart'
     as _i0x662rz;
+import 'package:wonky_client/src/protocol/platform/sharing/public_item_view.dart'
+    as _ihvz83rm;
 import 'package:wonky_client/src/protocol/platform/sharing/sharing_info.dart'
     as _idqkfu7d;
 import 'package:wonky_client/src/protocol/platform/users/access_token_view.dart'
@@ -2196,6 +2200,10 @@ class EndpointFeedback extends _isc.EndpointRef {
 /// Uploads and signed downloads (suite 12 §1.1). Idempotent on the
 /// client-generated [fileUuid]; content may reference `wonky-file://<uuid>`
 /// before the bytes arrive.
+///
+/// `getUrl` and `getUrls` also serve signed-out viewers of link-shared
+/// documents, spreadsheets and presentations (their images; never uploaded
+/// Drive files, specs/06 §2.4); every other call needs an account.
 /// {@category Endpoint}
 class EndpointFile extends _isc.EndpointRef {
   EndpointFile(_isc.EndpointCaller caller) : super(caller);
@@ -2589,6 +2597,27 @@ class EndpointSubmission extends _isc.EndpointRef {
       );
 }
 
+/// What a signed-out visitor of a link learns about the item (specs/06
+/// §2.4): `publicItem.get`. Callable signed out (rate limited) and signed
+/// in.
+/// {@category Endpoint}
+class EndpointPublicItem extends _isc.EndpointRef {
+  EndpointPublicItem(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'publicItem';
+
+  /// The document, spreadsheet or presentation [uuid] (its drive item uuid
+  /// or its content ref) if the caller may view it; `notFound` otherwise,
+  /// so ids do not leak.
+  _ida.Future<_ihvz83rm.PublicItemView> get(_isc.UuidValue uuid) =>
+      caller.callServerEndpoint<_ihvz83rm.PublicItemView>(
+        'publicItem',
+        'get',
+        {'uuid': uuid},
+      );
+}
+
 /// Sharing (specs/06 §4).
 /// {@category Endpoint}
 class EndpointSharing extends _isc.EndpointRef {
@@ -2690,6 +2719,23 @@ class EndpointSharing extends _isc.EndpointRef {
     'setLink',
     {
       'itemUuid': itemUuid,
+      'role': role,
+    },
+  );
+
+  /// General access (specs/06 §2.2–2.3): restricted, everyone in the
+  /// caller's organization with [role], or anyone with the link with
+  /// [role].
+  _ida.Future<_idqkfu7d.SharingInfo> setGeneralAccess(
+    _isc.UuidValue itemUuid,
+    _ih8b5pei.GeneralAccess access,
+    _i7gd5xik.AccessRole? role,
+  ) => caller.callServerEndpoint<_idqkfu7d.SharingInfo>(
+    'sharing',
+    'setGeneralAccess',
+    {
+      'itemUuid': itemUuid,
+      'access': access,
       'role': role,
     },
   );
@@ -4153,6 +4199,10 @@ class EndpointSlidesVersion extends _isc.EndpointRef {
 }
 
 /// Write documents: the OT editing stream and helpers (Write 03 §1).
+///
+/// `connect`, `getInfo`, `getOps` and `getSnapshot` also serve signed-out
+/// viewers of link-shared documents (read-only, rate limited, specs/06
+/// §2.4); `updateMeta` needs an account.
 /// {@category Endpoint}
 class EndpointDocument extends _isc.EndpointRef {
   EndpointDocument(_isc.EndpointCaller caller) : super(caller);
@@ -4378,6 +4428,10 @@ class EndpointWriteHistory extends _isc.EndpointRef {
 }
 
 /// Write themes (Write 06 §5.5).
+///
+/// `listBuiltins`, `get` and `getMany` also serve signed-out viewers of
+/// link-shared documents (the document's theme, without the owner's email,
+/// specs/06 §2.4); every other call needs an account.
 /// {@category Endpoint}
 class EndpointWriteTheme extends _isc.EndpointRef {
   EndpointWriteTheme(_isc.EndpointCaller caller) : super(caller);
@@ -4580,6 +4634,7 @@ class Client extends _isc.ServerpodClientShared {
     presence = EndpointPresence(this);
     publication = EndpointPublication(this);
     submission = EndpointSubmission(this);
+    publicItem = EndpointPublicItem(this);
     sharing = EndpointSharing(this);
     accessToken = EndpointAccessToken(this);
     googleIdp = EndpointGoogleIdp(this);
@@ -4641,6 +4696,8 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointPublication publication;
 
   late final EndpointSubmission submission;
+
+  late final EndpointPublicItem publicItem;
 
   late final EndpointSharing sharing;
 
@@ -4710,6 +4767,7 @@ class Client extends _isc.ServerpodClientShared {
     'presence': presence,
     'publication': publication,
     'submission': submission,
+    'publicItem': publicItem,
     'sharing': sharing,
     'accessToken': accessToken,
     'googleIdp': googleIdp,

@@ -31,9 +31,12 @@ class TestUser {
 abstract final class TestUsers {
   static var _counter = 0;
 
+  /// [email] overrides the generated `@example.test` address (which has no
+  /// organization, specs/04 §6), e.g. to put users in one organization.
   static Future<TestUser> create(
     TestSessionBuilder sessionBuilder, {
     String name = 'User',
+    String? email,
   }) async {
     final session = sessionBuilder.build();
     final authUser = await auth.AuthUser.db.insertRow(
@@ -41,7 +44,7 @@ abstract final class TestUsers {
       auth.AuthUser(scopeNames: {}, blocked: false),
     );
     _counter++;
-    final email =
+    email ??=
         '${name.toLowerCase().replaceAll(' ', '.')}.${clock.now().microsecondsSinceEpoch}.$_counter@example.test';
     final profile = await UserService.ensureProfile(
       session,

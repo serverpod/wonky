@@ -71,27 +71,35 @@ class LoggedDeckSession extends DeckSessionBase {
     required String userId,
     required SlidesMutationPlanner planner,
     Role role = Role.viewer,
+    bool viewOnly = false,
     SlideImageResolver? images,
     DeckLoadStrings strings = const DeckLoadStrings(),
     Duration maintenanceDelay = const Duration(seconds: 1),
   }) {
-    final s = LoggedDeckSession._(
-      client,
-      itemUuid: itemUuid,
-      userId: userId,
-      model: DeckModel(deckId: fileUuid.uuid),
-      planner: planner,
-      fileUuid: fileUuid,
-      strings: strings,
-      role: role,
-      images: images,
-    ).._maintenanceDelay = maintenanceDelay;
+    final s =
+        LoggedDeckSession._(
+            client,
+            itemUuid: itemUuid,
+            userId: userId,
+            model: DeckModel(deckId: fileUuid.uuid),
+            planner: planner,
+            fileUuid: fileUuid,
+            strings: strings,
+            role: role,
+            images: images,
+          )
+          .._maintenanceDelay = maintenanceDelay
+          .._viewOnly = viewOnly;
     s.loadStateNotifier.value = DeckLoading(message: strings.downloading);
     s._opened = s._open();
     return s;
   }
 
   final RevLogClient client;
+
+  /// Viewer whatever the stream or the drive says (a guest, specs/06
+  /// §2.4).
+  bool _viewOnly = false;
 
   /// The deck (= file uuid = deck row id).
   final UuidValue fileUuid;
@@ -175,7 +183,9 @@ class LoggedDeckSession extends DeckSessionBase {
 
   void _onRole() {
     final r = sync.role.value;
-    if (r != null && !_disposed) roleValue = _roleOf(r);
+    if (r != null && !_disposed) {
+      roleValue = _viewOnly ? Role.viewer : _roleOf(r);
+    }
   }
 
   static Role _roleOf(AccessRole r) => switch (r) {
@@ -243,7 +253,7 @@ class LoggedDeckSession extends DeckSessionBase {
 
   /// Applies a role learned elsewhere (drive item, sharing dialog).
   void updateRole(Role value) {
-    if (!_disposed) roleValue = value;
+    if (!_disposed) roleValue = _viewOnly ? Role.viewer : value;
   }
 
   /// Retries the connection now.

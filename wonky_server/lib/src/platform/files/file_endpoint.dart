@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:serverpod/serverpod.dart';
 
 import '../common/models.dart';
+import '../sharing/anonymous_access.dart';
 import '../users/user_service.dart';
 import 'file_image_proxy.dart';
 import 'file_service.dart';
@@ -10,9 +11,13 @@ import 'file_service.dart';
 /// Uploads and signed downloads (suite 12 §1.1). Idempotent on the
 /// client-generated [fileUuid]; content may reference `wonky-file://<uuid>`
 /// before the bytes arrive.
+///
+/// `getUrl` and `getUrls` also serve signed-out viewers of link-shared
+/// documents, spreadsheets and presentations (their images; never uploaded
+/// Drive files, specs/06 §2.4); every other call needs an account.
 class FileEndpoint extends Endpoint {
   @override
-  bool get requireLogin => true;
+  bool get requireLogin => false;
 
   /// Upload description for `FileUploader`. [kind] defaults to image;
   /// imports use `importSource` without an item. Images are re-encoded as
@@ -50,7 +55,11 @@ class FileEndpoint extends Endpoint {
 
   /// Status and signed URL (15 min) of a file.
   Future<FileUrlView> getUrl(Session session, UuidValue fileUuid) async =>
-      FileService.getUrl(session, await UserService.actorOf(session), fileUuid);
+      FileService.getUrl(
+        session,
+        await AnonymousAccess.actorOf(session),
+        fileUuid,
+      );
 
   /// (v2, Slides 03 A-03-3) Copies an image the caller can read into
   /// [targetItemUuid] as [newFileUuid] (idempotent on [newFileUuid];
@@ -90,7 +99,7 @@ class FileEndpoint extends Endpoint {
     List<UuidValue> fileUuids,
   ) async => FileService.getUrls(
     session,
-    await UserService.actorOf(session),
+    await AnonymousAccess.actorOf(session),
     fileUuids,
   );
 }

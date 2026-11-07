@@ -588,6 +588,9 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get cmdShare => 'Share';
 
   @override
+  String get cmdSignIn => 'Sign in';
+
+  @override
   String get cmdSignOut => 'Sign out';
 
   @override
@@ -1229,6 +1232,22 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get noAccessTitle => 'You need access';
 
   @override
+  String get guestNoAccessTitle => 'Sign in to open this';
+
+  @override
+  String get guestNoAccessBody =>
+      'This file isn\'t shared with anyone who has the link. Sign in to open it.';
+
+  @override
+  String get guestViewing => 'Viewing as a guest';
+
+  @override
+  String get guestSignInHint => 'Sign in to comment or edit';
+
+  @override
+  String get guestSignInToUse => 'Sign in to use this';
+
+  @override
   String get notAllowed => 'Not allowed';
 
   @override
@@ -1753,6 +1772,11 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get shareAddPeople => 'Add people by name or email';
 
   @override
+  String shareAnyoneAtOrg(String domain) {
+    return 'Anyone at $domain';
+  }
+
+  @override
   String get shareAnyoneWithLink => 'Anyone with the link';
 
   @override
@@ -1780,13 +1804,50 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   }
 
   @override
-  String get shareLinkHint => 'Anyone signed in who has the link can open it';
+  String shareLinkHint(String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Anyone with the link can view, and comment when signed in',
+      'editor': 'Anyone with the link can view, and edit when signed in',
+      'other': 'Anyone with the link can view, also without signing in',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String shareLinkHintSignIn(String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Anyone signed in who has the link can comment',
+      'editor': 'Anyone signed in who has the link can edit',
+      'other': 'Anyone signed in who has the link can view',
+    });
+    return '$_temp0';
+  }
 
   @override
   String get shareMessage => 'Message';
 
   @override
   String get shareNotify => 'Notify people';
+
+  @override
+  String shareOrgHint(String domain, String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Anyone at $domain can comment',
+      'editor': 'Anyone at $domain can edit',
+      'other': 'Anyone at $domain can view',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String shareOrgInherited(String domain, String role, String folder) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Anyone at $domain can also comment through “$folder”',
+      'editor': 'Anyone at $domain can also edit through “$folder”',
+      'other': 'Anyone at $domain can also view through “$folder”',
+    });
+    return '$_temp0';
+  }
 
   @override
   String get sharePending => 'Pending invite';
@@ -1819,11 +1880,19 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get shareRestricted => 'Restricted';
 
   @override
-  String get shareRestrictedHint =>
-      'Only people with access can open with the link';
+  String get shareRestrictedHint => 'Only people with access can open';
 
   @override
   String get shareRotateLink => 'Reset link';
+
+  @override
+  String get shareSearchFullEmail =>
+      'Enter the full email address to add someone';
+
+  @override
+  String shareSearchOutsideOrg(String domain) {
+    return 'Enter the full email to add someone outside $domain';
+  }
 
   @override
   String shareSent(int count) {
@@ -5726,6 +5795,9 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get cmdShare => '[Šĥåŕé on]';
 
   @override
+  String get cmdSignIn => '[Šîĝñ îñ one]';
+
+  @override
   String get cmdSignOut => '[Šîĝñ öûţ one]';
 
   @override
@@ -6384,6 +6456,22 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get noAccessTitle => '[Ýöû ñééð åççéšš one t]';
 
   @override
+  String get guestNoAccessTitle => '[Šîĝñ îñ ţö öþéñ ţĥîš one tw]';
+
+  @override
+  String get guestNoAccessBody =>
+      '[Ţĥîš ƒîļé îšñ\'ţ šĥåŕéð ŵîţĥ åñýöñé ŵĥö ĥåš ţĥé ļîñķ. Šîĝñ îñ ţö öþéñ îţ. one two three four fi]';
+
+  @override
+  String get guestViewing => '[Ṽîéŵîñĝ åš å ĝûéšţ one tw]';
+
+  @override
+  String get guestSignInHint => '[Šîĝñ îñ ţö çöɱɱéñţ öŕ éðîţ one two]';
+
+  @override
+  String get guestSignInToUse => '[Šîĝñ îñ ţö ûšé ţĥîš one tw]';
+
+  @override
   String get notAllowed => '[Ñöţ åļļöŵéð one]';
 
   @override
@@ -6918,6 +7006,11 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get shareAddPeople => '[Åðð þéöþļé ƀý ñåɱé öŕ éɱåîļ one two]';
 
   @override
+  String shareAnyoneAtOrg(String domain) {
+    return '[Åñýöñé åţ $domain one]';
+  }
+
+  @override
   String get shareAnyoneWithLink => '[Åñýöñé ŵîţĥ ţĥé ļîñķ one tw]';
 
   @override
@@ -6946,14 +7039,50 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   }
 
   @override
-  String get shareLinkHint =>
-      '[Åñýöñé šîĝñéð îñ ŵĥö ĥåš ţĥé ļîñķ çåñ öþéñ îţ one two three]';
+  String shareLinkHint(String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Åñýöñé ŵîţĥ ţĥé ļîñķ çåñ ṽîéŵ, åñð çöɱɱéñţ ŵĥéñ šîĝñéð îñ',
+      'editor': 'Åñýöñé ŵîţĥ ţĥé ļîñķ çåñ ṽîéŵ, åñð éðîţ ŵĥéñ šîĝñéð îñ',
+      'other': 'Åñýöñé ŵîţĥ ţĥé ļîñķ çåñ ṽîéŵ, åļšö ŵîţĥöûţ šîĝñîñĝ îñ',
+    });
+    return '[$_temp0 one two three four five six seven eight nine ten]';
+  }
+
+  @override
+  String shareLinkHintSignIn(String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Åñýöñé šîĝñéð îñ ŵĥö ĥåš ţĥé ļîñķ çåñ çöɱɱéñţ',
+      'editor': 'Åñýöñé šîĝñéð îñ ŵĥö ĥåš ţĥé ļîñķ çåñ éðîţ',
+      'other': 'Åñýöñé šîĝñéð îñ ŵĥö ĥåš ţĥé ļîñķ çåñ ṽîéŵ',
+    });
+    return '[$_temp0 one two three four five six seven eig]';
+  }
 
   @override
   String get shareMessage => '[Ṁéššåĝé one]';
 
   @override
   String get shareNotify => '[Ñöţîƒý þéöþļé one t]';
+
+  @override
+  String shareOrgHint(String domain, String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Åñýöñé åţ $domain çåñ çöɱɱéñţ',
+      'editor': 'Åñýöñé åţ $domain çåñ éðîţ',
+      'other': 'Åñýöñé åţ $domain çåñ ṽîéŵ',
+    });
+    return '[$_temp0 one two three fou]';
+  }
+
+  @override
+  String shareOrgInherited(String domain, String role, String folder) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Åñýöñé åţ $domain çåñ åļšö çöɱɱéñţ ţĥŕöûĝĥ “$folder”',
+      'editor': 'Åñýöñé åţ $domain çåñ åļšö éðîţ ţĥŕöûĝĥ “$folder”',
+      'other': 'Åñýöñé åţ $domain çåñ åļšö ṽîéŵ ţĥŕöûĝĥ “$folder”',
+    });
+    return '[$_temp0 one two three four five six sev]';
+  }
 
   @override
   String get sharePending => '[Þéñðîñĝ îñṽîţé one t]';
@@ -6987,10 +7116,19 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get shareRestrictedHint =>
-      '[Öñļý þéöþļé ŵîţĥ åççéšš çåñ öþéñ ŵîţĥ ţĥé ļîñķ one two three]';
+      '[Öñļý þéöþļé ŵîţĥ åççéšš çåñ öþéñ one two th]';
 
   @override
   String get shareRotateLink => '[Ŕéšéţ ļîñķ one]';
+
+  @override
+  String get shareSearchFullEmail =>
+      '[Éñţéŕ ţĥé ƒûļļ éɱåîļ åððŕéšš ţö åðð šöɱéöñé one two three]';
+
+  @override
+  String shareSearchOutsideOrg(String domain) {
+    return '[Éñţéŕ ţĥé ƒûļļ éɱåîļ ţö åðð šöɱéöñé öûţšîðé $domain one two three]';
+  }
 
   @override
   String shareSent(int count) {

@@ -192,6 +192,8 @@ submission:
   - withdraw:
   - disconnect:
   - reconnect:
+publicItem:
+  - get:
 sharing:
   - getSharing:
   - share:
@@ -200,6 +202,7 @@ sharing:
   - transferOwnership:
   - respondToOwnershipTransfer:
   - setLink:
+  - setGeneralAccess:
   - rotateLink:
   - updateSettings:
   - requestAccess:

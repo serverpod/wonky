@@ -46,6 +46,7 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
     required UuidValue fileUuid,
     required String userId,
     Role role = Role.viewer,
+    bool viewOnly = false,
     int maxCells = 1000000,
     ViewportHint? viewport,
     Duration maintenanceDelay = const Duration(seconds: 1),
@@ -61,6 +62,7 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
       viewportHint: viewport,
     );
     s._maintenanceDelay = maintenanceDelay;
+    s._viewOnly = viewOnly;
     s._opened = s._open();
     return s;
   }
@@ -75,6 +77,10 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
   ViewportHint? viewportHint;
 
   late final RevFileSync sync;
+
+  /// Viewer whatever the stream or the drive says (a guest, specs/06
+  /// §2.4).
+  bool _viewOnly = false;
 
   /// Whether [RevFileSync.open] returned: its sync core exists. The outbox
   /// applied while opening can make the session ready (and schedule
@@ -139,7 +145,7 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
 
   void _onRole() {
     final r = sync.role.value;
-    if (r != null) roleValue = _roleOf(r);
+    if (r != null) roleValue = _viewOnly ? Role.viewer : _roleOf(r);
   }
 
   static Role _roleOf(AccessRole r) => switch (r) {
@@ -252,7 +258,7 @@ class LoggedWorkbookSession extends WorkbookSessionBase {
   /// The role from the drive watch (sharing changes).
   void updateRole(Role value) {
     if (_disposed) return;
-    roleValue = value;
+    roleValue = _viewOnly ? Role.viewer : value;
   }
 
   /// Retries the connection now.

@@ -88,6 +88,8 @@ import 'package:wonky_server/src/generated/platform/revlog/messages/rev_client_m
     as _iv4mnr49;
 import 'package:wonky_server/src/generated/platform/revlog/models/rev_page_request.dart'
     as _iynxab9u;
+import 'package:wonky_server/src/generated/platform/sharing/general_access.dart'
+    as _i3ig34yn;
 import 'package:wonky_server/src/generated/platform/sharing/item_sharing_settings.dart'
     as _i55sl7s1;
 import 'package:wonky_server/src/generated/platform/users/user_preferences_patch.dart'
@@ -132,6 +134,7 @@ import '../platform/notifications/notification_endpoint.dart' as _ia40tpv4;
 import '../platform/presence/presence_endpoint.dart' as _iv7snmpw;
 import '../platform/publications/publication_endpoint.dart' as _igj7692v;
 import '../platform/publications/submission_endpoint.dart' as _i7uk3p1b;
+import '../platform/sharing/public_item_endpoint.dart' as _ie8dlyix;
 import '../platform/sharing/sharing_endpoint.dart' as _itz30x9e;
 import '../platform/users/access_token_endpoint.dart' as _iusd4uiv;
 import '../platform/users/google_idp_endpoint.dart' as _i3henulz;
@@ -267,6 +270,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'submission',
+          null,
+        ),
+      'publicItem': _ie8dlyix.PublicItemEndpoint()
+        ..initialize(
+          server,
+          'publicItem',
           null,
         ),
       'sharing': _itz30x9e.SharingEndpoint()
@@ -4629,6 +4638,31 @@ class Endpoints extends _is.EndpointDispatch {
         ),
       },
     );
+    connectors['publicItem'] = _is.EndpointConnector(
+      name: 'publicItem',
+      endpoint: endpoints['publicItem']!,
+      methodConnectors: {
+        'get': _is.MethodConnector(
+          name: 'get',
+          params: {
+            'uuid': _is.ParameterDescription(
+              name: 'uuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['publicItem'] as _ie8dlyix.PublicItemEndpoint).get(
+                    session,
+                    params['uuid'],
+                  ),
+        ),
+      },
+    );
     connectors['sharing'] = _is.EndpointConnector(
       name: 'sharing',
       endpoint: endpoints['sharing']!,
@@ -4841,6 +4875,37 @@ class Endpoints extends _is.EndpointDispatch {
                   (endpoints['sharing'] as _itz30x9e.SharingEndpoint).setLink(
                     session,
                     params['itemUuid'],
+                    params['role'],
+                  ),
+        ),
+        'setGeneralAccess': _is.MethodConnector(
+          name: 'setGeneralAccess',
+          params: {
+            'itemUuid': _is.ParameterDescription(
+              name: 'itemUuid',
+              type: _is.getType<_is.UuidValue>(),
+              nullable: false,
+            ),
+            'access': _is.ParameterDescription(
+              name: 'access',
+              type: _is.getType<_i3ig34yn.GeneralAccess>(),
+              nullable: false,
+            ),
+            'role': _is.ParameterDescription(
+              name: 'role',
+              type: _is.getType<_i9nsco4y.AccessRole?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['sharing'] as _itz30x9e.SharingEndpoint)
+                  .setGeneralAccess(
+                    session,
+                    params['itemUuid'],
+                    params['access'],
                     params['role'],
                   ),
         ),

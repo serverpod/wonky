@@ -31,14 +31,17 @@ export 'logged_deck_session.dart' show DeckLoadStrings, LoggedDeckSession;
 /// spec 08 §2).
 ///
 /// With the data layer installed ([SlidesRevLog.install], done at sign-in)
-/// this is a [LoggedDeckSession]; follow its `loadState`. Without it
-/// (widget tests with fake services, signed out) an in-memory blank deck.
-/// The editor only depends on this function and [DeckSession].
+/// this is a [LoggedDeckSession]; follow its `loadState`. Signed out (a
+/// guest on a link-shared presentation, specs/06 §2.4) it is a view-only
+/// [LoggedDeckSession] over the guest cache ([SlidesRevLog.guest]).
+/// Without either (widget tests with fake services) an in-memory blank
+/// deck. The editor only depends on this function and [DeckSession].
 Future<DeckSession> openDeckSession(
   ShellServices services,
   UuidValue itemUuid, {
   @visibleForTesting Duration readyTimeout = const Duration(seconds: 10),
 }) async {
+  if (services.isGuest) return _openAsGuest(services, itemUuid);
   final client = await SlidesRevLog.ready(services, timeout: readyTimeout);
   if (client == null) {
     // Installed but not started (the cache failed to open or is still
@@ -78,6 +81,31 @@ Future<DeckSession> openDeckSession(
       .listen((c) => session.updateRole(c.item!.myRole));
   session.addDisposeCallback(sub.cancel);
   return session;
+}
+
+/// A guest's view-only session: the item from `publicItem.get` (throws
+/// `notFound` when it isn't link-shared), the rows from the stream.
+Future<DeckSession> _openAsGuest(
+  ShellServices services,
+  UuidValue itemUuid,
+) async {
+  final item = await services.loadGuestItem(itemUuid);
+  final client = await SlidesRevLog.guest(services);
+  if (client == null) {
+    throw SlidesDataUnavailableException(
+      slidesL10nOf(services).screenStorageUnavailable,
+    );
+  }
+  return LoggedDeckSession.open(
+    client,
+    itemUuid: itemUuid,
+    fileUuid: item.contentRef ?? itemUuid,
+    userId: '',
+    planner: SlidesRevLog.planner,
+    role: Role.viewer,
+    viewOnly: true,
+    strings: SlidesRevLog.strings(services),
+  );
 }
 
 /// The signed-in user's local data layer did not start, so a presentation
@@ -140,6 +168,42 @@ abstract final class SlidesRevLog {
     });
     _installations[services] = inst;
     inst.attach();
+  }
+
+  static final Expando<RevLogGuestInstallation> _guests = Expando(
+    'SlidesRevLogGuest',
+  );
+
+  /// Replaces the server API of the guest client (tests).
+  @visibleForTesting
+  static RevTransport Function()? guestTransport;
+
+  /// The client of a signed-out viewer (specs/06 §2.4): the device's
+  /// `guest` cache, opened on first use and closed at sign-in; null
+  /// without a server client.
+  static Future<RevLogClient?> guest(ShellServices services) =>
+      (_guests[services] ??= RevLogGuestInstallation(services, () async {
+        final client = services.client;
+        final t =
+            guestTransport?.call() ??
+            (client == null ? null : ClientRevTransport.slides(client));
+        if (t == null) return null;
+        return RevLogClient.open(
+          services,
+          app: 'slides',
+          schema: slidesSchema,
+          transport: t,
+          userUuid: RevLogGuestInstallation.guestUser,
+          kind: DriveItemKind.presentation,
+          directory: directoryOverride,
+        );
+      })).client();
+
+  /// Closes the guest client (tests; sign-in closes it by itself).
+  static Future<void> closeGuest(ShellServices services) async {
+    final g = _guests[services];
+    _guests[services] = null;
+    await g?.close();
   }
 
   /// Closes the user's client and stops listening.

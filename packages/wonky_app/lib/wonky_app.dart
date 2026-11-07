@@ -77,6 +77,7 @@ export 'src/data/drive_cache.dart';
 export 'src/data/drive_repository.dart';
 export 'src/data/file_repository.dart';
 export 'src/data/models_ext.dart';
+export 'src/data/public_item_repository.dart';
 export 'src/data/sharing_repository.dart';
 export 'src/data/user_repository.dart';
 export 'src/document/document_controller.dart';

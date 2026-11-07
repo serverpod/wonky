@@ -1,6 +1,7 @@
 import 'package:serverpod/serverpod.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
 
+import '../common/actor.dart';
 import '../common/models.dart';
 import '../common/roles.dart';
 import '../sharing/access_service.dart';
@@ -77,6 +78,10 @@ abstract final class DriveViews {
     final users = await UserService.summaries(session, [
       for (final i in visible) ...[i.ownerId, i.modifiedById],
     ]);
+    if (userId == Actor.anonymousUserId) {
+      // Signed-out viewers never see emails (specs/06 §2.4).
+      users.updateAll((_, u) => u.copyWith(email: ''));
+    }
 
     return [
       for (final item in visible)
@@ -87,7 +92,7 @@ abstract final class DriveViews {
             name: item.name,
             description: item.description,
             contentRef: item.contentRef,
-            parentUuid: item.parentId == null
+            parentUuid: item.parentId == null || userId == Actor.anonymousUserId
                 ? null
                 : parentUuid[item.parentId],
             owner: users[item.ownerId]!,

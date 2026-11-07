@@ -23,8 +23,10 @@ export 'logged_workbook_session.dart' show LoggedWorkbookSession, ViewportHint;
 /// Opens the [WorkbookSession] of a spreadsheet item (RevLog spec 06 §7.1).
 ///
 /// With the data layer installed ([SheetsRevLog.install], done at sign-in)
-/// this is a [LoggedWorkbookSession]; follow its `loadState`. Without it
-/// (widget tests with fake services, signed out) an in-memory blank
+/// this is a [LoggedWorkbookSession]; follow its `loadState`. Signed out
+/// (a guest on a link-shared spreadsheet, specs/06 §2.4) it is a view-only
+/// [LoggedWorkbookSession] over the guest cache ([SheetsRevLog.guest]).
+/// Without either (widget tests with fake services) an in-memory blank
 /// spreadsheet. The editor only depends on this function and
 /// [WorkbookSession].
 Future<WorkbookSession> openWorkbookSession(
@@ -32,6 +34,7 @@ Future<WorkbookSession> openWorkbookSession(
   UuidValue itemUuid, {
   @visibleForTesting Duration readyTimeout = const Duration(seconds: 10),
 }) async {
+  if (services.isGuest) return _openAsGuest(services, itemUuid);
   final client = await SheetsRevLog.ready(services, timeout: readyTimeout);
   if (client == null) {
     if (SheetsRevLog.isInstalled(services)) {
@@ -64,6 +67,29 @@ Future<WorkbookSession> openWorkbookSession(
       .listen((c) => session.updateRole(c.item!.myRole));
   session.addDisposeCallback(sub.cancel);
   return session;
+}
+
+/// A guest's view-only session: the item from `publicItem.get` (throws
+/// `notFound` when it isn't link-shared), the rows from the stream.
+Future<WorkbookSession> _openAsGuest(
+  ShellServices services,
+  UuidValue itemUuid,
+) async {
+  final item = await services.loadGuestItem(itemUuid);
+  final client = await SheetsRevLog.guest(services);
+  if (client == null) {
+    throw SheetsDataUnavailableException(
+      sheetsL10nOf(services).screenStorageUnavailable,
+    );
+  }
+  return LoggedWorkbookSession.open(
+    client,
+    itemUuid: itemUuid,
+    fileUuid: item.contentRef ?? itemUuid,
+    userId: '',
+    role: Role.viewer,
+    viewOnly: true,
+  );
 }
 
 /// The signed-in user's local data layer did not start, so a spreadsheet
@@ -122,6 +148,42 @@ abstract final class SheetsRevLog {
     });
     _installations[services] = inst;
     inst.attach();
+  }
+
+  static final Expando<RevLogGuestInstallation> _guests = Expando(
+    'SheetsRevLogGuest',
+  );
+
+  /// Replaces the server API of the guest client (tests).
+  @visibleForTesting
+  static RevTransport Function()? guestTransport;
+
+  /// The client of a signed-out viewer (specs/06 §2.4): the device's
+  /// `guest` cache, opened on first use and closed at sign-in; null
+  /// without a server client.
+  static Future<RevLogClient?> guest(ShellServices services) =>
+      (_guests[services] ??= RevLogGuestInstallation(services, () async {
+        final client = services.client;
+        final t =
+            guestTransport?.call() ??
+            (client == null ? null : ClientRevTransport.sheets(client));
+        if (t == null) return null;
+        return RevLogClient.open(
+          services,
+          app: 'sheets',
+          schema: sheetsSchema,
+          transport: t,
+          userUuid: RevLogGuestInstallation.guestUser,
+          kind: DriveItemKind.spreadsheet,
+          directory: directoryOverride,
+        );
+      })).client();
+
+  /// Closes the guest client (tests; sign-in closes it by itself).
+  static Future<void> closeGuest(ShellServices services) async {
+    final g = _guests[services];
+    _guests[services] = null;
+    await g?.close();
   }
 
   /// Closes the user's client and stops listening.

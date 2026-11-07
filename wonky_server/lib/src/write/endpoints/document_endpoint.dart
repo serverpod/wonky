@@ -1,14 +1,19 @@
 import 'package:serverpod/serverpod.dart';
 
 import '../../platform/common/models.dart';
+import '../../platform/sharing/anonymous_access.dart';
 import '../../platform/users/user_service.dart';
 import '../ot/document_connection.dart';
 import '../ot/document_service.dart';
 
 /// Write documents: the OT editing stream and helpers (Write 03 §1).
+///
+/// `connect`, `getInfo`, `getOps` and `getSnapshot` also serve signed-out
+/// viewers of link-shared documents (read-only, rate limited, specs/06
+/// §2.4); `updateMeta` needs an account.
 class DocumentEndpoint extends Endpoint {
   @override
-  bool get requireLogin => true;
+  bool get requireLogin => false;
 
   /// Opens an editing/viewing session. The first message is [DocInit] with
   /// the ops since [knownRevision] (0 = none) or a snapshot.
@@ -18,20 +23,23 @@ class DocumentEndpoint extends Endpoint {
     int knownRevision,
     Stream<DocClientMessage> input,
   ) async* {
-    final actor = await UserService.actorOf(session);
-    yield* DocumentConnection.open(
-      session,
+    final actor = await AnonymousAccess.actorOf(session, stream: true);
+    yield* AnonymousAccess.track(
       actor,
-      documentUuid,
-      knownRevision,
-      input,
+      DocumentConnection.open(
+        session,
+        actor,
+        documentUuid,
+        knownRevision,
+        input,
+      ),
     );
   }
 
   Future<DocumentInfo> getInfo(Session session, UuidValue documentUuid) async =>
       DocumentService.getInfo(
         session,
-        await UserService.actorOf(session),
+        await AnonymousAccess.actorOf(session),
         documentUuid,
       );
 
@@ -43,7 +51,7 @@ class DocumentEndpoint extends Endpoint {
     int toRevision,
   ) async => DocumentService.getOps(
     session,
-    await UserService.actorOf(session),
+    await AnonymousAccess.actorOf(session),
     documentUuid,
     fromRevision,
     toRevision,
@@ -56,7 +64,7 @@ class DocumentEndpoint extends Endpoint {
     int? revision,
   ) async => DocumentService.getSnapshot(
     session,
-    await UserService.actorOf(session),
+    await AnonymousAccess.actorOf(session),
     documentUuid,
     revision,
   );

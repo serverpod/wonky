@@ -375,15 +375,43 @@ class FakeSharingRepository implements SharingRepository {
   ) => throw UnsupportedError('FakeSharingRepository.respond');
 
   @override
-  Future<SharingInfo> setLink(UuidValue itemUuid, AccessRole? role) => _update(
-    'setLink:${role?.name}',
-    SharingInfo.fromJson({
-      ...info.toJson(),
-      'link': role == null
-          ? null
-          : ShareLinkView(token: 'tok', role: role).toJson(),
-    }),
+  Future<SharingInfo> setLink(UuidValue itemUuid, AccessRole? role) =>
+      _update('setLink:${role?.name}', _withGeneralAccess(link: role));
+
+  @override
+  Future<SharingInfo> setGeneralAccess(
+    UuidValue itemUuid,
+    GeneralAccess access,
+    AccessRole? role,
+  ) => _update(
+    'setGeneralAccess:${access.name}:${role?.name}',
+    _withGeneralAccess(
+      link: access == GeneralAccess.link ? role : null,
+      org: access == GeneralAccess.organization ? role : null,
+    ),
   );
+
+  /// [info] with the link role [link] and the organization role [org] (at
+  /// most one of them set, as on the server).
+  SharingInfo _withGeneralAccess({AccessRole? link, AccessRole? org}) {
+    final domain = info.orgAccess?.domain ?? info.organization;
+    return SharingInfo.fromJson({
+      ...info.toJson(),
+      'link': link == null
+          ? null
+          : ShareLinkView(token: 'tok', role: link).toJson(),
+      'orgAccess': org == null || domain == null
+          ? null
+          : OrgAccessView(domain: domain, role: org).toJson(),
+      'generalAccess':
+          (link != null
+                  ? GeneralAccess.link
+                  : org != null
+                  ? GeneralAccess.organization
+                  : GeneralAccess.restricted)
+              .toJson(),
+    });
+  }
 
   @override
   Future<SharingInfo> rotateLink(UuidValue itemUuid) =>
