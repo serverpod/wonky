@@ -96,6 +96,11 @@ abstract final class AssistantService {
 
   static const refusalText = AiFailure.refusalText;
 
+  /// Shown when a run fails for a reason that is not the provider's.
+  static const internalErrorText =
+      'The assistant ran into an internal error and stopped. Try again; if '
+      'it keeps happening, start a new chat.';
+
   // ------------------------------------------------------------------ chat
 
   /// Sends [message] in [threadId] (null = a new thread on [itemUuid]) and
@@ -187,6 +192,18 @@ abstract final class AssistantService {
             if (!out.isClosed) out.add(e);
           },
         ).execute();
+      } on Object catch (e, st) {
+        // Logged at error level (it used to be verbose only, which hid the
+        // Gemini replay failure in the server log).
+        if (e is! AiCancelledException) {
+          s.log(
+            'Assistant run ${run.runId} (thread ${run.threadId}) failed: $e',
+            level: LogLevel.error,
+            exception: e,
+            stackTrace: st,
+          );
+        }
+        rethrow;
       } finally {
         if (runSession == null) await s.close();
       }
@@ -195,15 +212,17 @@ abstract final class AssistantService {
     unawaited(
       body()
           .catchError((Object e, StackTrace st) {
-            session.serverpod.logVerbose('Assistant run failed: $e\n$st');
             if (!out.isClosed) {
+              final f = AiFailure.of(e);
               out.add(
                 AssistantEvent(
                   type: AssistantEventType.error,
                   threadId: run.threadId,
                   runId: run.runId,
-                  error: 'Something went wrong. Please try again.',
-                  errorCode: 'internal',
+                  error: f == null || f == AiFailure.internal
+                      ? AssistantService.internalErrorText
+                      : f.message,
+                  errorCode: f?.code ?? 'internal',
                 ),
               );
             }
@@ -890,10 +909,12 @@ class _Loop {
       orderBy: (m) => m.id,
     );
     final toolNames = <String, String>{};
+    final decoded = <ChatMessage>[];
     for (final m in rows) {
       final msg = AssistantHistory.decode(m.role, m.contentJson, toolNames);
-      if (msg != null) _messages.add(msg);
+      if (msg != null) decoded.add(msg);
     }
+    _messages.addAll(AssistantHistory.repair(decoded));
   }
 
   /// Appends the user's turn: the frozen document snapshot (first turn,
