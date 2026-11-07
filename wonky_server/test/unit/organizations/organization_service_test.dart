@@ -7,7 +7,7 @@ import 'package:wonky_server/src/platform/organizations/public_mail_domains.dart
 void main() {
   final config = OrganizationConfig(
     aliases: [
-      ['serverpod.dev', 'serverpod.com'],
+      ['initech.dev', 'initech.com'],
     ],
   );
 
@@ -33,18 +33,18 @@ void main() {
 
   group('Given an alias group', () {
     test('when users are on either domain then they are one organization', () {
-      final dev = orgOf('anna@serverpod.dev')!;
-      final com = orgOf('bo@serverpod.com')!;
+      final dev = orgOf('anna@initech.dev')!;
+      final com = orgOf('bo@initech.com')!;
 
       expect(dev, com);
-      expect(com.key, 'serverpod.dev');
-      expect(com.domains, ['serverpod.dev', 'serverpod.com']);
+      expect(com.key, 'initech.dev');
+      expect(com.domains, ['initech.dev', 'initech.com']);
     });
 
     test('when the key is read back from a grant then it resolves', () {
       expect(
-        OrganizationService.forEmail('x@serverpod.com', config)?.key,
-        'serverpod.dev',
+        OrganizationService.forEmail('x@initech.com', config)?.key,
+        'initech.dev',
       );
     });
   });
@@ -141,13 +141,14 @@ void main() {
       expect(c.enabled, isTrue);
       expect(c.isPublic('isp.example'), isTrue);
       expect(c.domainsOf('a.com'), ['a.dev', 'a.com']);
-      expect(c.domainsOf('serverpod.com'), ['serverpod.com']);
+      expect(c.domainsOf('acme.com'), ['acme.com']);
     });
 
-    test('when nothing is configured then the production aliases apply', () {
+    test('when nothing is configured then no domains are aliased', () {
       final c = OrganizationConfig.fromMap({});
 
-      expect(c.domainsOf('serverpod.com'), ['serverpod.dev', 'serverpod.com']);
+      expect(c.domainsOf('serverpod.dev'), ['serverpod.dev']);
+      expect(c.domainsOf('acme.com'), ['acme.com']);
     });
 
     test('when environment variables are set then they override the map', () {
@@ -168,12 +169,12 @@ void main() {
 
   group('Given an organization', () {
     test('when it is inlined into SQL then only its domains appear', () {
-      final org = orgOf('a@serverpod.com')!;
+      final org = orgOf('a@initech.com')!;
 
-      expect(org.sqlList, "'serverpod.dev', 'serverpod.com'");
+      expect(org.sqlList, "'initech.dev', 'initech.com'");
       expect(
         OrganizationService.sqlMemberCondition('u.email', org),
-        "split_part(u.email, '@', 2) IN ('serverpod.dev', 'serverpod.com')",
+        "split_part(u.email, '@', 2) IN ('initech.dev', 'initech.com')",
       );
     });
   });

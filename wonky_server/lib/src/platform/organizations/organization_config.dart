@@ -5,7 +5,8 @@ import 'public_mail_domains.dart';
 
 /// Settings of organizations from the `wonky: organizations:` section of
 /// `config/<runMode>.yaml` (specs/04 §6). The defaults are the production
-/// values: Serverpod Cloud does not upload `config/*.yaml`.
+/// values (Serverpod Cloud does not upload `config/*.yaml`): organizations on,
+/// no extra public domains and no aliases.
 ///
 /// ```yaml
 /// wonky:
@@ -16,25 +17,20 @@ import 'public_mail_domains.dart';
 ///     publicDomains: [mail.example]
 ///     # Domains of one organization; the first one is its name.
 ///     aliases:
-///       - [serverpod.dev, serverpod.com]
+///       - [acme.dev, acme.com]
 /// ```
 ///
 /// Environment overrides: `WONKY_ORGANIZATIONS_ENABLED=false`,
 /// `WONKY_ORGANIZATIONS_PUBLIC_DOMAINS=a.com,b.net` and
-/// `WONKY_ORGANIZATIONS_ALIASES=serverpod.dev,serverpod.com;x.io,x.com`
+/// `WONKY_ORGANIZATIONS_ALIASES=acme.dev,acme.com;x.io,x.com`
 /// (groups separated by `;`, domains by `,`).
 class OrganizationConfig {
   OrganizationConfig({
     this.enabled = true,
     Set<String> publicDomains = const {},
-    List<List<String>> aliases = defaultAliases,
+    List<List<String>> aliases = const [],
   }) : publicDomains = {for (final d in publicDomains) d.trim().toLowerCase()},
        _groupOf = _groups(aliases);
-
-  /// The production alias groups.
-  static const defaultAliases = [
-    ['serverpod.dev', 'serverpod.com'],
-  ];
 
   /// Without it no one has an organization (sharing with an organization
   /// and organization search are off).
@@ -118,7 +114,7 @@ class OrganizationConfig {
           if (group is List) [for (final d in group) '$d'],
       ];
     } else {
-      aliases = defaultAliases;
+      aliases = const [];
     }
     return OrganizationConfig(
       enabled: enabled,

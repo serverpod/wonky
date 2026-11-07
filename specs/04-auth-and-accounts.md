@@ -349,7 +349,7 @@ organization style guides, [10](10-ai-assistant.md)) ask the same service.
       enabled: true                 # false: nobody has an organization
       publicDomains: [isp.example]  # added to the built-in list
       aliases:                      # domains of one organization; the first is its key/name
-        - [serverpod.dev, serverpod.com]   # the production default
+        - [acme.dev, acme.com]      # none by default
   ```
 
   Environment overrides: `WONKY_ORGANIZATIONS_ENABLED`, `WONKY_ORGANIZATIONS_PUBLIC_DOMAINS`
@@ -357,8 +357,8 @@ organization style guides, [10](10-ai-assistant.md)) ask the same service.
   inside an alias group is ignored; a domain listed in two groups joins the first.
 
 ### 6.2 The organization key
-An organization is identified by its **key**: its first domain (`serverpod.dev`, also for a user
-at `serverpod.com`). Grants to an organization store the key (`DriveItemPermission.orgKey`,
+An organization is identified by its **key**: its first domain (`acme.dev`, also for a user at
+`acme.com` when the two are aliased). Grants to an organization store the key (`DriveItemPermission.orgKey`,
 06 §2); a grant matches every domain of the user's alias group, so adding a domain to a group
 keeps old grants working, reordering a group keeps them working as long as the stored domain
 stays in it, and a domain that later becomes public (or `enabled: false`) makes its grants
