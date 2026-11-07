@@ -13,6 +13,7 @@ import 'package:super_editor/super_editor.dart'
         SelectionChangeType,
         SelectionReason,
         StandardEditables,
+        DocumentKeys,
         SuperReader,
         TextNode;
 import 'package:shad/shad.dart';
@@ -411,6 +412,40 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 2));
   });
+
+  testWidgets('Given a caret in the editor when the focus moves to the '
+      'toolbar then the caret hides, and choosing a heading in the style '
+      'picker returns the focus and the caret (Write 05 §4.1)', (tester) async {
+    await pumpScreen(tester);
+    final editorFocus = session.editor.focusNode;
+    editorFocus.requestFocus();
+    session.editor.select(const DeltaSelection.collapsed(8));
+    await tester.pump();
+    await tester.pump();
+    expect(editorFocus.hasFocus, isTrue);
+    expect(find.byKey(DocumentKeys.caret), findsOneWidget);
+
+    // A menu or the style picker takes the focus; the selection stays.
+    editorFocus.unfocus();
+    await tester.pump();
+    await tester.pump();
+    expect(editorFocus.hasFocus, isFalse);
+    expect(find.byKey(DocumentKeys.caret), findsNothing);
+
+    await tester.runAsync(
+      () => h.invoke('write.format.blockType', const {
+        'type': 'heading2',
+      }, InvocationSource.toolbar),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(editorFocus.hasFocus, isTrue);
+    expect(find.byKey(DocumentKeys.caret), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 2));
+    expect(tester.takeException(), isNull);
+    // On macOS: the desktop caret (mobile platforms draw their own).
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('Given the screen when toggling the outline then the panel lists '
       'the headings', (tester) async {

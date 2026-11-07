@@ -626,9 +626,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get cmdVersionsPanel => 'Version history panel';
 
   @override
-  String get cmdWhatsNew => 'What\'s new';
-
-  @override
   String get cmdWorkSettings => 'Wonky Work settings';
 
   @override
@@ -1090,9 +1087,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get mcpTitle => 'MCP connection';
 
   @override
-  String get menuAccessibility => 'Accessibility settings';
-
-  @override
   String get menuAppTheme => 'App theme';
 
   @override
@@ -1100,9 +1094,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get menuEdit => 'Edit';
-
-  @override
-  String get menuExplore => 'Explore';
 
   @override
   String get menuFile => 'File';
@@ -1139,9 +1130,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get menuPanels => 'Panels';
-
-  @override
-  String get menuPreferences => 'Preferences';
 
   @override
   String get menuShare => 'Share';
@@ -2281,25 +2269,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get versionsRestorePoint => 'Before restore';
-
-  @override
-  String get whatsNew1 =>
-      'One account for Wonky Write and Wonky Sheets — sign in once, use both.';
-
-  @override
-  String get whatsNew2 =>
-      'Every action is a command: press Ctrl+Shift+P (⌘⇧P) to run anything.';
-
-  @override
-  String get whatsNew3 =>
-      'Undo covers drive changes too — rename, move, star and trash.';
-
-  @override
-  String get whatsNew4 =>
-      'Comments, mentions and version history in every file.';
-
-  @override
-  String get whatsNewTitle => 'What\'s new';
 
   @override
   String get wonkyWork => 'Wonky Work';
@@ -5666,9 +5635,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get cmdVersionsPanel => '[Ṽéŕšîöñ ĥîšţöŕý þåñéļ one two]';
 
   @override
-  String get cmdWhatsNew => '[Ŵĥåţ\'š ñéŵ one]';
-
-  @override
   String get cmdWorkSettings => '[Ŵöñķý Ŵöŕķ šéţţîñĝš one tw]';
 
   @override
@@ -6146,9 +6112,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get mcpTitle => '[ṀÇÞ çöññéçţîöñ one t]';
 
   @override
-  String get menuAccessibility => '[Åççéššîƀîļîţý šéţţîñĝš one two]';
-
-  @override
   String get menuAppTheme => '[Åþþ ţĥéɱé one]';
 
   @override
@@ -6156,9 +6119,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get menuEdit => '[Éðîţ on]';
-
-  @override
-  String get menuExplore => '[Éẋþļöŕé one]';
 
   @override
   String get menuFile => '[Ƒîļé on]';
@@ -6195,9 +6155,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get menuPanels => '[Þåñéļš one]';
-
-  @override
-  String get menuPreferences => '[Þŕéƒéŕéñçéš one]';
 
   @override
   String get menuShare => '[Šĥåŕé on]';
@@ -7354,25 +7311,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get versionsRestorePoint => '[Ɓéƒöŕé ŕéšţöŕé one t]';
-
-  @override
-  String get whatsNew1 =>
-      '[Öñé åççöûñţ ƒöŕ Ŵöñķý Ŵŕîţé åñð Ŵöñķý Šĥééţš — šîĝñ îñ öñçé, ûšé ƀöţĥ. one two three four f]';
-
-  @override
-  String get whatsNew2 =>
-      '[Éṽéŕý åçţîöñ îš å çöɱɱåñð: þŕéšš Çţŕļ+Šĥîƒţ+Þ (⌘⇧Þ) ţö ŕûñ åñýţĥîñĝ. one two three four fi]';
-
-  @override
-  String get whatsNew3 =>
-      '[Ûñðö çöṽéŕš ðŕîṽé çĥåñĝéš ţöö — ŕéñåɱé, ɱöṽé, šţåŕ åñð ţŕåšĥ. one two three four]';
-
-  @override
-  String get whatsNew4 =>
-      '[Çöɱɱéñţš, ɱéñţîöñš åñð ṽéŕšîöñ ĥîšţöŕý îñ éṽéŕý ƒîļé. one two three fou]';
-
-  @override
-  String get whatsNewTitle => '[Ŵĥåţ\'š ñéŵ one]';
 
   @override
   String get wonkyWork => '[Ŵöñķý Ŵöŕķ one]';

@@ -1471,7 +1471,14 @@ List<Command<CommandArgs>> documentCommands(
     categoryName: (l) => l.categoryHelp,
     run: (ctx, a) async {
       final c = ctx.dialogContext;
-      if (c != null) await showMarkdownGuide(c);
+      // A Wonky Markdown document also gets the extensions tab (Write 11).
+      final d = ctx.services.activeDocument.value;
+      if (c != null) {
+        await showMarkdownGuide(
+          c,
+          wonky: d is WriteDocumentController && d.isWonky,
+        );
+      }
       return const CommandResult.ok();
     },
   ),

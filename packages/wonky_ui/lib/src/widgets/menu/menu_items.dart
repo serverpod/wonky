@@ -296,8 +296,8 @@ class _TypeAheadMenuBodyState extends State<_TypeAheadMenuBody> {
         );
       case WonkyMenuItem():
         final Widget? leadingWidget = switch (e) {
-          WonkyMenuCheckItem(:final checked) => lead(
-            checked ? LucideIcons.check : null,
+          WonkyMenuCheckItem(:final checked, :final icon) => lead(
+            icon ?? (checked ? LucideIcons.check : null),
           ),
           WonkyMenuRadioItem(:final selected) =>
             leading
@@ -323,6 +323,30 @@ class _TypeAheadMenuBodyState extends State<_TypeAheadMenuBody> {
                 : lead(e.icon),
         };
         final shortcut = e.shortcut;
+        // A check item with an icon shows its ✓ at the end.
+        final trailingCheck = e is WonkyMenuCheckItem && e.icon != null
+            ? SizedBox(
+                width: 16,
+                child: e.checked
+                    ? const Icon(LucideIcons.check, size: 16)
+                    : null,
+              )
+            : null;
+        Widget? trailing = shortcut == null || shortcut.isEmpty
+            ? (e.trailing == null ? null : ExcludeSemantics(child: e.trailing!))
+            : ExcludeSemantics(
+                child: ShadKbd.group([
+                  for (final k in shortcut) keyCapLabel(k),
+                ], height: 20),
+              );
+        if (trailingCheck != null) {
+          trailing = trailing == null
+              ? trailingCheck
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [trailing, const SizedBox(width: 8), trailingCheck],
+                );
+        }
         Widget item = _stableEnabled(
           e.key,
           e.enabled,
@@ -331,15 +355,7 @@ class _TypeAheadMenuBodyState extends State<_TypeAheadMenuBody> {
             enabled: e.enabled,
             destructive: e.destructive,
             leading: leadingWidget,
-            trailing: shortcut == null || shortcut.isEmpty
-                ? (e.trailing == null
-                      ? null
-                      : ExcludeSemantics(child: e.trailing!))
-                : ExcludeSemantics(
-                    child: ShadKbd.group([
-                      for (final k in shortcut) keyCapLabel(k),
-                    ], height: 20),
-                  ),
+            trailing: trailing,
             onPressed: e.onSelected,
             child: Text(e.label),
           ),

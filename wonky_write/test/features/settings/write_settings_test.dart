@@ -62,9 +62,9 @@ void main() {
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
   }
 
-  testWidgets('J-D6: Given the Write home when Write settings open from the '
-      'left menu and Wonky Work settings from the account menu then each '
-      'shows its sections, and /settings/write redirects', (tester) async {
+  testWidgets('J-D6: Given the Write home when Settings open from the left '
+      'menu or the account menu then one Settings page shows the Write and '
+      'the Wonky Work sections, and /settings/write redirects', (tester) async {
     await pump(tester);
 
     await tester.tap(key('home.footer.appSettings'));
@@ -76,15 +76,22 @@ void main() {
     }
     expect(key('settings.section.app.editor'), findsOneWidget);
 
+    h.services.router.go('/');
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(AccountMenuButton));
     await tester.pumpAndSettle();
+    expect(find.text('Wonky Work settings'), findsNothing);
     await tester.tap(key('account.settings'));
     await tester.pumpAndSettle();
-    expect(location(), '/settings/account');
+    expect(location(), '/settings/app/editor');
+    expect(find.text('Settings'), findsWidgets);
     expect(find.text('Wonky Work settings'), findsWidgets);
     for (final id in workSettingsSectionIds) {
       expect(key('settings.nav.$id'), findsOneWidget, reason: id);
     }
+    await tester.tap(key('settings.nav.account'));
+    await tester.pumpAndSettle();
+    expect(location(), '/settings/account');
 
     h.services.router.go('/settings/write');
     await tester.pumpAndSettle();
@@ -212,17 +219,21 @@ void main() {
       expect(r.isOk, isFalse);
     });
 
-    test('when the menus are built then Tools › Preferences offers Write '
-        'settings and Wonky Work settings', () {
+    test('when the menus are built then Tools has one Settings entry and '
+        'no Preferences submenu', () {
       final menus = writeMenus(
         ShellMenus(lookupWonkyAppLocalizations(const Locale('en'))),
       );
-      final byId = {for (final c in menus.commands) c.effectiveId: c};
-      expect(byId['tools.writePrefs.all']?.commandId, 'shell.settings.openApp');
-      expect(byId['tools.writePrefs.work']?.commandId, 'shell.settings.open');
-      expect(byId['tools.writePrefs.work']?.args, {'section': 'account'});
-      expect(byId.containsKey(ShellMenuIds.toolsAppSettings), isFalse);
-      expect(byId.containsKey(ShellMenuIds.toolsWorkSettings), isFalse);
+      final settings = [
+        for (final c in menus.commands)
+          if (c.commandId.startsWith('shell.settings.')) c,
+      ];
+      expect(settings.map((c) => c.effectiveId), [ShellMenuIds.toolsSettings]);
+      expect(settings.single.commandId, 'shell.settings.openApp');
+      expect(
+        menus.commands.where((c) => c.commandId.startsWith('write.prefs.')),
+        isEmpty,
+      );
     });
   });
 }

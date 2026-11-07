@@ -4,9 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart' as intl;
-import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
-import 'package:wonky_ui/wonky_ui.dart' show WonkyDialogCloseButton;
 
 import '../data/api.dart';
 import '../l10n/wonky_app_localizations.dart';
@@ -148,50 +146,6 @@ Future<String?> showNameVersionDialog(
         : initial,
     dialogKey: 'dialog.nameVersion',
     maxLength: 200,
-  );
-}
-
-/// Help › What's new.
-Future<void> showWhatsNewDialog(BuildContext context, ShellServices s) {
-  final l = WonkyAppLocalizations.of(context);
-  return showShadDialog<void>(
-    context: context,
-    builder: (context) => ShadDialog(
-      closeIcon: const WonkyDialogCloseButton(),
-      title: Text(l.whatsNewTitle),
-      actions: [
-        ShadButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.actionClose),
-        ),
-      ],
-      child: SizedBox(
-        width: 460,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 10,
-          children: [
-            for (final item in [
-              l.whatsNew1,
-              l.whatsNew2,
-              l.whatsNew3,
-              l.whatsNew4,
-            ])
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2, right: 8),
-                    child: Icon(LucideIcons.sparkle, size: 14),
-                  ),
-                  Expanded(child: Text(item)),
-                ],
-              ),
-          ],
-        ),
-      ),
-    ),
   );
 }
 

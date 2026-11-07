@@ -342,7 +342,6 @@
   "cmdUnstar": "Remove star",
   "cmdUpload": "Upload file…",
   "cmdVersionsPanel": "Version history panel",
-  "cmdWhatsNew": "What's new",
   "cmdWorkSettings": "Wonky Work settings",
   "@cmdWorkSettings": {
     "description": "Opens the suite settings (account, appearance, …)."
@@ -590,11 +589,9 @@
   "mcpControlling": "An agent is controlling this window",
   "mcpHint": "Use this configuration in Claude Desktop or Claude Code with one of your tokens.",
   "mcpTitle": "MCP connection",
-  "menuAccessibility": "Accessibility settings",
   "menuAppTheme": "App theme",
   "menuDownload": "Download",
   "menuEdit": "Edit",
-  "menuExplore": "Explore",
   "menuFile": "File",
   "menuFileUpload": "File upload",
   "@menuFileUpload": {
@@ -619,7 +616,6 @@
     "description": "Account menu submenu listing the four apps."
   },
   "menuPanels": "Panels",
-  "menuPreferences": "Preferences",
   "menuShare": "Share",
   "menuTools": "Tools",
   "menuVersionHistory": "Version history",
@@ -1535,11 +1531,6 @@
   "versionsOpenFull": "Open full history",
   "versionsRename": "Rename version",
   "versionsRestorePoint": "Before restore",
-  "whatsNew1": "One account for Wonky Write and Wonky Sheets — sign in once, use both.",
-  "whatsNew2": "Every action is a command: press Ctrl+Shift+P (⌘⇧P) to run anything.",
-  "whatsNew3": "Undo covers drive changes too — rename, move, star and trash.",
-  "whatsNew4": "Comments, mentions and version history in every file.",
-  "whatsNewTitle": "What's new",
   "wonkyWork": "Wonky Work",
   "writeAutoPair": "Auto-pair brackets and quotes",
   "writeExportFormat": "Default download format",

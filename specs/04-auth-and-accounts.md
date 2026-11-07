@@ -164,7 +164,13 @@ fields:
 
 ## 4. Settings (v2: split into Wonky Work settings and app settings)
 
-Settings are split in two (decision D4):
+There is **one settings entry** everywhere — *Settings* with the Lucide `settings` icon
+(`shell.settings.openApp`): Tools › Settings…, the account menu, the home's left menu and the
+palette. It opens one page, **Settings**, whose nav holds both groups below. Wonky Work sections
+are reached from that nav (or by `shell.settings.open {section}` from links and MCP, which is
+not listed in the palette).
+
+The settings are split in two groups (decision D4):
 
 - **Wonky Work settings** — suite-level, identical in every app, routes `/settings/:section`
   (`/settings` → `/settings/account`). Everything about the account, the device and the suite.
@@ -182,7 +188,7 @@ Settings are split in two (decision D4):
 | Account (`account`) › Profile | Avatar upload/crop, display name, email (change with verification) | Wonky Work › **Account & profile** (`account`) |
 | Account › Security | Password change, sign out | Wonky Work › **Sign-in & security** (`security`, new id) + Google account link status (linked / *Link Google account*, web), *Sign out of all devices* (P2) |
 | Account › Delete account | Type-to-confirm delete; transfer or delete owned files | Wonky Work › Account & profile (bottom); transfers respect the new owner's quota (Drive 03 §7.3) |
-| Appearance (`appearance`) | App theme (System/Light/Dark with previews), density, reduce motion | Wonky Work › **Appearance** (unchanged; also the target of *Accessibility settings*) |
+| Appearance (`appearance`) | App theme (System/Light/Dark with previews), density, reduce motion | Wonky Work › **Appearance** (unchanged) |
 | Language & region (`language`) | UI language, time zone | Wonky Work › **Language & region** |
 | Language & region › default locale for new spreadsheets | Number/date formats of new spreadsheets | Sheets settings › Defaults (it is a Sheets preference, already stored in `sheetsDefaults`) |
 | Keyboard shortcuts (`keyboard`) | Searchable command table, record bindings, conflicts, reset | Wonky Work › **Keyboard shortcuts** (decided below): lists the shell commands and the **current app's** commands, grouped "Shared" / "<App>"; overrides of other apps' commands are kept untouched |
@@ -233,13 +239,15 @@ Full-screen in-app page (`SettingsScreen`, shell) with a left nav of **two group
 ```
 
 - Group headers carry the product icon (the app's; the Work icon for Wonky Work) and are
-  `Semantics(header: true)`; the page header reads "Write settings" or "Wonky Work settings"
-  depending on the open section. Narrow widths: the nav becomes a select above the content.
+  `Semantics(header: true)`; the page header reads "Settings" (one page for both groups).
+  Narrow widths: the nav becomes a select above the content.
 - Back (←) returns to the previous route (the editor or home the user came from), else home.
-- Entry points: account menu (*<App> settings*, *Wonky Work settings*), the left menu's bottom
-  section in homes (03 §3.3), Tools menu in editors, command palette:
-  `shell.settings.open {section}` (Wonky Work) and **`shell.settings.openApp {section?}`**
-  (app settings), `Mod+,` (desktop) = app settings.
+- Entry points: one *Settings* item in the account menu, the left menu's bottom section in
+  homes (03 §3.3), Tools › Settings… in editors and the command palette, all
+  **`shell.settings.openApp {section?}`** (titled *Settings*, Lucide `settings`; `Mod+,` on
+  desktop), which opens the app's first section (or Account & profile when the app has none).
+  `shell.settings.open {section}` (Wonky Work sections) stays for links, *About* and MCP and is
+  hidden from the palette.
 - The app's sections come from `WonkyAppConfig.appSettingsSections(services)` (list of
   `SettingsSectionSpec`, replacing `settingsSections` and `sheetsSettings`).
 
@@ -264,11 +272,12 @@ redirect in their own app and show `SettingsHandoffPage` elsewhere, which opens 
 the same routes. The wide nav has the two group headers (product icon, `Semantics(header)`), the
 app's sections, *Settings of other apps* (expands inline to the three other apps; each opens its
 `/settings/app` cross-app) and the Wonky Work sections; below 760 px the nav is one select
-(groups as headers, other apps as options). The page header names the open group; Back returns to
+(groups as headers, other apps as options). The page header reads *Settings*; Back returns to
 the last non-settings route of the navigation history, else home. `Mod+,` (desktop) moved from
-`shell.settings.open` to `shell.settings.openApp`. Tools menu: `tools.preferences` is now *<App>
-settings* (`shell.settings.openApp`) followed by `tools.workSettings` (*Wonky Work settings*);
-Write keeps both inside its *Preferences ▸* submenu. Sections: *Account & profile* (profile +
+`shell.settings.open` to `shell.settings.openApp`. Tools menu: `tools.preferences` is the one
+*Settings…* entry (`shell.settings.openApp`, `ShellMenuIds.toolsSettings`); the former
+`tools.workSettings`, `tools.accessibility` and Write's *Preferences ▸* submenu are gone (one
+settings entry, 03 §3.2). Sections: *Account & profile* (profile +
 delete account), *Sign-in & security* (password, sign out — Google link status and *Sign out of
 all devices* are open, TODO.md), *Keyboard shortcuts* grouped *Shared* (`shell.*`) / *<App>*
 (every other registered command), *Reset all* resets only the listed commands

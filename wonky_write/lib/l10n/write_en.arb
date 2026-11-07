@@ -603,7 +603,6 @@
   "@menuUnderlineErrors": {
     "description": "Spelling submenu: underline misspelled words."
   },
-  "menuPreferences": "Preferences",
   "menuAllPreferences": "All preferences…",
   "menuInsert": "Insert",
   "@menuInsert": {
@@ -1004,6 +1003,25 @@
   "docDialogGuideCommandMenu": "Command menu: insert tables, images and more",
   "docDialogGuideMention": "Mention a person",
   "docDialogGuideFootnote": "Underline and text colors are not part of Markdown — use bold or italic, or change how emphasis looks with a theme.",
+  "docDialogGuideTabMarkdown": "Markdown",
+  "@docDialogGuideTabMarkdown": {
+    "description": "Tab of the Markdown guide with the standard Markdown shortcuts."
+  },
+  "docDialogGuideTabWonky": "Wonky Markdown",
+  "@docDialogGuideTabWonky": {
+    "description": "Tab of the Markdown guide with the Wonky Markdown extensions (shown in documents that use Wonky Markdown)."
+  },
+  "docDialogGuideWonkyDescription": "This document uses Wonky Markdown: these blocks and inline elements come on top of standard Markdown. Insert them from the Insert menu or the / menu, or type them.",
+  "docDialogGuideCallout": "Callout: info, tip, note, warning, caution or danger, with an optional title",
+  "docDialogGuideDetails": "Details: a collapsible section, its first ### line is the summary",
+  "docDialogGuideCard": "Card",
+  "docDialogGuideGrid": "Grid of items in 1–4 columns (bullets: check, circle or none)",
+  "docDialogGuideBlockEnd": "Ends a callout, details, card or grid",
+  "docDialogGuideButton": "Button link (secondary button with variant=secondary)",
+  "docDialogGuideArrowLink": "Link with an arrow",
+  "docDialogGuideChip": "Chip, optionally with an icon",
+  "docDialogGuideNumberedHeading": "Numbered heading (step), level 2 or 3",
+  "docDialogGuideYouTube": "YouTube video",
   "pageSetupTitle": "Page setup",
   "pageSetupReadOnly": "You need edit access to change the page setup.",
   "pageSetupSetAsDefault": "Set as default",
