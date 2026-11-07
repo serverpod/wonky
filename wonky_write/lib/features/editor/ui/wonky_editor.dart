@@ -1110,6 +1110,9 @@ class WonkyEditorState extends State<WonkyEditor> {
           adjustCaretRect: (position, rect, _) => controller.pillBoundary
               .caretRect(controller.document, position, rect),
           caretRectListenable: controller.pillBoundary,
+          // No caret while the focus is elsewhere (a menu, the toolbar, a
+          // panel): the document must not look typeable (SE-16).
+          focusNode: controller.focusNode,
         ),
         WonkyRemoteCaretLayerBuilder(controller: controller, theme: theme),
         DropIndicatorLayerBuilder(

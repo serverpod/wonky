@@ -25,6 +25,7 @@ class CaretDocumentOverlay extends DocumentLayoutLayerStatefulWidget {
     this.blinkTimingMode = BlinkTimingMode.timer,
     this.adjustCaretRect,
     this.caretRectListenable,
+    this.focusNode,
   }) : super(key: key);
 
   /// The editor's [DocumentComposer], which reports the current selection.
@@ -63,6 +64,11 @@ class CaretDocumentOverlay extends DocumentLayoutLayerStatefulWidget {
   /// Notifies when [adjustCaretRect] would answer differently.
   final Listenable? caretRectListenable;
 
+  /// WONKY PATCH SE-16: the editor's focus node. When given, the caret is
+  /// hidden (and stops blinking) while the node doesn't have focus, so an
+  /// editor that lost focus to a menu or a toolbar doesn't look typeable.
+  final FocusNode? focusNode;
+
   @override
   DocumentLayoutLayerState<CaretDocumentOverlay, Rect?> createState() => CaretDocumentOverlayState();
 }
@@ -85,6 +91,7 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
 
     widget.composer.selectionNotifier.addListener(_onSelectionChange);
     widget.caretRectListenable?.addListener(_onSelectionChange);
+    widget.focusNode?.addListener(_onSelectionChange);
 
     _startOrStopBlinking();
   }
@@ -103,12 +110,18 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
       oldWidget.caretRectListenable?.removeListener(_onSelectionChange);
       widget.caretRectListenable?.addListener(_onSelectionChange);
     }
+    if (widget.focusNode != oldWidget.focusNode) {
+      oldWidget.focusNode?.removeListener(_onSelectionChange);
+      widget.focusNode?.addListener(_onSelectionChange);
+      _updateCaretFlash();
+    }
   }
 
   @override
   void dispose() {
     widget.composer.selectionNotifier.removeListener(_onSelectionChange);
     widget.caretRectListenable?.removeListener(_onSelectionChange);
+    widget.focusNode?.removeListener(_onSelectionChange);
 
     _blinkController.dispose();
 
@@ -119,7 +132,11 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
   bool get isCaretTicking => _blinkController.isBlinking;
 
   @visibleForTesting
-  bool get isCaretVisible => _blinkController.opacity == 1.0 && !_shouldHideCaretForExpandedSelection;
+  bool get isCaretVisible =>
+      _blinkController.opacity == 1.0 && !_shouldHideCaretForExpandedSelection && !_shouldHideCaretForFocus;
+
+  /// WONKY PATCH SE-16: whether the caret is hidden because the editor doesn't have focus.
+  bool get _shouldHideCaretForFocus => widget.focusNode != null && !widget.focusNode!.hasFocus;
 
   /// Returns `true` if the selection is currently expanded, and we want to hide the caret when
   /// the selection is expanded.
@@ -154,7 +171,9 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
     };
 
     // TODO: allow a configurable policy as to whether to show the caret at all when the selection is expanded: https://github.com/superlistapp/super_editor/issues/234
-    final wantsToBlink = widget.composer.selection != null && (widget.displayOnAllPlatforms || isDesktop);
+    final wantsToBlink = widget.composer.selection != null &&
+        (widget.displayOnAllPlatforms || isDesktop) &&
+        !_shouldHideCaretForFocus;
     if (wantsToBlink && _blinkController.isBlinking) {
       return;
     }
@@ -170,7 +189,7 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
   void _updateCaretFlash() {
     // TODO: allow a configurable policy as to whether to show the caret at all when the selection is expanded: https://github.com/superlistapp/super_editor/issues/234
     final documentSelection = widget.composer.selection;
-    if (documentSelection == null) {
+    if (documentSelection == null || _shouldHideCaretForFocus) {
       _blinkController.stopBlinking();
       return;
     }
@@ -228,7 +247,7 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
       return const EmptyBox();
     }
 
-    if (_shouldHideCaretForExpandedSelection) {
+    if (_shouldHideCaretForExpandedSelection || _shouldHideCaretForFocus) {
       return const EmptyBox();
     }
 
