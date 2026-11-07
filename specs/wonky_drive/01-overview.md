@@ -111,7 +111,9 @@ release, **P2** designed now, built later.
   Wonky item instead; the original stays a file.
 - Rendering uploaded HTML, SVG or other active content (shown as source text, 02 §6.4).
 - Video previews and streaming (shown as a file with Download). No audio recording.
-- Anonymous (signed-out) access to shared files; public website hosting.
+- Anonymous (signed-out) access to uploaded files and folders, also with link sharing
+  (signed-out viewing covers documents, spreadsheets and presentations only, suite 06 §2.4);
+  public website hosting.
 - Syncing a local folder with the drive (no desktop sync client).
 - Storage purchases or plans: the quota is fixed by configuration ([03 §3](03-storage-quota.md)).
 
