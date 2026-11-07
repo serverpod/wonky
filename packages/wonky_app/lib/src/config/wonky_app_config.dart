@@ -13,6 +13,28 @@ import '../shell/shell_services.dart';
 import '../versions/version_renderer.dart';
 import 'home_scope.dart';
 
+/// Id prefixes of the shell commands a guest can't run (see
+/// [WonkyAppConfig.guestAllowsCommand]).
+const guestBlockedShellCommands = [
+  'shell.drive.',
+  'shell.sharing.',
+  'shell.comments.',
+  'shell.versions.',
+  'shell.ai.',
+  'shell.notifications.',
+  'shell.settings.',
+  'shell.storage.',
+  'shell.file.new',
+  'shell.file.import',
+  'shell.file.open',
+  'shell.file.details',
+  'shell.file.download',
+  'shell.nav.openInDrive',
+  'shell.nav.quickSwitcher',
+  'shell.help.feedback',
+  'shell.account.signOut',
+];
+
 /// A file an app can import (drag-and-drop or "Upload file…").
 class ImportFile {
   const ImportFile({
@@ -115,6 +137,21 @@ abstract class WonkyAppConfig {
   /// Path of the editor route for [uuid] (`/d/<uuid>`, `/s/<uuid>`,
   /// `/p/<uuid>`; Drive: `/file/<uuid>`).
   String itemPath(String uuid);
+
+  /// Whether signed-out visitors may open the editor route (`itemPath`,
+  /// not its children) of an item shared with "Anyone with the link":
+  /// view-only, without comments or presence, with a *Sign in* prompt
+  /// (specs/06 §2.4). Every other route still needs sign-in. Write, Sheets
+  /// and Slides allow it; Drive does not.
+  bool get allowsGuestViewing => false;
+
+  /// Whether a guest ([ShellServices.isGuest], [allowsGuestViewing]) may
+  /// run command [id]. Commands that need an account — the drive, sharing,
+  /// comments, versions, the assistant, notifications, settings, new files
+  /// and imports — are disabled (*Sign in to use this*). Apps extend this
+  /// with their own server-backed commands.
+  bool guestAllowsCommand(String id) =>
+      !guestBlockedShellCommands.any(id.startsWith);
 
   /// Builds the editor screen for `itemPath` routes. The screen should use
   /// `EditorScaffold`, which makes its controller the active document.

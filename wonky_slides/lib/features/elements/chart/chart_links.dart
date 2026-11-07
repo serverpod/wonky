@@ -133,7 +133,9 @@ class ChartLinks extends ChangeNotifier {
 
   /// Starts the periodic checks (the canvas calls it; idempotent).
   void start() {
-    if (_started) return;
+    // A guest (signed out) can't check links: the charts show their
+    // stored snapshots (specs/06 §2.4).
+    if (_started || editor.services.isGuest) return;
     _started = true;
     _ensureTimer();
     editor.services.connectivity.addListener(_onConnectivity);

@@ -83,7 +83,19 @@ exception and must reuse the presentation-session state model.
 | `/invite/:token` | Share-link landing (request access / open) |
 
 Auth guard redirects to `/signin?next=…`, except for the auth routes and the `/improvements`
-routes, which signed-out visitors can read (M12). The auth screens carry `next` between each other
+routes, which signed-out visitors can read (M12), and — in Write, Sheets and Slides
+(`WonkyAppConfig.allowsGuestViewing`; not Drive) — exactly the editor route `/d/:uuid`,
+`/s/:uuid`, `/p/:uuid` (not its children: history, print, present, script), where a signed-out
+**guest** views a link-shared item (06 §2.4): the item comes from `publicItem.get` (`notFound`
+→ *Sign in to open this* with *Sign in*), the editor is view-only whatever the link role, with no
+comments, presence, history, drive calls or local copy (Sheets and Slides read through a
+device-wide `guest` RevLog cache, evicted like any cache and closed at sign-in); the title row
+shows *Viewing as a guest · Sign in to comment or edit* and **Sign in**
+(`shell.account.signIn`, back to the item) instead of Share, the board buttons and the account
+menu. Commands that need an account are disabled with *Sign in to use this*
+(`WonkyAppConfig.guestAllowsCommand`: the shell's drive, sharing, comments, versions, AI,
+notifications, settings, new/import/download groups plus each app's own). Signing in or out on
+the editor route rebuilds the editor for the new state. The auth screens carry `next` between each other
 (*Create account*, *Sign in*, *Forgot password*, `/signup/verify`), and signing in or finishing
 sign-up lands on it; only a relative path (`/…`, not `//…`) is followed, anything else goes to
 `/`. Unknown/forbidden items show an in-app

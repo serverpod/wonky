@@ -16,10 +16,14 @@ import 'local_store.dart';
 /// the background; the last server copy is cached on the device so the
 /// theme is right before sign-in completes. Settings are not undoable.
 class PreferencesController extends ChangeNotifier {
-  PreferencesController({required this._device, this.users});
+  PreferencesController({required this._device, this.users, this.canSync});
 
   final LocalStore _device;
   UserRepository? users;
+
+  /// Whether changes may be saved to the server (false while signed out:
+  /// a guest's settings stay on the device). Null = always.
+  final bool Function()? canSync;
 
   AppThemeMode _theme = AppThemeMode.system;
   UiDensity _density = UiDensity.comfortable;
@@ -123,6 +127,10 @@ class PreferencesController extends ChangeNotifier {
     notifyListeners();
     final repo = users;
     if (repo == null) return;
+    if (!(canSync?.call() ?? true)) {
+      await _device.write('prefs.cache', _snapshot().toJson());
+      return;
+    }
     try {
       final p = await repo.updatePreferences(patch);
       await _device.write('prefs.cache', p.toJson());

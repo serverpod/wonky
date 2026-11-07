@@ -8,6 +8,7 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 
 import '../../board/board_commands.dart';
+import '../../auth/screens/auth_layout.dart' show signInPathBackTo;
 import '../../board/report_commands.dart';
 import '../../bootstrap/app_urls.dart';
 import '../../comments/comment_anchor.dart';
@@ -1282,6 +1283,22 @@ List<Command<CommandArgs>> miscCommands(ShellServices s) => [
     run: (ctx, a) async {
       s.mcp.stop();
       return const CommandResult.ok();
+    },
+  ),
+  // Signed out (a guest on a link-shared item, specs/06 §2.4): sign-in,
+  // back to the current page.
+  shellCommand(
+    'shell.account.signIn',
+    title: (l) => l.cmdSignIn,
+    icon: LucideIcons.logIn,
+    category: (l) => l.categoryAccount,
+    enabled: (ctx, a) => !s.auth.isSignedIn,
+    run: (ctx, a) async {
+      final route = signInPathBackTo(
+        s.router.routerDelegate.currentConfiguration.uri.toString(),
+      );
+      s.router.go(route);
+      return CommandResult.ok({'route': route});
     },
   ),
   shellCommand(
