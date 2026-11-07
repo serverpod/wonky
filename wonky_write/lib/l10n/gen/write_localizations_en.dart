@@ -5253,6 +5253,81 @@ class WriteLocalizationsEn extends WriteLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get aiQuickSummarize => 'Summarize';
+
+  @override
+  String get aiQuickProofread => 'Proofread';
+
+  @override
+  String get aiQuickApplyStyle => 'Apply style';
+
+  @override
+  String get aiWorkingSummarize => 'Summarizing the document…';
+
+  @override
+  String get aiWorkingProofread => 'Proofreading…';
+
+  @override
+  String get aiWorkingComments => 'Working through the open comments…';
+
+  @override
+  String get aiWorkingStyle => 'Applying the style guide…';
+
+  @override
+  String get aiChooseStyleGuide => 'Choose a style guide';
+
+  @override
+  String get cmdAiSummarizeDocumentDescription =>
+      'Sums up the document in the assistant panel.';
+
+  @override
+  String get cmdAiProofreadDocumentDescription =>
+      'Suggests small spelling, grammar and punctuation corrections.';
+
+  @override
+  String get cmdAiAddressComments => 'Address comments';
+
+  @override
+  String get cmdAiAddressCommentsDescription =>
+      'Suggests the changes the open comments ask for and replies in their threads.';
+
+  @override
+  String get cmdAiApplyStyle => 'Apply style';
+
+  @override
+  String get cmdAiApplyStyleDescription =>
+      'Suggests rewrites so the document follows its style guide.';
+
+  @override
+  String get cmdAiOpenAssistant => 'Open assistant';
+
+  @override
+  String get cmdAiManageStyleGuides => 'Style guides…';
+
+  @override
+  String get cmdAiManageStyleGuidesDescription =>
+      'Browse, write and share style guides for the assistant.';
+
+  @override
+  String get cmdDocStyleGuide => 'Style guide…';
+
+  @override
+  String get cmdDocStyleGuideDescription =>
+      'Chooses the style guide this document follows.';
+
+  @override
+  String get cmdDocSetStyleGuide => 'Set style guide';
+
+  @override
+  String get menuAssistant => 'Assistant';
+
+  @override
+  String get menuAssistantSummarize => 'Summarize';
+
+  @override
+  String get menuAssistantProofread => 'Proofread';
 }
 
 /// The translations for English (`en_XA`).
@@ -10570,4 +10645,80 @@ class WriteLocalizationsEnXa extends WriteLocalizationsEn {
     );
     return '[$_temp0 one two th]';
   }
+
+  @override
+  String get aiQuickSummarize => '[Šûɱɱåŕîžé one]';
+
+  @override
+  String get aiQuickProofread => '[Þŕööƒŕéåð one]';
+
+  @override
+  String get aiQuickApplyStyle => '[Åþþļý šţýļé one]';
+
+  @override
+  String get aiWorkingSummarize => '[Šûɱɱåŕîžîñĝ ţĥé ðöçûɱéñţ… one two t]';
+
+  @override
+  String get aiWorkingProofread => '[Þŕööƒŕéåðîñĝ… one t]';
+
+  @override
+  String get aiWorkingComments =>
+      '[Ŵöŕķîñĝ ţĥŕöûĝĥ ţĥé öþéñ çöɱɱéñţš… one two thr]';
+
+  @override
+  String get aiWorkingStyle => '[Åþþļýîñĝ ţĥé šţýļé ĝûîðé… one two]';
+
+  @override
+  String get aiChooseStyleGuide => '[Çĥööšé å šţýļé ĝûîðé one tw]';
+
+  @override
+  String get cmdAiSummarizeDocumentDescription =>
+      '[Šûɱš ûþ ţĥé ðöçûɱéñţ îñ ţĥé åššîšţåñţ þåñéļ. one two three]';
+
+  @override
+  String get cmdAiProofreadDocumentDescription =>
+      '[Šûĝĝéšţš šɱåļļ šþéļļîñĝ, ĝŕåɱɱåŕ åñð þûñçţûåţîöñ çöŕŕéçţîöñš. one two three four f]';
+
+  @override
+  String get cmdAiAddressComments => '[Åððŕéšš çöɱɱéñţš one tw]';
+
+  @override
+  String get cmdAiAddressCommentsDescription =>
+      '[Šûĝĝéšţš ţĥé çĥåñĝéš ţĥé öþéñ çöɱɱéñţš åšķ ƒöŕ åñð ŕéþļîéš îñ ţĥéîŕ ţĥŕéåðš. one two three four five]';
+
+  @override
+  String get cmdAiApplyStyle => '[Åþþļý šţýļé one]';
+
+  @override
+  String get cmdAiApplyStyleDescription =>
+      '[Šûĝĝéšţš ŕéŵŕîţéš šö ţĥé ðöçûɱéñţ ƒöļļöŵš îţš šţýļé ĝûîðé. one two three four]';
+
+  @override
+  String get cmdAiOpenAssistant => '[Öþéñ åššîšţåñţ one t]';
+
+  @override
+  String get cmdAiManageStyleGuides => '[Šţýļé ĝûîðéš… one t]';
+
+  @override
+  String get cmdAiManageStyleGuidesDescription =>
+      '[Ɓŕöŵšé, ŵŕîţé åñð šĥåŕé šţýļé ĝûîðéš ƒöŕ ţĥé åššîšţåñţ. one two three fou]';
+
+  @override
+  String get cmdDocStyleGuide => '[Šţýļé ĝûîðé… one]';
+
+  @override
+  String get cmdDocStyleGuideDescription =>
+      '[Çĥööšéš ţĥé šţýļé ĝûîðé ţĥîš ðöçûɱéñţ ƒöļļöŵš. one two three]';
+
+  @override
+  String get cmdDocSetStyleGuide => '[Šéţ šţýļé ĝûîðé one t]';
+
+  @override
+  String get menuAssistant => '[Åššîšţåñţ one]';
+
+  @override
+  String get menuAssistantSummarize => '[Šûɱɱåŕîžé one]';
+
+  @override
+  String get menuAssistantProofread => '[Þŕööƒŕéåð one]';
 }

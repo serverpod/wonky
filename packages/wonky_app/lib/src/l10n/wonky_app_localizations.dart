@@ -8655,6 +8655,228 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'{name} isn\'t accepting stories right now.'**
   String pubStartClosed(String name);
+
+  /// No description provided for @actionEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get actionEdit;
+
+  /// No description provided for @actionDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get actionDelete;
+
+  /// Collapsed tool chips of a long reply.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String assistantMoreChanges(int count);
+
+  /// Assistant panel ⋮ menu: opens the style guide library.
+  ///
+  /// In en, this message translates to:
+  /// **'Style guides…'**
+  String get assistantStyleGuides;
+
+  /// No description provided for @styleGuidesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Style guides'**
+  String get styleGuidesTitle;
+
+  /// No description provided for @styleGuidesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How the assistant writes: built-in guides, your own, and guides shared in your organization.'**
+  String get styleGuidesDescription;
+
+  /// No description provided for @styleGuidesDescriptionDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the guide this document follows. Apply style rewrites the document to match it, and the other assistant actions use it as context.'**
+  String get styleGuidesDescriptionDocument;
+
+  /// No description provided for @styleGuideNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No style guide'**
+  String get styleGuideNone;
+
+  /// No description provided for @styleGuideNoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant follows the document\'s own style.'**
+  String get styleGuideNoneHint;
+
+  /// No description provided for @styleGuideNoneOrgHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Without its own guide, the document follows your organization\'s default, {name}.'**
+  String styleGuideNoneOrgHint(String name);
+
+  /// No description provided for @styleGuideUseNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Use no style guide'**
+  String get styleGuideUseNone;
+
+  /// No description provided for @styleGuideSectionBuiltIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get styleGuideSectionBuiltIn;
+
+  /// No description provided for @styleGuideSectionMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My style guides'**
+  String get styleGuideSectionMine;
+
+  /// No description provided for @styleGuideMineEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate a built-in guide or create a new one.'**
+  String get styleGuideMineEmpty;
+
+  /// No description provided for @styleGuideSectionOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared in {org}'**
+  String styleGuideSectionOrganization(String org);
+
+  /// No description provided for @styleGuideSectionDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by this document'**
+  String get styleGuideSectionDocument;
+
+  /// No description provided for @styleGuideNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New style guide'**
+  String get styleGuideNew;
+
+  /// No description provided for @styleGuideOrgDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization default'**
+  String get styleGuideOrgDefault;
+
+  /// No description provided for @styleGuideInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by this document'**
+  String get styleGuideInUse;
+
+  /// No description provided for @styleGuideUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use for this document'**
+  String get styleGuideUse;
+
+  /// No description provided for @styleGuideSetOrgDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Make organization default'**
+  String get styleGuideSetOrgDefault;
+
+  /// No description provided for @styleGuideClearOrgDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove as organization default'**
+  String get styleGuideClearOrgDefault;
+
+  /// No description provided for @styleGuideDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get styleGuideDuplicate;
+
+  /// No description provided for @styleGuideCopyName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (copy)'**
+  String styleGuideCopyName(String name);
+
+  /// No description provided for @styleGuideByOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'By {name}'**
+  String styleGuideByOwner(String name);
+
+  /// No description provided for @styleGuideName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get styleGuideName;
+
+  /// No description provided for @styleGuideDescriptionField.
+  ///
+  /// In en, this message translates to:
+  /// **'Short description'**
+  String get styleGuideDescriptionField;
+
+  /// No description provided for @styleGuideMarkdownHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the rules in Markdown: voice, words to use and avoid, headings, lists, formatting.'**
+  String get styleGuideMarkdownHint;
+
+  /// No description provided for @styleGuideShareWithOrg.
+  ///
+  /// In en, this message translates to:
+  /// **'Share with {org}'**
+  String styleGuideShareWithOrg(String org);
+
+  /// No description provided for @styleGuidePersonalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only you can use this guide: your email domain is not an organization.'**
+  String get styleGuidePersonalOnly;
+
+  /// No description provided for @styleGuideNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Give the style guide a name.'**
+  String get styleGuideNameRequired;
+
+  /// No description provided for @styleGuideEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Write at least one rule.'**
+  String get styleGuideEmpty;
+
+  /// The starting text of a new style guide (Markdown).
+  ///
+  /// In en, this message translates to:
+  /// **'# Voice\n\n- \n\n# Words\n\n| Avoid | Use instead |\n| --- | --- |\n|  |  |\n\n# Headings and lists\n\n- \n'**
+  String get styleGuideTemplate;
+
+  /// No description provided for @undoSaveStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Save style guide'**
+  String get undoSaveStyleGuide;
+
+  /// No description provided for @undoDeleteStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete style guide'**
+  String get undoDeleteStyleGuide;
+
+  /// No description provided for @undoSetOrgStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Change organization style guide'**
+  String get undoSetOrgStyleGuide;
+
+  /// No description provided for @undoSetDocumentStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Change style guide'**
+  String get undoSetDocumentStyleGuide;
 }
 
 class _WonkyAppLocalizationsDelegate

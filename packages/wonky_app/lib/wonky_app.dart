@@ -13,6 +13,8 @@ export 'src/assistant/assistant_markdown.dart';
 export 'src/assistant/assistant_models.dart';
 export 'src/assistant/assistant_panel.dart';
 export 'src/assistant/shell_assistant.dart';
+export 'src/assistant/style_guides/style_guide_library.dart';
+export 'src/assistant/style_guides/style_guides_dialog.dart';
 export 'src/auth/auth_controller.dart';
 export 'src/auth/auth_repository.dart';
 export 'src/bootstrap/app_urls.dart';

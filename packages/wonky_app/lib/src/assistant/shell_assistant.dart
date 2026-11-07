@@ -10,6 +10,7 @@ import '../shell/shell_services.dart';
 import 'assistant_adapter.dart';
 import 'assistant_api.dart';
 import 'assistant_controller.dart';
+import 'style_guides/style_guide_library.dart';
 
 /// The localized explanation of an unavailable [status] (the server's
 /// English `message` only for reasons the app doesn't know).
@@ -87,6 +88,8 @@ class ShellAssistant extends AssistantHook {
               : ServerAssistantApi(client)),
     );
     services.assistant = a;
+    // Style guide changes are undoable (suite 10 §7).
+    services.undo.registerHandler(StyleGuideUndoHandler(services));
     unawaited(a.refreshStatus());
     services.registry.notifyStateChanged();
     return a;
@@ -239,6 +242,14 @@ class _UnavailableApi implements AssistantApi {
   );
 
   @override
+  Stream<AssistantEvent> quickAction({
+    required int? threadId,
+    required UuidValue itemUuid,
+    required AssistantQuickAction action,
+    required AssistantContextHints hints,
+  }) => Stream.error(_failError);
+
+  @override
   Future<bool> stop({int? threadId, String? runId}) async => false;
 
   @override
@@ -275,4 +286,22 @@ class _UnavailableApi implements AssistantApi {
     int? start,
     int? length,
   }) => Stream.error(_failError);
+
+  @override
+  Future<StyleGuideLibrary> styleGuides({UuidValue? itemUuid}) async => _fail();
+
+  @override
+  Future<StyleGuideView> saveStyleGuide(StyleGuideInput input) async => _fail();
+
+  @override
+  Future<void> deleteStyleGuide(UuidValue uuid) async => _fail();
+
+  @override
+  Future<StyleGuideLibrary> setOrgStyleGuide(String? ref) async => _fail();
+
+  @override
+  Future<StyleGuideLibrary> setDocumentStyleGuide(
+    UuidValue itemUuid,
+    String? ref,
+  ) async => _fail();
 }

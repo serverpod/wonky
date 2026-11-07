@@ -44,6 +44,8 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
       .insertAfter(ShellMenuIds.fileEndOfVersions, [
         _c('write.doc.languageDialog', label: l.cmdDocLanguageDialog),
         _c('write.doc.pageSetup', label: l.cmdDocPageSetup),
+        // Write 09 §5.9: the document's style guide for the assistant.
+        _c('write.doc.styleGuide', label: l.cmdDocStyleGuide),
         // Write 11 §3.1.
         MenuSpec.submenu('file.markdownFlavor', l.menuMarkdownFlavor, [
           _c(
@@ -187,10 +189,44 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
 
   // ---- Tools (§7.6) ----
   root = root
-      .insertAfter('tools.assistant', [
-        _c('write.ai.summarizeDocument', menuId: 'tools.ai.summarize'),
-        _c('write.ai.generateOutline', menuId: 'tools.ai.outline'),
-        _c('write.ai.proofreadDocument', menuId: 'tools.ai.proofread'),
+      // Write 09 §6: the shell's *Assistant* item becomes a submenu (same
+      // id) with the quick actions and the style guides.
+      .replace('tools.assistant', [
+        MenuSpec.submenu('tools.assistant', l.menuAssistant, [
+          _c(
+            'write.ai.openAssistant',
+            label: l.cmdAiOpenAssistant,
+            menuId: 'tools.assistant.open',
+          ),
+          MenuSpec.separator(),
+          _c(
+            'write.ai.summarizeDocument',
+            label: l.menuAssistantSummarize,
+            menuId: 'tools.ai.summarize',
+          ),
+          _c(
+            'write.ai.proofreadDocument',
+            label: l.menuAssistantProofread,
+            menuId: 'tools.ai.proofread',
+          ),
+          _c(
+            'write.ai.addressComments',
+            label: l.cmdAiAddressComments,
+            menuId: 'tools.ai.addressComments',
+          ),
+          _c(
+            'write.ai.applyStyle',
+            label: l.cmdAiApplyStyle,
+            menuId: 'tools.ai.applyStyle',
+          ),
+          _c('write.ai.generateOutline', menuId: 'tools.ai.outline'),
+          MenuSpec.separator(),
+          _c(
+            'write.ai.manageStyleGuides',
+            label: l.cmdAiManageStyleGuides,
+            menuId: 'tools.ai.styleGuides',
+          ),
+        ]),
       ])
       .insertBefore('tools.assistant', [
         _c('write.tools.wordCount', label: l.cmdToolsWordCount),

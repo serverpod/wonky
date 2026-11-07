@@ -5033,6 +5033,136 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String pubStartClosed(String name) {
     return '$name isn\'t accepting stories right now.';
   }
+
+  @override
+  String get actionEdit => 'Edit';
+
+  @override
+  String get actionDelete => 'Delete';
+
+  @override
+  String assistantMoreChanges(int count) {
+    return '+$count more';
+  }
+
+  @override
+  String get assistantStyleGuides => 'Style guides…';
+
+  @override
+  String get styleGuidesTitle => 'Style guides';
+
+  @override
+  String get styleGuidesDescription =>
+      'How the assistant writes: built-in guides, your own, and guides shared in your organization.';
+
+  @override
+  String get styleGuidesDescriptionDocument =>
+      'Choose the guide this document follows. Apply style rewrites the document to match it, and the other assistant actions use it as context.';
+
+  @override
+  String get styleGuideNone => 'No style guide';
+
+  @override
+  String get styleGuideNoneHint =>
+      'The assistant follows the document\'s own style.';
+
+  @override
+  String styleGuideNoneOrgHint(String name) {
+    return 'Without its own guide, the document follows your organization\'s default, $name.';
+  }
+
+  @override
+  String get styleGuideUseNone => 'Use no style guide';
+
+  @override
+  String get styleGuideSectionBuiltIn => 'Built-in';
+
+  @override
+  String get styleGuideSectionMine => 'My style guides';
+
+  @override
+  String get styleGuideMineEmpty =>
+      'Duplicate a built-in guide or create a new one.';
+
+  @override
+  String styleGuideSectionOrganization(String org) {
+    return 'Shared in $org';
+  }
+
+  @override
+  String get styleGuideSectionDocument => 'Used by this document';
+
+  @override
+  String get styleGuideNew => 'New style guide';
+
+  @override
+  String get styleGuideOrgDefault => 'Organization default';
+
+  @override
+  String get styleGuideInUse => 'Used by this document';
+
+  @override
+  String get styleGuideUse => 'Use for this document';
+
+  @override
+  String get styleGuideSetOrgDefault => 'Make organization default';
+
+  @override
+  String get styleGuideClearOrgDefault => 'Remove as organization default';
+
+  @override
+  String get styleGuideDuplicate => 'Duplicate';
+
+  @override
+  String styleGuideCopyName(String name) {
+    return '$name (copy)';
+  }
+
+  @override
+  String styleGuideByOwner(String name) {
+    return 'By $name';
+  }
+
+  @override
+  String get styleGuideName => 'Name';
+
+  @override
+  String get styleGuideDescriptionField => 'Short description';
+
+  @override
+  String get styleGuideMarkdownHint =>
+      'Write the rules in Markdown: voice, words to use and avoid, headings, lists, formatting.';
+
+  @override
+  String styleGuideShareWithOrg(String org) {
+    return 'Share with $org';
+  }
+
+  @override
+  String get styleGuidePersonalOnly =>
+      'Only you can use this guide: your email domain is not an organization.';
+
+  @override
+  String get styleGuideNameRequired => 'Give the style guide a name.';
+
+  @override
+  String get styleGuideEmpty => 'Write at least one rule.';
+
+  @override
+  String get styleGuideTemplate =>
+      '# Voice\n\n- \n\n# Words\n\n| Avoid | Use instead |\n| --- | --- |\n|  |  |\n\n# Headings and lists\n\n- \n';
+
+  @override
+  String get undoSaveStyleGuide => 'Save style guide';
+
+  @override
+  String get undoDeleteStyleGuide => 'Delete style guide';
+
+  @override
+  String get undoSetOrgStyleGuide => 'Change organization style guide';
+
+  @override
+  String get undoSetDocumentStyleGuide => 'Change style guide';
 }
 
 /// The translations for English (`en_XA`).
@@ -10143,4 +10273,137 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String pubStartClosed(String name) {
     return '[$name îšñ\'ţ åççéþţîñĝ šţöŕîéš ŕîĝĥţ ñöŵ. one two thr]';
   }
+
+  @override
+  String get actionEdit => '[Éðîţ on]';
+
+  @override
+  String get actionDelete => '[Ðéļéţé one]';
+
+  @override
+  String assistantMoreChanges(int count) {
+    return '[+$count ɱöŕé on]';
+  }
+
+  @override
+  String get assistantStyleGuides => '[Šţýļé ĝûîðéš… one t]';
+
+  @override
+  String get styleGuidesTitle => '[Šţýļé ĝûîðéš one]';
+
+  @override
+  String get styleGuidesDescription =>
+      '[Ĥöŵ ţĥé åššîšţåñţ ŵŕîţéš: ƀûîļţ-îñ ĝûîðéš, ýöûŕ öŵñ, åñð ĝûîðéš šĥåŕéð îñ ýöûŕ öŕĝåñîžåţîöñ. one two three four five six]';
+
+  @override
+  String get styleGuidesDescriptionDocument =>
+      '[Çĥööšé ţĥé ĝûîðé ţĥîš ðöçûɱéñţ ƒöļļöŵš. Åþþļý šţýļé ŕéŵŕîţéš ţĥé ðöçûɱéñţ ţö ɱåţçĥ îţ, åñð ţĥé öţĥéŕ åššîšţåñţ åçţîöñš ûšé îţ åš çöñţéẋţ. one two three four five six seven eight n]';
+
+  @override
+  String get styleGuideNone => '[Ñö šţýļé ĝûîðé one t]';
+
+  @override
+  String get styleGuideNoneHint =>
+      '[Ţĥé åššîšţåñţ ƒöļļöŵš ţĥé ðöçûɱéñţ\'š öŵñ šţýļé. one two three f]';
+
+  @override
+  String styleGuideNoneOrgHint(String name) {
+    return '[Ŵîţĥöûţ îţš öŵñ ĝûîðé, ţĥé ðöçûɱéñţ ƒöļļöŵš ýöûŕ öŕĝåñîžåţîöñ\'š ðéƒåûļţ, $name. one two three four five]';
+  }
+
+  @override
+  String get styleGuideUseNone => '[Ûšé ñö šţýļé ĝûîðé one tw]';
+
+  @override
+  String get styleGuideSectionBuiltIn => '[Ɓûîļţ-îñ one]';
+
+  @override
+  String get styleGuideSectionMine => '[Ṁý šţýļé ĝûîðéš one t]';
+
+  @override
+  String get styleGuideMineEmpty =>
+      '[Ðûþļîçåţé å ƀûîļţ-îñ ĝûîðé öŕ çŕéåţé å ñéŵ öñé. one two three]';
+
+  @override
+  String styleGuideSectionOrganization(String org) {
+    return '[Šĥåŕéð îñ $org one]';
+  }
+
+  @override
+  String get styleGuideSectionDocument => '[Ûšéð ƀý ţĥîš ðöçûɱéñţ one two]';
+
+  @override
+  String get styleGuideNew => '[Ñéŵ šţýļé ĝûîðé one t]';
+
+  @override
+  String get styleGuideOrgDefault => '[Öŕĝåñîžåţîöñ ðéƒåûļţ one two]';
+
+  @override
+  String get styleGuideInUse => '[Ûšéð ƀý ţĥîš ðöçûɱéñţ one two]';
+
+  @override
+  String get styleGuideUse => '[Ûšé ƒöŕ ţĥîš ðöçûɱéñţ one two]';
+
+  @override
+  String get styleGuideSetOrgDefault => '[Ṁåķé öŕĝåñîžåţîöñ ðéƒåûļţ one two t]';
+
+  @override
+  String get styleGuideClearOrgDefault =>
+      '[Ŕéɱöṽé åš öŕĝåñîžåţîöñ ðéƒåûļţ one two th]';
+
+  @override
+  String get styleGuideDuplicate => '[Ðûþļîçåţé one]';
+
+  @override
+  String styleGuideCopyName(String name) {
+    return '[$name (çöþý) one]';
+  }
+
+  @override
+  String styleGuideByOwner(String name) {
+    return '[Ɓý $name o]';
+  }
+
+  @override
+  String get styleGuideName => '[Ñåɱé on]';
+
+  @override
+  String get styleGuideDescriptionField => '[Šĥöŕţ ðéšçŕîþţîöñ one tw]';
+
+  @override
+  String get styleGuideMarkdownHint =>
+      '[Ŵŕîţé ţĥé ŕûļéš îñ Ṁåŕķðöŵñ: ṽöîçé, ŵöŕðš ţö ûšé åñð åṽöîð, ĥéåðîñĝš, ļîšţš, ƒöŕɱåţţîñĝ. one two three four five six]';
+
+  @override
+  String styleGuideShareWithOrg(String org) {
+    return '[Šĥåŕé ŵîţĥ $org one]';
+  }
+
+  @override
+  String get styleGuidePersonalOnly =>
+      '[Öñļý ýöû çåñ ûšé ţĥîš ĝûîðé: ýöûŕ éɱåîļ ðöɱåîñ îš ñöţ åñ öŕĝåñîžåţîöñ. one two three four fi]';
+
+  @override
+  String get styleGuideNameRequired =>
+      '[Ĝîṽé ţĥé šţýļé ĝûîðé å ñåɱé. one two t]';
+
+  @override
+  String get styleGuideEmpty => '[Ŵŕîţé åţ ļéåšţ öñé ŕûļé. one two]';
+
+  @override
+  String get styleGuideTemplate =>
+      '[# Ṽöîçé\n\n- \n\n# Ŵöŕðš\n\n| Åṽöîð | Ûšé îñšţéåð |\n| --- | --- |\n|  |  |\n\n# Ĥéåðîñĝš åñð ļîšţš\n\n- \n one two three four fiv]';
+
+  @override
+  String get undoSaveStyleGuide => '[Šåṽé šţýļé ĝûîðé one t]';
+
+  @override
+  String get undoDeleteStyleGuide => '[Ðéļéţé šţýļé ĝûîðé one tw]';
+
+  @override
+  String get undoSetOrgStyleGuide =>
+      '[Çĥåñĝé öŕĝåñîžåţîöñ šţýļé ĝûîðé one two th]';
+
+  @override
+  String get undoSetDocumentStyleGuide => '[Çĥåñĝé šţýļé ĝûîðé one tw]';
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
+import 'package:wonky_ui/wonky_ui.dart' show WonkyMenuEntry;
 
 import '../mcp_bridge/ui_tool.dart';
 import 'assistant_models.dart';
@@ -95,4 +96,44 @@ abstract interface class AssistantPanelTexts {
 abstract interface class AssistantWindowTools {
   /// Runs [tool] with [args] in this window; throws [UiToolException].
   Future<UiToolResult> runWindowTool(String tool, Map<String, Object?> args);
+}
+
+/// A quick action button of the panel (Write: Summarize, Proofread, …).
+/// [onPressed] runs the action's command.
+class AssistantQuickActionButton {
+  const AssistantQuickActionButton({
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.enabled = true,
+    this.tooltip,
+  });
+
+  final String id;
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool enabled;
+  final String? tooltip;
+}
+
+/// Optional panel features of an [AssistantDocumentAdapter] (Write 09
+/// §5): an adapter that also implements this interface gets quick action
+/// buttons instead of quick prompts, extra ⋮ menu items, a follow-up
+/// button under failed replies, and can hide the Edit / Suggest toggle.
+abstract interface class AssistantPanelExtras {
+  /// The assistant's edits are always suggestions: no Edit / Suggest
+  /// toggle (Write).
+  bool get alwaysSuggests;
+
+  /// Buttons above the composer (they replace the quick prompts).
+  List<AssistantQuickActionButton> get quickActions;
+
+  /// Extra items of the panel's ⋮ menu ("Style guides…").
+  List<WonkyMenuEntry> moreMenuEntries();
+
+  /// A button under a failed reply (e.g. `no_style` → *Choose a style
+  /// guide*), or null.
+  Widget? errorAction(BuildContext context, AssistantReplyEntry reply);
 }

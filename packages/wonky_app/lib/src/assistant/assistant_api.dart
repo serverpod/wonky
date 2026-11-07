@@ -16,6 +16,14 @@ abstract class AssistantApi {
     required String message,
     required AssistantContextHints hints,
   });
+
+  /// A Write quick action (Write 09 §5.5), streamed like [chat].
+  Stream<AssistantEvent> quickAction({
+    required int? threadId,
+    required UuidValue itemUuid,
+    required AssistantQuickAction action,
+    required AssistantContextHints hints,
+  });
   Future<bool> stop({int? threadId, String? runId});
   Future<bool> confirm(String runId, String confirmationId, bool allow);
 
@@ -32,6 +40,18 @@ abstract class AssistantApi {
     int? start,
     int? length,
   });
+
+  // Style guides (suite 10 §7; endpoint `styleGuide`).
+
+  /// The user's style guides; with [itemUuid] also that document's choice.
+  Future<StyleGuideLibrary> styleGuides({UuidValue? itemUuid});
+  Future<StyleGuideView> saveStyleGuide(StyleGuideInput input);
+  Future<void> deleteStyleGuide(UuidValue uuid);
+  Future<StyleGuideLibrary> setOrgStyleGuide(String? ref);
+  Future<StyleGuideLibrary> setDocumentStyleGuide(
+    UuidValue itemUuid,
+    String? ref,
+  );
 }
 
 /// [AssistantApi] over the generated client.
@@ -63,6 +83,14 @@ class ServerAssistantApi implements AssistantApi {
     required String message,
     required AssistantContextHints hints,
   }) => _a.chat(threadId, itemUuid, message, hints);
+
+  @override
+  Stream<AssistantEvent> quickAction({
+    required int? threadId,
+    required UuidValue itemUuid,
+    required AssistantQuickAction action,
+    required AssistantContextHints hints,
+  }) => _a.quickAction(threadId, itemUuid, action, hints);
 
   @override
   Future<bool> stop({int? threadId, String? runId}) => _a.stop(threadId, runId);
@@ -101,4 +129,27 @@ class ServerAssistantApi implements AssistantApi {
     int? start,
     int? length,
   }) => _a.proofread(itemUuid, start, length);
+
+  EndpointStyleGuide get _s => client.styleGuide;
+
+  @override
+  Future<StyleGuideLibrary> styleGuides({UuidValue? itemUuid}) =>
+      _s.library(itemUuid);
+
+  @override
+  Future<StyleGuideView> saveStyleGuide(StyleGuideInput input) =>
+      _s.save(input);
+
+  @override
+  Future<void> deleteStyleGuide(UuidValue uuid) => _s.delete(uuid);
+
+  @override
+  Future<StyleGuideLibrary> setOrgStyleGuide(String? ref) =>
+      _s.setOrgDefault(ref);
+
+  @override
+  Future<StyleGuideLibrary> setDocumentStyleGuide(
+    UuidValue itemUuid,
+    String? ref,
+  ) => _s.setDocumentStyle(itemUuid, ref);
 }

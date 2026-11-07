@@ -6,7 +6,6 @@ import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 import 'package:wonky_write/commands/screen_commands.dart';
 import 'package:wonky_write/features/ai/ai_commands.dart';
 import 'package:wonky_write/features/ai/ai_preview_overlay.dart' show wordDiff;
-import 'package:wonky_write/features/ai/proofread_results.dart';
 import 'package:wonky_write/features/ai/write_ai_controller.dart';
 import 'package:wonky_write/features/editor/controller/editor_types.dart';
 import 'package:wonky_write/features/screen/write_document_controller.dart';
@@ -104,29 +103,24 @@ void main() {
       expect(text(), 'Teh quick fox jumpd.\nSecond line.\n');
     });
 
-    test(
-      'when Suggest mode is on then the result becomes an AI suggestion',
-      () async {
-        final chat = ai.chat!..setApplyMode(AiApplyMode.suggest);
-        expect(chat.applyMode, AiApplyMode.suggest);
-        await run('write.ai.rewriteSelection', {'mode': 'fixGrammar'});
-        await pumpEventQueue();
-        expect(ai.replace(), isTrue);
-        await pumpEventQueue();
-        final suggestions = SuggestionIndex.list(h.session.editor.delta);
-        expect(suggestions, isNotEmpty);
-        expect(
-          h.session.editor.delta.toList().any(
-            (op) =>
-                op.attributes?.values.any(
-                  (v) => v is Map && v['via'] == 'ai',
-                ) ??
-                false,
-          ),
-          isTrue,
-        );
-      },
-    );
+    test('when the editor is in Suggesting mode then the result becomes an AI '
+        'suggestion', () async {
+      doc.editor.mode = EditorMode.suggesting;
+      await run('write.ai.rewriteSelection', {'mode': 'fixGrammar'});
+      await pumpEventQueue();
+      expect(ai.replace(), isTrue);
+      await pumpEventQueue();
+      final suggestions = SuggestionIndex.list(h.session.editor.delta);
+      expect(suggestions, isNotEmpty);
+      expect(
+        h.session.editor.delta.toList().any(
+          (op) =>
+              op.attributes?.values.any((v) => v is Map && v['via'] == 'ai') ??
+              false,
+        ),
+        isTrue,
+      );
+    });
 
     test('when discarded then nothing changes', () async {
       await run('write.ai.rewriteSelection', {'mode': 'improve'});
@@ -244,74 +238,60 @@ void main() {
     expect(text(), contains('A new idea.'));
   });
 
-  test(
-    'proofread issues are accepted by quote; stale ones are greyed',
-    () async {
-      api.proofreadScripts.add([
-        ProofreadEvent(
-          type: 'issues',
-          issues: [
-            ProofreadIssue(
-              id: 'a',
-              quote: 'Teh',
-              occurrence: 1,
-              replacement: 'The',
-              category: 'spelling',
-              explanation: 'Typo',
-              start: 0,
-              length: 3,
-            ),
-            ProofreadIssue(
-              id: 'b',
-              quote: 'jumpd',
-              occurrence: 1,
-              replacement: 'jumped',
-              category: 'spelling',
-              explanation: 'Typo',
-              start: 14,
-              length: 5,
-            ),
-            ProofreadIssue(
-              id: 'c',
-              quote: 'Second',
-              occurrence: 1,
-              replacement: '2nd',
-              category: 'style',
-              explanation: 'Shorter',
-              start: 21,
-              length: 6,
-            ),
-          ],
-          sectionsDone: 1,
-          sectionsTotal: 1,
-        ),
-        ProofreadEvent(type: 'done'),
+  group('Given the quick actions', () {
+    for (final (command, action) in [
+      ('write.ai.summarizeDocument', AssistantQuickAction.summarize),
+      ('write.ai.proofreadDocument', AssistantQuickAction.proofread),
+      ('write.ai.addressComments', AssistantQuickAction.addressComments),
+      ('write.ai.applyStyle', AssistantQuickAction.applyStyle),
+    ]) {
+      test('when $command runs then ${action.name} runs in the panel without a '
+          'prompt, as suggestions', () async {
+        final r = await run(command);
+        await pumpEventQueue();
+
+        expect(r.isOk, isTrue);
+        expect(api.quickActions, [action]);
+        expect(api.sent, isEmpty);
+        expect(api.sentHints.single.applyMode, AiApplyMode.suggest);
+        final entries = ai.chat!.entries;
+        expect(entries.whereType<AssistantUserEntry>(), isEmpty);
+        expect(
+          entries.whereType<AssistantReplyEntry>().single.markdown,
+          'Done.',
+        );
+      });
+    }
+
+    test('when the panel shows then it has the four actions and no mode '
+        'toggle', () {
+      final extras = ai.adapter as AssistantPanelExtras;
+      expect(extras.alwaysSuggests, isTrue);
+      expect(extras.quickActions.map((a) => a.id), [
+        'summarize',
+        'proofread',
+        'addressComments',
+        'applyStyle',
       ]);
-      await ai.proofread();
-      final results = ai.proofreadResults!;
-      expect(results.issues, hasLength(3));
+      expect(ai.adapter.quickPrompts, isEmpty);
+    });
+  });
 
-      await run('write.ai.acceptIssue', {'issueId': 'a'});
-      await pumpEventQueue();
-      expect(text(), startsWith('The quick'));
-      expect(h.undo.undoLabel.value, 'AI: Fix “Teh”');
+  test("the document's style guide is set as one undo step and undo restores "
+      'it', () async {
+    final r = await run('write.doc.setStyleGuide', {
+      'ref': 'builtin:technical',
+    });
+    await pumpEventQueue();
+    expect(r.isOk, isTrue);
+    expect(api.documentRefs[h.session.itemUuid.uuid], 'builtin:technical');
+    expect(h.undo.undoLabel.value, 'Change style guide');
 
-      server.commitExternal(
-        Delta()
-          ..retain(21)
-          ..delete(6)
-          ..insert('Other'),
-      );
-      await pumpEventQueue();
-      await run('write.ai.acceptAllIssues');
-      await pumpEventQueue();
-      expect(text(), 'The quick fox jumped.\nOther line.\n');
-      expect(
-        results.issues.firstWhere((i) => i.issue.id == 'c').status,
-        ProofreadIssueStatus.stale,
-      );
-    },
-  );
+    await h.undo.undo();
+    await pumpEventQueue();
+    expect(api.documentRefs[h.session.itemUuid.uuid], isNull);
+    expect(api.styleCalls, ['document:builtin:technical', 'document:null']);
+  });
 
   test('the word diff marks removed and added words', () {
     final d = wordDiff('Teh quick fox', 'The quick fox');
