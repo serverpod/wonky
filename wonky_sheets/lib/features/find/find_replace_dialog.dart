@@ -288,26 +288,12 @@ class _FindReplaceDialogState extends State<FindReplaceDialog>
                       ),
                     );
                   },
+                  // No X: *Done* closes it (suite 02 §4.20).
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            l.findReplaceTitle,
-                            style: theme.textTheme.large.copyWith(fontSize: 16),
-                          ),
-                        ),
-                        ShadIconButton.ghost(
-                          key: const ValueKey<String>(
-                            'dialog.findReplace.close',
-                          ),
-                          width: 28,
-                          height: 28,
-                          icon: const Icon(LucideIcons.x, size: 16),
-                          onPressed: _done,
-                        ),
-                      ],
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                    child: Text(
+                      l.findReplaceTitle,
+                      style: theme.textTheme.large.copyWith(fontSize: 16),
                     ),
                   ),
                 ),

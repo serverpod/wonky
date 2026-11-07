@@ -265,9 +265,28 @@ default close button has no accessible label, so it fails `labeledTapTargetGuide
 with a draft pass their cancel path so the X asks before discarding, like *Cancel* and Esc. Dialogs without an X pass `closeIcon: const SizedBox.shrink()`.
 **No X when the dialog has another way out**: inside a `ShadDialog` with `actions` (Cancel,
 Close, Done, OK, Got it, Discard, …) the button renders nothing, so a dialog shows the X only
-when it has no buttons (pickers, the share dialog, reference lists); Esc and the barrier still
-dismiss. The rule lives in the button (`WonkyDialogCloseButton.showsIn`), so it holds for every
-dialog of every app; `always: true` keeps the X for a dialog whose actions don't dismiss it.
+when it has no buttons (pickers, the style guide library, reference lists, a dialog still
+loading); Esc and the barrier still dismiss. The rule lives in the button
+(`WonkyDialogCloseButton.showsIn`), so it holds for every dialog of every app; `always: true`
+keeps the X for a dialog whose actions don't dismiss it. Two things make it hold:
+
+- **Every `ShadDialog` passes `closeIcon:`** — `WonkyDialogCloseButton` or `SizedBox.shrink()`,
+  never shad's default (the theme's `closeIconData` adds an X to every dialog without one,
+  buttons or not; that is how the form dialogs of `showWonkyFormDialog` had an X next to
+  *Cancel*).
+- **Dismiss buttons go in `actions`**, not in the dialog's body, so the close button sees them
+  (the share dialog's *Copy link* / *Done* footer is its `actions`, `actionsMainAxisAlignment:
+  spaceBetween`). A dialog that is not a `ShadDialog` (the Sheets find & replace box) has no X
+  when it has *Done* or *Close*; one whose buttons must stay in the body (the script conflict
+  dialog wraps five) passes `closeIcon: const SizedBox.shrink()`.
+- **Actions that appear later** (a dialog that loads first): a `const` close button is not
+  rebuilt when the `actions` change, so such a dialog keys it,
+  `WonkyDialogCloseButton(key: ValueKey<bool>(actions.isEmpty))` (the share dialog).
+
+`dart run tool/check_dialogs.dart` (CI, analyze workflow) fails on a `ShadDialog` construction
+without `closeIcon:`, with another close icon, or with a Cancel/Close/Done/OK/Got it button in
+its arguments but no `actions`. Panels, popovers, bars, drawers and lightboxes are not dialogs
+and keep their X.
 
 ## 5. Product icons
 

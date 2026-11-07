@@ -17,6 +17,10 @@ import '../../l10n/wonky_ui_localizations.dart';
 /// renders nothing, so the rule holds for every dialog of every app
 /// (suite 02 §4.20). Escape and the barrier still dismiss. Pass [always]
 /// for a dialog whose actions don't dismiss it.
+///
+/// A `const` button is not rebuilt when its dialog's `actions` change: a
+/// dialog whose actions appear later (after loading) keys it on whether it
+/// has any, `WonkyDialogCloseButton(key: ValueKey<bool>(actions.isEmpty))`.
 class WonkyDialogCloseButton extends StatelessWidget {
   const WonkyDialogCloseButton({
     super.key,

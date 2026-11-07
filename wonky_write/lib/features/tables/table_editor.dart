@@ -296,6 +296,7 @@ class _TableEditorDialogState extends State<TableEditorDialog> {
         final l = writeL10n(context);
         return ShadDialog.alert(
           key: const ValueKey<String>('write.dialog.discardTable'),
+          closeIcon: const WonkyDialogCloseButton(),
           title: Text(l.tableEditorDiscardTitle),
           actions: [
             ShadButton.outline(

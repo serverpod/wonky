@@ -154,6 +154,24 @@ void main() {
   );
 
   group('Given the owner in the share dialog', () {
+    testWidgets('when the dialog is open then Copy link and Done are its '
+        'footer and there is no X in the corner (suite 02 §4.20)', (
+      tester,
+    ) async {
+      await pumpDialog(tester);
+      expect(_key('dialog.share.copyLink'), findsOneWidget);
+      expect(_key('dialog.share.done'), findsOneWidget);
+      expect(_key('dialog.close'), findsNothing);
+
+      await tester.tap(_key('dialog.share.settings'));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.settingsDone'), findsOneWidget);
+      expect(_key('dialog.close'), findsNothing);
+      await tester.tap(_key('dialog.share.settingsDone'));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.done'), findsOneWidget);
+    });
+
     testWidgets('when adding an email with the commenter role then it is '
         'shared and listed as an invite', (tester) async {
       await pumpDialog(tester);

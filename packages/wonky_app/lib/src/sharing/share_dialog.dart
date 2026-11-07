@@ -230,6 +230,7 @@ class _ShareDialogState extends State<ShareDialog> {
       body = _mainPage(context, info);
     }
     final isOwner = info?.myRole == AccessRole.owner;
+    final actions = _actions(context, info);
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () =>
@@ -237,7 +238,9 @@ class _ShareDialogState extends State<ShareDialog> {
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.share'),
-        closeIcon: const WonkyDialogCloseButton(),
+        // Keyed: the actions appear once the sharing info is loaded, and a
+        // const close button would keep the X of the loading state.
+        closeIcon: WonkyDialogCloseButton(key: ValueKey<bool>(actions.isEmpty)),
         title: Row(
           children: [
             if (_settings)
@@ -273,6 +276,10 @@ class _ShareDialogState extends State<ShareDialog> {
           ],
         ),
         constraints: const BoxConstraints(maxWidth: 580),
+        actions: actions,
+        actionsMainAxisAlignment: _settings
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.spaceBetween,
         child: SizedBox(width: 540, child: body),
       ),
     );
@@ -386,25 +393,38 @@ class _ShareDialogState extends State<ShareDialog> {
         ),
         const SizedBox(height: 6),
         _generalAccess(context, info),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            ShadButton.outline(
-              key: const ValueKey<String>('dialog.share.copyLink'),
-              leading: const Icon(LucideIcons.link, size: 16),
-              onPressed: _copyLink,
-              child: Text(l.cmdCopyLink),
-            ),
-            const Spacer(),
-            ShadButton(
-              key: const ValueKey<String>('dialog.share.done'),
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l.actionDone),
-            ),
-          ],
-        ),
       ],
     );
+  }
+
+  /// The footer buttons, in `ShadDialog.actions` so the dialog has no X
+  /// (suite 02 §4.20): *Copy link* and *Done* on the main page, *Done*
+  /// (back to it) on the settings page; none while loading.
+  List<Widget> _actions(BuildContext context, SharingInfo? info) {
+    final l = WonkyAppLocalizations.of(context);
+    if (info == null) return const [];
+    if (_settings) {
+      return [
+        ShadButton(
+          key: const ValueKey<String>('dialog.share.settingsDone'),
+          onPressed: () => setState(() => _settings = false),
+          child: Text(l.actionDone),
+        ),
+      ];
+    }
+    return [
+      ShadButton.outline(
+        key: const ValueKey<String>('dialog.share.copyLink'),
+        leading: const Icon(LucideIcons.link, size: 16),
+        onPressed: _copyLink,
+        child: Text(l.cmdCopyLink),
+      ),
+      ShadButton(
+        key: const ValueKey<String>('dialog.share.done'),
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(l.actionDone),
+      ),
+    ];
   }
 
   Widget _composer(BuildContext context, SharingInfo info) {
@@ -953,13 +973,6 @@ class _ShareDialogState extends State<ShareDialog> {
             leading: const Icon(LucideIcons.refreshCw, size: 16),
             child: Text(l.shareRotateLink),
           ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: ShadButton(
-            onPressed: () => setState(() => _settings = false),
-            child: Text(l.actionDone),
-          ),
-        ),
       ],
     );
   }

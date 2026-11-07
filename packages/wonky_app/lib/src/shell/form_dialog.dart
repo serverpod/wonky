@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
+import 'package:wonky_ui/wonky_ui.dart';
 
 import 'shell_scope.dart';
 import 'shell_services.dart';
@@ -809,6 +810,9 @@ class _WonkyFormDialogState extends State<WonkyFormDialog>
       },
       child: (spec.alert ? ShadDialog.alert : ShadDialog.new)(
         key: key == null ? null : ValueKey<String>(key),
+        // Hidden while the dialog has buttons (suite 02 §4.20); without it
+        // shad's theme adds its own X to every dialog.
+        closeIcon: const WonkyDialogCloseButton(),
         title: Text(spec.title),
         description: spec.description == null ? null : Text(spec.description!),
         actions: [
