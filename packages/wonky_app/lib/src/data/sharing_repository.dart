@@ -35,6 +35,16 @@ abstract class SharingRepository {
   /// `role == null` turns link sharing off ("Restricted").
   Future<SharingInfo> setLink(UuidValue itemUuid, AccessRole? role);
 
+  /// Sets who besides the people with access can open the item: no one
+  /// ([GeneralAccess.restricted], [role] null), everyone in the caller's
+  /// organization or anyone with the link, with [role]. The choices exclude
+  /// each other (suite 06 §2.2–2.3).
+  Future<SharingInfo> setGeneralAccess(
+    UuidValue itemUuid,
+    GeneralAccess access,
+    AccessRole? role,
+  );
+
   Future<SharingInfo> rotateLink(UuidValue itemUuid);
 
   Future<SharingInfo> updateSettings(
@@ -115,6 +125,13 @@ class ServerSharingRepository implements SharingRepository {
   @override
   Future<SharingInfo> setLink(UuidValue itemUuid, AccessRole? role) =>
       api.guard((c) => c.sharing.setLink(itemUuid, role));
+
+  @override
+  Future<SharingInfo> setGeneralAccess(
+    UuidValue itemUuid,
+    GeneralAccess access,
+    AccessRole? role,
+  ) => api.guard((c) => c.sharing.setGeneralAccess(itemUuid, access, role));
 
   @override
   Future<SharingInfo> rotateLink(UuidValue itemUuid) =>

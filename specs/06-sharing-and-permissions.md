@@ -249,13 +249,34 @@ notification; the dialog shows them as "Moderator · <publication>" ([18 §5.1](
 │ (C) carl@… (pending)                                [Viewer ▾]│
 │ ── General access ─────────────────────────────────────────── │
 │ 🔒 [Restricted ▾]  Only people with access can open            │
+│    (or 🏢 Anyone at acme.dev [Viewer ▾])                        │
 │    (or 🌐 Anyone with the link [Viewer ▾])                     │
 │ [🔗 Copy link]                                         [Done] │
 └───────────────────────────────────────────────────────────────┘
 ```
 
 - Adding people expands to a composer: chips for each recipient (autocomplete from
-  `user.searchUsers`), role select, *Notify people* checkbox, message textarea, *Send*.
+  `user.searchUsers`: related people, members of the caller's organization by name or email
+  prefix, anyone by exact email — [04 §6.3](04-auth-and-accounts.md)), role select, *Notify
+  people* checkbox, message textarea, *Send*. When a name search finds no one, a muted line
+  says "Enter the full email to add someone outside <domain>" (without an organization: "Enter
+  the full email address to add someone").
+- (Organizations) **The people field** is one field: a `ShadDecorator` with the theme's field
+  decoration (one border, fill, shadow, focus ring while the input has focus) around the chips
+  and a `ShadInput` with `ShadDecoration.none`; without chips it is exactly as tall as the role
+  select next to it (36 px) and aligned with it; chips may wrap and make it taller.
+- (Organizations) **General access** is one select with Restricted (lock), *Anyone at
+  <domain>* (building; only when the caller has an organization or the item already has an
+  organization grant, named after that grant) and *Anyone with the link* (globe), plus a role
+  select (Viewer, Commenter, Editor) for the two open choices; every change calls
+  `sharing.setGeneralAccess` (choosing an open option starts at Viewer). Hints: "Only people
+  with access can open" · "Anyone at <domain> can view/comment/edit" · for documents,
+  spreadsheets and presentations "Anyone with the link can view, also without signing in"
+  (with Commenter/Editor: "…can view, and comment/edit when signed in", §2.4) · for files and
+  folders "Anyone signed in who has the link can …". An organization grant inherited from a
+  folder adds a muted line "Anyone at <domain> can also <role> through "<folder>"". Selects
+  follow the server state and snap back after a failed change; non-sharers see them
+  disabled.
 - Role dropdown per person: Viewer, Commenter, Editor, separator, *Transfer ownership*,
   *Add expiration*, *Remove access*.
 - ⚙ opens settings sub-page (the three owner settings).

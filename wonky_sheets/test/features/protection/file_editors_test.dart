@@ -45,6 +45,7 @@ class _Sharing implements SharingRepository {
     myRole: AccessRole.owner,
     canShare: true,
     permissions: List.of(permissions),
+    generalAccess: GeneralAccess.restricted,
     settings: ItemSharingSettings(
       editorsCanShare: true,
       nonEditorsCanExport: true,

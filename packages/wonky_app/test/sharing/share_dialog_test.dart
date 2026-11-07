@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shad/shad.dart' show ShadInput, ShadShadowDecoration;
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
@@ -21,17 +22,37 @@ void main() {
     email: 'dan@example.test',
   );
 
+  final teamUuid = UuidValue.fromString('0199f000-0000-7000-8000-0000000000f0');
+
+  /// The item's sharing; [organization] is the caller's, [orgRole] the
+  /// item's own "Anyone at example.test" grant, [linkRole] its link.
   SharingInfo sharing({
     AccessRole myRole = AccessRole.owner,
     bool canShare = true,
     List<AccessRequestView> requests = const [],
+    DriveItemKind kind = DriveItemKind.document,
+    String? organization,
+    AccessRole? orgRole,
+    AccessRole? linkRole,
+    OrgAccessView? inheritedOrgAccess,
   }) => SharingInfo(
     itemUuid: item.uuid,
     itemName: item.name,
-    itemKind: DriveItemKind.document,
+    itemKind: kind,
     owner: TestUsers.anna,
     myRole: myRole,
     canShare: canShare,
+    link: linkRole == null ? null : ShareLinkView(token: 'tok', role: linkRole),
+    organization: organization,
+    orgAccess: orgRole == null
+        ? null
+        : OrgAccessView(domain: 'example.test', role: orgRole),
+    inheritedOrgAccess: inheritedOrgAccess,
+    generalAccess: linkRole != null
+        ? GeneralAccess.link
+        : orgRole != null
+        ? GeneralAccess.organization
+        : GeneralAccess.restricted,
     permissions: [
       PermissionView(
         user: TestUsers.bob,
@@ -46,9 +67,7 @@ void main() {
       PermissionView(
         user: dan,
         role: AccessRole.commenter,
-        inheritedFromUuid: UuidValue.fromString(
-          '0199f000-0000-7000-8000-0000000000f0',
-        ),
+        inheritedFromUuid: teamUuid,
         inheritedFromName: 'Team',
         grantedAt: DateTime.utc(2026, 10, 1),
       ),
@@ -237,15 +256,111 @@ void main() {
         _key('dialog.share.linkMode'),
         'Anyone with the link',
       );
-      expect(repo.calls, ['setLink:viewer']);
+      expect(repo.calls, ['setGeneralAccess:link:viewer']);
       expect(
-        find.text('Anyone signed in who has the link can open it'),
+        find.text('Anyone with the link can view, also without signing in'),
         findsOneWidget,
       );
       await choose(tester, _key('dialog.share.linkRole'), 'Editor');
 
-      expect(repo.calls, ['setLink:viewer', 'setLink:editor']);
+      expect(repo.calls, [
+        'setGeneralAccess:link:viewer',
+        'setGeneralAccess:link:editor',
+      ]);
       expect(repo.info.link?.role, AccessRole.editor);
+      expect(
+        find.text('Anyone with the link can view, and edit when signed in'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('when sharing an uploaded file by link then the hint says '
+        'visitors sign in', (tester) async {
+      repo.info = sharing(
+        kind: DriveItemKind.file,
+        linkRole: AccessRole.viewer,
+      );
+
+      await pumpDialog(tester);
+
+      expect(
+        find.text('Anyone signed in who has the link can view'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('when the add-people field shows then it has one border and '
+        'is as tall as the role select', (tester) async {
+      await pumpDialog(tester);
+
+      final field = _key('dialog.share.field');
+      expect(
+        tester.getSize(field).height,
+        tester.getSize(_key('dialog.share.role')).height,
+      );
+      expect(
+        tester.getTopLeft(field).dy,
+        tester.getTopLeft(_key('dialog.share.role')).dy,
+      );
+      bool drawsEdge(Container c) {
+        final d = c.decoration;
+        if (d is! ShadShadowDecoration) return false;
+        final box = d.decoration;
+        return d.shadows.isNotEmpty ||
+            (box is BoxDecoration && box.border != null);
+      }
+
+      final edges = tester
+          .widgetList<Container>(
+            find.descendant(of: field, matching: find.byType(Container)),
+          )
+          .where(drawsEdge);
+      expect(edges, hasLength(1), reason: 'only the field box has a border');
+      expect(
+        tester
+            .widgetList<Container>(
+              find.descendant(
+                of: find.byType(ShadInput),
+                matching: find.byType(Container),
+              ),
+            )
+            .where(drawsEdge),
+        isEmpty,
+        reason: 'the input inside has no border or shadow of its own',
+      );
+    });
+
+    testWidgets('when a name search finds no one then the field hints at '
+        'the full email of people outside the organization', (tester) async {
+      repo.info = sharing(organization: 'example.test');
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'zed');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Enter the full email to add someone outside example.test'),
+        findsOneWidget,
+      );
+      await tester.enterText(_key('dialog.share.input'), 'zed@example.test');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.searchHint'), findsNothing);
+    });
+
+    testWidgets('when a name search finds no one without an organization '
+        'then the field asks for the full email', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'zed');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Enter the full email address to add someone'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('when changing a sharing setting then it is saved', (
@@ -290,6 +405,119 @@ void main() {
 
       expect(copied, contains(item.uuid.uuid));
     });
+  });
+
+  group('Given the owner in an organization in the share dialog', () {
+    setUp(() => repo.info = sharing(organization: 'example.test'));
+
+    testWidgets('when opening general access then anyone at the '
+        'organization is offered', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.tap(_key('dialog.share.linkMode'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Anyone at example.test'), findsOneWidget);
+      expect(find.text('Anyone with the link'), findsOneWidget);
+    });
+
+    testWidgets('when choosing anyone at the organization then it can view '
+        'and the hint says so', (tester) async {
+      await pumpDialog(tester);
+
+      await choose(
+        tester,
+        _key('dialog.share.linkMode'),
+        'Anyone at example.test',
+      );
+
+      expect(repo.calls, ['setGeneralAccess:organization:viewer']);
+      expect(repo.info.orgAccess?.role, AccessRole.viewer);
+      expect(find.text('Anyone at example.test can view'), findsOneWidget);
+      expect(_key('dialog.share.orgRole'), findsOneWidget);
+      expect(_key('dialog.share.linkRole'), findsNothing);
+    });
+
+    testWidgets('when changing the organization role then it is saved', (
+      tester,
+    ) async {
+      repo.info = sharing(
+        organization: 'example.test',
+        orgRole: AccessRole.viewer,
+      );
+      await pumpDialog(tester);
+
+      await choose(tester, _key('dialog.share.orgRole'), 'Commenter');
+
+      expect(repo.calls, ['setGeneralAccess:organization:commenter']);
+      expect(find.text('Anyone at example.test can comment'), findsOneWidget);
+    });
+
+    testWidgets('when choosing restricted then the organization loses its '
+        'access', (tester) async {
+      repo.info = sharing(
+        organization: 'example.test',
+        orgRole: AccessRole.editor,
+      );
+      await pumpDialog(tester);
+
+      await choose(tester, _key('dialog.share.linkMode'), 'Restricted');
+
+      expect(repo.calls, ['setGeneralAccess:restricted:null']);
+      expect(repo.info.orgAccess, isNull);
+      expect(find.text('Only people with access can open'), findsOneWidget);
+      expect(_key('dialog.share.orgRole'), findsNothing);
+    });
+
+    testWidgets('when a folder above is shared with the organization then '
+        'that access is named', (tester) async {
+      repo.info = sharing(
+        organization: 'example.test',
+        inheritedOrgAccess: OrgAccessView(
+          domain: 'example.test',
+          role: AccessRole.editor,
+          inheritedFromUuid: teamUuid,
+          inheritedFromName: 'Team',
+        ),
+      );
+
+      await pumpDialog(tester);
+
+      expect(
+        find.text('Anyone at example.test can also edit through “Team”'),
+        findsOneWidget,
+      );
+      expect(find.text('Only people with access can open'), findsOneWidget);
+    });
+  });
+
+  testWidgets('Given an owner without an organization when opening general '
+      'access then only restricted and the link are offered', (tester) async {
+    await pumpDialog(tester);
+
+    await tester.tap(_key('dialog.share.linkMode'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Anyone at'), findsNothing);
+    expect(find.text('Anyone with the link'), findsOneWidget);
+  });
+
+  testWidgets('Given an editor outside the organization of an item shared '
+      'with it when the dialog opens then the organization access shows', (
+    tester,
+  ) async {
+    repo.info = sharing(myRole: AccessRole.editor, orgRole: AccessRole.viewer);
+
+    await pumpDialog(tester);
+
+    expect(
+      find.descendant(
+        of: _key('dialog.share.linkMode'),
+        matching: find.text('Anyone at example.test'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Anyone at example.test can view'), findsOneWidget);
   });
 
   testWidgets('Given a pending access request when the owner approves it '
@@ -402,6 +630,51 @@ void main() {
         findsOneWidget,
       );
       expect(_key('dialog.share.linkRole'), findsNothing);
+      await settleToasts(tester);
+    });
+
+    testWidgets('when sharing with the organization fails then access stays '
+        'restricted', (tester) async {
+      repo.info = sharing(organization: 'example.test');
+      await pumpWithToasts(tester);
+
+      await choose(
+        tester,
+        _key('dialog.share.linkMode'),
+        'Anyone at example.test',
+      );
+
+      expect(find.text('The sharing change could not be saved'), findsOne);
+      expect(
+        find.descendant(
+          of: _key('dialog.share.linkMode'),
+          matching: find.text('Restricted'),
+        ),
+        findsOneWidget,
+      );
+      expect(_key('dialog.share.orgRole'), findsNothing);
+      expect(find.text('Only people with access can open'), findsOneWidget);
+      await settleToasts(tester);
+    });
+
+    testWidgets('when changing the organization role fails then the select '
+        'shows the saved role again', (tester) async {
+      repo.info = sharing(
+        organization: 'example.test',
+        orgRole: AccessRole.viewer,
+      );
+      await pumpWithToasts(tester);
+
+      await choose(tester, _key('dialog.share.orgRole'), 'Editor');
+
+      expect(find.text('The sharing change could not be saved'), findsOne);
+      expect(
+        find.descendant(
+          of: _key('dialog.share.orgRole'),
+          matching: find.text('Viewer'),
+        ),
+        findsOneWidget,
+      );
       await settleToasts(tester);
     });
   });
