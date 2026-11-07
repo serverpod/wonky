@@ -240,7 +240,6 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
             label: l.cmdAiApplyStyle,
             menuId: 'tools.ai.applyStyle',
           ),
-          _c('write.ai.generateOutline', menuId: 'tools.ai.outline'),
           MenuSpec.separator(),
           _c(
             'write.ai.manageStyleGuides',

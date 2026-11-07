@@ -426,11 +426,10 @@ leading slot (`MenuSpec.command(showIcon: true)`, suite 02 §4.2).
 | Language… | `write.doc.languageDialog` | — | — | role ≥ editor |
 | ─ | | | | |
 | Assistant ▸ Open assistant | `write.ai.openAssistant` (the panel toggles with ⌘J / Ctrl+J, `shell.ai.togglePanel`) | — | — | `aiOn` |
-| Assistant ▸ Summarize | `write.ai.summarizeDocument` (quick action, [09](09-mcp-and-ai.md) §5.5) | — | — | `aiOn` |
+| Assistant ▸ Summarize | `write.ai.summarizeDocument` (quick action, [09](09-mcp-and-ai.md) §5.5; the submenu has the panel's actions with the panel's icons, `WriteAiIcons`) | — | — | `aiOn` |
 | Assistant ▸ Proofread | `write.ai.proofreadDocument` | — | — | `aiOn`, role ≥ commenter |
 | Assistant ▸ Address comments | `write.ai.addressComments` | — | — | `aiOn`, role ≥ commenter |
 | Assistant ▸ Apply style | `write.ai.applyStyle` | — | — | `aiOn`, role ≥ commenter |
-| Assistant ▸ Generate outline | `write.ai.generateOutline` | — | — | `aiOn`, role ≥ editor |
 | Assistant ▸ Style guides… | `write.ai.manageStyleGuides` (library dialog, suite 10 §7) | — | — | `aiOn` |
 | ─ | | | | |
 | Settings… *(shell, Lucide `settings`)* | `shell.settings.openApp` | ⌘, (desktop) | Ctrl+, (desktop) | always |

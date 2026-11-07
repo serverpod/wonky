@@ -515,7 +515,7 @@ asks for all edits of a reply in parallel.
 
 - **Generate outline** (`write.ai.generateOutline`): from the document (or from a prompt when the
   document is empty) → Markdown heading list in the panel → *Insert* (as headings) / *Insert as
-  bullet list*.
+  bullet list*. Command palette only: *Tools › Assistant* lists the panel's actions.
 - The server's `assistant.proofread` stream (issues per section) remains for API clients; the
   apps use the Proofread quick action.
 

@@ -8,6 +8,7 @@ import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_write/config/write_app_config.dart';
 import 'package:wonky_write/config/write_menus.dart';
+import 'package:wonky_write/features/ai/write_ai_icons.dart';
 
 void main() {
   group('Given the Write app config', () {
@@ -144,6 +145,26 @@ void main() {
       expect(
         ids,
         containsAll([ShellMenuIds.helpReportBug, ShellMenuIds.helpSuggest]),
+      );
+    });
+
+    test('when reading Tools › Assistant then it has the panel\'s actions '
+        'with the panel\'s icons, and no Generate outline', () {
+      final assistant = menus.find('tools.assistant')! as MenuSubmenu;
+      final items = assistant.children.whereType<MenuCommand>().toList();
+      IconData? icon(MenuCommand c) =>
+          h.services.registry.byId(c.commandId)!.icon;
+
+      expect(
+        [for (final c in items) (c.commandId, icon(c))],
+        [
+          ('write.ai.openAssistant', LucideIcons.sparkles),
+          ('write.ai.summarizeDocument', WriteAiIcons.summarize),
+          ('write.ai.proofreadDocument', WriteAiIcons.proofread),
+          ('write.ai.addressComments', WriteAiIcons.addressComments),
+          ('write.ai.applyStyle', WriteAiIcons.applyStyle),
+          ('write.ai.manageStyleGuides', WriteAiIcons.styleGuides),
+        ],
       );
     });
 

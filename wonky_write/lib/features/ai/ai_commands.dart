@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart' show IconData;
 import 'package:shad/shad.dart' show LucideIcons;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
@@ -9,6 +10,7 @@ import '../../commands/write_command.dart';
 import '../../l10n/write_l10n.dart';
 import 'package:wonky_write_core/wonky_write_core.dart' show DeltaSelection;
 import 'write_ai_controller.dart';
+import 'write_ai_icons.dart';
 
 const _rewriteModes = [
   'improve',
@@ -50,10 +52,11 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     WriteText? description,
     bool needsEditable = false,
     bool undoable = false,
+    IconData icon = LucideIcons.sparkles,
   }) => WriteCommand(
     id,
     label: label,
-    icon: LucideIcons.sparkles,
+    icon: icon,
     categoryName: (l) => l.categoryAI,
     descriptionText: description,
     requiredRole: role,
@@ -181,6 +184,7 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     // on the fast model; edits arrive as suggestions.
     cmd(
       'write.ai.summarizeDocument',
+      icon: WriteAiIcons.summarize,
       label: (l) => l.cmdAiSummarizeDocument,
       description: (l) => l.cmdAiSummarizeDocumentDescription,
       run: (ctx, c, a) async {
@@ -201,6 +205,7 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     ),
     cmd(
       'write.ai.proofreadDocument',
+      icon: WriteAiIcons.proofread,
       label: (l) => l.cmdAiProofreadDocument,
       description: (l) => l.cmdAiProofreadDocumentDescription,
       role: Role.commenter,
@@ -211,6 +216,7 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     ),
     cmd(
       'write.ai.addressComments',
+      icon: WriteAiIcons.addressComments,
       label: (l) => l.cmdAiAddressComments,
       description: (l) => l.cmdAiAddressCommentsDescription,
       role: Role.commenter,
@@ -221,6 +227,7 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     ),
     cmd(
       'write.ai.applyStyle',
+      icon: WriteAiIcons.applyStyle,
       label: (l) => l.cmdAiApplyStyle,
       description: (l) => l.cmdAiApplyStyleDescription,
       role: Role.commenter,
@@ -240,6 +247,7 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     // Style guides (suite 10 §7, Write 09 §5.9).
     cmd(
       'write.ai.manageStyleGuides',
+      icon: WriteAiIcons.styleGuides,
       label: (l) => l.cmdAiManageStyleGuides,
       description: (l) => l.cmdAiManageStyleGuidesDescription,
       run: (ctx, c, a) async {

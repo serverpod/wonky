@@ -7,7 +7,7 @@ import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
-import 'package:shad/shad.dart' show ShadInput, LucideIcons;
+import 'package:shad/shad.dart' show LucideIcons, ShadInput, ShadTheme;
 import 'package:wonky_ui/wonky_ui.dart' show WonkyMenuEntry, WonkyMenuItem;
 import 'package:wonky_ui/testing.dart';
 
@@ -587,6 +587,27 @@ void main() {
         expect(threeLineHeight, greaterThan(oneLineHeight + 20));
       },
     );
+
+    testWidgets('when empty then the field is exactly one row: as tall as a '
+        'single-line input, with the text in the middle', (tester) async {
+      await pump(tester);
+      final input = find.byKey(const ValueKey<String>('assistant.input'));
+      final row = ShadTheme.of(
+        tester.element(input),
+      ).inputTheme.constraints!.minHeight;
+      final field = tester.getRect(input);
+      final placeholder = tester.getRect(find.text('Ask the assistant…'));
+
+      expect(field.height, row);
+      expect(
+        (placeholder.top - field.top) - (field.bottom - placeholder.bottom),
+        closeTo(0, 1),
+      );
+
+      await tester.enterText(editable(), 'One\nTwo');
+      await tester.pump();
+      expect(tester.getSize(input).height, greaterThan(row + 10));
+    });
   });
 
   group('Given an adapter with quick actions (Write)', () {

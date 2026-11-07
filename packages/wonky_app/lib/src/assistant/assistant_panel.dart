@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -441,9 +442,15 @@ class _AssistantPanelState extends State<AssistantPanel> {
                     focusNode: _focus,
                     enabled: enabled,
                     // One line that grows with the text, so the placeholder
-                    // and typed text start at the same place.
+                    // and typed text start at the same place. A multi-line
+                    // field is top-aligned within the theme's minimum
+                    // height, which left a gap under the first line: no
+                    // minimum height, and padding that makes one line
+                    // exactly a single-line field's height instead.
                     minLines: 1,
                     maxLines: 8,
+                    constraints: const BoxConstraints(),
+                    padding: _oneLinePadding(context),
                     keyboardType: TextInputType.multiline,
                     textInputAction: TextInputAction.newline,
                     alignment: AlignmentDirectional.topStart,
@@ -488,6 +495,25 @@ class _AssistantPanelState extends State<AssistantPanel> {
         ],
       ),
     );
+  }
+
+  /// The composer's padding: the theme's horizontal padding, and the
+  /// vertical padding that makes one line of text as tall as a single-line
+  /// input (`inputTheme.constraints.minHeight`, the border included).
+  static EdgeInsets _oneLinePadding(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    final it = theme.inputTheme;
+    final pad =
+        it.padding?.resolve(Directionality.of(context)) ??
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    final style = theme.textTheme.muted.merge(it.style);
+    final line = MediaQuery.textScalerOf(
+      context,
+    ).scale((style.fontSize ?? 14) * (style.height ?? 1.0));
+    final minHeight = it.constraints?.minHeight ?? 36;
+    const border = 1.0;
+    final vertical = math.max(pad.top, (minHeight - 2 * border - line) / 2);
+    return EdgeInsets.fromLTRB(pad.left, vertical, pad.right, vertical);
   }
 
   static Widget _withTooltip(String? tip, Widget child) => tip == null

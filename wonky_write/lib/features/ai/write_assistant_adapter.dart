@@ -10,6 +10,7 @@ import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 import 'package:wonky_write_core/wonky_write_core.dart';
 
 import 'write_ai_controller.dart';
+import 'write_ai_icons.dart';
 
 /// Specializes the shared assistant panel for a Write document (Write 09
 /// §5.2, §5.5, §5.6): selection chip and hints, the document stream session
@@ -124,14 +125,14 @@ class WriteAssistantAdapter extends ChangeNotifier
       AssistantQuickActionButton(
         id: 'summarize',
         label: l.aiQuickSummarize,
-        icon: LucideIcons.listCollapse,
+        icon: WriteAiIcons.summarize,
         tooltip: l.cmdAiSummarizeDocumentDescription,
         onPressed: () => _invoke('write.ai.summarizeDocument'),
       ),
       AssistantQuickActionButton(
         id: 'proofread',
         label: l.aiQuickProofread,
-        icon: LucideIcons.spellCheck,
+        icon: WriteAiIcons.proofread,
         enabled: canSuggest,
         tooltip: l.cmdAiProofreadDocumentDescription,
         onPressed: () => _invoke('write.ai.proofreadDocument'),
@@ -139,7 +140,7 @@ class WriteAssistantAdapter extends ChangeNotifier
       AssistantQuickActionButton(
         id: 'addressComments',
         label: l.aiQuickAddressComments,
-        icon: LucideIcons.messagesSquare,
+        icon: WriteAiIcons.addressComments,
         enabled: canSuggest,
         tooltip: l.cmdAiAddressCommentsDescription,
         onPressed: () => _invoke('write.ai.addressComments'),
@@ -147,7 +148,7 @@ class WriteAssistantAdapter extends ChangeNotifier
       AssistantQuickActionButton(
         id: 'applyStyle',
         label: l.aiQuickApplyStyle,
-        icon: LucideIcons.pencilRuler,
+        icon: WriteAiIcons.applyStyle,
         enabled: canSuggest,
         tooltip: l.cmdAiApplyStyleDescription,
         onPressed: () => _invoke('write.ai.applyStyle'),
@@ -159,7 +160,7 @@ class WriteAssistantAdapter extends ChangeNotifier
   List<WonkyMenuEntry> moreMenuEntries() => [
     WonkyMenuItem(
       label: ai.l10n.cmdAiManageStyleGuides,
-      icon: LucideIcons.bookType,
+      icon: WriteAiIcons.styleGuides,
       onSelected: () => _invoke('write.ai.manageStyleGuides'),
     ),
   ];
