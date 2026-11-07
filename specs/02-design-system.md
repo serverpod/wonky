@@ -30,7 +30,10 @@ ShadApp.router(
 )
 ```
 
-- `WonkyTheme` builds `ShadThemeData` from: style tokens (`ShadStyleTokens.vega` default),
+- `WonkyTheme` builds `ShadThemeData` from: style tokens (`ShadStyleTokens.vega` default, with
+  `fieldFill: background`: text fields, text areas and selects are white in light mode instead
+  of transparent, where their control shadow showed through as gray on the web; dark mode keeps
+  vega's input wash),
   color scheme (`ShadZincColorScheme`; `WonkyThemeConfig.accent` exists but the apps don't
   offer an accent choice), radius, density (`ShadSpacing` scale: comfortable / compact), and
   **custom tokens** (below).

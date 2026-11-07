@@ -1079,7 +1079,8 @@ class _RecipientChip extends StatelessWidget {
         children: [
           WonkyAvatar(
             name: p?.displayName ?? email,
-            color: p == null ? cs.mutedForeground : cs.presence(p.colorIndex),
+            // A typed address: blue (the info color), not gray.
+            color: p == null ? cs.info : cs.presence(p.colorIndex),
             imageUrl: p?.avatarUrl,
             size: height - 6,
           ),
