@@ -73,6 +73,33 @@ class SlidesAppConfig extends WonkyAppConfig {
   @override
   HomeScope? get homeScope => const HomeScope.kind(DriveItemKind.presentation);
 
+  /// Link-shared presentations open signed out, view-only (specs/06
+  /// §2.4); presenting needs sign-in.
+  @override
+  bool get allowsGuestViewing => true;
+
+  /// Slides commands that need an account (the assistant, comments,
+  /// history and versions, files, print, presenting, …).
+  @override
+  bool guestAllowsCommand(String id) =>
+      super.guestAllowsCommand(id) && !_guestBlocked.any(id.startsWith);
+
+  static const _guestBlocked = [
+    'slides.ai.',
+    'slides.comments.',
+    'slides.conflicts.',
+    'slides.file.',
+    'slides.history.',
+    'slides.version.',
+    'slides.notifications.',
+    'slides.presence.',
+    'slides.print.',
+    'slides.present.',
+    'slides.presenter.',
+    'slides.spelling.addToDictionary',
+    'slides.spelling.personalDictionary',
+  ];
+
   /// The deck editor (Slides 04 §2); `?slide=<slideId>` opens that slide,
   /// `?comment=<threadUuid>` that comment (09 §3.4).
   @override

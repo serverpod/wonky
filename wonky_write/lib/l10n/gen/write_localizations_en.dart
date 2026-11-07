@@ -1198,9 +1198,6 @@ class WriteLocalizationsEn extends WriteLocalizations {
   String get menuUnderlineErrors => 'Underline errors';
 
   @override
-  String get menuPreferences => 'Preferences';
-
-  @override
   String get menuAllPreferences => 'All preferences…';
 
   @override
@@ -1690,6 +1687,51 @@ class WriteLocalizationsEn extends WriteLocalizations {
   @override
   String get docDialogGuideFootnote =>
       'Underline and text colors are not part of Markdown — use bold or italic, or change how emphasis looks with a theme.';
+
+  @override
+  String get docDialogGuideTabMarkdown => 'Markdown';
+
+  @override
+  String get docDialogGuideTabWonky => 'Wonky Markdown';
+
+  @override
+  String get docDialogGuideWonkyDescription =>
+      'This document uses Wonky Markdown: these blocks and inline elements come on top of standard Markdown. Insert them from the Insert menu or the / menu, or type them.';
+
+  @override
+  String get docDialogGuideCallout =>
+      'Callout: info, tip, note, warning, caution or danger, with an optional title';
+
+  @override
+  String get docDialogGuideDetails =>
+      'Details: a collapsible section, its first ### line is the summary';
+
+  @override
+  String get docDialogGuideCard => 'Card';
+
+  @override
+  String get docDialogGuideGrid =>
+      'Grid of items in 1–4 columns (bullets: check, circle or none)';
+
+  @override
+  String get docDialogGuideBlockEnd => 'Ends a callout, details, card or grid';
+
+  @override
+  String get docDialogGuideButton =>
+      'Button link (secondary button with variant=secondary)';
+
+  @override
+  String get docDialogGuideArrowLink => 'Link with an arrow';
+
+  @override
+  String get docDialogGuideChip => 'Chip, optionally with an icon';
+
+  @override
+  String get docDialogGuideNumberedHeading =>
+      'Numbered heading (step), level 2 or 3';
+
+  @override
+  String get docDialogGuideYouTube => 'YouTube video';
 
   @override
   String get pageSetupTitle => 'Page setup';
@@ -5253,6 +5295,81 @@ class WriteLocalizationsEn extends WriteLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get aiQuickSummarize => 'Summarize';
+
+  @override
+  String get aiQuickProofread => 'Proofread';
+
+  @override
+  String get aiQuickApplyStyle => 'Apply style';
+
+  @override
+  String get aiWorkingSummarize => 'Summarizing the document…';
+
+  @override
+  String get aiWorkingProofread => 'Proofreading…';
+
+  @override
+  String get aiWorkingComments => 'Working through the open comments…';
+
+  @override
+  String get aiWorkingStyle => 'Applying the style guide…';
+
+  @override
+  String get aiChooseStyleGuide => 'Choose a style guide';
+
+  @override
+  String get cmdAiSummarizeDocumentDescription =>
+      'Sums up the document in the assistant panel.';
+
+  @override
+  String get cmdAiProofreadDocumentDescription =>
+      'Suggests small spelling, grammar and punctuation corrections.';
+
+  @override
+  String get cmdAiAddressComments => 'Address comments';
+
+  @override
+  String get cmdAiAddressCommentsDescription =>
+      'Suggests the changes the open comments ask for and replies in their threads.';
+
+  @override
+  String get cmdAiApplyStyle => 'Apply style';
+
+  @override
+  String get cmdAiApplyStyleDescription =>
+      'Suggests rewrites so the document follows its style guide.';
+
+  @override
+  String get cmdAiOpenAssistant => 'Open assistant';
+
+  @override
+  String get cmdAiManageStyleGuides => 'Style guides…';
+
+  @override
+  String get cmdAiManageStyleGuidesDescription =>
+      'Browse, write and share style guides for the assistant.';
+
+  @override
+  String get cmdDocStyleGuide => 'Style guide…';
+
+  @override
+  String get cmdDocStyleGuideDescription =>
+      'Chooses the style guide this document follows.';
+
+  @override
+  String get cmdDocSetStyleGuide => 'Set style guide';
+
+  @override
+  String get menuAssistant => 'Assistant';
+
+  @override
+  String get menuAssistantSummarize => 'Summarize';
+
+  @override
+  String get menuAssistantProofread => 'Proofread';
 }
 
 /// The translations for English (`en_XA`).
@@ -6470,9 +6587,6 @@ class WriteLocalizationsEnXa extends WriteLocalizationsEn {
   String get menuUnderlineErrors => '[Ûñðéŕļîñé éŕŕöŕš one tw]';
 
   @override
-  String get menuPreferences => '[Þŕéƒéŕéñçéš one]';
-
-  @override
   String get menuAllPreferences => '[Åļļ þŕéƒéŕéñçéš… one tw]';
 
   @override
@@ -6967,6 +7081,52 @@ class WriteLocalizationsEnXa extends WriteLocalizationsEn {
   @override
   String get docDialogGuideFootnote =>
       '[Ûñðéŕļîñé åñð ţéẋţ çöļöŕš åŕé ñöţ þåŕţ öƒ Ṁåŕķðöŵñ — ûšé ƀöļð öŕ îţåļîç, öŕ çĥåñĝé ĥöŵ éɱþĥåšîš ļööķš ŵîţĥ å ţĥéɱé. one two three four five six seven]';
+
+  @override
+  String get docDialogGuideTabMarkdown => '[Ṁåŕķðöŵñ one]';
+
+  @override
+  String get docDialogGuideTabWonky => '[Ŵöñķý Ṁåŕķðöŵñ one t]';
+
+  @override
+  String get docDialogGuideWonkyDescription =>
+      '[Ţĥîš ðöçûɱéñţ ûšéš Ŵöñķý Ṁåŕķðöŵñ: ţĥéšé ƀļöçķš åñð îñļîñé éļéɱéñţš çöɱé öñ ţöþ öƒ šţåñðåŕð Ṁåŕķðöŵñ. Îñšéŕţ ţĥéɱ ƒŕöɱ ţĥé Îñšéŕţ ɱéñû öŕ ţĥé / ɱéñû, öŕ ţýþé ţĥéɱ. one two three four five six seven eight nine ten]';
+
+  @override
+  String get docDialogGuideCallout =>
+      '[Çåļļöûţ: îñƒö, ţîþ, ñöţé, ŵåŕñîñĝ, çåûţîöñ öŕ ðåñĝéŕ, ŵîţĥ åñ öþţîöñåļ ţîţļé one two three four five]';
+
+  @override
+  String get docDialogGuideDetails =>
+      '[Ðéţåîļš: å çöļļåþšîƀļé šéçţîöñ, îţš ƒîŕšţ ### ļîñé îš ţĥé šûɱɱåŕý one two three four f]';
+
+  @override
+  String get docDialogGuideCard => '[Çåŕð on]';
+
+  @override
+  String get docDialogGuideGrid =>
+      '[Ĝŕîð öƒ îţéɱš îñ 1–4 çöļûɱñš (ƀûļļéţš: çĥéçķ, çîŕçļé öŕ ñöñé) one two three four]';
+
+  @override
+  String get docDialogGuideBlockEnd =>
+      '[Éñðš å çåļļöûţ, ðéţåîļš, çåŕð öŕ ĝŕîð one two thr]';
+
+  @override
+  String get docDialogGuideButton =>
+      '[Ɓûţţöñ ļîñķ (šéçöñðåŕý ƀûţţöñ ŵîţĥ ṽåŕîåñţ=šéçöñðåŕý) one two three fou]';
+
+  @override
+  String get docDialogGuideArrowLink => '[Ļîñķ ŵîţĥ åñ åŕŕöŵ one tw]';
+
+  @override
+  String get docDialogGuideChip => '[Çĥîþ, öþţîöñåļļý ŵîţĥ åñ îçöñ one two t]';
+
+  @override
+  String get docDialogGuideNumberedHeading =>
+      '[Ñûɱƀéŕéð ĥéåðîñĝ (šţéþ), ļéṽéļ 2 öŕ 3 one two thr]';
+
+  @override
+  String get docDialogGuideYouTube => '[ÝöûŢûƀé ṽîðéö one t]';
 
   @override
   String get pageSetupTitle => '[Þåĝé šéţûþ one]';
@@ -10570,4 +10730,80 @@ class WriteLocalizationsEnXa extends WriteLocalizationsEn {
     );
     return '[$_temp0 one two th]';
   }
+
+  @override
+  String get aiQuickSummarize => '[Šûɱɱåŕîžé one]';
+
+  @override
+  String get aiQuickProofread => '[Þŕööƒŕéåð one]';
+
+  @override
+  String get aiQuickApplyStyle => '[Åþþļý šţýļé one]';
+
+  @override
+  String get aiWorkingSummarize => '[Šûɱɱåŕîžîñĝ ţĥé ðöçûɱéñţ… one two t]';
+
+  @override
+  String get aiWorkingProofread => '[Þŕööƒŕéåðîñĝ… one t]';
+
+  @override
+  String get aiWorkingComments =>
+      '[Ŵöŕķîñĝ ţĥŕöûĝĥ ţĥé öþéñ çöɱɱéñţš… one two thr]';
+
+  @override
+  String get aiWorkingStyle => '[Åþþļýîñĝ ţĥé šţýļé ĝûîðé… one two]';
+
+  @override
+  String get aiChooseStyleGuide => '[Çĥööšé å šţýļé ĝûîðé one tw]';
+
+  @override
+  String get cmdAiSummarizeDocumentDescription =>
+      '[Šûɱš ûþ ţĥé ðöçûɱéñţ îñ ţĥé åššîšţåñţ þåñéļ. one two three]';
+
+  @override
+  String get cmdAiProofreadDocumentDescription =>
+      '[Šûĝĝéšţš šɱåļļ šþéļļîñĝ, ĝŕåɱɱåŕ åñð þûñçţûåţîöñ çöŕŕéçţîöñš. one two three four f]';
+
+  @override
+  String get cmdAiAddressComments => '[Åððŕéšš çöɱɱéñţš one tw]';
+
+  @override
+  String get cmdAiAddressCommentsDescription =>
+      '[Šûĝĝéšţš ţĥé çĥåñĝéš ţĥé öþéñ çöɱɱéñţš åšķ ƒöŕ åñð ŕéþļîéš îñ ţĥéîŕ ţĥŕéåðš. one two three four five]';
+
+  @override
+  String get cmdAiApplyStyle => '[Åþþļý šţýļé one]';
+
+  @override
+  String get cmdAiApplyStyleDescription =>
+      '[Šûĝĝéšţš ŕéŵŕîţéš šö ţĥé ðöçûɱéñţ ƒöļļöŵš îţš šţýļé ĝûîðé. one two three four]';
+
+  @override
+  String get cmdAiOpenAssistant => '[Öþéñ åššîšţåñţ one t]';
+
+  @override
+  String get cmdAiManageStyleGuides => '[Šţýļé ĝûîðéš… one t]';
+
+  @override
+  String get cmdAiManageStyleGuidesDescription =>
+      '[Ɓŕöŵšé, ŵŕîţé åñð šĥåŕé šţýļé ĝûîðéš ƒöŕ ţĥé åššîšţåñţ. one two three fou]';
+
+  @override
+  String get cmdDocStyleGuide => '[Šţýļé ĝûîðé… one]';
+
+  @override
+  String get cmdDocStyleGuideDescription =>
+      '[Çĥööšéš ţĥé šţýļé ĝûîðé ţĥîš ðöçûɱéñţ ƒöļļöŵš. one two three]';
+
+  @override
+  String get cmdDocSetStyleGuide => '[Šéţ šţýļé ĝûîðé one t]';
+
+  @override
+  String get menuAssistant => '[Åššîšţåñţ one]';
+
+  @override
+  String get menuAssistantSummarize => '[Šûɱɱåŕîžé one]';
+
+  @override
+  String get menuAssistantProofread => '[Þŕööƒŕéåð one]';
 }

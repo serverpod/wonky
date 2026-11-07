@@ -100,6 +100,22 @@ class SharingEndpoint extends Endpoint {
     role,
   );
 
+  /// General access (specs/06 §2.2–2.3): restricted, everyone in the
+  /// caller's organization with [role], or anyone with the link with
+  /// [role].
+  Future<SharingInfo> setGeneralAccess(
+    Session session,
+    UuidValue itemUuid,
+    GeneralAccess access,
+    AccessRole? role,
+  ) async => SharingService.setGeneralAccess(
+    session,
+    await UserService.actorOf(session),
+    itemUuid,
+    access,
+    role,
+  );
+
   Future<SharingInfo> rotateLink(Session session, UuidValue itemUuid) async =>
       SharingService.rotateLink(
         session,

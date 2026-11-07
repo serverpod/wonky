@@ -15,7 +15,9 @@ import 'package:wonky_client/src/protocol/protocol.dart' as _i8pkqg1o;
 import '../../platform/common/access_role.dart' as _iv7g6vuy;
 import '../../platform/drive/drive_item_kind.dart' as _i26ubj99;
 import '../../platform/sharing/access_request_view.dart' as _itmxnxi6;
+import '../../platform/sharing/general_access.dart' as _ijt0as3o;
 import '../../platform/sharing/item_sharing_settings.dart' as _iz7k30fg;
+import '../../platform/sharing/org_access_view.dart' as _ir3h02o5;
 import '../../platform/sharing/ownership_transfer_view.dart' as _irnzbqjz;
 import '../../platform/sharing/permission_view.dart' as _im2pznpj;
 import '../../platform/sharing/share_link_view.dart' as _impi727v;
@@ -33,6 +35,10 @@ abstract class SharingInfo
     required this.canShare,
     required this.permissions,
     this.link,
+    this.organization,
+    this.orgAccess,
+    this.inheritedOrgAccess,
+    required this.generalAccess,
     required this.settings,
     required this.pendingRequests,
     this.pendingTransfer,
@@ -47,6 +53,10 @@ abstract class SharingInfo
     required bool canShare,
     required List<_im2pznpj.PermissionView> permissions,
     _impi727v.ShareLinkView? link,
+    String? organization,
+    _ir3h02o5.OrgAccessView? orgAccess,
+    _ir3h02o5.OrgAccessView? inheritedOrgAccess,
+    required _ijt0as3o.GeneralAccess generalAccess,
     required _iz7k30fg.ItemSharingSettings settings,
     required List<_itmxnxi6.AccessRequestView> pendingRequests,
     _irnzbqjz.OwnershipTransferView? pendingTransfer,
@@ -77,6 +87,20 @@ abstract class SharingInfo
           : _i8pkqg1o.Protocol().deserialize<_impi727v.ShareLinkView>(
               jsonSerialization['link'],
             ),
+      organization: jsonSerialization['organization'] as String?,
+      orgAccess: jsonSerialization['orgAccess'] == null
+          ? null
+          : _i8pkqg1o.Protocol().deserialize<_ir3h02o5.OrgAccessView>(
+              jsonSerialization['orgAccess'],
+            ),
+      inheritedOrgAccess: jsonSerialization['inheritedOrgAccess'] == null
+          ? null
+          : _i8pkqg1o.Protocol().deserialize<_ir3h02o5.OrgAccessView>(
+              jsonSerialization['inheritedOrgAccess'],
+            ),
+      generalAccess: _ijt0as3o.GeneralAccess.fromJson(
+        (jsonSerialization['generalAccess'] as String),
+      ),
       settings: _i8pkqg1o.Protocol().deserialize<_iz7k30fg.ItemSharingSettings>(
         jsonSerialization['settings'],
       ),
@@ -110,6 +134,20 @@ abstract class SharingInfo
   /// Null when the caller may not see the link (viewers/commenters).
   _impi727v.ShareLinkView? link;
 
+  /// (Organizations) The caller's organization (its first domain), null
+  /// without one; the dialog offers "Anyone at <domain>" only with it or
+  /// an existing organization grant (specs/06 §2.3).
+  String? organization;
+
+  /// The organization grant set on this item, if any.
+  _ir3h02o5.OrgAccessView? orgAccess;
+
+  /// The highest organization grant inherited from a folder, if any.
+  _ir3h02o5.OrgAccessView? inheritedOrgAccess;
+
+  /// Restricted, organization (orgAccess) or link (link.role).
+  _ijt0as3o.GeneralAccess generalAccess;
+
   _iz7k30fg.ItemSharingSettings settings;
 
   /// Only for callers who can share.
@@ -129,6 +167,12 @@ abstract class SharingInfo
     bool? canShare,
     List<_im2pznpj.PermissionView>? permissions,
     _impi727v.ShareLinkView? link = const _UndefinedSharingInfo$link(),
+    String? organization,
+    _ir3h02o5.OrgAccessView? orgAccess =
+        const _UndefinedSharingInfo$orgAccess(),
+    _ir3h02o5.OrgAccessView? inheritedOrgAccess =
+        const _UndefinedSharingInfo$orgAccess(),
+    _ijt0as3o.GeneralAccess? generalAccess,
     _iz7k30fg.ItemSharingSettings? settings,
     List<_itmxnxi6.AccessRequestView>? pendingRequests,
     _irnzbqjz.OwnershipTransferView? pendingTransfer =
@@ -146,6 +190,11 @@ abstract class SharingInfo
       'canShare': canShare,
       'permissions': permissions.toJson(valueToJson: (v) => v.toJson()),
       if (link != null) 'link': link?.toJson(),
+      if (organization != null) 'organization': organization,
+      if (orgAccess != null) 'orgAccess': orgAccess?.toJson(),
+      if (inheritedOrgAccess != null)
+        'inheritedOrgAccess': inheritedOrgAccess?.toJson(),
+      'generalAccess': generalAccess.toJson(),
       'settings': settings.toJson(),
       'pendingRequests': pendingRequests.toJson(valueToJson: (v) => v.toJson()),
       if (pendingTransfer != null) 'pendingTransfer': pendingTransfer?.toJson(),
@@ -166,6 +215,11 @@ abstract class SharingInfo
         valueToJson: (v) => v.toJsonForProtocol(),
       ),
       if (link != null) 'link': link?.toJsonForProtocol(),
+      if (organization != null) 'organization': organization,
+      if (orgAccess != null) 'orgAccess': orgAccess?.toJsonForProtocol(),
+      if (inheritedOrgAccess != null)
+        'inheritedOrgAccess': inheritedOrgAccess?.toJsonForProtocol(),
+      'generalAccess': generalAccess.toJson(),
       'settings': settings.toJsonForProtocol(),
       'pendingRequests': pendingRequests.toJson(
         valueToJson: (v) => v.toJsonForProtocol(),
@@ -181,9 +235,16 @@ abstract class SharingInfo
   }
 }
 
+class _Undefined {}
+
 class _UndefinedSharingInfo$link extends _isc.UndefinedSentinel
     implements _impi727v.ShareLinkView {
   const _UndefinedSharingInfo$link();
+}
+
+class _UndefinedSharingInfo$orgAccess extends _isc.UndefinedSentinel
+    implements _ir3h02o5.OrgAccessView {
+  const _UndefinedSharingInfo$orgAccess();
 }
 
 class _UndefinedSharingInfo$pendingTransfer extends _isc.UndefinedSentinel
@@ -201,6 +262,10 @@ class _SharingInfoImpl extends SharingInfo {
     required bool canShare,
     required List<_im2pznpj.PermissionView> permissions,
     _impi727v.ShareLinkView? link,
+    String? organization,
+    _ir3h02o5.OrgAccessView? orgAccess,
+    _ir3h02o5.OrgAccessView? inheritedOrgAccess,
+    required _ijt0as3o.GeneralAccess generalAccess,
     required _iz7k30fg.ItemSharingSettings settings,
     required List<_itmxnxi6.AccessRequestView> pendingRequests,
     _irnzbqjz.OwnershipTransferView? pendingTransfer,
@@ -213,6 +278,10 @@ class _SharingInfoImpl extends SharingInfo {
          canShare: canShare,
          permissions: permissions,
          link: link,
+         organization: organization,
+         orgAccess: orgAccess,
+         inheritedOrgAccess: inheritedOrgAccess,
+         generalAccess: generalAccess,
          settings: settings,
          pendingRequests: pendingRequests,
          pendingTransfer: pendingTransfer,
@@ -231,6 +300,12 @@ class _SharingInfoImpl extends SharingInfo {
     bool? canShare,
     List<_im2pznpj.PermissionView>? permissions,
     _impi727v.ShareLinkView? link = const _UndefinedSharingInfo$link(),
+    Object? organization = _Undefined,
+    _ir3h02o5.OrgAccessView? orgAccess =
+        const _UndefinedSharingInfo$orgAccess(),
+    _ir3h02o5.OrgAccessView? inheritedOrgAccess =
+        const _UndefinedSharingInfo$orgAccess(),
+    _ijt0as3o.GeneralAccess? generalAccess,
     _iz7k30fg.ItemSharingSettings? settings,
     List<_itmxnxi6.AccessRequestView>? pendingRequests,
     _irnzbqjz.OwnershipTransferView? pendingTransfer =
@@ -246,6 +321,14 @@ class _SharingInfoImpl extends SharingInfo {
       permissions:
           permissions ?? this.permissions.map((e0) => e0.copyWith()).toList(),
       link: link is _isc.UndefinedSentinel ? this.link?.copyWith() : link,
+      organization: organization is String? ? organization : this.organization,
+      orgAccess: orgAccess is _isc.UndefinedSentinel
+          ? this.orgAccess?.copyWith()
+          : orgAccess,
+      inheritedOrgAccess: inheritedOrgAccess is _isc.UndefinedSentinel
+          ? this.inheritedOrgAccess?.copyWith()
+          : inheritedOrgAccess,
+      generalAccess: generalAccess ?? this.generalAccess,
       settings: settings ?? this.settings.copyWith(),
       pendingRequests:
           pendingRequests ??

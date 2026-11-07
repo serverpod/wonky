@@ -1,0 +1,22 @@
+### An organization's shared AI provider API key (suite 10 §1 "Keys"):
+### used for the requests of every member of the organization (verified
+### email domain, specs/04 §6) who has no key of their own, while the
+### server has no key. Any member may add, replace or remove it.
+### Server-only: the key is never sent to a client (clients see
+### `AiOrgKeyView`).
+class: AiOrgKey
+serverOnly: true
+table: ai_org_key
+fields:
+  ### The organization's key (its first domain, `OrganizationService`).
+  orgKey: String
+  provider: AiProvider
+  apiKey: String
+  ### Who added or last replaced it.
+  addedById: int?, relation(parent=user_profile, onDelete=SetNull)
+  createdAt: DateTime
+  updatedAt: DateTime
+indexes:
+  ai_org_key_org_idx:
+    fields: orgKey
+    unique: true

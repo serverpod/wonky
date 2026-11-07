@@ -8,6 +8,7 @@ import '../common/errors.dart';
 import '../common/models.dart';
 import '../common/search_indexes.dart';
 import '../common/time.dart';
+import '../organizations/organization_service.dart';
 import '../sharing/access_service.dart';
 import 'drive_views.dart';
 import 'kind_masks.dart';
@@ -24,25 +25,34 @@ abstract final class DriveListing {
   /// Largest page of `drive.search`.
   static const maxSearchPage = 200;
 
-  /// Items the caller can see: owned, granted (direct or inherited, not
-  /// expired) or with a link role (as `AccessService.rolesFor`).
-  static const _visible =
+  /// The grant rows `p` of the caller: their own and (Organizations)
+  /// their organization's (specs/06 §2.3).
+  static String _grantee(Organization? org) => org == null
+      ? 'p."userId" = @me'
+      : '(p."userId" = @me OR p."orgKey" IN (${org.sqlList}))';
+
+  /// Items the caller can see: owned, granted (direct or inherited, to
+  /// them or their organization, not expired) or with a link role (as
+  /// `AccessService.rolesFor`).
+  static String _visible(Organization? org) =>
       '(d."ownerId" = @me'
       ' OR EXISTS (SELECT 1 FROM drive_item_permission p'
-      ' WHERE p."itemId" = d.id AND p."userId" = @me'
+      ' WHERE p."itemId" = d.id AND ${_grantee(org)}'
       ' AND (p."expiresAt" IS NULL OR p."expiresAt" > @now))'
       ' OR EXISTS (SELECT 1 FROM share_link l'
       ' WHERE l."itemId" = d.id AND l.role IS NOT NULL))';
 
-  /// Search reaches link items only once the caller opened them (a user
-  /// state row exists).
-  static const _searchVisible =
+  /// Search reaches link and organization items only once the caller
+  /// opened them (a user state row exists, specs/06 §2.3).
+  static String _searchVisible(Organization? org) =>
       '(d."ownerId" = @me'
       ' OR EXISTS (SELECT 1 FROM drive_item_permission p'
       ' WHERE p."itemId" = d.id AND p."userId" = @me'
       ' AND (p."expiresAt" IS NULL OR p."expiresAt" > @now))'
-      ' OR (s."itemId" IS NOT NULL AND EXISTS (SELECT 1 FROM share_link l'
-      ' WHERE l."itemId" = d.id AND l.role IS NOT NULL)))';
+      ' OR (s."itemId" IS NOT NULL AND (EXISTS (SELECT 1 FROM share_link l'
+      ' WHERE l."itemId" = d.id AND l.role IS NOT NULL)'
+      '${org == null ? '' : ' OR EXISTS (SELECT 1 FROM drive_item_permission p'
+                ' WHERE p."itemId" = d.id AND p."orgKey" IN (${org.sqlList}))'})))';
 
   /// (v2) Files still uploading only for their uploader; failed never.
   static const _listable =
@@ -117,8 +127,9 @@ abstract final class DriveListing {
           ' AND pp."trashedAt" = d."trashedAt")',
         );
     }
+    final org = await OrganizationService.orgOf(session, me);
     where
-      ..add(_visible)
+      ..add(_visible(org))
       ..add(_listable);
     _addFilters(
       where,
@@ -200,7 +211,7 @@ abstract final class DriveListing {
     final where = <String>[
       'd."trashedAt" IS NULL',
       _searchable,
-      _searchVisible,
+      _searchVisible(await OrganizationService.orgOf(session, me)),
     ];
     _addFilters(
       where,
@@ -283,11 +294,12 @@ abstract final class DriveListing {
     DriveItemKind? kind,
     int limit = 500,
   }) async {
+    final org = await OrganizationService.orgOf(session, actor.userId);
     final rows = await session.db.unsafeQuery(
       'SELECT d.id FROM drive_item d '
       'WHERE d."templateOf" IS NOT NULL AND d."trashedAt" IS NULL '
       '${kind == null ? '' : "AND d.kind = '${kind.name}' "}'
-      'AND $_visible '
+      'AND ${_visible(org)} '
       'ORDER BY d."modifiedAt" DESC, d.id DESC LIMIT @limit',
       parameters: QueryParameters.named({
         'me': actor.userId,

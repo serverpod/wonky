@@ -987,6 +987,8 @@ class DocumentSyncController {
     authorSessionId: v.sessionId,
     actorKind: v.actorKind,
     kind: v.kind,
+    onBehalfOfSessionId: v.onBehalfOfSessionId,
+    groupId: v.groupId,
   );
 
   void _resendAfterInit() {

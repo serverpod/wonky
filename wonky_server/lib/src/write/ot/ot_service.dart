@@ -198,6 +198,8 @@ abstract final class OtService {
               authorId: system ? null : actor.userId,
               actorKind: actor.kind,
               sessionId: sessionId,
+              onBehalfOfSessionId: onBehalfOfSessionId,
+              groupId: groupId,
               kind: kind,
               baseRevision: baseRevision,
               deltaJson: commit!.opJson,

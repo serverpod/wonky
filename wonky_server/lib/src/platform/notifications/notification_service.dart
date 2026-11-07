@@ -117,6 +117,13 @@ abstract final class NotificationService {
 
   /// Creates a notification for [userId] unless they turned this kind off.
   /// Notifications about one's own actions are never created.
+  ///
+  /// [emailedNow]: the caller emails this notification itself right away
+  /// (a share with *Send an email*, specs/06 §4), whatever the kind's
+  /// channel (`inApp` or `email`; `off` still creates nothing). The row is
+  /// created as emailed, so neither the digest nor an immediate email sends
+  /// it again; the caller gives it back with [unclaimEmail] when its email
+  /// fails.
   static Future<UserNotification?> notify(
     Session session, {
     required int userId,
@@ -124,11 +131,13 @@ abstract final class NotificationService {
     DriveItem? item,
     Actor? actor,
     Map<String, Object?> payload = const {},
+    bool emailedNow = false,
   }) async {
     if (actor != null && actor.userId == userId) return null;
     final settings = await _settings(session, userId);
     final channelSetting = channelOf(settings, kind);
     if (channelSetting == 'off') return null;
+    final at = nowUtc();
     final row = await UserNotification.db.insertRow(
       session,
       UserNotification(
@@ -141,8 +150,9 @@ abstract final class NotificationService {
           if (item != null) 'itemName': item.name,
           if (actor != null) 'actorKind': actor.kind.name,
         }),
-        createdAt: nowUtc(),
-        emailPending: channelSetting == 'email',
+        createdAt: at,
+        emailPending: !emailedNow && channelSetting == 'email',
+        emailedAt: emailedNow ? at : null,
       ),
     );
     await ClusterBus.post(
@@ -150,7 +160,8 @@ abstract final class NotificationService {
       channel(userId),
       NotificationSignal(notificationId: row.id),
     );
-    if (channelSetting == 'email' &&
+    if (!emailedNow &&
+        channelSetting == 'email' &&
         (immediateKinds.contains(kind) || !digestOf(settings))) {
       try {
         await scheduleImmediateEmail(session, row.id!);
@@ -311,6 +322,12 @@ abstract final class NotificationService {
     );
     return {for (final n in claimed) n.id!};
   }
+
+  /// Gives back the email of a notification created with `emailedNow`
+  /// after its email failed: the digest sends it when the kind is set to
+  /// email for the user (it skips it otherwise).
+  static Future<void> unclaimEmail(Session session, int notificationId) =>
+      _unclaim(session, {notificationId});
 
   /// Gives claimed [ids] back after a failed send (the digest retries
   /// them within [emailWindow]).

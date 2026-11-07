@@ -53,7 +53,16 @@ class WriteContentUndoEntry extends UndoEntry {
   /// this entry runs on. Returns the rebased entry (null when it became a
   /// no-op) and [remote] expressed past this entry (for the next older
   /// entry).
-  (WriteContentUndoEntry?, Delta) rebaseOver(Delta remote) {
+  ///
+  /// [remoteWins] decides conflicts (the same attribute on the same text):
+  /// a collaborator's later change wins over an older undo entry, but a
+  /// fix-up (the server's normalization of this client's own op, e.g.
+  /// restamped suggestion times) must not: the entry still reverts that op,
+  /// suggestion marks included.
+  (WriteContentUndoEntry?, Delta) rebaseOver(
+    Delta remote, {
+    bool remoteWins = true,
+  }) {
     final u = change;
     final Delta uPrime;
     final Delta rPrime;
@@ -69,8 +78,8 @@ class WriteContentUndoEntry extends UndoEntry {
       uPrime = ur.shifted(u, rr.net);
       rPrime = remote;
     } else {
-      uPrime = WonkyOt.transform(remote, u, aWinsTies: true);
-      rPrime = WonkyOt.transform(u, remote, aWinsTies: false);
+      uPrime = WonkyOt.transform(remote, u, aWinsTies: remoteWins);
+      rPrime = WonkyOt.transform(u, remote, aWinsTies: !remoteWins);
       if (DeltaUtils.isNoop(uPrime)) return (null, rPrime);
     }
     final s = select?.transform(rPrime);
@@ -129,12 +138,14 @@ class WriteContentRemoteChange extends RemoteChange {
 /// remote change [remote] that was just applied to the document (Write 03
 /// §4): newest to oldest, `U' = R.transform(U, true)` and `R =
 /// U.transform(R, false)`. Undo steps run their entries last to first, redo
-/// steps first to last.
+/// steps first to last. A [fixup] (the server's normalization of an own op)
+/// loses conflicts to the entries ([WriteContentUndoEntry.rebaseOver]).
 WriteContentRemoteChange? rebaseWriteStacks(
   List<UndoStep> undo,
   List<UndoStep> redo,
-  Delta remote,
-) {
+  Delta remote, {
+  bool fixup = false,
+}) {
   final results = Map<WriteContentUndoEntry, WriteContentUndoEntry?>.identity();
   void walk(List<UndoStep> steps, {required bool reversedEntries}) {
     var r = remote;
@@ -142,7 +153,7 @@ WriteContentRemoteChange? rebaseWriteStacks(
       final entries = reversedEntries ? step.entries.reversed : step.entries;
       for (final e in entries) {
         if (e is! WriteContentUndoEntry) continue;
-        final (rebased, next) = e.rebaseOver(r);
+        final (rebased, next) = e.rebaseOver(r, remoteWins: !fixup);
         results[e] = rebased;
         r = next;
       }

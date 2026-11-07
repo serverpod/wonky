@@ -35,17 +35,35 @@ never reach clients). The assistant acts on documents through the **same tool la
   four characters (`AiProviderKeyView`). It is not encrypted at rest (no encryption helper
   exists; see [13 §2](13-security-and-operations.md)). Users can replace or remove it; a server
   that has its own key refuses personal keys.
+- **Organization keys** (*Settings › AI providers › Key for <domain>*, under the same rules as
+  user keys: no server key, `ai.allowUserKeys` on). Any member of an organization
+  ([04 §6](04-auth-and-accounts.md), verified email domain; users of public mail providers have
+  none and don't see it) can add a key **shared with the whole organization**, and any member
+  can replace or remove it (there are no organization admins). The group shows a warning:
+  anyone who signs in with an email at the organization's domains can use the key and their
+  usage is billed to its account; sharing asks for confirmation with the same text. Resolution
+  becomes **server key > the user's own key > their organization's key > none**
+  (`AiKeySource.organization`, `keySource: "organization"`). Stored in `ai_org_key` (one row per
+  organization key, `serverOnly`, `addedById` → who added or last replaced it); clients see the
+  provider, the last four characters and who added it (`AiOrgKeyView`, `AssistantStatus.orgKey`
+  and `.organization`); setting and removing are logged (organization, user, provider, last
+  four). Usage still counts against each user's own daily budget. Endpoints:
+  `assistant.setOrganizationProviderKey(provider, apiKey)`,
+  `assistant.removeOrganizationProviderKey()`.
 - **Models.** "AI quality" maps to a model size and effort:
   | Setting | Model | Effort |
   |---------|-------|--------|
   | Best (default) | `model` | `high` |
   | Balanced | `model` | `medium` |
   | Fast | `fastModel` | `low` |
+  | Quick actions (Write 09 §5.5, any setting) | `fastModel` | `low` |
   Defaults per provider (`AiModels`, the only place with model ids; `ai.models.<provider>`
   overrides them): Anthropic `claude-opus-5-5` / `claude-haiku-5-5`, OpenAI `gpt-5` /
   `gpt-5-mini`, Gemini `gemini-3.1-pro-preview` / `gemini-3.8-flash` (the 2.5 models return 404 for new keys). Inline completions use the fast
-  model. Effort is sent to OpenAI as `reasoning_effort`; dartantic has no effort option for
-  Anthropic and Gemini, which use their model defaults. No `temperature`/`top_p`.
+  model. Effort is sent to OpenAI as `reasoning_effort` and to Gemini 3 as `thinkingLevel: low`
+  for `low` (every Gemini 3 model accepts it; `medium`/`high` keep the model's default, which
+  is `high`, as Gemini Pro has no `medium`); Anthropic uses its model defaults (dartantic has
+  no effort option there). No `temperature`/`top_p`.
 - **Streaming** for every request; `maxTokens` 64000 (chat), 32000 (inline/proofread),
   8000 (continue). The server accumulates the dartantic stream (`AiStreamAccumulator`: text
   and reasoning deltas, tool calls merged by id, cumulative usage) and relays text deltas and
@@ -68,6 +86,22 @@ never reach clients). The assistant acts on documents through the **same tool la
   changed) is appended as a new user turn element, not by rewriting history. Threads stored
   before the provider switch (raw Anthropic blocks) are converted on load (`AssistantHistory`);
   their thinking blocks are dropped.
+- **Replay rules** (2026-11, the chat failed after the first or second message): Gemini 3
+  returns a thought signature with every function call; dartantic stores it in the message
+  metadata and its Gemini mapper casts it `as List<int>` when the call is replayed, which
+  throws for the `List<dynamic>` a JSON round trip yields (stored history, and the
+  accumulator's JSON-safe metadata within a run). The throw happened synchronously in
+  `sendStream`, outside the provider-error mapping, so every second round of a tool-using
+  run and every later message of that thread ended in "Something went wrong" within ~25 ms.
+  `DartanticAiClient.replayable` restores the signatures to `List<int>` and drops
+  thinking-only parts and empty turns before each request; errors while building a request
+  are `AiApiException(type: request)` ("This conversation could not be sent to the AI
+  service. Start a new chat and try again."). `AssistantHistory.repair` answers tool calls
+  left without results by an interrupted run (server restart between the call and its
+  results) with an `interrupted` result and drops orphan results, so one broken run cannot
+  break the thread. Unexpected run failures are logged at error level with the run and
+  thread ids and shown as "The assistant ran into an internal error and stopped. Try again;
+  if it keeps happening, start a new chat."
 - **Limits & cost control**: per-user daily token budget (config), per-request timeout 10 min
   (3 min idle), concurrency 2 requests per user. Retries (429/5xx/connection) are the provider
   SDKs'. Usage stored in `AiUsage` table (userId, model, input/output/cache tokens, at); cache
@@ -154,12 +188,17 @@ fields:
 - Message list: user bubbles, assistant Markdown rendering (code blocks with copy), **tool
   activity chips** ("Edited 3 paragraphs", "Wrote 120 cells to Sheet1!A1:D30") with *Show* (jumps
   to and highlights the change) and *Undo* buttons.
-- Composer: multiline input (Enter send, Shift+Enter newline), context chips ("Selection: 2
-  paragraphs", "Sheet1!B2:F40") that can be removed, *Stop* button while streaming, quick
-  prompts row.
-- **Apply mode** toggle: *Edit directly* (tools mutate the doc) vs *Suggest* (Write: changes
-  arrive as suggestions in suggestion mode; Sheets: changes are previewed in a diff dialog with
-  Accept/Reject).
+- Composer: a one-line input that grows with its text (up to 8 lines; the placeholder and the
+  typed text start at the same place), **Enter sends, Shift+Enter is a new line**, no Send
+  button; a *Stop* icon button next to the input while streaming; context chips ("Selection: 2
+  paragraphs", "Sheet1!B2:F40") that can be removed; a quick prompts row, or the app's quick
+  actions (Write: *Summarize*, *Proofread*, *Address comments*, *Apply style*, which show no
+  prompt in the conversation, only a working indicator and then the result; adapters opt in
+  with `AssistantPanelExtras`). Long lists of tool chips collapse to the first four and
+  "+N more".
+- **Apply mode** toggle (Sheets, Slides): *Edit directly* (tools mutate the file) vs *Suggest*
+  (Sheets: changes are previewed in a diff dialog with Accept/Reject). **Write has no toggle:
+  the assistant's edits are always suggestions** (Write 09 §5.2), enforced by the server.
 
 ### 3.1 Assistant in Slides and Drive (v2)
 
@@ -214,7 +253,10 @@ assistant lists candidates; it never deletes without confirmation).
 ## 5. Commands
 
 `shell.ai.togglePanel`, `shell.ai.newThread`, `shell.ai.send`, `shell.ai.stop`,
-`write.ai.rewriteSelection(mode)`, `write.ai.continue`, `write.ai.summarizeDocument`,
+`write.ai.rewriteSelection(mode)`, `write.ai.continue`, the Write quick actions
+`write.ai.summarizeDocument`, `write.ai.proofreadDocument`, `write.ai.addressComments`,
+`write.ai.applyStyle`, style guides `write.ai.manageStyleGuides`, `write.doc.styleGuide`,
+`write.doc.setStyleGuide {ref}` (undoable),
 `sheets.ai.suggestFormula`, `sheets.ai.explainFormula`, `sheets.ai.fillRange`,
 `sheets.ai.analyze`, (v2) `slides.ai.*` ([Slides 11](wonky_slides/11-mcp-and-ai.md)),
 `drive.ai.askAboutItem {uuid}` (P1).
@@ -251,7 +293,10 @@ assistant lists candidates; it never deletes without confirmation).
   user turn → conversation, so no stored message is ever edited and provider-side prefix
   caches stay valid. "Document updated" elements carry the changed sections' Markdown.
 - **Endpoint** `assistant`: `getStatus`, `setQuality`, `chat(threadId?, itemUuid, message,
-  hints)`, `stop(threadId?, runId?)`, `confirm(runId, confirmationId, allow)` (destructive
+  hints)`, `quickAction(threadId?, itemUuid, action, hints)` (Write 09 §5.5; streams like
+  `chat`; the action's instruction is stored as a hidden user turn with the document snapshot
+  of a new thread, its result as the assistant's answer, so later messages replay a valid
+  conversation), `stop(threadId?, runId?)`, `confirm(runId, confirmationId, allow)` (destructive
   guard), `listThreads(itemUuid)`, `getThread`, `deleteThread`, `clearHistory`,
   `revertChange(changeId)` (panel Undo fallback), `inline(InlineAiRequest)`,
   `proofread(itemUuid, start?, length?)`, `setProviderKey(provider, apiKey)` and
@@ -279,3 +324,45 @@ assistant lists candidates; it never deletes without confirmation).
   `objectId` = element id. App adapter `wonky_slides/lib/features/ai/slides_assistant_adapter.dart`.
   Details: [Slides 11 §6.12](wonky_slides/11-mcp-and-ai.md). The Drive assistant (§3.1, P1) is not
   built yet (`TODO.md`).
+
+## 7. Style guides
+
+A library of writing styles the assistant follows (Write first; models and endpoint are
+platform-level so Sheets and Slides can use them later).
+
+- **Built-in guides** (`platform/ai/style_guides/builtin_style_guides.dart`, refs
+  `builtin:<key>`): *Developer documentation* (`developer-docs`, adapted from the Serverpod
+  writing style guide, `serverpod_docs/STYLE_GUIDE.md`: product terms and positioning replaced
+  by generic rules, code-in-prose rules added), *Technical documentation* (`technical`),
+  *Business and professional* (`business`), *Plain language* (`plain-language`), *Marketing
+  and blog* (`marketing`). Built-ins are read-only; *Duplicate* makes an editable copy.
+- **Users' own guides** (`style_guide`: uuid, owner, name, description, Markdown, `orgKey`;
+  refs `custom:<uuid>`): personal, or shared with the owner's organization (`orgKey` = the
+  organization's key, its first email domain, [04](04-auth-and-accounts.md)). Only the owner
+  edits or deletes; colleagues see shared guides under *Shared in <org>*. Name ≤ 100,
+  description ≤ 300, Markdown ≤ 50,000 characters.
+- **Organization default** (`style_guide_org_default`, one per `orgKey`): a built-in or a guide
+  shared with the organization; any member may set it (there are no organization admins yet).
+- **Document choice** (`document_style_guide`, one row per Write document's drive item, so the
+  document table is unchanged): set by Editors+. What a document uses: its own choice, else the
+  requesting user's organization default, else none. A document's guide is readable by
+  everyone who can open the document (also a colleague's personal guide).
+- **Use**: *Apply style* rewrites the document to match the guide (fails with `no_style` and a
+  *Choose a style guide* button when there is none); Summarize, Address comments and chat
+  messages get it as context (`<style_guide>` in the request, escaped as untrusted text).
+- **Endpoint** `styleGuide`: `library(itemUuid?)` → `StyleGuideLibrary` (guides with `source`
+  `builtIn` / `mine` / `organization` / `document`, `orgKey`, `orgDefaultRef`, `documentRef`,
+  `effectiveRef`, `canSetDocument`, `canSetOrgDefault`), `save(StyleGuideInput)` (a uuid of a
+  deleted guide creates it again: undo of delete), `delete(uuid)`, `setOrgDefault(ref?)`,
+  `setDocumentStyle(itemUuid, ref?)`.
+- **UI**: the style guide library dialog (`wonky_app` `showStyleGuidesDialog`): the guides by
+  section, the selected guide rendered, *Use for this document*, *Make organization default*,
+  *Duplicate*, *Edit*, *Delete*, *New style guide*; the editor has name, description, the guide
+  in a Markdown composer (`MarkdownComposer`, post profile) and *Share with <org>*. Reached from
+  the assistant panel's ⋮ (*Style guides…*), *Tools › Assistant › Style guides…* and *File ›
+  Style guide…* (the document's choice). Saving, deleting and the org default are undoable on
+  the shell stack, the document's choice on the document's stack (`StyleGuideUndoHandler`).
+- **Organizations**: the org key of a style guide and of an org default is the organization of
+  [04 §6](04-auth-and-accounts.md) (`OrganizationService.orgKeyOf`): users of a public mail
+  provider have no organization and keep their guides personal.
+

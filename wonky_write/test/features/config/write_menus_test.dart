@@ -1,11 +1,14 @@
 import 'dart:ui';
 
+import 'package:flutter/widgets.dart' show IconData;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shad/shad.dart' show LucideIcons;
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_core/wonky_core.dart';
 import 'package:wonky_write/config/write_app_config.dart';
 import 'package:wonky_write/config/write_menus.dart';
+import 'package:wonky_write/features/ai/write_ai_icons.dart';
 
 void main() {
   group('Given the Write app config', () {
@@ -71,6 +74,98 @@ void main() {
       final dupes = ids.where((id) => ids.where((x) => x == id).length > 1);
 
       expect(dupes.toSet(), isEmpty);
+    });
+
+    test('when reading View › Panels then it lists the side panels in rail '
+        'order with their rail icons (Write 05 §7.3)', () {
+      final panels = menus.find(ShellMenuIds.viewPanels)! as MenuSubmenu;
+      final items = panels.children.cast<MenuCommand>();
+
+      expect(
+        [for (final c in items) c.commandId],
+        [
+          'shell.ai.togglePanel',
+          'write.view.toggleOutline',
+          'write.find.open',
+          'shell.versions.togglePanel',
+        ],
+      );
+      expect(items.every((c) => c.showIcon), isTrue);
+      expect(
+        [for (final c in items) h.services.registry.byId(c.commandId)!.icon],
+        [
+          LucideIcons.sparkles,
+          LucideIcons.listTree,
+          LucideIcons.search,
+          LucideIcons.history,
+        ],
+      );
+    });
+
+    test('when reading the icons then Paste as Markdown, Find, Find next, '
+        'Find previous, Code block, Quote, Checklist and Special characters '
+        'have theirs', () {
+      IconData? icon(String id) => h.services.registry.byId(id)!.icon;
+
+      expect(icon('write.edit.pasteAsMarkdown'), LucideIcons.clipboardList);
+      expect(icon('write.find.open'), LucideIcons.search);
+      expect(icon('write.find.next'), LucideIcons.arrowBigRightDash);
+      expect(icon('write.find.previous'), LucideIcons.arrowBigLeftDash);
+      expect(icon('write.format.blockType.codeBlock'), LucideIcons.code);
+      expect(icon('write.format.blockType.quote'), LucideIcons.textQuote);
+      expect(icon('write.list.toggleChecklist'), LucideIcons.listChecks);
+      expect(icon('write.insert.specialCharacter'), LucideIcons.languages);
+      // Insert's block items keep their icon although they are toggles.
+      for (final id in [
+        'insert.codeBlock',
+        'insert.quote',
+        'insert.checklist',
+      ]) {
+        expect((menus.find(id)! as MenuCommand).showIcon, isTrue, reason: id);
+      }
+    });
+
+    test('when reading Tools and Help then Explore, Accessibility settings, '
+        'Preferences and What\'s new are gone and Settings is one entry', () {
+      final ids = [for (final c in menus.commands) c.effectiveId];
+      final commandIds = [for (final c in menus.commands) c.commandId];
+
+      for (final gone in [
+        'tools.explore',
+        'tools.accessibility',
+        'tools.writePrefs',
+        'tools.workSettings',
+      ]) {
+        expect(ids, isNot(contains(gone)), reason: gone);
+      }
+      expect(commandIds, isNot(contains('shell.help.whatsNew')));
+      expect(commandIds.where((c) => c.startsWith('shell.settings.')), [
+        'shell.settings.openApp',
+      ]);
+      expect(
+        ids,
+        containsAll([ShellMenuIds.helpReportBug, ShellMenuIds.helpSuggest]),
+      );
+    });
+
+    test('when reading Tools › Assistant then it has the panel\'s actions '
+        'with the panel\'s icons, and no Generate outline', () {
+      final assistant = menus.find('tools.assistant')! as MenuSubmenu;
+      final items = assistant.children.whereType<MenuCommand>().toList();
+      IconData? icon(MenuCommand c) =>
+          h.services.registry.byId(c.commandId)!.icon;
+
+      expect(
+        [for (final c in items) (c.commandId, icon(c))],
+        [
+          ('write.ai.openAssistant', LucideIcons.sparkles),
+          ('write.ai.summarizeDocument', WriteAiIcons.summarize),
+          ('write.ai.proofreadDocument', WriteAiIcons.proofread),
+          ('write.ai.addressComments', WriteAiIcons.addressComments),
+          ('write.ai.applyStyle', WriteAiIcons.applyStyle),
+          ('write.ai.manageStyleGuides', WriteAiIcons.styleGuides),
+        ],
+      );
     });
 
     test('when commands are registered then their ids are well formed', () {

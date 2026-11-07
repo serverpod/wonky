@@ -49,12 +49,15 @@ class WonkyMenuItem extends WonkyMenuEntry {
   final String? semanticLabel;
 }
 
-/// An item with a ✓ when [checked].
+/// An item with a ✓ when [checked]. With an [icon] (a panel toggle that
+/// keeps its panel's icon, suite 03 §3.2) the icon takes the leading slot
+/// and the ✓ moves to the end.
 class WonkyMenuCheckItem extends WonkyMenuItem {
   const WonkyMenuCheckItem({
     super.key,
     required super.label,
     required this.checked,
+    super.icon,
     super.shortcut,
     super.enabled,
     super.disabledReason,

@@ -81,6 +81,7 @@ import 'platform/activity/activity_trend_point.dart' as _ighcq381;
 import 'platform/activity/activity_type.dart' as _i50cy468;
 import 'platform/activity/activity_viewer.dart' as _ikcwdr17;
 import 'platform/ai/models/ai_apply_mode.dart' as _iyja8k5e;
+import 'platform/ai/models/ai_org_key_view.dart' as _ino0idxi;
 import 'platform/ai/models/ai_provider.dart' as _ir7z75mb;
 import 'platform/ai/models/ai_provider_key_view.dart' as _ic2q2fwi;
 import 'platform/ai/models/ai_quality.dart' as _iviyoyk9;
@@ -91,15 +92,22 @@ import 'platform/ai/models/assistant_event.dart' as _imp4tsxo;
 import 'platform/ai/models/assistant_event_type.dart' as _id6kvqt9;
 import 'platform/ai/models/assistant_message.dart' as _i8cittxq;
 import 'platform/ai/models/assistant_message_view.dart' as _i4rkdm2k;
+import 'platform/ai/models/assistant_quick_action.dart' as _ik2qpdmw;
 import 'platform/ai/models/assistant_status.dart' as _ia2m3j3v;
 import 'platform/ai/models/assistant_thread.dart' as _iaq6rutx;
 import 'platform/ai/models/assistant_thread_detail.dart' as _i4iv0swm;
 import 'platform/ai/models/assistant_thread_view.dart' as _iohdfqf1;
+import 'platform/ai/models/document_style_guide.dart' as _iti3p2ly;
 import 'platform/ai/models/inline_ai_event.dart' as _i8ghcs7p;
 import 'platform/ai/models/inline_ai_event_type.dart' as _i6pcz5z6;
 import 'platform/ai/models/inline_ai_request.dart' as _i4m43iwr;
 import 'platform/ai/models/proofread_event.dart' as _ie0jt2ne;
 import 'platform/ai/models/proofread_issue.dart' as _ivmxemza;
+import 'platform/ai/models/style_guide.dart' as _izn9jjcu;
+import 'platform/ai/models/style_guide_input.dart' as _itz63egs;
+import 'platform/ai/models/style_guide_library.dart' as _ipldx8au;
+import 'platform/ai/models/style_guide_org_default.dart' as _ike2qw5s;
+import 'platform/ai/models/style_guide_view.dart' as _ibxjwk51;
 import 'platform/analytics/models/analytics_cohort.dart' as _ixradasp;
 import 'platform/analytics/models/analytics_count.dart' as _innm1rwe;
 import 'platform/analytics/models/analytics_day.dart' as _is2u4stz;
@@ -242,11 +250,14 @@ import 'platform/sharing/access_request.dart' as _i8scn8dm;
 import 'platform/sharing/access_request_outcome.dart' as _i7trut12;
 import 'platform/sharing/access_request_view.dart' as _iimp60a4;
 import 'platform/sharing/drive_item_permission.dart' as _iuzgacy4;
+import 'platform/sharing/general_access.dart' as _ia6t9w39;
 import 'platform/sharing/invite_resolution.dart' as _ikeljole;
 import 'platform/sharing/item_sharing_settings.dart' as _ih3711er;
+import 'platform/sharing/org_access_view.dart' as _iodj7c7d;
 import 'platform/sharing/ownership_transfer.dart' as _ijwxtu30;
 import 'platform/sharing/ownership_transfer_view.dart' as _iilpsf9g;
 import 'platform/sharing/permission_view.dart' as _iead0ok9;
+import 'platform/sharing/public_item_view.dart' as _iv2hjox5;
 import 'platform/sharing/share_link.dart' as _it712lg1;
 import 'platform/sharing/share_link_view.dart' as _iw2xoohn;
 import 'platform/sharing/sharing_info.dart' as _itd24os1;
@@ -362,6 +373,7 @@ export 'platform/activity/activity_trend_point.dart';
 export 'platform/activity/activity_type.dart';
 export 'platform/activity/activity_viewer.dart';
 export 'platform/ai/models/ai_apply_mode.dart';
+export 'platform/ai/models/ai_org_key_view.dart';
 export 'platform/ai/models/ai_provider.dart';
 export 'platform/ai/models/ai_provider_key_view.dart';
 export 'platform/ai/models/ai_quality.dart';
@@ -372,15 +384,22 @@ export 'platform/ai/models/assistant_event.dart';
 export 'platform/ai/models/assistant_event_type.dart';
 export 'platform/ai/models/assistant_message.dart';
 export 'platform/ai/models/assistant_message_view.dart';
+export 'platform/ai/models/assistant_quick_action.dart';
 export 'platform/ai/models/assistant_status.dart';
 export 'platform/ai/models/assistant_thread.dart';
 export 'platform/ai/models/assistant_thread_detail.dart';
 export 'platform/ai/models/assistant_thread_view.dart';
+export 'platform/ai/models/document_style_guide.dart';
 export 'platform/ai/models/inline_ai_event.dart';
 export 'platform/ai/models/inline_ai_event_type.dart';
 export 'platform/ai/models/inline_ai_request.dart';
 export 'platform/ai/models/proofread_event.dart';
 export 'platform/ai/models/proofread_issue.dart';
+export 'platform/ai/models/style_guide.dart';
+export 'platform/ai/models/style_guide_input.dart';
+export 'platform/ai/models/style_guide_library.dart';
+export 'platform/ai/models/style_guide_org_default.dart';
+export 'platform/ai/models/style_guide_view.dart';
 export 'platform/analytics/models/analytics_cohort.dart';
 export 'platform/analytics/models/analytics_count.dart';
 export 'platform/analytics/models/analytics_day.dart';
@@ -517,11 +536,14 @@ export 'platform/sharing/access_request.dart';
 export 'platform/sharing/access_request_outcome.dart';
 export 'platform/sharing/access_request_view.dart';
 export 'platform/sharing/drive_item_permission.dart';
+export 'platform/sharing/general_access.dart';
 export 'platform/sharing/invite_resolution.dart';
 export 'platform/sharing/item_sharing_settings.dart';
+export 'platform/sharing/org_access_view.dart';
 export 'platform/sharing/ownership_transfer.dart';
 export 'platform/sharing/ownership_transfer_view.dart';
 export 'platform/sharing/permission_view.dart';
+export 'platform/sharing/public_item_view.dart';
 export 'platform/sharing/share_link.dart';
 export 'platform/sharing/share_link_view.dart';
 export 'platform/sharing/sharing_info.dart';
@@ -652,6 +674,7 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i50cy468.ActivityType>,
           _isc.getType<_ikcwdr17.ActivityViewer>,
           _isc.getType<_iyja8k5e.AiApplyMode>,
+          _isc.getType<_ino0idxi.AiOrgKeyView>,
           _isc.getType<_ir7z75mb.AiProvider>,
           _isc.getType<_ic2q2fwi.AiProviderKeyView>,
           _isc.getType<_iviyoyk9.AiQuality>,
@@ -662,15 +685,22 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_id6kvqt9.AssistantEventType>,
           _isc.getType<_i8cittxq.AssistantMessage>,
           _isc.getType<_i4rkdm2k.AssistantMessageView>,
+          _isc.getType<_ik2qpdmw.AssistantQuickAction>,
           _isc.getType<_ia2m3j3v.AssistantStatus>,
           _isc.getType<_iaq6rutx.AssistantThread>,
           _isc.getType<_i4iv0swm.AssistantThreadDetail>,
           _isc.getType<_iohdfqf1.AssistantThreadView>,
+          _isc.getType<_iti3p2ly.DocumentStyleGuide>,
           _isc.getType<_i8ghcs7p.InlineAiEvent>,
           _isc.getType<_i6pcz5z6.InlineAiEventType>,
           _isc.getType<_i4m43iwr.InlineAiRequest>,
           _isc.getType<_ie0jt2ne.ProofreadEvent>,
           _isc.getType<_ivmxemza.ProofreadIssue>,
+          _isc.getType<_izn9jjcu.StyleGuide>,
+          _isc.getType<_itz63egs.StyleGuideInput>,
+          _isc.getType<_ipldx8au.StyleGuideLibrary>,
+          _isc.getType<_ike2qw5s.StyleGuideOrgDefault>,
+          _isc.getType<_ibxjwk51.StyleGuideView>,
           _isc.getType<_ixradasp.AnalyticsCohort>,
           _isc.getType<_innm1rwe.AnalyticsCount>,
           _isc.getType<_is2u4stz.AnalyticsDay>,
@@ -827,11 +857,14 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i7trut12.AccessRequestOutcome>,
           _isc.getType<_iimp60a4.AccessRequestView>,
           _isc.getType<_iuzgacy4.DriveItemPermission>,
+          _isc.getType<_ia6t9w39.GeneralAccess>,
           _isc.getType<_ikeljole.InviteResolution>,
           _isc.getType<_ih3711er.ItemSharingSettings>,
+          _isc.getType<_iodj7c7d.OrgAccessView>,
           _isc.getType<_ijwxtu30.OwnershipTransfer>,
           _isc.getType<_iilpsf9g.OwnershipTransferView>,
           _isc.getType<_iead0ok9.PermissionView>,
+          _isc.getType<_iv2hjox5.PublicItemView>,
           _isc.getType<_it712lg1.ShareLink>,
           _isc.getType<_iw2xoohn.ShareLinkView>,
           _isc.getType<_itd24os1.SharingInfo>,
@@ -974,6 +1007,7 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i50cy468.ActivityType?>,
           _isc.getType<_ikcwdr17.ActivityViewer?>,
           _isc.getType<_iyja8k5e.AiApplyMode?>,
+          _isc.getType<_ino0idxi.AiOrgKeyView?>,
           _isc.getType<_ir7z75mb.AiProvider?>,
           _isc.getType<_ic2q2fwi.AiProviderKeyView?>,
           _isc.getType<_iviyoyk9.AiQuality?>,
@@ -984,15 +1018,22 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_id6kvqt9.AssistantEventType?>,
           _isc.getType<_i8cittxq.AssistantMessage?>,
           _isc.getType<_i4rkdm2k.AssistantMessageView?>,
+          _isc.getType<_ik2qpdmw.AssistantQuickAction?>,
           _isc.getType<_ia2m3j3v.AssistantStatus?>,
           _isc.getType<_iaq6rutx.AssistantThread?>,
           _isc.getType<_i4iv0swm.AssistantThreadDetail?>,
           _isc.getType<_iohdfqf1.AssistantThreadView?>,
+          _isc.getType<_iti3p2ly.DocumentStyleGuide?>,
           _isc.getType<_i8ghcs7p.InlineAiEvent?>,
           _isc.getType<_i6pcz5z6.InlineAiEventType?>,
           _isc.getType<_i4m43iwr.InlineAiRequest?>,
           _isc.getType<_ie0jt2ne.ProofreadEvent?>,
           _isc.getType<_ivmxemza.ProofreadIssue?>,
+          _isc.getType<_izn9jjcu.StyleGuide?>,
+          _isc.getType<_itz63egs.StyleGuideInput?>,
+          _isc.getType<_ipldx8au.StyleGuideLibrary?>,
+          _isc.getType<_ike2qw5s.StyleGuideOrgDefault?>,
+          _isc.getType<_ibxjwk51.StyleGuideView?>,
           _isc.getType<_ixradasp.AnalyticsCohort?>,
           _isc.getType<_innm1rwe.AnalyticsCount?>,
           _isc.getType<_is2u4stz.AnalyticsDay?>,
@@ -1149,11 +1190,14 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i7trut12.AccessRequestOutcome?>,
           _isc.getType<_iimp60a4.AccessRequestView?>,
           _isc.getType<_iuzgacy4.DriveItemPermission?>,
+          _isc.getType<_ia6t9w39.GeneralAccess?>,
           _isc.getType<_ikeljole.InviteResolution?>,
           _isc.getType<_ih3711er.ItemSharingSettings?>,
+          _isc.getType<_iodj7c7d.OrgAccessView?>,
           _isc.getType<_ijwxtu30.OwnershipTransfer?>,
           _isc.getType<_iilpsf9g.OwnershipTransferView?>,
           _isc.getType<_iead0ok9.PermissionView?>,
+          _isc.getType<_iv2hjox5.PublicItemView?>,
           _isc.getType<_it712lg1.ShareLink?>,
           _isc.getType<_iw2xoohn.ShareLinkView?>,
           _isc.getType<_itd24os1.SharingInfo?>,
@@ -1296,6 +1340,7 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<List<_i4rkdm2k.AssistantMessageView>>,
           _isc.getType<List<_ivmxemza.ProofreadIssue>>,
           _isc.getType<List<_ivmxemza.ProofreadIssue>?>,
+          _isc.getType<List<_ibxjwk51.StyleGuideView>>,
           _isc.getType<List<int?>>,
           _isc.getType<List<_is2u4stz.AnalyticsDay>>,
           _isc.getType<List<_innm1rwe.AnalyticsCount>>,
@@ -1389,13 +1434,345 @@ class Protocol extends _isc.SerializationManager
           _iaic.Protocol.new,
           _iacc.Protocol.new,
         ],
+        classNames: const [
+          'ActivityDashboard',
+          'ActivityEvent',
+          'ActivityEventView',
+          'ActivityTrendPoint',
+          'ActivityType',
+          'ActivityViewer',
+          'AiApplyMode',
+          'AiOrgKeyView',
+          'AiProvider',
+          'AiProviderKeyView',
+          'AiQuality',
+          'AiUsage',
+          'AiUserSetting',
+          'AssistantContextHints',
+          'AssistantEvent',
+          'AssistantEventType',
+          'AssistantMessage',
+          'AssistantMessageView',
+          'AssistantQuickAction',
+          'AssistantStatus',
+          'AssistantThread',
+          'AssistantThreadDetail',
+          'AssistantThreadView',
+          'DocumentStyleGuide',
+          'InlineAiEvent',
+          'InlineAiEventType',
+          'InlineAiRequest',
+          'ProofreadEvent',
+          'ProofreadIssue',
+          'StyleGuide',
+          'StyleGuideInput',
+          'StyleGuideLibrary',
+          'StyleGuideOrgDefault',
+          'StyleGuideView',
+          'AnalyticsCohort',
+          'AnalyticsCount',
+          'AnalyticsDay',
+          'AnalyticsOverview',
+          'UsageApp',
+          'BoardArea',
+          'BoardAuthor',
+          'BoardBundleSuggestion',
+          'BoardBundleSuggestionView',
+          'BoardComment',
+          'BoardCommentView',
+          'BoardCounts',
+          'BoardEventKind',
+          'BoardFlag',
+          'BoardFlagReason',
+          'BoardFlagView',
+          'BoardListQuery',
+          'BoardMe',
+          'BoardModeration',
+          'BoardModerationAction',
+          'BoardPost',
+          'BoardPostDraft',
+          'BoardPostEvent',
+          'BoardPostKind',
+          'BoardPostListItem',
+          'BoardPostPage',
+          'BoardPostStatus',
+          'BoardPostView',
+          'BoardReviewCounts',
+          'BoardReviewItem',
+          'BoardReviewSection',
+          'BoardSignal',
+          'BoardSimilarPost',
+          'BoardSize',
+          'BoardSort',
+          'BoardTargetKind',
+          'BoardTask',
+          'BoardTaskPage',
+          'BoardTaskRef',
+          'BoardTaskStatus',
+          'BoardTaskView',
+          'BoardTriageState',
+          'BoardUserProfile',
+          'BoardVote',
+          'BoardVoteResult',
+          'Comment',
+          'CommentAnchorKind',
+          'CommentEvent',
+          'CommentEventKind',
+          'CommentFilter',
+          'CommentStatus',
+          'CommentSystemEvent',
+          'CommentThread',
+          'CommentThreadView',
+          'CommentView',
+          'AccessRole',
+          'ActorKind',
+          'WonkyErrorCode',
+          'WonkyException',
+          'DriveChange',
+          'DriveChangeKind',
+          'DriveImportOptions',
+          'DriveItem',
+          'DriveItemKind',
+          'DriveItemUserState',
+          'DriveItemView',
+          'DriveListFilter',
+          'DriveListPage',
+          'DriveOwnerFilter',
+          'DriveSearchFilters',
+          'DriveSort',
+          'DriveSortField',
+          'DriveView',
+          'FileCategory',
+          'FileUploadProgress',
+          'FileUploadRequest',
+          'FileUploadStart',
+          'FileUploadState',
+          'ImportReportView',
+          'ImportWarningView',
+          'StorageListFilter',
+          'StorageUsage',
+          'TemplateCategory',
+          'TemplatePreviewStyle',
+          'TemplateView',
+          'UploadConflictMode',
+          'FeedbackKind',
+          'FeedbackSubmission',
+          'FileUploadTicket',
+          'FileUrlView',
+          'ImageProfile',
+          'StoredFile',
+          'StoredFileKind',
+          'StoredFileStatus',
+          'UiBridgeCancel',
+          'UiBridgeHello',
+          'UiBridgeRequest',
+          'UiBridgeResponse',
+          'UiBridgeStatus',
+          'UiBridgeStop',
+          'UiBridgeWelcome',
+          'FeatureFlags',
+          'ProtocolInfo',
+          'ServerLimits',
+          'NotificationEvent',
+          'NotificationKind',
+          'NotificationPage',
+          'NotificationView',
+          'UserNotification',
+          'Participant',
+          'PresenceFollowerCount',
+          'PresenceHints',
+          'PresenceJoined',
+          'PresenceLeft',
+          'PresenceNotice',
+          'PresenceRoster',
+          'PresenceUpdated',
+          'PresenceState',
+          'PresenceUpdate',
+          'PublicationCard',
+          'PublicationCheckResult',
+          'PublicationDeliveryView',
+          'PublicationFieldMode',
+          'PublicationFields',
+          'PublicationInput',
+          'PublicationModeratorView',
+          'PublicationOpenSubmission',
+          'PublicationSecret',
+          'PublicationSettings',
+          'SubmissionDeliveryState',
+          'SubmissionRevisionView',
+          'SubmissionStarted',
+          'SubmissionStatus',
+          'SubmissionValues',
+          'SubmissionView',
+          'RevAck',
+          'RevPing',
+          'RevRequestOps',
+          'RevSubmit',
+          'RevInit',
+          'RevPong',
+          'RevRejected',
+          'RevRemoteOp',
+          'RevResync',
+          'RevRoleChanged',
+          'RevFileInfo',
+          'RevFileKind',
+          'RevOpView',
+          'RevPage',
+          'RevPageKind',
+          'RevPageRequest',
+          'RevRejectCode',
+          'AccessRequest',
+          'AccessRequestOutcome',
+          'AccessRequestView',
+          'DriveItemPermission',
+          'GeneralAccess',
+          'InviteResolution',
+          'ItemSharingSettings',
+          'OrgAccessView',
+          'OwnershipTransfer',
+          'OwnershipTransferView',
+          'PermissionView',
+          'PublicItemView',
+          'ShareLink',
+          'ShareLinkView',
+          'SharingInfo',
+          'QuotaExceededDetails',
+          'AccessTokenView',
+          'AccountDeletionPreview',
+          'AppThemeMode',
+          'CreatedAccessToken',
+          'UiDensity',
+          'UserPreferences',
+          'UserPreferencesPatch',
+          'UserProfile',
+          'UserProfileView',
+          'UserSummary',
+          'ItemVersion',
+          'ItemVersionView',
+          'VersionKind',
+          'VersionRestoreResult',
+          'VersionStorage',
+          'SheetsAiApplyResult',
+          'SheetsAiCellRequest',
+          'SheetsAiCellResult',
+          'SheetsAiPreview',
+          'SheetsAiPreviewCall',
+          'SheetsAiPreviewCell',
+          'SheetsFillProposal',
+          'SheetsFillRow',
+          'SheetsFormulaSuggestion',
+          'SheetsImportProgress',
+          'SheetsImportStatus',
+          'CellHistoryEntry',
+          'CellHistoryPage',
+          'RevertResult',
+          'RevertSkip',
+          'Dimension',
+          'EmbeddedObjectKind',
+          'HorizontalAlign',
+          'RecalcMode',
+          'ScriptBuildStatus',
+          'SheetKind',
+          'TriggerKind',
+          'VerticalAlign',
+          'WrapStrategy',
+          'SheetsActivitySummary',
+          'SheetsContributorStat',
+          'ScriptAuthorizationView',
+          'ScriptCompileResponse',
+          'ScriptExecution',
+          'ScriptExecutionKind',
+          'ScriptExecutionStatus',
+          'ScriptFetchResponse',
+          'ScriptRunResponse',
+          'ScriptRuntimeKind',
+          'SlidesAiAltText',
+          'SlidesAiApplyResult',
+          'SlidesAiBuildResult',
+          'SlidesAiDesignRank',
+          'SlidesAiNote',
+          'SlidesAiOutlineRequest',
+          'SlidesAiPreview',
+          'SlidesAiPreviewCall',
+          'SlidesAiRewriteRequest',
+          'ChartLinkProbe',
+          'ChartLinkState',
+          'ChartLinkStatus',
+          'ChartSnapshotView',
+          'ChartSourceList',
+          'ChartSourceSummary',
+          'BuildKind',
+          'BuildTrigger',
+          'DeckAppearance',
+          'PlaceholderType',
+          'SlideElementKind',
+          'SlideSizePreset',
+          'TableDimension',
+          'PresentationCommandEvent',
+          'PresentationCommandUpdate',
+          'PresentationEndUpdate',
+          'PresentationEndedEvent',
+          'PresentationInkEvent',
+          'PresentationLaserEvent',
+          'PresentationPairingEvent',
+          'PresentationPresenterEvent',
+          'PresentationRosterEvent',
+          'PresentationStateEvent',
+          'PresentationWelcome',
+          'PresentationInkUpdate',
+          'PresentationJoin',
+          'PresentationLaserUpdate',
+          'PresentationPairingTarget',
+          'PresentationPairingUpdate',
+          'PresentationParticipant',
+          'PresentationRole',
+          'PresentationSessionInfo',
+          'PresentationState',
+          'PresentationStateUpdate',
+          'DocAck',
+          'DocCursorUpdate',
+          'DocHashCheck',
+          'DocPing',
+          'DocRequestOps',
+          'DocSubmitOp',
+          'DocHashResult',
+          'DocInit',
+          'DocMetaChanged',
+          'DocOpRejected',
+          'DocParticipantJoined',
+          'DocParticipantLeft',
+          'DocPong',
+          'DocRemoteCursor',
+          'DocRemoteOp',
+          'DocRoleChanged',
+          'ConvertForInsertResult',
+          'DocRejectCode',
+          'Document',
+          'DocumentInfo',
+          'DocumentMetaChange',
+          'DocumentMetaPatch',
+          'DocumentMetaView',
+          'DocumentOp',
+          'DocumentOpKind',
+          'DocumentOpView',
+          'DocumentSnapshot',
+          'DocumentSnapshotView',
+          'ExportProgressEvent',
+          'ExportProgressKind',
+          'ExportResultView',
+          'ThemeConflictException',
+          'WriteDiffAuthor',
+          'WriteDiffView',
+          'WriteTheme',
+          'WriteThemeRevision',
+          'WriteThemeRevisionView',
+          'WriteThemeView',
+          'WriteVersionDocument',
+        ],
       );
 
-  static String? getClassNameFromObjectJson(dynamic data) {
-    if (data is! Map) return null;
-    final className = data['__className__'] as String?;
-    return className;
-  }
+  static String? getClassNameFromObjectJson(dynamic data) =>
+      _isc.ProtocolDeserialization.readClassName(data);
 
   @override
   T deserialize<T>(
@@ -1403,8 +1780,8 @@ class Protocol extends _isc.SerializationManager
     Type? t,
   ]) {
     t ??= T;
-
-    final dataClassName = getClassNameFromObjectJson(data);
+    final rawDataClassName = _isc.ProtocolDeserialization.readClassName(data);
+    final dataClassName = rawDataClassName;
     if (dataClassName != null && dataClassName != getClassNameForType(t)) {
       try {
         return deserializeByClassName({
@@ -1439,6 +1816,9 @@ class Protocol extends _isc.SerializationManager
     if (t == _iyja8k5e.AiApplyMode) {
       return _iyja8k5e.AiApplyMode.fromJson(data) as T;
     }
+    if (t == _ino0idxi.AiOrgKeyView) {
+      return _ino0idxi.AiOrgKeyView.fromJson(data) as T;
+    }
     if (t == _ir7z75mb.AiProvider) {
       return _ir7z75mb.AiProvider.fromJson(data) as T;
     }
@@ -1469,6 +1849,9 @@ class Protocol extends _isc.SerializationManager
     if (t == _i4rkdm2k.AssistantMessageView) {
       return _i4rkdm2k.AssistantMessageView.fromJson(data) as T;
     }
+    if (t == _ik2qpdmw.AssistantQuickAction) {
+      return _ik2qpdmw.AssistantQuickAction.fromJson(data) as T;
+    }
     if (t == _ia2m3j3v.AssistantStatus) {
       return _ia2m3j3v.AssistantStatus.fromJson(data) as T;
     }
@@ -1480,6 +1863,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _iohdfqf1.AssistantThreadView) {
       return _iohdfqf1.AssistantThreadView.fromJson(data) as T;
+    }
+    if (t == _iti3p2ly.DocumentStyleGuide) {
+      return _iti3p2ly.DocumentStyleGuide.fromJson(data) as T;
     }
     if (t == _i8ghcs7p.InlineAiEvent) {
       return _i8ghcs7p.InlineAiEvent.fromJson(data) as T;
@@ -1495,6 +1881,21 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _ivmxemza.ProofreadIssue) {
       return _ivmxemza.ProofreadIssue.fromJson(data) as T;
+    }
+    if (t == _izn9jjcu.StyleGuide) {
+      return _izn9jjcu.StyleGuide.fromJson(data) as T;
+    }
+    if (t == _itz63egs.StyleGuideInput) {
+      return _itz63egs.StyleGuideInput.fromJson(data) as T;
+    }
+    if (t == _ipldx8au.StyleGuideLibrary) {
+      return _ipldx8au.StyleGuideLibrary.fromJson(data) as T;
+    }
+    if (t == _ike2qw5s.StyleGuideOrgDefault) {
+      return _ike2qw5s.StyleGuideOrgDefault.fromJson(data) as T;
+    }
+    if (t == _ibxjwk51.StyleGuideView) {
+      return _ibxjwk51.StyleGuideView.fromJson(data) as T;
     }
     if (t == _ixradasp.AnalyticsCohort) {
       return _ixradasp.AnalyticsCohort.fromJson(data) as T;
@@ -1964,11 +2365,17 @@ class Protocol extends _isc.SerializationManager
     if (t == _iuzgacy4.DriveItemPermission) {
       return _iuzgacy4.DriveItemPermission.fromJson(data) as T;
     }
+    if (t == _ia6t9w39.GeneralAccess) {
+      return _ia6t9w39.GeneralAccess.fromJson(data) as T;
+    }
     if (t == _ikeljole.InviteResolution) {
       return _ikeljole.InviteResolution.fromJson(data) as T;
     }
     if (t == _ih3711er.ItemSharingSettings) {
       return _ih3711er.ItemSharingSettings.fromJson(data) as T;
+    }
+    if (t == _iodj7c7d.OrgAccessView) {
+      return _iodj7c7d.OrgAccessView.fromJson(data) as T;
     }
     if (t == _ijwxtu30.OwnershipTransfer) {
       return _ijwxtu30.OwnershipTransfer.fromJson(data) as T;
@@ -1978,6 +2385,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _iead0ok9.PermissionView) {
       return _iead0ok9.PermissionView.fromJson(data) as T;
+    }
+    if (t == _iv2hjox5.PublicItemView) {
+      return _iv2hjox5.PublicItemView.fromJson(data) as T;
     }
     if (t == _it712lg1.ShareLink) {
       return _it712lg1.ShareLink.fromJson(data) as T;
@@ -2410,6 +2820,9 @@ class Protocol extends _isc.SerializationManager
     if (t == _isc.getType<_iyja8k5e.AiApplyMode?>()) {
       return (data != null ? _iyja8k5e.AiApplyMode.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_ino0idxi.AiOrgKeyView?>()) {
+      return (data != null ? _ino0idxi.AiOrgKeyView.fromJson(data) : null) as T;
+    }
     if (t == _isc.getType<_ir7z75mb.AiProvider?>()) {
       return (data != null ? _ir7z75mb.AiProvider.fromJson(data) : null) as T;
     }
@@ -2451,6 +2864,12 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_ik2qpdmw.AssistantQuickAction?>()) {
+      return (data != null
+              ? _ik2qpdmw.AssistantQuickAction.fromJson(data)
+              : null)
+          as T;
+    }
     if (t == _isc.getType<_ia2m3j3v.AssistantStatus?>()) {
       return (data != null ? _ia2m3j3v.AssistantStatus.fromJson(data) : null)
           as T;
@@ -2471,6 +2890,10 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_iti3p2ly.DocumentStyleGuide?>()) {
+      return (data != null ? _iti3p2ly.DocumentStyleGuide.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_i8ghcs7p.InlineAiEvent?>()) {
       return (data != null ? _i8ghcs7p.InlineAiEvent.fromJson(data) : null)
           as T;
@@ -2489,6 +2912,27 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _isc.getType<_ivmxemza.ProofreadIssue?>()) {
       return (data != null ? _ivmxemza.ProofreadIssue.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_izn9jjcu.StyleGuide?>()) {
+      return (data != null ? _izn9jjcu.StyleGuide.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_itz63egs.StyleGuideInput?>()) {
+      return (data != null ? _itz63egs.StyleGuideInput.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ipldx8au.StyleGuideLibrary?>()) {
+      return (data != null ? _ipldx8au.StyleGuideLibrary.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ike2qw5s.StyleGuideOrgDefault?>()) {
+      return (data != null
+              ? _ike2qw5s.StyleGuideOrgDefault.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_ibxjwk51.StyleGuideView?>()) {
+      return (data != null ? _ibxjwk51.StyleGuideView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_ixradasp.AnalyticsCohort?>()) {
@@ -3095,6 +3539,10 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_ia6t9w39.GeneralAccess?>()) {
+      return (data != null ? _ia6t9w39.GeneralAccess.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_ikeljole.InviteResolution?>()) {
       return (data != null ? _ikeljole.InviteResolution.fromJson(data) : null)
           as T;
@@ -3103,6 +3551,10 @@ class Protocol extends _isc.SerializationManager
       return (data != null
               ? _ih3711er.ItemSharingSettings.fromJson(data)
               : null)
+          as T;
+    }
+    if (t == _isc.getType<_iodj7c7d.OrgAccessView?>()) {
+      return (data != null ? _iodj7c7d.OrgAccessView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_ijwxtu30.OwnershipTransfer?>()) {
@@ -3117,6 +3569,10 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _isc.getType<_iead0ok9.PermissionView?>()) {
       return (data != null ? _iead0ok9.PermissionView.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iv2hjox5.PublicItemView?>()) {
+      return (data != null ? _iv2hjox5.PublicItemView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_it712lg1.ShareLink?>()) {
@@ -3765,6 +4221,12 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == List<_ibxjwk51.StyleGuideView>) {
+      return (data as List)
+              .map((e) => deserialize<_ibxjwk51.StyleGuideView>(e))
+              .toList()
+          as T;
+    }
     if (t == List<int?>) {
       return (data as List).map((e) => deserialize<int?>(e)).toList() as T;
     }
@@ -4301,9 +4763,10 @@ class Protocol extends _isc.SerializationManager
               .toList()
           as T;
     }
-    final modules = dataClassName == null
-        ? deserializationMetadata.modulesForType(t)
-        : deserializationMetadata.modules;
+    final modules = deserializationMetadata.modulesForDeserialization(
+      t,
+      className: rawDataClassName,
+    );
     for (final module in modules) {
       try {
         return module.deserialize<T>(data, t);
@@ -4322,6 +4785,7 @@ class Protocol extends _isc.SerializationManager
       _i50cy468.ActivityType => 'ActivityType',
       _ikcwdr17.ActivityViewer => 'ActivityViewer',
       _iyja8k5e.AiApplyMode => 'AiApplyMode',
+      _ino0idxi.AiOrgKeyView => 'AiOrgKeyView',
       _ir7z75mb.AiProvider => 'AiProvider',
       _ic2q2fwi.AiProviderKeyView => 'AiProviderKeyView',
       _iviyoyk9.AiQuality => 'AiQuality',
@@ -4332,15 +4796,22 @@ class Protocol extends _isc.SerializationManager
       _id6kvqt9.AssistantEventType => 'AssistantEventType',
       _i8cittxq.AssistantMessage => 'AssistantMessage',
       _i4rkdm2k.AssistantMessageView => 'AssistantMessageView',
+      _ik2qpdmw.AssistantQuickAction => 'AssistantQuickAction',
       _ia2m3j3v.AssistantStatus => 'AssistantStatus',
       _iaq6rutx.AssistantThread => 'AssistantThread',
       _i4iv0swm.AssistantThreadDetail => 'AssistantThreadDetail',
       _iohdfqf1.AssistantThreadView => 'AssistantThreadView',
+      _iti3p2ly.DocumentStyleGuide => 'DocumentStyleGuide',
       _i8ghcs7p.InlineAiEvent => 'InlineAiEvent',
       _i6pcz5z6.InlineAiEventType => 'InlineAiEventType',
       _i4m43iwr.InlineAiRequest => 'InlineAiRequest',
       _ie0jt2ne.ProofreadEvent => 'ProofreadEvent',
       _ivmxemza.ProofreadIssue => 'ProofreadIssue',
+      _izn9jjcu.StyleGuide => 'StyleGuide',
+      _itz63egs.StyleGuideInput => 'StyleGuideInput',
+      _ipldx8au.StyleGuideLibrary => 'StyleGuideLibrary',
+      _ike2qw5s.StyleGuideOrgDefault => 'StyleGuideOrgDefault',
+      _ibxjwk51.StyleGuideView => 'StyleGuideView',
       _ixradasp.AnalyticsCohort => 'AnalyticsCohort',
       _innm1rwe.AnalyticsCount => 'AnalyticsCount',
       _is2u4stz.AnalyticsDay => 'AnalyticsDay',
@@ -4497,11 +4968,14 @@ class Protocol extends _isc.SerializationManager
       _i7trut12.AccessRequestOutcome => 'AccessRequestOutcome',
       _iimp60a4.AccessRequestView => 'AccessRequestView',
       _iuzgacy4.DriveItemPermission => 'DriveItemPermission',
+      _ia6t9w39.GeneralAccess => 'GeneralAccess',
       _ikeljole.InviteResolution => 'InviteResolution',
       _ih3711er.ItemSharingSettings => 'ItemSharingSettings',
+      _iodj7c7d.OrgAccessView => 'OrgAccessView',
       _ijwxtu30.OwnershipTransfer => 'OwnershipTransfer',
       _iilpsf9g.OwnershipTransferView => 'OwnershipTransferView',
       _iead0ok9.PermissionView => 'PermissionView',
+      _iv2hjox5.PublicItemView => 'PublicItemView',
       _it712lg1.ShareLink => 'ShareLink',
       _iw2xoohn.ShareLinkView => 'ShareLinkView',
       _itd24os1.SharingInfo => 'SharingInfo',
@@ -4665,6 +5139,8 @@ class Protocol extends _isc.SerializationManager
         return 'ActivityViewer';
       case _iyja8k5e.AiApplyMode():
         return 'AiApplyMode';
+      case _ino0idxi.AiOrgKeyView():
+        return 'AiOrgKeyView';
       case _ir7z75mb.AiProvider():
         return 'AiProvider';
       case _ic2q2fwi.AiProviderKeyView():
@@ -4685,6 +5161,8 @@ class Protocol extends _isc.SerializationManager
         return 'AssistantMessage';
       case _i4rkdm2k.AssistantMessageView():
         return 'AssistantMessageView';
+      case _ik2qpdmw.AssistantQuickAction():
+        return 'AssistantQuickAction';
       case _ia2m3j3v.AssistantStatus():
         return 'AssistantStatus';
       case _iaq6rutx.AssistantThread():
@@ -4693,6 +5171,8 @@ class Protocol extends _isc.SerializationManager
         return 'AssistantThreadDetail';
       case _iohdfqf1.AssistantThreadView():
         return 'AssistantThreadView';
+      case _iti3p2ly.DocumentStyleGuide():
+        return 'DocumentStyleGuide';
       case _i8ghcs7p.InlineAiEvent():
         return 'InlineAiEvent';
       case _i6pcz5z6.InlineAiEventType():
@@ -4703,6 +5183,16 @@ class Protocol extends _isc.SerializationManager
         return 'ProofreadEvent';
       case _ivmxemza.ProofreadIssue():
         return 'ProofreadIssue';
+      case _izn9jjcu.StyleGuide():
+        return 'StyleGuide';
+      case _itz63egs.StyleGuideInput():
+        return 'StyleGuideInput';
+      case _ipldx8au.StyleGuideLibrary():
+        return 'StyleGuideLibrary';
+      case _ike2qw5s.StyleGuideOrgDefault():
+        return 'StyleGuideOrgDefault';
+      case _ibxjwk51.StyleGuideView():
+        return 'StyleGuideView';
       case _ixradasp.AnalyticsCohort():
         return 'AnalyticsCohort';
       case _innm1rwe.AnalyticsCount():
@@ -5015,16 +5505,22 @@ class Protocol extends _isc.SerializationManager
         return 'AccessRequestView';
       case _iuzgacy4.DriveItemPermission():
         return 'DriveItemPermission';
+      case _ia6t9w39.GeneralAccess():
+        return 'GeneralAccess';
       case _ikeljole.InviteResolution():
         return 'InviteResolution';
       case _ih3711er.ItemSharingSettings():
         return 'ItemSharingSettings';
+      case _iodj7c7d.OrgAccessView():
+        return 'OrgAccessView';
       case _ijwxtu30.OwnershipTransfer():
         return 'OwnershipTransfer';
       case _iilpsf9g.OwnershipTransferView():
         return 'OwnershipTransferView';
       case _iead0ok9.PermissionView():
         return 'PermissionView';
+      case _iv2hjox5.PublicItemView():
+        return 'PublicItemView';
       case _it712lg1.ShareLink():
         return 'ShareLink';
       case _iw2xoohn.ShareLinkView():
@@ -5338,6 +5834,9 @@ class Protocol extends _isc.SerializationManager
     if (dataClassName == 'AiApplyMode') {
       return deserialize<_iyja8k5e.AiApplyMode>(data['data']);
     }
+    if (dataClassName == 'AiOrgKeyView') {
+      return deserialize<_ino0idxi.AiOrgKeyView>(data['data']);
+    }
     if (dataClassName == 'AiProvider') {
       return deserialize<_ir7z75mb.AiProvider>(data['data']);
     }
@@ -5368,6 +5867,9 @@ class Protocol extends _isc.SerializationManager
     if (dataClassName == 'AssistantMessageView') {
       return deserialize<_i4rkdm2k.AssistantMessageView>(data['data']);
     }
+    if (dataClassName == 'AssistantQuickAction') {
+      return deserialize<_ik2qpdmw.AssistantQuickAction>(data['data']);
+    }
     if (dataClassName == 'AssistantStatus') {
       return deserialize<_ia2m3j3v.AssistantStatus>(data['data']);
     }
@@ -5379,6 +5881,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'AssistantThreadView') {
       return deserialize<_iohdfqf1.AssistantThreadView>(data['data']);
+    }
+    if (dataClassName == 'DocumentStyleGuide') {
+      return deserialize<_iti3p2ly.DocumentStyleGuide>(data['data']);
     }
     if (dataClassName == 'InlineAiEvent') {
       return deserialize<_i8ghcs7p.InlineAiEvent>(data['data']);
@@ -5394,6 +5899,21 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'ProofreadIssue') {
       return deserialize<_ivmxemza.ProofreadIssue>(data['data']);
+    }
+    if (dataClassName == 'StyleGuide') {
+      return deserialize<_izn9jjcu.StyleGuide>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideInput') {
+      return deserialize<_itz63egs.StyleGuideInput>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideLibrary') {
+      return deserialize<_ipldx8au.StyleGuideLibrary>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideOrgDefault') {
+      return deserialize<_ike2qw5s.StyleGuideOrgDefault>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideView') {
+      return deserialize<_ibxjwk51.StyleGuideView>(data['data']);
     }
     if (dataClassName == 'AnalyticsCohort') {
       return deserialize<_ixradasp.AnalyticsCohort>(data['data']);
@@ -5863,11 +6383,17 @@ class Protocol extends _isc.SerializationManager
     if (dataClassName == 'DriveItemPermission') {
       return deserialize<_iuzgacy4.DriveItemPermission>(data['data']);
     }
+    if (dataClassName == 'GeneralAccess') {
+      return deserialize<_ia6t9w39.GeneralAccess>(data['data']);
+    }
     if (dataClassName == 'InviteResolution') {
       return deserialize<_ikeljole.InviteResolution>(data['data']);
     }
     if (dataClassName == 'ItemSharingSettings') {
       return deserialize<_ih3711er.ItemSharingSettings>(data['data']);
+    }
+    if (dataClassName == 'OrgAccessView') {
+      return deserialize<_iodj7c7d.OrgAccessView>(data['data']);
     }
     if (dataClassName == 'OwnershipTransfer') {
       return deserialize<_ijwxtu30.OwnershipTransfer>(data['data']);
@@ -5877,6 +6403,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'PermissionView') {
       return deserialize<_iead0ok9.PermissionView>(data['data']);
+    }
+    if (dataClassName == 'PublicItemView') {
+      return deserialize<_iv2hjox5.PublicItemView>(data['data']);
     }
     if (dataClassName == 'ShareLink') {
       return deserialize<_it712lg1.ShareLink>(data['data']);
@@ -6284,12 +6813,16 @@ class Protocol extends _isc.SerializationManager
       return deserialize<_is9bkd9t.WriteVersionDocument>(data['data']);
     }
     if (dataClassName.startsWith('serverpod_auth_idp.')) {
-      data['className'] = dataClassName.substring(19);
-      return _iaic.Protocol().deserializeByClassName(data);
+      return _iaic.Protocol().deserializeByClassName({
+        ...data,
+        'className': dataClassName.substring(19),
+      });
     }
     if (dataClassName.startsWith('serverpod_auth_core.')) {
-      data['className'] = dataClassName.substring(20);
-      return _iacc.Protocol().deserializeByClassName(data);
+      return _iacc.Protocol().deserializeByClassName({
+        ...data,
+        'className': dataClassName.substring(20),
+      });
     }
     return super.deserializeByClassName(data);
   }

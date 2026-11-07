@@ -9,6 +9,7 @@ import 'package:wonky_write_core/wonky_write_core.dart' show MarkdownFlavor;
 import '../../sheets/ai/sheets_assistant_target.dart';
 import '../../slides/ai/slides_assistant_target.dart';
 import '../../write/ai/write_context_builder.dart';
+import '../../write/ai/write_quick_actions.dart';
 import '../../write/ai/write_prompts.dart';
 import '../../write/mcp/headless_editor.dart';
 import '../common/actor.dart';
@@ -16,9 +17,9 @@ import '../common/models.dart';
 import '../mcp/tool_executor.dart';
 import '../mcp/tool_support.dart';
 import '../sharing/access_service.dart';
-import 'assistant_service.dart';
 import 'assistant_tools.dart';
 import 'llm/ai_client.dart';
+import 'style_guide_service.dart';
 
 /// What a chip of the panel shows about a tool call (persisted in
 /// `toolCallsJson`, Write 09 §5, Sheets 12 §6.3).
@@ -199,9 +200,10 @@ class WriteAssistantTarget extends AssistantTarget {
     MarkdownFlavor.parse(target.document.markdownFlavor),
   );
 
+  /// The assistant's edits in Write are always suggestions (Write 09
+  /// §5.2): the user reviews and accepts them like a colleague's.
   @override
-  AiApplyMode applyMode(AiApplyMode requested) =>
-      role < Role.editor ? AiApplyMode.suggest : requested;
+  AiApplyMode applyMode(AiApplyMode requested) => AiApplyMode.suggest;
 
   @override
   AssistantToolset toolset(ToolExecutor executor) => AssistantToolset.write(
@@ -258,6 +260,11 @@ class WriteAssistantTarget extends AssistantTarget {
       );
       comments = out.result?.text;
     }
+    final style = await StyleGuideService.forDocument(
+      session,
+      actor.userId,
+      target.item.id!,
+    );
     final caret = hints.selectionStart;
     blocks.add(
       TextPart(
@@ -269,6 +276,7 @@ class WriteAssistantTarget extends AssistantTarget {
           caretHeadingPath: hints.caretHeadingPath ?? (caret == null ? null : WriteContextBuilder.headingPath(ctx, caret)),
           localTime: hints.localTime,
           comments: comments,
+          styleGuide: style == null ? null : WriteQuickActions.styleContext(style),
         )}',
       ),
     );
@@ -296,12 +304,8 @@ class WriteAssistantTarget extends AssistantTarget {
       clientName: 'Assistant',
       groupId: runId,
       onBehalfOfSessionId: hints.documentSessionId,
-      changeGuard: guarded
-          ? (head, change, _) {
-              final v = AssistantService.guardViolation(head, change);
-              if (v != null) throw v;
-            }
-          : null,
+      // No destructive guard (Write 09 §5.8): every edit is a suggestion
+      // the user reviews, and the run is one undo step.
     );
   }
 

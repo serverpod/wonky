@@ -24,6 +24,8 @@ abstract final class RevLegacyFiles {
     Actor actor,
     UuidValue fileUuid,
   ) async {
+    // A signed-out viewer never removes anything (specs/06 §2.4).
+    if (actor.isAnonymous) return false;
     // Decks without a content ref use the item uuid as file uuid (Slides
     // 02 §9.3).
     final item = await DriveItem.db.findFirstRow(

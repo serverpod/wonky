@@ -32,8 +32,8 @@ void _invoke(
   );
 }
 
-/// The account avatar menu (suite 03 §3.3): name, email, app settings,
-/// Wonky Work settings, *Open ▸* Drive / Write / Sheets / Slides, Sign out.
+/// The account avatar menu (suite 03 §3.3): *Settings*, *Open ▸* Drive /
+/// Write / Sheets / Slides, Sign out.
 class AccountMenuButton extends StatelessWidget {
   const AccountMenuButton({super.key, required this.services, this.size = 32});
 
@@ -53,32 +53,15 @@ class AccountMenuButton extends StatelessWidget {
             overlayAlignment: AlignmentDirectional.topEnd,
             offset: Offset(0, 6),
           ),
-          // Name and email, *<App> settings*, *Wonky Work settings*, *Open ▸*
-          // the four apps, Sign out (suite 03 §3.3).
+          // *Settings*, *Open ▸* the four apps, Sign out (suite 03 §3.3);
+          // the name and email are in the avatar's tooltip, not the menu.
           entries: () => [
-            if (summary != null)
-              WonkyMenuLabel('${summary.displayName} · ${summary.email}'),
-            WonkyMenuItem(
-              key: const ValueKey<String>('account.appSettings'),
-              label: l.cmdAppSettings(services.config.shortAppName),
-              icon: LucideIcons.settings2,
-              onSelected: () =>
-                  _invoke(services, context, 'shell.settings.openApp'),
-            ),
             WonkyMenuItem(
               key: const ValueKey<String>('account.settings'),
-              label: l.cmdWorkSettings,
-              leading: const WonkyProductIcon(
-                WonkyProduct.work,
-                size: 16,
-                semanticLabel: '',
-              ),
-              onSelected: () => _invoke(
-                services,
-                context,
-                'shell.settings.open',
-                {'section': 'account'},
-              ),
+              label: l.cmdSettings,
+              icon: LucideIcons.settings,
+              onSelected: () =>
+                  _invoke(services, context, 'shell.settings.openApp'),
             ),
             WonkyMenuSubmenu(
               key: const ValueKey<String>('account.open'),

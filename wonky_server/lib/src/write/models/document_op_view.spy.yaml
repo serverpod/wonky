@@ -8,4 +8,9 @@ fields:
   actorKind: ActorKind
   kind: DocumentOpKind
   sessionId: String?
+  ### The app session an assistant run acted for and the run (its ops are
+  ### one undo step there, Write 09 §5.2); also on ops sent to fill a gap
+  ### or after a reconnect.
+  onBehalfOfSessionId: String?
+  groupId: String?
   createdAt: DateTime

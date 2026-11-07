@@ -60,6 +60,7 @@ class MenuResolver {
             args: s.args,
             label: s.label,
             radio: s.radio,
+            showIcon: s.showIcon,
             key: s.effectiveId,
           );
           if (e != null) out.add(e);
@@ -75,6 +76,7 @@ class MenuResolver {
     Map<String, Object?> args = const {},
     String? label,
     bool radio = false,
+    bool showIcon = false,
     String? key,
     InvocationSource source = InvocationSource.menu,
   }) {
@@ -125,6 +127,7 @@ class MenuResolver {
               key: k,
               label: title,
               checked: state.checked!,
+              icon: showIcon ? command.iconFor(args) : null,
               shortcut: shortcut,
               enabled: state.enabled,
               disabledReason: state.disabledReason,

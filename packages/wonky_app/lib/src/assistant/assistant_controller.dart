@@ -235,37 +235,68 @@ class AssistantController extends ChangeNotifier {
     _reply = reply;
     _removedChips.clear();
     _notify();
+    await _stream(
+      reply,
+      api.chat(
+        threadId: threadId,
+        itemUuid: adapter.itemUuid,
+        message: message,
+        hints: hints,
+      ),
+    );
+  }
+
+  /// Runs a quick action (Write 09 §5.5): no user bubble, a working
+  /// indicator ([workingLabel]) until the result streams in.
+  Future<void> runQuickAction(
+    AssistantQuickAction action, {
+    required String workingLabel,
+  }) async {
+    if (busy) return;
+    final s = status.value;
+    if (s != null && !s.available) return;
+    final hints = adapter.hints(
+      applyMode: applyMode,
+      chips: {for (final c in chips) c.id},
+    );
+    final reply = AssistantReplyEntry(_key('a'))
+      ..workingLabel = workingLabel
+      ..quickAction = action;
+    entries.add(reply);
+    _reply = reply;
+    _notify();
+    await _stream(
+      reply,
+      api.quickAction(
+        threadId: threadId,
+        itemUuid: adapter.itemUuid,
+        action: action,
+        hints: hints,
+      ),
+    );
+  }
+
+  Future<void> _stream(
+    AssistantReplyEntry reply,
+    Stream<AssistantEvent> events,
+  ) async {
     final done = Completer<void>();
-    var gotStarted = false;
-    _run = api
-        .chat(
-          threadId: threadId,
-          itemUuid: adapter.itemUuid,
-          message: message,
-          hints: hints,
-        )
-        .listen(
-          (e) {
-            if (e.type == AssistantEventType.started) gotStarted = true;
-            _onEvent(reply, e);
-          },
-          onError: (Object e) {
-            reply
-              ..status = AssistantReplyStatus.failed
-              ..error = errorMessage(e);
-            if (!gotStarted && entries.length >= 2) {
-              // Nothing was saved; keep the message for editing.
-            }
-            _finishRun(reply);
-            if (!done.isCompleted) done.complete();
-          },
-          onDone: () {
-            if (reply.streaming) reply.status = AssistantReplyStatus.done;
-            _finishRun(reply);
-            if (!done.isCompleted) done.complete();
-          },
-          cancelOnError: true,
-        );
+    _run = events.listen(
+      (e) => _onEvent(reply, e),
+      onError: (Object e) {
+        reply
+          ..status = AssistantReplyStatus.failed
+          ..error = errorMessage(e);
+        _finishRun(reply);
+        if (!done.isCompleted) done.complete();
+      },
+      onDone: () {
+        if (reply.streaming) reply.status = AssistantReplyStatus.done;
+        _finishRun(reply);
+        if (!done.isCompleted) done.complete();
+      },
+      cancelOnError: true,
+    );
     await done.future;
   }
 
@@ -377,7 +408,8 @@ class AssistantController extends ChangeNotifier {
       case AssistantEventType.error:
         reply
           ..status = AssistantReplyStatus.failed
-          ..error = e.error;
+          ..error = e.error
+          ..errorCode = e.errorCode;
       case AssistantEventType.done:
         if (e.changeId != null) reply.changeId = e.changeId;
         final preview = e.previewId;

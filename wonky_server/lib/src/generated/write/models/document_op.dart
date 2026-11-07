@@ -26,6 +26,8 @@ abstract class DocumentOp
     this.authorId,
     required this.actorKind,
     this.sessionId,
+    this.onBehalfOfSessionId,
+    this.groupId,
     required this.kind,
     required this.baseRevision,
     required this.deltaJson,
@@ -41,6 +43,8 @@ abstract class DocumentOp
     int? authorId,
     required _ipbpecg8.ActorKind actorKind,
     String? sessionId,
+    String? onBehalfOfSessionId,
+    String? groupId,
     required _iymqng84.DocumentOpKind kind,
     required int baseRevision,
     required String deltaJson,
@@ -61,6 +65,8 @@ abstract class DocumentOp
         (jsonSerialization['actorKind'] as String),
       ),
       sessionId: jsonSerialization['sessionId'] as String?,
+      onBehalfOfSessionId: jsonSerialization['onBehalfOfSessionId'] as String?,
+      groupId: jsonSerialization['groupId'] as String?,
       kind: _iymqng84.DocumentOpKind.fromJson(
         (jsonSerialization['kind'] as String),
       ),
@@ -93,6 +99,13 @@ abstract class DocumentOp
 
   String? sessionId;
 
+  /// The app session an assistant run acted for and the run (its ops are
+  /// one undo step there, Write 09 §5.2); also on ops sent to fill a gap
+  /// or after a reconnect.
+  String? onBehalfOfSessionId;
+
+  String? groupId;
+
   _iymqng84.DocumentOpKind kind;
 
   int baseRevision;
@@ -119,6 +132,8 @@ abstract class DocumentOp
     int? authorId,
     _ipbpecg8.ActorKind? actorKind,
     String? sessionId,
+    String? onBehalfOfSessionId,
+    String? groupId,
     _iymqng84.DocumentOpKind? kind,
     int? baseRevision,
     String? deltaJson,
@@ -136,6 +151,9 @@ abstract class DocumentOp
       if (authorId != null) 'authorId': authorId,
       'actorKind': actorKind.toJson(),
       if (sessionId != null) 'sessionId': sessionId,
+      if (onBehalfOfSessionId != null)
+        'onBehalfOfSessionId': onBehalfOfSessionId,
+      if (groupId != null) 'groupId': groupId,
       'kind': kind.toJson(),
       'baseRevision': baseRevision,
       'deltaJson': deltaJson,
@@ -155,6 +173,9 @@ abstract class DocumentOp
       if (authorId != null) 'authorId': authorId,
       'actorKind': actorKind.toJson(),
       if (sessionId != null) 'sessionId': sessionId,
+      if (onBehalfOfSessionId != null)
+        'onBehalfOfSessionId': onBehalfOfSessionId,
+      if (groupId != null) 'groupId': groupId,
       'kind': kind.toJson(),
       'baseRevision': baseRevision,
       'deltaJson': deltaJson,
@@ -202,6 +223,8 @@ class _DocumentOpImpl extends DocumentOp {
     int? authorId,
     required _ipbpecg8.ActorKind actorKind,
     String? sessionId,
+    String? onBehalfOfSessionId,
+    String? groupId,
     required _iymqng84.DocumentOpKind kind,
     required int baseRevision,
     required String deltaJson,
@@ -215,6 +238,8 @@ class _DocumentOpImpl extends DocumentOp {
          authorId: authorId,
          actorKind: actorKind,
          sessionId: sessionId,
+         onBehalfOfSessionId: onBehalfOfSessionId,
+         groupId: groupId,
          kind: kind,
          baseRevision: baseRevision,
          deltaJson: deltaJson,
@@ -234,6 +259,8 @@ class _DocumentOpImpl extends DocumentOp {
     Object? authorId = _Undefined,
     _ipbpecg8.ActorKind? actorKind,
     Object? sessionId = _Undefined,
+    Object? onBehalfOfSessionId = _Undefined,
+    Object? groupId = _Undefined,
     _iymqng84.DocumentOpKind? kind,
     int? baseRevision,
     String? deltaJson,
@@ -248,6 +275,10 @@ class _DocumentOpImpl extends DocumentOp {
       authorId: authorId is int? ? authorId : this.authorId,
       actorKind: actorKind ?? this.actorKind,
       sessionId: sessionId is String? ? sessionId : this.sessionId,
+      onBehalfOfSessionId: onBehalfOfSessionId is String?
+          ? onBehalfOfSessionId
+          : this.onBehalfOfSessionId,
+      groupId: groupId is String? ? groupId : this.groupId,
       kind: kind ?? this.kind,
       baseRevision: baseRevision ?? this.baseRevision,
       deltaJson: deltaJson ?? this.deltaJson,
@@ -291,6 +322,17 @@ class DocumentOpUpdateTable extends _is.UpdateTable<DocumentOpTable> {
 
   _is.ColumnValue<String, String> sessionId(String? value) => _is.ColumnValue(
     table.sessionId,
+    value,
+  );
+
+  _is.ColumnValue<String, String> onBehalfOfSessionId(String? value) =>
+      _is.ColumnValue(
+        table.onBehalfOfSessionId,
+        value,
+      );
+
+  _is.ColumnValue<String, String> groupId(String? value) => _is.ColumnValue(
+    table.groupId,
     value,
   );
 
@@ -351,6 +393,14 @@ class DocumentOpTable extends _is.Table<int?> {
       'sessionId',
       this,
     );
+    onBehalfOfSessionId = _is.ColumnString(
+      'onBehalfOfSessionId',
+      this,
+    );
+    groupId = _is.ColumnString(
+      'groupId',
+      this,
+    );
     kind = _is.ColumnEnum(
       'kind',
       this,
@@ -389,6 +439,13 @@ class DocumentOpTable extends _is.Table<int?> {
 
   late final _is.ColumnString sessionId;
 
+  /// The app session an assistant run acted for and the run (its ops are
+  /// one undo step there, Write 09 §5.2); also on ops sent to fill a gap
+  /// or after a reconnect.
+  late final _is.ColumnString onBehalfOfSessionId;
+
+  late final _is.ColumnString groupId;
+
   late final _is.ColumnEnum<_iymqng84.DocumentOpKind> kind;
 
   late final _is.ColumnInt baseRevision;
@@ -410,6 +467,8 @@ class DocumentOpTable extends _is.Table<int?> {
     authorId,
     actorKind,
     sessionId,
+    onBehalfOfSessionId,
+    groupId,
     kind,
     baseRevision,
     deltaJson,

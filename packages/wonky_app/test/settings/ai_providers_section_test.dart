@@ -11,15 +11,23 @@ void main() {
   late CommandTestHarness h;
   late FakeAssistantApi api;
 
-  AssistantStatus notConfigured({bool userKeysAllowed = true}) =>
-      AssistantStatus(
-        available: false,
-        reason: 'notConfigured',
-        quality: AiQuality.best,
-        tokensUsedToday: 0,
-        dailyTokenBudget: 0,
-        userKeysAllowed: userKeysAllowed,
-      );
+  AssistantStatus notConfigured({
+    bool userKeysAllowed = true,
+    String? organization,
+  }) => AssistantStatus(
+    available: false,
+    reason: 'notConfigured',
+    quality: AiQuality.best,
+    tokensUsedToday: 0,
+    dailyTokenBudget: 0,
+    userKeysAllowed: userKeysAllowed,
+    organization: organization,
+  );
+
+  Finder field(String key) => find.descendant(
+    of: find.byKey(ValueKey<String>(key)),
+    matching: find.byType(EditableText),
+  );
 
   setUp(() {
     h = CommandTestHarness();
@@ -128,6 +136,97 @@ void main() {
 
       expect(
         find.byKey(const ValueKey<String>('settings.aiProviders.notAllowed')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'Given a member of an organization then the shared key group warns that '
+    'anyone with an email there can use the key',
+    (tester) async {
+      await pump(tester, notConfigured(organization: 'acme.dev'));
+
+      expect(find.text('Key for acme.dev'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('settings.aiProviders.orgWarning')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'Anyone who signs in with an email address at acme.dev can use '
+          'this key',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'Given a member of an organization when they share a key then it asks '
+    'first, sends it once and shows who added it',
+    (tester) async {
+      await pump(tester, notConfigured(organization: 'acme.dev'));
+
+      await tester.enterText(
+        field('settings.aiProviders.org.key'),
+        'sk-test-0123456789-ORGK',
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const ValueKey<String>('settings.aiProviders.org.save')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Share this key with acme.dev?'), findsOneWidget);
+      await tester.tap(find.text('Share key').last);
+      await tester.pumpAndSettle();
+
+      expect(api.savedOrgKeys, [
+        (AiProvider.openai, 'sk-test-0123456789-ORGK'),
+      ]);
+      expect(
+        find.text('OpenAI key ending in ORGK, added by Me'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('settings.aiProviders.orgInUse')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('0123456789'), findsNothing);
+    },
+  );
+
+  testWidgets('Given a member of an organization when they cancel sharing then '
+      'nothing is sent', (tester) async {
+    await pump(tester, notConfigured(organization: 'acme.dev'));
+
+    await tester.enterText(
+      field('settings.aiProviders.org.key'),
+      'sk-test-0123456789-ORGK',
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('settings.aiProviders.org.save')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
+
+    expect(api.savedOrgKeys, isEmpty);
+  });
+
+  testWidgets(
+    'Given a user without an organization (a public mail address) then '
+    'there is no shared key group',
+    (tester) async {
+      await pump(tester, notConfigured());
+
+      expect(
+        find.byKey(const ValueKey<String>('settings.aiProviders.orgWarning')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('settings.aiProviders.key')),
         findsOneWidget,
       );
     },

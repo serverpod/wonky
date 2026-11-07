@@ -51,12 +51,13 @@ class _Doc extends UndoHandler<WriteContentUndoEntry> {
     );
   }
 
-  void remote(Delta change) {
+  void remote(Delta change, {bool fixup = false}) {
     doc = WonkyOt.apply(doc, change);
     final r = rebaseWriteStacks(
       service.undoStepsOf(_stack),
       service.redoStepsOf(_stack),
       change,
+      fixup: fixup,
     );
     if (r != null) service.applyRemote(_stack, r);
   }
@@ -140,6 +141,50 @@ void main() {
         await d.service.redo();
 
         expect(d.text, '>> Hello world\n');
+      },
+    );
+  });
+
+  group('Given a suggested deletion that was undone and redone', () {
+    const key = 'sug_s1';
+    Map<String, Object?> mark(int at) => {
+      key: {'t': 'del', 'by': 'me', 'at': at},
+    };
+    Delta markWorld(Object? value) => Delta()
+      ..retain(6)
+      ..retain(5, {key: value});
+    bool marked(Delta doc) =>
+        doc.toList().any((op) => op.attributes?.containsKey(key) ?? false);
+
+    late _Doc d;
+
+    setUp(() async {
+      d = _Doc(Delta()..insert('Hello world\n'));
+      d.local(markWorld(mark(1)['sug_s1']));
+      await d.service.undo();
+      await d.service.redo();
+    });
+
+    test(
+      'when the server restamped the mark (fix-up) then undo still clears it',
+      () async {
+        d.remote(markWorld(mark(2)['sug_s1']), fixup: true);
+
+        await d.service.undo();
+
+        expect(marked(d.doc), isFalse);
+        expect(d.text, 'Hello world\n');
+      },
+    );
+
+    test(
+      'when a collaborator changed the mark then their change is kept',
+      () async {
+        d.remote(markWorld(mark(2)['sug_s1']));
+
+        await d.service.undo();
+
+        expect(marked(d.doc), isTrue);
       },
     );
   });

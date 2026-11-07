@@ -83,7 +83,19 @@ exception and must reuse the presentation-session state model.
 | `/invite/:token` | Share-link landing (request access / open) |
 
 Auth guard redirects to `/signin?next=…`, except for the auth routes and the `/improvements`
-routes, which signed-out visitors can read (M12). The auth screens carry `next` between each other
+routes, which signed-out visitors can read (M12), and — in Write, Sheets and Slides
+(`WonkyAppConfig.allowsGuestViewing`; not Drive) — exactly the editor route `/d/:uuid`,
+`/s/:uuid`, `/p/:uuid` (not its children: history, print, present, script), where a signed-out
+**guest** views a link-shared item (06 §2.4): the item comes from `publicItem.get` (`notFound`
+→ *Sign in to open this* with *Sign in*), the editor is view-only whatever the link role, with no
+comments, presence, history, drive calls or local copy (Sheets and Slides read through a
+device-wide `guest` RevLog cache, evicted like any cache and closed at sign-in); the title row
+shows *Viewing as a guest · Sign in to comment or edit* and **Sign in**
+(`shell.account.signIn`, back to the item) instead of Share, the board buttons and the account
+menu. Commands that need an account are disabled with *Sign in to use this*
+(`WonkyAppConfig.guestAllowsCommand`: the shell's drive, sharing, comments, versions, AI,
+notifications, settings, new/import/download groups plus each app's own). Signing in or out on
+the editor route rebuilds the editor for the new state. The auth screens carry `next` between each other
 (*Create account*, *Sign in*, *Forgot password*, `/signup/verify`), and signing in or finishing
 sign-up lands on it; only a relative path (`/…`, not `//…`) is followed, anything else goes to
 `/`. Unknown/forbidden items show an in-app
@@ -130,7 +142,8 @@ Row 1 (title row, 48 px):
   count). Comments show through the app's `CommentsHost` when it sets one
   (`ShellServices.commentsHost`; Write: the margin next to the page), otherwise in the comments
   side panel.
-- **Share** button (primary; lock/globe icon by link state).
+- **Share** button (primary, size `sm` — as tall as *Report a bug* / *Suggest an improvement*;
+  lock/globe icon by link state).
 - Account avatar menu.
 
 There are no History or Assistant buttons in the title row: those panels (and the app's other
@@ -159,17 +172,24 @@ See version history `Mod+Alt+Shift+H`), Make available offline (toggle), Details
 **Edit**: see [08-commands-and-undo.md](08-commands-and-undo.md) §3.5, plus app items.
 
 **View** (shared core): Mode ▸ (Editing / Suggesting (Write) / Viewing), Zoom ▸, Panels ▸
-(Outline, Comments, History, Assistant — Write replaces Comments with a top-level *Comments and
-suggestions* toggle for its margin), App theme ▸ (System / Light / Dark).
+(the side panels in the rail's order with the rail's icons: Comments, the app's panels — the
+Assistant among them —, History; each a check item with its icon leading and the ✓ at the end,
+`MenuSpec.command(showIcon: true)`, 02 §4.2. Write: Assistant, Outline, Find, History, and a
+top-level *Comments and suggestions* toggle for its margin), App theme ▸ (System / Light / Dark).
 
-**Tools**: Assistant, Explore (search drive), (v2) *<App> settings…*
-(`shell.settings.openApp`, `Mod+,` on desktop) and *Wonky Work settings…*
-(`shell.settings.open`), Keyboard shortcuts (`Mod+/`), Accessibility settings.
+**Tools**: Assistant, app items, **Settings…** (`shell.settings.openApp`, Lucide `settings`,
+`Mod+,` on desktop; the one settings entry, opening the settings page with the app's and the
+Wonky Work sections, 04 §4.2), Keyboard shortcuts (`Mod+/`). There is no *Explore* (the quick
+switcher is `Mod+P` and the palette), no *Accessibility settings* (Settings › Appearance) and
+no separate *Wonky Work settings…* or *Preferences*.
 
 **Help**: Keyboard shortcuts, app items (Write: Markdown guide; Sheets: Function list; Slides:
-see Slides 04), separator, (M12) **Bugs & improvements…** (`shell.board.report`, opens the
-report dialog) and **Browse Bugs & improvements** (`shell.board.open`, §3.4), What's new, About. There is no in-app help center and no menu search (menu commands are found through the
-command palette).
+see Slides 04), separator, **Report a bug** (`shell.board.report {kind: bug}`, Lucide `bug`)
+and **Suggest an improvement** (`{kind: idea}`, `leaf`) — the report dialog on that kind, like
+the title-row buttons (menu ids `help.reportBug`, `help.suggest`) —, **Browse Bugs &
+improvements** (`shell.board.open`, §3.4), About. There is no *What's new*
+(`shell.help.whatsNew` is removed). There is no in-app help center and no menu search (menu
+commands are found through the command palette).
 
 **Decided (v2 review, Q6):** *Report a bug* **replaces** *Report a problem* in the Help menu
 (one obvious way to report). `shell.help.feedback` (the in-app dialog that posts to the server's
@@ -222,9 +242,10 @@ In the mobile layout ([02 §6.1](02-design-system.md), T-12) the left menu (a dr
 and *Suggest an improvement* are hidden (their commands, routes and the account menu's settings
 stay) — and its rows are 48 px tall touch targets. The desktop menu is unchanged.
 
-The account menu (avatar) in homes and editors lists: name and email, *<App> settings*, *Wonky
-Work settings*, *Open ▸* Wonky Drive / Write / Sheets / Slides (product icons; replaces the
-former single "Open Wonky Sheets/Write" item), *Sign out*.
+The account menu (avatar) in homes and editors lists: **Settings** (Lucide `settings`,
+`shell.settings.openApp`, the one settings page), *Open ▸* Wonky Drive / Write / Sheets /
+Slides (product icons; replaces the former single "Open Wonky Sheets/Write" item), *Sign out*.
+It doesn't show the user's name and email (the avatar's tooltip does).
 
 **Decided (v2 review, Q7, D2):** an app home shows only folders that contain — recursively,
 ignoring trashed items — at least one item of the app's kind (maintained as

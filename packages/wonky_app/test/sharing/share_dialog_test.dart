@@ -1,6 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shad/shad.dart'
+    show LucideIcons, ShadButton, ShadInput, ShadShadowDecoration;
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
@@ -21,17 +23,37 @@ void main() {
     email: 'dan@example.test',
   );
 
+  final teamUuid = UuidValue.fromString('0199f000-0000-7000-8000-0000000000f0');
+
+  /// The item's sharing; [organization] is the caller's, [orgRole] the
+  /// item's own "Anyone at example.test" grant, [linkRole] its link.
   SharingInfo sharing({
     AccessRole myRole = AccessRole.owner,
     bool canShare = true,
     List<AccessRequestView> requests = const [],
+    DriveItemKind kind = DriveItemKind.document,
+    String? organization,
+    AccessRole? orgRole,
+    AccessRole? linkRole,
+    OrgAccessView? inheritedOrgAccess,
   }) => SharingInfo(
     itemUuid: item.uuid,
     itemName: item.name,
-    itemKind: DriveItemKind.document,
+    itemKind: kind,
     owner: TestUsers.anna,
     myRole: myRole,
     canShare: canShare,
+    link: linkRole == null ? null : ShareLinkView(token: 'tok', role: linkRole),
+    organization: organization,
+    orgAccess: orgRole == null
+        ? null
+        : OrgAccessView(domain: 'example.test', role: orgRole),
+    inheritedOrgAccess: inheritedOrgAccess,
+    generalAccess: linkRole != null
+        ? GeneralAccess.link
+        : orgRole != null
+        ? GeneralAccess.organization
+        : GeneralAccess.restricted,
     permissions: [
       PermissionView(
         user: TestUsers.bob,
@@ -46,9 +68,7 @@ void main() {
       PermissionView(
         user: dan,
         role: AccessRole.commenter,
-        inheritedFromUuid: UuidValue.fromString(
-          '0199f000-0000-7000-8000-0000000000f0',
-        ),
+        inheritedFromUuid: teamUuid,
         inheritedFromName: 'Team',
         grantedAt: DateTime.utc(2026, 10, 1),
       ),
@@ -135,6 +155,119 @@ void main() {
   );
 
   group('Given the owner in the share dialog', () {
+    testWidgets('when the dialog is open then Copy link and Done are its '
+        'footer and there is no X in the corner (suite 02 §4.20)', (
+      tester,
+    ) async {
+      await pumpDialog(tester);
+      expect(_key('dialog.share.copyLink'), findsOneWidget);
+      expect(_key('dialog.share.done'), findsOneWidget);
+      expect(_key('dialog.close'), findsNothing);
+
+      await tester.tap(_key('dialog.share.settings'));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.settingsDone'), findsOneWidget);
+      expect(_key('dialog.close'), findsNothing);
+      // Done is the only way back; Reset link is gone.
+      expect(find.byIcon(LucideIcons.arrowLeft), findsNothing);
+      expect(find.text('Reset link'), findsNothing);
+      await tester.tap(_key('dialog.share.settingsDone'));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.done'), findsOneWidget);
+    });
+
+    testWidgets('when the dialog is open then Copy link is on the left of '
+        'the footer and Done on the right', (tester) async {
+      await pumpDialog(tester);
+      // The content's edges: the people field starts at the left, the role
+      // select ends at the right.
+      final field = tester.getRect(_key('dialog.share.field'));
+      final role = tester.getRect(_key('dialog.share.role'));
+      final copy = tester.getRect(_key('dialog.share.copyLink'));
+      final done = tester.getRect(_key('dialog.share.done'));
+
+      expect(copy.left, moreOrLessEquals(field.left, epsilon: 1));
+      expect(done.right, moreOrLessEquals(role.right, epsilon: 1));
+    });
+
+    testWidgets('when starting to type an address then only the composer '
+        'shows, with Cancel and Send, and Cancel goes back', (tester) async {
+      await pumpDialog(tester);
+      expect(find.text('People with access'), findsOneWidget);
+
+      await tester.enterText(_key('dialog.share.input'), 'er');
+      await tester.pumpAndSettle();
+
+      expect(find.text('People with access'), findsNothing);
+      expect(find.text('General access'), findsNothing);
+      expect(_key('dialog.share.copyLink'), findsNothing);
+      expect(_key('dialog.share.done'), findsNothing);
+      expect(_key('dialog.share.cancel'), findsOneWidget);
+      expect(_key('dialog.share.send'), findsOneWidget);
+      final cancel = tester.getRect(_key('dialog.share.cancel'));
+      final send = tester.getRect(_key('dialog.share.send'));
+      expect(cancel.right, lessThanOrEqualTo(send.left));
+      expect(_key('dialog.share.sendEmail'), findsOneWidget);
+
+      await tester.tap(_key('dialog.share.cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('People with access'), findsOneWidget);
+      expect(_key('dialog.share.done'), findsOneWidget);
+      expect(repo.calls, isEmpty);
+    });
+
+    testWidgets('when a valid address is typed but not yet a chip then Send '
+        'shares with it', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'erin@exa');
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<ShadButton>(_key('dialog.share.send')).enabled,
+        isFalse,
+      );
+      await tester.enterText(_key('dialog.share.input'), 'erin@example.test');
+      await tester.pumpAndSettle();
+      await tester.tap(_key('dialog.share.send'));
+      await tester.pumpAndSettle();
+
+      expect(repo.calls, ['share:editor:erin@example.test:notify=true']);
+    });
+
+    testWidgets('when Backspace is pressed in the empty field then the last '
+        'address chip is removed whole', (tester) async {
+      await pumpDialog(tester);
+      await tester.enterText(_key('dialog.share.input'), 'erin@example.test ');
+      await tester.enterText(_key('dialog.share.input'), 'finn@example.test ');
+      await tester.pumpAndSettle();
+      expect(find.text('finn@example.test'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pumpAndSettle();
+
+      expect(find.text('finn@example.test'), findsNothing);
+      expect(find.text('erin@example.test'), findsOneWidget);
+    });
+
+    testWidgets('when the search hint appears then nothing below it moves', (
+      tester,
+    ) async {
+      repo.info = sharing(organization: 'example.test');
+      await pumpDialog(tester);
+      await tester.enterText(_key('dialog.share.input'), 'zed@example.test');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      final without = tester.getTopLeft(_key('dialog.share.sendEmail')).dy;
+
+      await tester.enterText(_key('dialog.share.input'), 'zed');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.searchHint').hitTestable(), findsOneWidget);
+
+      expect(tester.getTopLeft(_key('dialog.share.sendEmail')).dy, without);
+    });
+
     testWidgets('when adding an email with the commenter role then it is '
         'shared and listed as an invite', (tester) async {
       await pumpDialog(tester);
@@ -152,6 +285,49 @@ void main() {
       expect(_key('dialog.share.send'), findsNothing);
     });
 
+    testWidgets('when adding someone then Send an email is on and the '
+        'message goes with the share (specs/06 §4)', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'erin@example.test,');
+      await tester.pumpAndSettle();
+      expect(find.text('Send an email'), findsOneWidget);
+      // No subtitle under the checkbox.
+      expect(
+        find.text('People without an account get an invitation to sign up.'),
+        findsNothing,
+      );
+      expect(find.text('Send'), findsOneWidget);
+      await tester.enterText(_key('dialog.share.message'), 'Take a look');
+      await tester.tap(_key('dialog.share.send'));
+      await tester.pumpAndSettle();
+
+      expect(repo.calls, [
+        'share:editor:erin@example.test:notify=true:message=Take a look',
+      ]);
+    });
+
+    testWidgets('when Send an email is turned off then the message field '
+        'goes away and the share sends no email', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'erin@example.test,');
+      await tester.pumpAndSettle();
+      await tester.enterText(_key('dialog.share.message'), 'Not sent');
+      await tester.tap(find.text('Send an email'));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.message'), findsNothing);
+      expect(
+        find.text('They get access without an email or a notification.'),
+        findsNothing,
+      );
+      expect(find.text('Share'), findsOneWidget);
+      await tester.tap(_key('dialog.share.send'));
+      await tester.pumpAndSettle();
+
+      expect(repo.calls, ['share:editor:erin@example.test:notify=false']);
+    });
+
     testWidgets('when typing a name then matching people are suggested and '
         'picking one adds them as a recipient', (tester) async {
       await pumpDialog(tester);
@@ -162,8 +338,58 @@ void main() {
       await tester.tap(find.text('Bob Stone · bob@example.test'));
       await tester.pumpAndSettle();
 
-      expect(find.text('bob@example.test'), findsNWidgets(2));
+      // A chip with the person's name (the email is its tooltip); the
+      // people list is hidden while adding.
+      final chip = _key('dialog.share.chip.bob@example.test');
+      expect(chip, findsOneWidget);
+      expect(
+        find.descendant(of: chip, matching: find.text('Bob Stone')),
+        findsOneWidget,
+      );
       expect(_key('dialog.share.send'), findsOneWidget);
+    });
+
+    testWidgets('when addresses become chips then they flow like words and '
+        'the input continues on the same line', (tester) async {
+      await pumpDialog(tester);
+      await tester.enterText(_key('dialog.share.input'), 'al@ex.co ');
+      await tester.pumpAndSettle();
+      final first = tester.getRect(_key('dialog.share.chip.al@ex.co'));
+      final field = tester.getRect(_key('dialog.share.field'));
+      var input = tester.getRect(_key('dialog.share.input'));
+
+      // The input follows the chip on its line, up to the field's end.
+      expect(input.center.dy, moreOrLessEquals(first.center.dy, epsilon: 1));
+      expect(input.left, greaterThan(first.right));
+      expect(input.right, moreOrLessEquals(field.right, epsilon: 2));
+
+      await tester.enterText(_key('dialog.share.input'), 'bo@ex.co ');
+      await tester.pumpAndSettle();
+      final firstNow = tester.getRect(_key('dialog.share.chip.al@ex.co'));
+      final second = tester.getRect(_key('dialog.share.chip.bo@ex.co'));
+      expect(
+        second.center.dy,
+        moreOrLessEquals(firstNow.center.dy, epsilon: 1),
+      );
+      expect(second.left, greaterThan(firstNow.right));
+      // A third chip that doesn't fit wraps to the next line.
+      await tester.enterText(
+        _key('dialog.share.input'),
+        'a.very.long.address@example.test ',
+      );
+      await tester.pumpAndSettle();
+      final third = tester.getRect(
+        _key('dialog.share.chip.a.very.long.address@example.test'),
+      );
+      final firstLast = tester.getRect(_key('dialog.share.chip.al@ex.co'));
+      expect(third.top, greaterThan(firstLast.bottom));
+      input = tester.getRect(_key('dialog.share.input'));
+      expect(input.top, greaterThanOrEqualTo(third.top));
+
+      // Rounded chips with a remove button.
+      await tester.tap(find.bySemanticsLabel(RegExp('Remove al@ex.co')));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.chip.al@ex.co'), findsNothing);
     });
 
     testWidgets('when an invalid address is entered then no recipient is '
@@ -237,15 +463,112 @@ void main() {
         _key('dialog.share.linkMode'),
         'Anyone with the link',
       );
-      expect(repo.calls, ['setLink:viewer']);
+      expect(repo.calls, ['setGeneralAccess:link:viewer']);
       expect(
-        find.text('Anyone signed in who has the link can open it'),
+        find.text('Anyone with the link can view, also without signing in'),
         findsOneWidget,
       );
       await choose(tester, _key('dialog.share.linkRole'), 'Editor');
 
-      expect(repo.calls, ['setLink:viewer', 'setLink:editor']);
+      expect(repo.calls, [
+        'setGeneralAccess:link:viewer',
+        'setGeneralAccess:link:editor',
+      ]);
       expect(repo.info.link?.role, AccessRole.editor);
+      expect(
+        find.text('Anyone with the link can view, and edit when signed in'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('when sharing an uploaded file by link then the hint says '
+        'visitors sign in', (tester) async {
+      repo.info = sharing(
+        kind: DriveItemKind.file,
+        linkRole: AccessRole.viewer,
+      );
+
+      await pumpDialog(tester);
+
+      expect(
+        find.text('Anyone signed in who has the link can view'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('when the add-people field shows then it has one border and '
+        'is as tall as the role select', (tester) async {
+      await pumpDialog(tester);
+
+      final field = _key('dialog.share.field');
+      expect(
+        tester.getSize(field).height,
+        tester.getSize(_key('dialog.share.role')).height,
+      );
+      expect(
+        tester.getTopLeft(field).dy,
+        tester.getTopLeft(_key('dialog.share.role')).dy,
+      );
+      bool drawsEdge(Container c) {
+        final d = c.decoration;
+        if (d is! ShadShadowDecoration) return false;
+        final box = d.decoration;
+        return d.shadows.isNotEmpty ||
+            (box is BoxDecoration && box.border != null);
+      }
+
+      final edges = tester
+          .widgetList<Container>(
+            find.descendant(of: field, matching: find.byType(Container)),
+          )
+          .where(drawsEdge);
+      expect(edges, hasLength(1), reason: 'only the field box has a border');
+      expect(
+        tester
+            .widgetList<Container>(
+              find.descendant(
+                of: find.byType(ShadInput),
+                matching: find.byType(Container),
+              ),
+            )
+            .where(drawsEdge),
+        isEmpty,
+        reason: 'the input inside has no border or shadow of its own',
+      );
+    });
+
+    testWidgets('when a name search finds no one then the field hints at '
+        'the full email of people outside the organization', (tester) async {
+      repo.info = sharing(organization: 'example.test');
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'zed');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Enter the full email to add someone outside example.test'),
+        findsOneWidget,
+      );
+      await tester.enterText(_key('dialog.share.input'), 'zed@example.test');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      // Hidden, its line kept.
+      expect(_key('dialog.share.searchHint').hitTestable(), findsNothing);
+    });
+
+    testWidgets('when a name search finds no one without an organization '
+        'then the field asks for the full email', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'zed');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Enter the full email address to add someone'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('when changing a sharing setting then it is saved', (
@@ -290,6 +613,119 @@ void main() {
 
       expect(copied, contains(item.uuid.uuid));
     });
+  });
+
+  group('Given the owner in an organization in the share dialog', () {
+    setUp(() => repo.info = sharing(organization: 'example.test'));
+
+    testWidgets('when opening general access then anyone at the '
+        'organization is offered', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.tap(_key('dialog.share.linkMode'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Anyone at example.test'), findsOneWidget);
+      expect(find.text('Anyone with the link'), findsOneWidget);
+    });
+
+    testWidgets('when choosing anyone at the organization then it can view '
+        'and the hint says so', (tester) async {
+      await pumpDialog(tester);
+
+      await choose(
+        tester,
+        _key('dialog.share.linkMode'),
+        'Anyone at example.test',
+      );
+
+      expect(repo.calls, ['setGeneralAccess:organization:viewer']);
+      expect(repo.info.orgAccess?.role, AccessRole.viewer);
+      expect(find.text('Anyone at example.test can view'), findsOneWidget);
+      expect(_key('dialog.share.orgRole'), findsOneWidget);
+      expect(_key('dialog.share.linkRole'), findsNothing);
+    });
+
+    testWidgets('when changing the organization role then it is saved', (
+      tester,
+    ) async {
+      repo.info = sharing(
+        organization: 'example.test',
+        orgRole: AccessRole.viewer,
+      );
+      await pumpDialog(tester);
+
+      await choose(tester, _key('dialog.share.orgRole'), 'Commenter');
+
+      expect(repo.calls, ['setGeneralAccess:organization:commenter']);
+      expect(find.text('Anyone at example.test can comment'), findsOneWidget);
+    });
+
+    testWidgets('when choosing restricted then the organization loses its '
+        'access', (tester) async {
+      repo.info = sharing(
+        organization: 'example.test',
+        orgRole: AccessRole.editor,
+      );
+      await pumpDialog(tester);
+
+      await choose(tester, _key('dialog.share.linkMode'), 'Restricted');
+
+      expect(repo.calls, ['setGeneralAccess:restricted:null']);
+      expect(repo.info.orgAccess, isNull);
+      expect(find.text('Only people with access can open'), findsOneWidget);
+      expect(_key('dialog.share.orgRole'), findsNothing);
+    });
+
+    testWidgets('when a folder above is shared with the organization then '
+        'that access is named', (tester) async {
+      repo.info = sharing(
+        organization: 'example.test',
+        inheritedOrgAccess: OrgAccessView(
+          domain: 'example.test',
+          role: AccessRole.editor,
+          inheritedFromUuid: teamUuid,
+          inheritedFromName: 'Team',
+        ),
+      );
+
+      await pumpDialog(tester);
+
+      expect(
+        find.text('Anyone at example.test can also edit through “Team”'),
+        findsOneWidget,
+      );
+      expect(find.text('Only people with access can open'), findsOneWidget);
+    });
+  });
+
+  testWidgets('Given an owner without an organization when opening general '
+      'access then only restricted and the link are offered', (tester) async {
+    await pumpDialog(tester);
+
+    await tester.tap(_key('dialog.share.linkMode'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Anyone at'), findsNothing);
+    expect(find.text('Anyone with the link'), findsOneWidget);
+  });
+
+  testWidgets('Given an editor outside the organization of an item shared '
+      'with it when the dialog opens then the organization access shows', (
+    tester,
+  ) async {
+    repo.info = sharing(myRole: AccessRole.editor, orgRole: AccessRole.viewer);
+
+    await pumpDialog(tester);
+
+    expect(
+      find.descendant(
+        of: _key('dialog.share.linkMode'),
+        matching: find.text('Anyone at example.test'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Anyone at example.test can view'), findsOneWidget);
   });
 
   testWidgets('Given a pending access request when the owner approves it '
@@ -402,6 +838,51 @@ void main() {
         findsOneWidget,
       );
       expect(_key('dialog.share.linkRole'), findsNothing);
+      await settleToasts(tester);
+    });
+
+    testWidgets('when sharing with the organization fails then access stays '
+        'restricted', (tester) async {
+      repo.info = sharing(organization: 'example.test');
+      await pumpWithToasts(tester);
+
+      await choose(
+        tester,
+        _key('dialog.share.linkMode'),
+        'Anyone at example.test',
+      );
+
+      expect(find.text('The sharing change could not be saved'), findsOne);
+      expect(
+        find.descendant(
+          of: _key('dialog.share.linkMode'),
+          matching: find.text('Restricted'),
+        ),
+        findsOneWidget,
+      );
+      expect(_key('dialog.share.orgRole'), findsNothing);
+      expect(find.text('Only people with access can open'), findsOneWidget);
+      await settleToasts(tester);
+    });
+
+    testWidgets('when changing the organization role fails then the select '
+        'shows the saved role again', (tester) async {
+      repo.info = sharing(
+        organization: 'example.test',
+        orgRole: AccessRole.viewer,
+      );
+      await pumpWithToasts(tester);
+
+      await choose(tester, _key('dialog.share.orgRole'), 'Editor');
+
+      expect(find.text('The sharing change could not be saved'), findsOne);
+      expect(
+        find.descendant(
+          of: _key('dialog.share.orgRole'),
+          matching: find.text('Viewer'),
+        ),
+        findsOneWidget,
+      );
       await settleToasts(tester);
     });
   });

@@ -323,6 +323,7 @@
   "cmdSetTheme": "App theme",
   "cmdSettings": "Settings",
   "cmdShare": "Share",
+  "cmdSignIn": "Sign in",
   "cmdSignOut": "Sign out",
   "cmdStar": "Star",
   "cmdStopAgent": "Stop agent control",
@@ -342,7 +343,6 @@
   "cmdUnstar": "Remove star",
   "cmdUpload": "Upload file…",
   "cmdVersionsPanel": "Version history panel",
-  "cmdWhatsNew": "What's new",
   "cmdWorkSettings": "Wonky Work settings",
   "@cmdWorkSettings": {
     "description": "Opens the suite settings (account, appearance, …)."
@@ -590,11 +590,9 @@
   "mcpControlling": "An agent is controlling this window",
   "mcpHint": "Use this configuration in Claude Desktop or Claude Code with one of your tokens.",
   "mcpTitle": "MCP connection",
-  "menuAccessibility": "Accessibility settings",
   "menuAppTheme": "App theme",
   "menuDownload": "Download",
   "menuEdit": "Edit",
-  "menuExplore": "Explore",
   "menuFile": "File",
   "menuFileUpload": "File upload",
   "@menuFileUpload": {
@@ -619,7 +617,6 @@
     "description": "Account menu submenu listing the four apps."
   },
   "menuPanels": "Panels",
-  "menuPreferences": "Preferences",
   "menuShare": "Share",
   "menuTools": "Tools",
   "menuVersionHistory": "Version history",
@@ -683,6 +680,11 @@
     }
   },
   "noAccessTitle": "You need access",
+  "guestNoAccessTitle": "Sign in to open this",
+  "guestNoAccessBody": "This file isn't shared with anyone who has the link. Sign in to open it.",
+  "guestViewing": "Viewing as a guest",
+  "guestSignInHint": "Sign in to comment or edit",
+  "guestSignInToUse": "Sign in to use this",
   "notAllowed": "Not allowed",
   "notFoundBody": "The page you're looking for doesn't exist.",
   "notFoundTitle": "Page not found",
@@ -1035,6 +1037,16 @@
   "settingsUiLanguage": "Language",
   "settingsWrite": "Wonky Write",
   "shareAddPeople": "Add people by name or email",
+  "shareAnyoneAtOrg": "Anyone at {domain}",
+  "@shareAnyoneAtOrg": {
+    "description": "General access option in the share dialog: everyone in the user's organization. The organization is named by its email domain.",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "acme.dev"
+      }
+    }
+  },
   "shareAnyoneWithLink": "Anyone with the link",
   "shareApprove": "Approve",
   "shareButton": "Share",
@@ -1050,9 +1062,62 @@
       }
     }
   },
-  "shareLinkHint": "Anyone signed in who has the link can open it",
-  "shareMessage": "Message",
-  "shareNotify": "Notify people",
+  "shareLinkHint": "{role, select, commenter{Anyone with the link can view, and comment when signed in} editor{Anyone with the link can view, and edit when signed in} other{Anyone with the link can view, also without signing in}}",
+  "@shareLinkHint": {
+    "description": "Under 'Anyone with the link' for documents, spreadsheets and presentations: visitors who are signed out can only view; signed-in visitors get the link's role.",
+    "placeholders": {
+      "role": {
+        "type": "String",
+        "description": "The link's role: viewer, commenter or editor."
+      }
+    }
+  },
+  "shareLinkHintSignIn": "{role, select, commenter{Anyone signed in who has the link can comment} editor{Anyone signed in who has the link can edit} other{Anyone signed in who has the link can view}}",
+  "@shareLinkHintSignIn": {
+    "description": "Under 'Anyone with the link' for uploaded files and folders, which need signing in.",
+    "placeholders": {
+      "role": {
+        "type": "String",
+        "description": "The link's role: viewer, commenter or editor."
+      }
+    }
+  },
+  "shareMessage": "Message (optional)",
+  "shareNotify": "Send an email",
+  "@shareNotify": {
+    "description": "Share dialog checkbox: email the people being added right away."
+  },
+  "shareOrgHint": "{role, select, commenter{Anyone at {domain} can comment} editor{Anyone at {domain} can edit} other{Anyone at {domain} can view}}",
+  "@shareOrgHint": {
+    "description": "Under 'Anyone at <domain>' in the share dialog.",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "acme.dev"
+      },
+      "role": {
+        "type": "String",
+        "description": "The organization's role: viewer, commenter or editor."
+      }
+    }
+  },
+  "shareOrgInherited": "{role, select, commenter{Anyone at {domain} can also comment through “{folder}”} editor{Anyone at {domain} can also edit through “{folder}”} other{Anyone at {domain} can also view through “{folder}”}}",
+  "@shareOrgInherited": {
+    "description": "Under general access when a parent folder is shared with the whole organization.",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "acme.dev"
+      },
+      "role": {
+        "type": "String",
+        "description": "The inherited role: viewer, commenter or editor."
+      },
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
   "sharePending": "Pending invite",
   "sharePeopleWithAccess": "People with access",
   "shareRemoveAccess": "Remove access",
@@ -1085,8 +1150,21 @@
     }
   },
   "shareRestricted": "Restricted",
-  "shareRestrictedHint": "Only people with access can open with the link",
-  "shareRotateLink": "Reset link",
+  "shareRestrictedHint": "Only people with access can open",
+  "shareSearchFullEmail": "Enter the full email address to add someone",
+  "@shareSearchFullEmail": {
+    "description": "Under the add-people field when the search finds no one and the user has no organization."
+  },
+  "shareSearchOutsideOrg": "Enter the full email to add someone outside {domain}",
+  "@shareSearchOutsideOrg": {
+    "description": "Under the add-people field when the search finds no one: only people in the user's organization are found by name.",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "acme.dev"
+      }
+    }
+  },
   "shareSent": "{count, plural, =1{Shared with 1 person} other{Shared with {count} people}}",
   "@shareSent": {
     "placeholders": {
@@ -1535,11 +1613,6 @@
   "versionsOpenFull": "Open full history",
   "versionsRename": "Rename version",
   "versionsRestorePoint": "Before restore",
-  "whatsNew1": "One account for Wonky Write and Wonky Sheets — sign in once, use both.",
-  "whatsNew2": "Every action is a command: press Ctrl+Shift+P (⌘⇧P) to run anything.",
-  "whatsNew3": "Undo covers drive changes too — rename, move, star and trash.",
-  "whatsNew4": "Comments, mentions and version history in every file.",
-  "whatsNewTitle": "What's new",
   "wonkyWork": "Wonky Work",
   "writeAutoPair": "Auto-pair brackets and quotes",
   "writeExportFormat": "Default download format",
@@ -1658,6 +1731,87 @@
   "aiProvidersRemoveFailed": "Couldn't remove the API key",
   "aiProvidersNotAllowed": "This server doesn't allow personal API keys. Ask an administrator to set up AI.",
   "aiProvidersManage": "Manage AI providers",
+  "aiOrgKeyTitle": "Key for {organization}",
+  "@aiOrgKeyTitle": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyHint": "Share an API key with everyone at {organization}. Whoever has no key of their own uses it.",
+  "@aiOrgKeyHint": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyWarning": "Anyone who signs in with an email address at {organization} can use this key, and what they use is billed to the key’s account. Any of them can also replace or remove it.",
+  "@aiOrgKeyWarning": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyCurrent": "Shared key",
+  "aiOrgKeyCurrentBy": "{provider} key ending in {last4}, added by {name}",
+  "@aiOrgKeyCurrentBy": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "last4": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyInUse": "You use the key shared with {organization}. If you add a key of your own, it is used instead.",
+  "@aiOrgKeyInUse": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeySave": "Share key",
+  "aiOrgKeyConfirmTitle": "Share this key with {organization}?",
+  "@aiOrgKeyConfirmTitle": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeySaved": "Key shared with {organization}",
+  "@aiOrgKeySaved": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyRemoveTitle": "Remove the key shared with {organization}?",
+  "@aiOrgKeyRemoveTitle": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyRemoveBody": "AI stops working for everyone at {organization} who has no key of their own.",
+  "@aiOrgKeyRemoveBody": {
+    "placeholders": {
+      "organization": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrgKeyRemoved": "Shared key removed",
   "aiChatHistory": "Chat history",
   "aiChatHistoryHint": "Delete all your assistant chats.",
   "aiClearHistory": "Clear history",
@@ -3224,5 +3378,50 @@
   "pubStartBlocked": "{name} isn't accepting stories from you.",
   "@pubStartBlocked": {"placeholders": {"name": {"type": "String"}}},
   "pubStartClosed": "{name} isn't accepting stories right now.",
-  "@pubStartClosed": {"placeholders": {"name": {"type": "String"}}}
+  "@pubStartClosed": {"placeholders": {"name": {"type": "String"}}},
+  "actionEdit": "Edit",
+  "actionDelete": "Delete",
+  "assistantMoreChanges": "+{count} more",
+  "@assistantMoreChanges": {"description": "Collapsed tool chips of a long reply.", "placeholders": {"count": {"type": "int"}}},
+  "assistantStyleGuides": "Style guides…",
+  "@assistantStyleGuides": {"description": "Assistant panel ⋮ menu: opens the style guide library."},
+  "styleGuidesTitle": "Style guides",
+  "styleGuidesDescription": "How the assistant writes: built-in guides, your own, and guides shared in your organization.",
+  "styleGuidesDescriptionDocument": "Choose the guide this document follows. Apply style rewrites the document to match it, and the other assistant actions use it as context.",
+  "styleGuideNone": "No style guide",
+  "styleGuideNoneHint": "The assistant follows the document's own style.",
+  "styleGuideNoneOrgHint": "Without its own guide, the document follows your organization's default, {name}.",
+  "@styleGuideNoneOrgHint": {"placeholders": {"name": {"type": "String"}}},
+  "styleGuideUseNone": "Use no style guide",
+  "styleGuideSectionBuiltIn": "Built-in",
+  "styleGuideSectionMine": "My style guides",
+  "styleGuideMineEmpty": "Duplicate a built-in guide or create a new one.",
+  "styleGuideSectionOrganization": "Shared in {org}",
+  "@styleGuideSectionOrganization": {"placeholders": {"org": {"type": "String"}}},
+  "styleGuideSectionDocument": "Used by this document",
+  "styleGuideNew": "New style guide",
+  "styleGuideOrgDefault": "Organization default",
+  "styleGuideInUse": "Used by this document",
+  "styleGuideUse": "Use for this document",
+  "styleGuideSetOrgDefault": "Make organization default",
+  "styleGuideClearOrgDefault": "Remove as organization default",
+  "styleGuideDuplicate": "Duplicate",
+  "styleGuideCopyName": "{name} (copy)",
+  "@styleGuideCopyName": {"placeholders": {"name": {"type": "String"}}},
+  "styleGuideByOwner": "By {name}",
+  "@styleGuideByOwner": {"placeholders": {"name": {"type": "String"}}},
+  "styleGuideName": "Name",
+  "styleGuideDescriptionField": "Short description",
+  "styleGuideMarkdownHint": "Write the rules in Markdown: voice, words to use and avoid, headings, lists, formatting.",
+  "styleGuideShareWithOrg": "Share with {org}",
+  "@styleGuideShareWithOrg": {"placeholders": {"org": {"type": "String"}}},
+  "styleGuidePersonalOnly": "Only you can use this guide: your email domain is not an organization.",
+  "styleGuideNameRequired": "Give the style guide a name.",
+  "styleGuideEmpty": "Write at least one rule.",
+  "styleGuideTemplate": "# Voice\n\n- \n\n# Words\n\n| Avoid | Use instead |\n| --- | --- |\n|  |  |\n\n# Headings and lists\n\n- \n",
+  "@styleGuideTemplate": {"description": "The starting text of a new style guide (Markdown)."},
+  "undoSaveStyleGuide": "Save style guide",
+  "undoDeleteStyleGuide": "Delete style guide",
+  "undoSetOrgStyleGuide": "Change organization style guide",
+  "undoSetDocumentStyleGuide": "Change style guide"
 }

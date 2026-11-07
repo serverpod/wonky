@@ -67,8 +67,8 @@ void main() {
   }
 
   testWidgets('J-D6: Given the Drive home when Drive settings open from the '
-      'left menu and Wonky Work settings from the account menu then each '
-      'shows its sections', (tester) async {
+      'left menu and the account menu then the page shows the app\'s and the '
+      'Wonky Work sections', (tester) async {
     await pump(tester);
 
     await tester.tap(key('home.footer.appSettings'));
@@ -79,9 +79,11 @@ void main() {
 
     await tester.tap(find.byType(AccountMenuButton));
     await tester.pumpAndSettle();
+    // The account menu's one *Settings* entry opens the same page: the
+    // app's sections and the Wonky Work sections (suite 04 §4.2).
     await tester.tap(key('account.settings'));
     await tester.pumpAndSettle();
-    expect(location(), '/settings/account');
+    expect(location(), '/settings/app/drive');
     for (final id in workSettingsSectionIds) {
       expect(key('settings.nav.$id'), findsOneWidget, reason: id);
     }

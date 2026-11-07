@@ -48,6 +48,26 @@ class AssistantEndpoint extends Endpoint {
     return AiUsageService.status(session, actor.userId);
   }
 
+  /// Settings › AI providers › Organization key: stores a key shared with
+  /// every member of the caller's organization (anyone signing in with an
+  /// email of its domains), replacing the current one. Any member may.
+  Future<AssistantStatus> setOrganizationProviderKey(
+    Session session,
+    AiProvider provider,
+    String apiKey,
+  ) async {
+    final actor = await UserService.actorOf(session);
+    await AiKeys.setOrgKey(session, actor.userId, provider, apiKey);
+    return AiUsageService.status(session, actor.userId);
+  }
+
+  /// Settings › AI providers › Organization key › Remove (any member may).
+  Future<AssistantStatus> removeOrganizationProviderKey(Session session) async {
+    final actor = await UserService.actorOf(session);
+    await AiKeys.removeOrgKey(session, actor.userId);
+    return AiUsageService.status(session, actor.userId);
+  }
+
   /// Sends a message ([threadId] null = new thread on [itemUuid]) and
   /// streams the run: `started` (thread + run id), text deltas, progress
   /// notes, tool activity, confirmations, usage, then `done`.
@@ -65,6 +85,27 @@ class AssistantEndpoint extends Endpoint {
       threadId: threadId,
       itemUuid: itemUuid,
       message: message,
+      hints: hints,
+    );
+  }
+
+  /// Runs a Write quick action ([threadId] null = new thread): Summarize,
+  /// Proofread, Address comments or Apply style (Write 09 §5.5). Streams
+  /// like [chat]; the action's prompt is not shown in the conversation.
+  Stream<AssistantEvent> quickAction(
+    Session session,
+    int? threadId,
+    UuidValue itemUuid,
+    AssistantQuickAction action,
+    AssistantContextHints hints,
+  ) async* {
+    final actor = await UserService.actorOf(session);
+    yield* await AssistantService.quickAction(
+      session,
+      actor,
+      threadId: threadId,
+      itemUuid: itemUuid,
+      action: action,
       hints: hints,
     );
   }

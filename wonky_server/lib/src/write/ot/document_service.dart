@@ -131,6 +131,8 @@ abstract final class DocumentService {
           actorKind: o.actorKind,
           kind: o.kind,
           sessionId: o.sessionId,
+          onBehalfOfSessionId: o.onBehalfOfSessionId,
+          groupId: o.groupId,
           createdAt: o.createdAt,
         ),
     ];

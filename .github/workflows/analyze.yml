@@ -60,13 +60,18 @@ jobs:
       - name: Check package dependency rules
         run: dart run tool/check_dependencies.dart
 
+      # No dialog X next to Cancel/Close/Done (specs/02-design-system.md
+      # §4.20).
+      - name: Check dialog close buttons
+        run: dart run tool/check_dialogs.dart
+
   # Committed generated code is up to date (CQ-64b): Serverpod, gen-l10n and
   # the pseudo-locales, the spec index, the RevLog schemas and the Sheets
   # script API index are regenerated and must match the checkout.
   generated:
     runs-on: ubuntu-latest
     env:
-      VERSION: '4.1.0-rc.1'
+      VERSION: '4.1.1'
 
     steps:
       - uses: actions/checkout@v4

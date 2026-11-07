@@ -70,8 +70,15 @@ class CommandDispatcher {
     return command.parseArgs(json);
   }
 
-  /// Role check message, or null when allowed.
+  /// Role check message, or null when allowed. A guest (signed out,
+  /// viewing a link-shared item) can't run commands that need an account
+  /// (`WonkyAppConfig.guestAllowsCommand`).
   String? roleProblem(Command<CommandArgs> command, CommandContext ctx) {
+    if (services.isGuest &&
+        services.config.allowsGuestViewing &&
+        !services.config.guestAllowsCommand(command.id.value)) {
+      return services.l10n?.guestSignInToUse ?? 'Sign in to use this';
+    }
     final role = ctx.role;
     if (role == null) return null;
     if (role >= command.requiredRole) return null;

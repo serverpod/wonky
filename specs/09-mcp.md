@@ -104,7 +104,7 @@ the public API — never rename; deprecate instead.
 | `drive.create_spreadsheet` | `name, parent_uuid?, template_uuid?, sheets?: [{name, values?}]` | item |
 | `drive.create_presentation` (v2) | `name, parent_uuid?, template_uuid?, outline?` | item ([Slides 11](wonky_slides/11-mcp-and-ai.md)) |
 | `drive.rename` · `drive.move` · `drive.copy` · `drive.trash` · `drive.restore` · `drive.star` | … | item |
-| `drive.share` | `uuid, email, role, notify?, message?` | permission |
+| `drive.share` | `uuid, email, role, notify?, message?` (`notify`, default true: share email or invitation, 06 §4) | permission |
 | `drive.unshare` | `uuid, email` | ok |
 | `drive.set_link_sharing` | `uuid, mode: off|viewer|commenter|editor` | link |
 | `drive.export` | `uuid, format` | `{download_url, expires_at}` (signed, 15 min) — or inline text for md/txt/csv; (v2) presentations: `pdf` |

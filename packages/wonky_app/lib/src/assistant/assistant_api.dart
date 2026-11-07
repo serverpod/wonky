@@ -10,10 +10,23 @@ abstract class AssistantApi {
   /// returns it).
   Future<AssistantStatus> setProviderKey(AiProvider provider, String apiKey);
   Future<AssistantStatus> removeProviderKey();
+
+  /// Settings › AI providers › organization key: a key shared with every
+  /// member of the caller's organization (never returned either).
+  Future<AssistantStatus> setOrgProviderKey(AiProvider provider, String apiKey);
+  Future<AssistantStatus> removeOrgProviderKey();
   Stream<AssistantEvent> chat({
     required int? threadId,
     required UuidValue itemUuid,
     required String message,
+    required AssistantContextHints hints,
+  });
+
+  /// A Write quick action (Write 09 §5.5), streamed like [chat].
+  Stream<AssistantEvent> quickAction({
+    required int? threadId,
+    required UuidValue itemUuid,
+    required AssistantQuickAction action,
     required AssistantContextHints hints,
   });
   Future<bool> stop({int? threadId, String? runId});
@@ -32,6 +45,18 @@ abstract class AssistantApi {
     int? start,
     int? length,
   });
+
+  // Style guides (suite 10 §7; endpoint `styleGuide`).
+
+  /// The user's style guides; with [itemUuid] also that document's choice.
+  Future<StyleGuideLibrary> styleGuides({UuidValue? itemUuid});
+  Future<StyleGuideView> saveStyleGuide(StyleGuideInput input);
+  Future<void> deleteStyleGuide(UuidValue uuid);
+  Future<StyleGuideLibrary> setOrgStyleGuide(String? ref);
+  Future<StyleGuideLibrary> setDocumentStyleGuide(
+    UuidValue itemUuid,
+    String? ref,
+  );
 }
 
 /// [AssistantApi] over the generated client.
@@ -57,12 +82,30 @@ class ServerAssistantApi implements AssistantApi {
   Future<AssistantStatus> removeProviderKey() => _a.removeProviderKey();
 
   @override
+  Future<AssistantStatus> setOrgProviderKey(
+    AiProvider provider,
+    String apiKey,
+  ) => _a.setOrganizationProviderKey(provider, apiKey);
+
+  @override
+  Future<AssistantStatus> removeOrgProviderKey() =>
+      _a.removeOrganizationProviderKey();
+
+  @override
   Stream<AssistantEvent> chat({
     required int? threadId,
     required UuidValue itemUuid,
     required String message,
     required AssistantContextHints hints,
   }) => _a.chat(threadId, itemUuid, message, hints);
+
+  @override
+  Stream<AssistantEvent> quickAction({
+    required int? threadId,
+    required UuidValue itemUuid,
+    required AssistantQuickAction action,
+    required AssistantContextHints hints,
+  }) => _a.quickAction(threadId, itemUuid, action, hints);
 
   @override
   Future<bool> stop({int? threadId, String? runId}) => _a.stop(threadId, runId);
@@ -101,4 +144,27 @@ class ServerAssistantApi implements AssistantApi {
     int? start,
     int? length,
   }) => _a.proofread(itemUuid, start, length);
+
+  EndpointStyleGuide get _s => client.styleGuide;
+
+  @override
+  Future<StyleGuideLibrary> styleGuides({UuidValue? itemUuid}) =>
+      _s.library(itemUuid);
+
+  @override
+  Future<StyleGuideView> saveStyleGuide(StyleGuideInput input) =>
+      _s.save(input);
+
+  @override
+  Future<void> deleteStyleGuide(UuidValue uuid) => _s.delete(uuid);
+
+  @override
+  Future<StyleGuideLibrary> setOrgStyleGuide(String? ref) =>
+      _s.setOrgDefault(ref);
+
+  @override
+  Future<StyleGuideLibrary> setDocumentStyleGuide(
+    UuidValue itemUuid,
+    String? ref,
+  ) => _s.setDocumentStyle(itemUuid, ref);
 }

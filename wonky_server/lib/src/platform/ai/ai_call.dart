@@ -12,7 +12,7 @@ import 'llm/ai_client.dart';
 
 /// Why an AI request or run failed, as shown to the user: the text and a
 /// stable code (`refusal`, `auth`, `rate_limited`, `overloaded`, `timeout`,
-/// `connection`, `api_error`, a [WonkyErrorCode] name or `internal`).
+/// `request`, `connection`, `api_error`, a [WonkyErrorCode] name or `internal`).
 final class AiFailure {
   const AiFailure(this.message, this.code);
 
@@ -78,6 +78,10 @@ final class AiFailure {
       return 'The AI service is busy right now. Try again in a moment.';
     }
     if (e.type == 'timeout') return 'The AI service took too long to answer.';
+    if (e.type == 'request') {
+      return 'This conversation could not be sent to the AI service. Start '
+          'a new chat and try again.';
+    }
     if (e.statusCode == 0) {
       return 'The connection to the AI service was interrupted. Try again.';
     }
@@ -90,6 +94,7 @@ final class AiFailure {
     if (e.isRateLimit) return 'rate_limited';
     if (e.isOverloaded) return 'overloaded';
     if (e.type == 'timeout') return 'timeout';
+    if (e.type == 'request') return 'request';
     if (e.statusCode == 0) return 'connection';
     return 'api_error';
   }

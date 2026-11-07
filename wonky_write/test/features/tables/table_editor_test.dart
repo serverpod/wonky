@@ -376,34 +376,18 @@ void main() {
       },
     );
 
-    testWidgets(
-      'when closing an edited table with the dialog X then the discard '
-      'confirmation asks first',
-      (tester) async {
-        final closed = await _openEditor(tester);
-        await tester.enterText(find.byKey(_cell(1, 1)), '30');
-        await tester.pump();
+    testWidgets('when the dialog shows then it has no X: Cancel and Done '
+        'close it (suite 02 §4.20)', (tester) async {
+      await _openEditor(tester);
 
-        await tester.tap(
-          find.descendant(
-            of: find.byKey(_dialog),
-            matching: find.byWidgetPredicate(
-              (w) =>
-                  w is ShadIconButton &&
-                  w.icon is Icon &&
-                  (w.icon as Icon).icon == LucideIcons.x,
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        expect(closed.closed, isFalse);
-        expect(
-          find.byKey(const ValueKey('write.dialog.discardTable')),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(
+        find.descendant(
+          of: find.byKey(_dialog),
+          matching: find.byKey(const ValueKey('dialog.close')),
+        ),
+        findsNothing,
+      );
+    });
   });
 
   group('Given the table size dialog', () {

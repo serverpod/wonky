@@ -149,7 +149,7 @@ through `shell.board.report`:
 
 | Where | Today | New |
 |-------|-------|-----|
-| Help menu ([03 §3.2](03-app-shell-and-navigation.md)) | *Report a bug* | *Bugs & improvements…* (`shell.board.report`) and *Browse Bugs & improvements* (`shell.board.open`) |
+| Help menu ([03 §3.2](03-app-shell-and-navigation.md)) | *Report a bug* | *Report a bug* (`shell.board.report {kind: bug}`) and *Suggest an improvement* (`{kind: idea}`), each opening the report dialog on its kind, and *Browse Bugs & improvements* (`shell.board.open`) |
 | Home left menu footer (`HomeSidebar`) | *Report a bug* | (T-5) *Contribute & build* (Lucide `wrench`, `shell.board.open`, key `home.footer.contribute`), *Report a bug* (`bug`, key `home.footer.reportBug`) and *Suggest an improvement* (`leaf`, key `home.footer.suggest`); the last two are `shell.board.report` with kind `bug` / `idea`, so the dialog opens on that kind |
 | Editor title row (`EditorScaffold`, width ≥ 640) | bug icon | (T-5) *Report a bug* (`bug`, key `editor.reportBug`) and *Suggest an improvement* (`leaf`, key `editor.suggest`): `ShadButton.outline` size `sm`, as on the board page; icon buttons with tooltips between 640 and 1200 px. Each is `shell.board.report` with its kind |
 | Sign-in screens (`auth_layout.dart`, key `auth.reportBug` → `auth.board`) | link | link that opens the **board page** (§4.4), not the dialog. Signed-out users read; *Report* asks them to sign in |
@@ -1448,7 +1448,7 @@ is opened for a change nobody has seen working. The frame is added when the task
      defaults only; AI keys are optional).
   6. Pick a task: claim it, start the agent with the repository root as its working directory,
      give it the prompt and review the result. There is no step to start the server: since
-     Serverpod 4.1.0-rc.1 the agent starts it (and the development database and the apps)
+     Serverpod 4.1 the agent starts it (and the development database and the apps)
      through the `serverpod` MCP server (`.mcp.json` and the other agents' configs are in the
      repo); `serverpod start` in `wonky_server` attaches to it.
   7. Open a pull request (the agent helps): PR rules (§13.1), one task per PR, the

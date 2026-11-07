@@ -1,3 +1,4 @@
+import '../organizations/organization_service.dart';
 import 'package:serverpod/serverpod.dart';
 
 import '../common/errors.dart';
@@ -135,7 +136,19 @@ abstract final class AiUsageService {
     final userKey = config.configured
         ? null
         : await AiKeys.userKey(session, userId);
-    final credentials = AiKeys.resolve(config, userKey: userKey);
+    // The organization and its shared key: offered while members may add
+    // keys (no server key), used when the user has none of their own.
+    final organization = config.userKeysAllowed
+        ? await OrganizationService.orgKeyOf(session, userId)
+        : null;
+    final orgKey = organization == null
+        ? null
+        : await AiKeys.orgKeyFor(session, userId);
+    final credentials = AiKeys.resolve(
+      config,
+      userKey: userKey,
+      orgKey: orgKey,
+    );
     String? reason;
     String? message;
     if (!config.enabled) {
@@ -165,6 +178,8 @@ abstract final class AiUsageService {
       keySource: config.enabled ? credentials?.source.name : null,
       userKeysAllowed: config.userKeysAllowed,
       userKey: userKey == null ? null : AiKeys.view(userKey),
+      organization: organization,
+      orgKey: orgKey == null ? null : await AiKeys.orgView(session, orgKey),
     );
   }
 

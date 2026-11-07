@@ -182,14 +182,29 @@ WriteCommand _wrap(EditorCommandSpec spec, WriteRun? override) {
       return null;
     },
     run: (ctx, d, a) async {
+      final CommandResult r;
       if (spec.radio && spec.checked?.call(d.target, a) == true) {
-        return const CommandResult.ok();
+        r = const CommandResult.ok();
+      } else if (override != null) {
+        return override(ctx, d, a);
+      } else {
+        r = await spec.run(d.target, a);
       }
-      if (override != null) return override(ctx, d, a);
-      return spec.run(d.target, a);
+      // Chosen in a menu, the toolbar (the style picker) or the palette:
+      // typing goes on in the editor, which those took the focus from.
+      if (_refocusSources.contains(ctx.source)) d.focusEditorAfterFrame();
+      return r;
     },
   );
 }
+
+/// The invocation sources that took the keyboard focus from the editor.
+const _refocusSources = {
+  InvocationSource.menu,
+  InvocationSource.toolbar,
+  InvocationSource.contextMenu,
+  InvocationSource.palette,
+};
 
 /// Convenience to run the catalog implementation from an override.
 FutureOr<CommandResult> runSpec(

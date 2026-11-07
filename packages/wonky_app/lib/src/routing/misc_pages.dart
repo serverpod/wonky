@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:shad/shad.dart';
 import 'package:wonky_client/wonky_client.dart';
+import 'package:wonky_core/wonky_core.dart' show InvocationSource;
 import 'package:wonky_ui/wonky_ui.dart';
 
 import '../data/api.dart';
@@ -47,6 +48,7 @@ class NoAccessPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = WonkyAppLocalizations.of(context);
+    if (services.isGuest) return _guest(context, l);
     return ShellPageFrame(
       services: services,
       title: l.noAccessTitle,
@@ -75,6 +77,34 @@ class NoAccessPage extends StatelessWidget {
           ShadButton.ghost(
             onPressed: () => services.router.go('/'),
             child: Text(l.goHome),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Signed out (specs/06 §2.4): the item isn't link-shared (or doesn't
+  /// exist); sign in, coming back to it.
+  Widget _guest(BuildContext context, WonkyAppLocalizations l) {
+    void signIn() => services.dispatcher.invoke(
+      'shell.account.signIn',
+      source: InvocationSource.ui,
+      context: context,
+    );
+    return ShellPageFrame(
+      services: services,
+      title: l.guestNoAccessTitle,
+      child: WonkyEmptyState(
+        key: const ValueKey<String>('shell.noAccess'),
+        illustration: EmptyIllustration.noAccess,
+        title: l.guestNoAccessTitle,
+        description: l.guestNoAccessBody,
+        actions: [
+          ShadButton(
+            key: const ValueKey<String>('shell.noAccess.signIn'),
+            leading: const Icon(LucideIcons.logIn, size: 16),
+            onPressed: signIn,
+            child: Text(l.cmdSignIn),
           ),
         ],
       ),

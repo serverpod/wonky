@@ -84,6 +84,12 @@ wonky:
   write:
     snapshotEveryNOps: 500
     maxDocumentChars: 2000000
+  # Invitation emails to addresses without an account, per sender
+  # (specs/06 §4; 0 turns them off). Emails to existing users follow their
+  # Settings › Notifications › Shares.
+  sharing:
+    inviteEmailsPerHour: 30
+    inviteEmailsPerDay: 100
   # M13 (RevLog): the CRDT sync protocol is gone, so 2.x clients cannot
   # sync (specs/01 §7, specs/17 RD-17); the apps default to WONKY_VERSION
   # 3.0.0. (v2 raised it to 2.0.0 for enum values v1 clients cannot read.)

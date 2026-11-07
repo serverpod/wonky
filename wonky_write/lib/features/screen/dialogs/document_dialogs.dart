@@ -455,14 +455,31 @@ class _GoToHeadingState extends State<_GoToHeading> {
   }
 }
 
-/// The Markdown & formatting guide (`write.help.markdownGuide`).
-Future<void> showMarkdownGuide(BuildContext context) => showShadDialog<void>(
-  context: context,
-  builder: (context) {
+/// The Markdown & formatting guide (`write.help.markdownGuide`). With
+/// [wonky] (the document uses Wonky Markdown, Write 11 §3) a second tab
+/// lists the Wonky Markdown extensions (Write 11 §4).
+Future<void> showMarkdownGuide(BuildContext context, {bool wonky = false}) =>
+    showShadDialog<void>(
+      context: context,
+      builder: (context) => _MarkdownGuideDialog(wonky: wonky),
+    );
+
+class _MarkdownGuideDialog extends StatefulWidget {
+  const _MarkdownGuideDialog({required this.wonky});
+
+  final bool wonky;
+
+  @override
+  State<_MarkdownGuideDialog> createState() => _MarkdownGuideDialogState();
+}
+
+class _MarkdownGuideDialogState extends State<_MarkdownGuideDialog> {
+  var _tab = 'markdown';
+
+  @override
+  Widget build(BuildContext context) {
     final l = writeL10n(context);
-    final theme = ShadTheme.of(context);
-    final cs = theme.colorScheme;
-    final rows = [
+    final markdown = _rows(context, [
       (l.docDialogGuideSyntaxHeadings, l.docDialogGuideHeadings),
       (l.docDialogGuideSyntaxBold, l.docDialogGuideBold),
       (l.docDialogGuideSyntaxItalic, l.docDialogGuideItalic),
@@ -477,12 +494,7 @@ Future<void> showMarkdownGuide(BuildContext context) => showShadDialog<void>(
       ('---', l.docDialogGuideDivider),
       ('/', l.docDialogGuideCommandMenu),
       ('@', l.docDialogGuideMention),
-    ];
-    final mono = TextStyle(
-      fontFamily: WonkyTheme.monoFamily,
-      fontSize: 13,
-      color: cs.foreground,
-    );
+    ], footnote: l.docDialogGuideFootnote);
     return ShadDialog(
       key: const ValueKey<String>('write.dialog.markdownGuide'),
       closeIcon: const WonkyDialogCloseButton(),
@@ -495,26 +507,95 @@ Future<void> showMarkdownGuide(BuildContext context) => showShadDialog<void>(
           child: Text(l.docDialogGuideGotIt),
         ),
       ],
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final (syntax, meaning) in rows)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: cs.border)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(child: Text(syntax, style: mono)),
-                  Expanded(child: Text(meaning, style: theme.textTheme.small)),
-                ],
-              ),
+      child: !widget.wonky
+          ? markdown
+          : ShadTabs<String>(
+              value: _tab,
+              onChanged: (v) => setState(() => _tab = v),
+              tabs: [
+                ShadTab(
+                  key: const ValueKey<String>(
+                    'write.dialog.markdownGuide.tab.markdown',
+                  ),
+                  value: 'markdown',
+                  content: markdown,
+                  child: Text(l.docDialogGuideTabMarkdown),
+                ),
+                ShadTab(
+                  key: const ValueKey<String>(
+                    'write.dialog.markdownGuide.tab.wonky',
+                  ),
+                  value: 'wonky',
+                  content: _rows(
+                    context,
+                    // The syntax is the blog's grammar (Write 11 §4), not
+                    // translated.
+                    [
+                      (':::info … :::', l.docDialogGuideCallout),
+                      (':::warning[Heads up]', l.docDialogGuideCallout),
+                      (':::details', l.docDialogGuideDetails),
+                      (':::card', l.docDialogGuideCard),
+                      (
+                        ':::grid {columns=2 bullets=check}',
+                        l.docDialogGuideGrid,
+                      ),
+                      (':::', l.docDialogGuideBlockEnd),
+                      (':button[Label](https://…)', l.docDialogGuideButton),
+                      (':link[Label](https://…)', l.docDialogGuideArrowLink),
+                      (':chip[Label]{icon=tag}', l.docDialogGuideChip),
+                      ('## (1) Heading', l.docDialogGuideNumberedHeading),
+                      ('::youtube{id=…}', l.docDialogGuideYouTube),
+                    ],
+                    intro: l.docDialogGuideWonkyDescription,
+                  ),
+                  child: Text(l.docDialogGuideTabWonky),
+                ),
+              ],
             ),
-          const SizedBox(height: 8),
-          Text(l.docDialogGuideFootnote, style: theme.textTheme.muted),
-        ],
-      ),
     );
-  },
-);
+  }
+
+  /// A two-column table of syntax and meaning.
+  Widget _rows(
+    BuildContext context,
+    List<(String, String)> rows, {
+    String? intro,
+    String? footnote,
+  }) {
+    final theme = ShadTheme.of(context);
+    final cs = theme.colorScheme;
+    final mono = TextStyle(
+      fontFamily: WonkyTheme.monoFamily,
+      fontSize: 13,
+      color: cs.foreground,
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (intro != null) ...[
+          Text(intro, style: theme.textTheme.muted),
+          const SizedBox(height: 8),
+        ],
+        for (final (syntax, meaning) in rows)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: cs.border)),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: Text(syntax, style: mono)),
+                const SizedBox(width: 12),
+                Expanded(child: Text(meaning, style: theme.textTheme.small)),
+              ],
+            ),
+          ),
+        if (footnote != null) ...[
+          const SizedBox(height: 8),
+          Text(footnote, style: theme.textTheme.muted),
+        ],
+      ],
+    );
+  }
+}

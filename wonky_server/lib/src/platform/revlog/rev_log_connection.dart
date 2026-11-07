@@ -169,7 +169,10 @@ class RevLogConnection {
     _item = item;
     _role = await AccessService.requireRole(session, actor, item, Role.viewer);
     if (_closed) return;
-    await DriveUserStates.recordOpen(session, actor, item, _role);
+    // The signed-out viewer leaves no trace (specs/06 §2.4).
+    if (!actor.isAnonymous) {
+      await DriveUserStates.recordOpen(session, actor, item, _role);
+    }
     final state = await RevFileStates.of(session, binding, fileUuid);
     if (_closed) return;
     if (state == null) {
@@ -185,39 +188,12 @@ class RevLogConnection {
       if (_closed) return;
     }
 
-    final profile = await UserService.requireProfile(session, actor.userId);
-    final summary = await UserService.summaryOf(session, profile);
-    if (_closed) return;
-    _me = Participant(
-      sessionId: sessionId,
-      userId: actor.userId,
-      userUuid: actor.authUserId,
-      displayName: summary.displayName,
-      avatarUrl: summary.avatarUrl,
-      colorIndex: summary.colorIndex,
-      role: _role.access,
-      actorKind: actor.kind,
-      state: PresenceState.active,
-      joinedAt: nowUtc(),
-    );
-
     // Ops from now on are forwarded (buffered until Init).
     _unlisten = state.listen(_onOp);
     session.messages.addListener(RevBus.channel(fileUuid), _onBus);
-    _announced = true;
-    await RevBus.roster(
-      session,
-      fileUuid,
-      RevBusMessage(
-        type: 'hello',
-        originSessionId: sessionId,
-        participant: _me,
-      ),
-    );
-    if (_closed) {
-      await _postLeft();
-      return;
-    }
+    // The signed-out viewer is not announced: no presence identity.
+    if (!actor.isAnonymous) await _announce();
+    if (_closed) return;
     final editors = _participants.values
         .where((p) => p.role.index >= AccessRole.editor.index)
         .length;
@@ -290,6 +266,40 @@ class RevLogConnection {
       if (_role >= Role.editor) {
         _settle = Timer(rosterSettle, _enforceEditorLimit);
       }
+    }
+  }
+
+  /// Creates [_me] and posts `hello` to the roster.
+  Future<void> _announce() async {
+    final profile = await UserService.requireProfile(session, actor.userId);
+    final summary = await UserService.summaryOf(session, profile);
+    if (_closed) return;
+    _me = Participant(
+      sessionId: sessionId,
+      userId: actor.userId,
+      userUuid: actor.authUserId,
+      displayName: summary.displayName,
+      avatarUrl: summary.avatarUrl,
+      colorIndex: summary.colorIndex,
+      role: _role.access,
+      actorKind: actor.kind,
+      state: PresenceState.active,
+      joinedAt: nowUtc(),
+    );
+
+    _announced = true;
+    await RevBus.roster(
+      session,
+      fileUuid,
+      RevBusMessage(
+        type: 'hello',
+        originSessionId: sessionId,
+        participant: _me,
+      ),
+    );
+    if (_closed) {
+      await _postLeft();
+      return;
     }
   }
 
@@ -461,6 +471,15 @@ class RevLogConnection {
     try {
       if (m is! RevSubmit) debugOnMessage?.call(m);
       switch (m) {
+        case RevSubmit() when actor.isAnonymous:
+          // Signed-out viewers never write (specs/06 §2.4).
+          _send(
+            RevRejected(
+              clientOpId: m.clientOpId,
+              code: RevRejectCode.forbiddenForRole,
+              message: 'Sign in to edit.',
+            ),
+          );
         case RevSubmit():
           await _submit(m);
         case RevRequestOps():

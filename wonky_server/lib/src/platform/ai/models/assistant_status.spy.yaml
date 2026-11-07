@@ -10,10 +10,15 @@ fields:
   dailyTokenBudget: int
   ### The provider requests go to (null when AI isn't configured).
   provider: AiProvider?
-  ### server | user: whose API key is used (null when none).
+  ### server | user | organization: whose API key is used (null when none).
   keySource: String?
   ### Whether the user may add their own key (the server has none and
   ### `ai.allowUserKeys` is on): Settings › AI providers.
   userKeysAllowed: bool, default=false
   ### The user's own key, if they added one.
   userKey: AiProviderKeyView?
+  ### The user's organization (its key, `serverpod.dev`), when they have
+  ### one: they may add a key shared with it.
+  organization: String?
+  ### The organization's shared key, if a member added one.
+  orgKey: AiOrgKeyView?

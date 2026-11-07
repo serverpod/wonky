@@ -14,13 +14,22 @@ class FakeOp {
     this.delta,
     this.clientOpId,
     this.sessionId,
-    this.userId,
-  );
+    this.userId, {
+    this.onBehalfOfSessionId,
+    this.groupId,
+  });
   final int revision;
   final Delta delta;
   final UuidValue clientOpId;
   final String sessionId;
   final int userId;
+
+  /// An assistant run's session and run (gap fills carry them, Write 09
+  /// §5.2).
+  final String? onBehalfOfSessionId;
+  final String? groupId;
+
+  bool get isAi => groupId != null;
 }
 
 /// An in-process Write OT server (Write 03 §2) for sync tests: revisions,
@@ -119,8 +128,10 @@ class FakeDocumentServer {
     deltaJson: jsonEncode(o.delta.toJson()),
     authorId: o.userId,
     authorSessionId: o.sessionId,
-    actorKind: ActorKind.user,
-    kind: DocumentOpKind.content,
+    actorKind: o.isAi ? ActorKind.ai : ActorKind.user,
+    kind: o.isAi ? DocumentOpKind.aiEdit : DocumentOpKind.content,
+    onBehalfOfSessionId: o.onBehalfOfSessionId,
+    groupId: o.groupId,
   );
 
   DocumentOpView _viewOf(FakeOp o) => DocumentOpView(
@@ -128,9 +139,11 @@ class FakeDocumentServer {
     deltaJson: jsonEncode(o.delta.toJson()),
     clientOpId: o.clientOpId,
     authorId: o.userId,
-    actorKind: ActorKind.user,
-    kind: DocumentOpKind.content,
+    actorKind: o.isAi ? ActorKind.ai : ActorKind.user,
+    kind: o.isAi ? DocumentOpKind.aiEdit : DocumentOpKind.content,
     sessionId: o.sessionId,
+    onBehalfOfSessionId: o.onBehalfOfSessionId,
+    groupId: o.groupId,
     createdAt: DateTime.utc(2026),
   );
 

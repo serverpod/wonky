@@ -11,6 +11,7 @@ import '../auth/auth_repository.dart';
 import '../data/collab_repositories.dart';
 import '../data/drive_repository.dart';
 import '../data/file_repository.dart';
+import '../data/public_item_repository.dart';
 import '../data/sharing_repository.dart';
 import '../data/user_repository.dart';
 
@@ -905,3 +906,35 @@ class UnfakedFileRepository with _NotFaked implements FileRepository {}
 class UnfakedMetaRepository with _NotFaked implements MetaRepository {}
 
 class UnfakedBoardRepository with _NotFaked implements BoardRepository {}
+
+/// Link-shared items for guests (specs/06 §2.4) over a [FakeDriveRepository]:
+/// [share] makes an item viewable by anyone with the link; every other
+/// uuid answers `notFound`, as the server does. [calls] records the uuids
+/// asked for.
+class FakePublicItemRepository implements PublicItemRepository {
+  FakePublicItemRepository(this.drive);
+
+  final FakeDriveRepository drive;
+  final Set<UuidValue> _public = {};
+  final List<UuidValue> calls = [];
+
+  /// Makes [uuid] link-shared.
+  void share(UuidValue uuid) => _public.add(uuid);
+
+  @override
+  Future<PublicItemView> get(UuidValue uuid) async {
+    calls.add(uuid);
+    if (!_public.contains(uuid)) {
+      throw WonkyException(code: WonkyErrorCode.notFound, message: 'Not found');
+    }
+    final item = drive.item(uuid);
+    return PublicItemView(
+      uuid: item.uuid,
+      kind: item.kind,
+      name: item.name,
+      contentRef: item.contentRef ?? item.uuid,
+      ownerName: item.owner.displayName,
+      modifiedAt: item.modifiedAt,
+    );
+  }
+}

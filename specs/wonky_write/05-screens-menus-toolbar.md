@@ -34,7 +34,7 @@ element* toolbar dropdown and the slash group, shown only in Wonky documents) ar
 
 | Screen | Route | Owner spec | Notes |
 |--------|-------|-----------|-------|
-| Home / Drive views | `/`, `/f/:uuid` (v2; `/drive/:uuid` redirects), `/my-files`, `/shared`, `/starred`, `/recent`, `/offline`, `/trash`, `/search` | suite 05 §3, suite 03 §3.3 | (v2) **Only documents** (and folders that contain documents); left menu with the four apps, *Write settings*, *Wonky Work settings*, *Bugs & improvements* (was *Report a bug*), storage meter; *Open in Wonky Drive*; Write template strip; *Import file…* for `.md/.txt/.html/.docx/.odt/.rtf` |
+| Home / Drive views | `/`, `/f/:uuid` (v2; `/drive/:uuid` redirects), `/my-files`, `/shared`, `/starred`, `/recent`, `/offline`, `/trash`, `/search` | suite 05 §3, suite 03 §3.3 | (v2) **Only documents** (and folders that contain documents); left menu with the four apps, *Settings*, *Bugs & improvements* (was *Report a bug*), storage meter; *Open in Wonky Drive*; Write template strip; *Import file…* for `.md/.txt/.html/.docx/.odt/.rtf` |
 | New / import (v2) | `/new?folder=&template=`, `/import?file=<fileItemUuid>` | suite 03 §2, Drive 02 §7.2 | Creates a document (offline-capable) or imports a Drive file (07), then opens the editor. As built (D-16): `/import` runs `drive.convertFile` on the stored file (Write has no import options dialog; the import banner shows the warnings when the document opens); Cancel / *Out of storage* go back to Drive (`history.back`), errors stay in Write with a toast (`features/import/import_route.dart`) |
 | Template gallery | `/templates` | suite 05 §3.1 | Built-in document templates, each with its own Write theme: Meeting notes, Project brief, Letter, Weekly report, Lecture notes, To-do list, Recipe, Story draft (plus Blank) |
 | **Document editor** | `/d/:uuid` (`?heading=`, `?comment=`, `?suggestion=`, `?version=`) | **this spec §3–§19** | Main screen |
@@ -89,10 +89,10 @@ Overlays (dialogs, palette, toasts, offline banner, MCP pill) per suite 03 §3.
 | Sync status | `SyncStatusIndicator` | Saved / Saving… / Offline (tooltip and details: "Offline — changes saved on this device") / Sync error (click → details) |
 | — spacer — | | |
 | Presence | `PresenceAvatarStack` | Click avatar → `write.nav.goToCollaborator`; ⋮ → Follow (`write.nav.follow`) |
-| Bugs & improvements (M12) | `ShadIconButton.ghost` (Lucide `messageSquarePlus`, tooltip "Bugs & improvements"; replaces *Report a bug*) | `shell.board.report` — report dialog, suite 16 §4.2; hidden below 640 px (still in Help) |
+| Report a bug, Suggest an improvement (M12, T-5) | outline `sm` buttons (Lucide `bug`, `leaf`; icons only below 1200 px) | `shell.board.report {kind: bug\|idea}` — report dialog, suite 03 §3.1, suite 16 §4.2; hidden below 640 px (still in Help) |
 | Submission status, Submit (M14) | `SubmissionStatusChip`, `ShadButton.secondary` (Lucide `send`) | Only for documents with a submission: status popover, `write.submission.submit` — [18 §4](../18-publications-and-submissions.md) |
-| Share | `ShadButton` primary (lock / globe / users icon by link state) | `shell.sharing.open` |
-| Account | `ShadAvatar` menu | suite 04; (v2) *Write settings*, *Wonky Work settings*, *Open ▸* the four apps, *Sign out* |
+| Share | `ShadButton` primary, size `sm` like *Report a bug* / *Suggest an improvement* beside it (lock / globe / users icon by link state) | `shell.sharing.open` |
+| Account | `ShadAvatar` menu | suite 04; *Settings* (Lucide `settings`, the one settings page), *Open ▸* the four apps, *Sign out*; no name or email in the menu (they are in the avatar's tooltip) |
 
 There are no Version history or Assistant buttons in the title row (and no Assistant button
 group in the toolbar): both panels are icons in the side panel rail (§10), and stay reachable
@@ -175,6 +175,12 @@ weight; size clamped 13–22 px), shortcut on the right:
 | Code block | `{codeBlock}` | ⌘⌥C / Ctrl+Alt+C |
 | — separator — | | |
 | Customize heading styles… | `write.theme.openEditor {element: headings}` ([06](06-themes.md)) | — |
+
+Choosing a style (here, in Format › Paragraph styles, the selection toolbar or the palette)
+returns the keyboard focus to the editor once the menu has closed: every editor command run from
+a menu, the toolbar, a context menu or the palette does (`WriteDocumentController.focusEditorAfterFrame`,
+`editor_commands.dart`). While the editor doesn't have focus its caret is hidden, so the document
+never looks typeable when keys go elsewhere (super_editor patch SE-16).
 
 ### 4.2 Undo history popover
 `ShadPopover` from the Undo button: last 50 steps (label, relative time, source icon for
@@ -291,6 +297,7 @@ Write behaviour noted.
 | ─ | | | | |
 | Language… | `write.doc.languageDialog` → `write.doc.setLanguage` | — | — | role ≥ editor |
 | Page setup… | `write.doc.pageSetup` (dialog §12.6) | — | — | role ≥ editor (viewers: read-only view) |
+| Style guide… | `write.doc.styleGuide` (style guide library for this document, [09](09-mcp-and-ai.md) §5.9; choosing one runs the undoable `write.doc.setStyleGuide {ref}`) | — | — | `aiOn` (choosing: role ≥ editor) |
 | Print *(shell)* | `write.file.print` (→ `/d/:uuid/print`) | ⌘P | Ctrl+P | `copyAllowed` |
 
 ### 7.2 Edit
@@ -306,14 +313,14 @@ Write behaviour noted.
 | Copy as ▸ Markdown / Plain text / HTML | `write.edit.copyAsMarkdown` / `copyAsPlainText` / `copyAsHtml` | — | — | same |
 | Paste | `write.edit.paste` | ⌘V | Ctrl+V | `editable` |
 | Paste without formatting | `write.edit.pasteWithoutFormatting` | ⌘⇧V | Ctrl+Shift+V | `editable` |
-| Paste special ▸ Paste as Markdown (P1) | `write.edit.pasteAsMarkdown` | — | — | `editable` |
+| Paste as Markdown (icon `clipboard-list`) | `write.edit.pasteAsMarkdown` | — | — | `editable` |
 | ─ | | | | |
 | Select all | `write.edit.selectAll` | ⌘A | Ctrl+A | always |
 | Delete | `write.edit.delete` | ⌫/⌦ | Del | `selText && editable` |
 | ─ | | | | |
-| Find | `write.find.open` | ⌘F | Ctrl+F | always |
+| Find (icon `search`, ✓ at the end while the panel is open) | `write.find.open` | ⌘F | Ctrl+F | always |
 | Find and replace | `write.find.openReplace` | ⌘⇧H | Ctrl+H | always (replace row disabled unless `editable`) |
-| Find next / previous | `write.find.next` / `previous` | ⌘G / ⌘⇧G | Ctrl+G, F3 / Ctrl+Shift+G, Shift+F3 | query set |
+| Find next / previous (icons `arrow-big-right-dash` / `arrow-big-left-dash`, also on the Find panel's buttons) | `write.find.next` / `previous` | ⌘G / ⌘⇧G | Ctrl+G, F3 / Ctrl+Shift+G, Shift+F3 | query set |
 | Go to heading… | `write.nav.goToHeading` | ⌘⌥G | Ctrl+Alt+G | outline non-empty |
 
 The copy items (Cut, Copy, *Copy as ▸*) form one group, directly above the paste items (Paste,
@@ -335,17 +342,21 @@ and *Paste as Markdown* after its *Paste without formatting* (`write_menus.dart`
 | Zoom ▸ Fit width / Fit page | `write.view.zoomFit {width\|page}` | — | — | Fit page: Pages mode |
 | Zoom ▸ Reset to 100 % | `write.view.zoomReset` | desktop ⌘0 | desktop Ctrl+0 | zoom ≠ 100 |
 | ─ | | | | |
-| Panels ▸ Outline (check) | `write.view.toggleOutline` | ⌘⌥⇧O | Ctrl+Alt+Shift+O | always |
-| Panels ▸ Find and replace (check) | `write.find.open` / `close` | ⌘F | Ctrl+F | always |
-| Panels ▸ Version history (check) | `shell.versions.togglePanel` | — | — | `online` |
-| Panels ▸ Assistant (check) | `shell.ai.togglePanel` | ⌘J (outside editor) | Ctrl+J | `aiOn` |
+| Panels ▸ Assistant (check, `sparkles`) | `shell.ai.togglePanel` | ⌘J (outside editor) | Ctrl+J | `aiOn` |
+| Panels ▸ Outline (check, `list-tree`) | `write.view.toggleOutline` | ⌘⌥⇧O | Ctrl+Alt+Shift+O | always |
+| Panels ▸ Find and replace (check, `search`) | `write.find.open` / `close` | ⌘F | Ctrl+F | always |
+| Panels ▸ Version history (check, `history`) | `shell.versions.togglePanel` | — | — | `online` |
 | Comments and suggestions (check) | `shell.comments.togglePanel` (shows/hides the comment margin, §10) | — | — | role allows seeing comments |
 | App theme ▸ System / Light / Dark (radio) *(shell)* | `shell.appearance.setTheme {mode}` | — | — | always |
 
 There is no *View › Show* submenu, compact mode, full screen, focus mode, typewriter scrolling
 or theme preview: the chrome is always shown and collaborator cursors are always drawn. The word
-count bar is turned on in the word count dialog (§12.5), the selection toolbar in *Tools ›
-Preferences*, spelling underlines in *Tools › Spelling*.
+count bar is turned on in the word count dialog (§12.5), the selection toolbar in *Settings ›
+Editor* (§13.3), spelling underlines in *Tools › Spelling*.
+
+*Panels ▸* lists the side panels in the rail's order (§10: Assistant, Outline, Find, History)
+with the rail's icons; each is a check item whose ✓ sits at the end so the icon keeps the
+leading slot (`MenuSpec.command(showIcon: true)`, suite 02 §4.2).
 
 ### 7.4 Insert
 
@@ -356,14 +367,14 @@ Preferences*, spelling underlines in *Tools › Spelling*.
 | Table ▸ *(custom: `WonkyTableSizePicker`)* | `write.insert.table {rows, cols}` | — | — | role ≥ editor, Editing, `!inCode` |
 | Table ▸ Custom size… | `write.insert.tableDialog` (dialog §12.3) | — | — | same |
 | Divider (horizontal line) | `write.insert.divider` | — | — | `editable && !inCode` |
-| Code block | `write.format.blockType {codeBlock}` | ⌘⌥C | Ctrl+Alt+C | `editable` |
-| Quote | `write.format.blockType {quote}` | ⌘⇧. | Ctrl+Shift+. | `editable && caretText` |
-| Checklist | `write.list.toggleChecklist` | ⌘⇧9 | Ctrl+Shift+9 | `editable` |
+| Code block (icon `code`) | `write.format.blockType {codeBlock}` | ⌘⌥C | Ctrl+Alt+C | `editable` |
+| Quote (icon `text-quote`) | `write.format.blockType {quote}` | ⌘⇧. | Ctrl+Shift+. | `editable && caretText` |
+| Checklist (icon `list-checks`) | `write.list.toggleChecklist` | ⌘⇧9 | Ctrl+Shift+9 | `editable` |
 | ─ | | | | |
 | Link… | `write.link.insert` | ⌘K | Ctrl+K | `editable && !inCode` |
 | Mention a person | `write.insert.mentionTrigger` (inserts `@` + opens picker) | — | — | `editable && !inCode` |
 | Emoji… (P1) | `write.insert.emoji` | — | — | `editable` |
-| Special characters… (P1) | `write.insert.specialCharacter` | — | — | `editable` |
+| Special characters… (icon `languages`) | `write.insert.specialCharacter` | — | — | `editable` |
 | Date (P2) | `write.insert.date` | — | — | `editable` |
 | Table of contents (P2) | `write.insert.tableOfContents` | — | — | role ≥ editor |
 | ─ | | | | |
@@ -414,29 +425,38 @@ Preferences*, spelling underlines in *Tools › Spelling*.
 | Word count | `write.tools.wordCount` | ⌘⇧C | Ctrl+Shift+C | always |
 | Language… | `write.doc.languageDialog` | — | — | role ≥ editor |
 | ─ | | | | |
-| Assistant *(shell)* | `shell.ai.togglePanel` | ⌘J | Ctrl+J | `aiOn` |
-| AI ▸ Summarize document | `write.ai.summarizeDocument` | — | — | `aiOn` |
-| AI ▸ Generate outline | `write.ai.generateOutline` | — | — | `aiOn`, role ≥ editor |
-| AI ▸ Proofread document | `write.ai.proofread` | — | — | `aiOn` |
+| Assistant ▸ Open assistant | `write.ai.openAssistant` (the panel toggles with ⌘J / Ctrl+J, `shell.ai.togglePanel`) | — | — | `aiOn` |
+| Assistant ▸ Summarize | `write.ai.summarizeDocument` (quick action, [09](09-mcp-and-ai.md) §5.5; the submenu has the panel's actions with the panel's icons, `WriteAiIcons`) | — | — | `aiOn` |
+| Assistant ▸ Proofread | `write.ai.proofreadDocument` | — | — | `aiOn`, role ≥ commenter |
+| Assistant ▸ Address comments | `write.ai.addressComments` | — | — | `aiOn`, role ≥ commenter |
+| Assistant ▸ Apply style | `write.ai.applyStyle` | — | — | `aiOn`, role ≥ commenter |
+| Assistant ▸ Style guides… | `write.ai.manageStyleGuides` (library dialog, suite 10 §7) | — | — | `aiOn` |
 | ─ | | | | |
-| Preferences ▸ Markdown shortcuts (check) | `write.prefs.setMarkdownShortcuts` | — | — | always |
-| Preferences ▸ Smart quotes and dashes (check, P1) | `write.prefs.setSmartTypography` | — | — | always |
-| Preferences ▸ Auto-pair brackets (check, P1) | `write.prefs.setAutoPair` | — | — | always |
-| Preferences ▸ Automatically detect links (check) | `write.prefs.setAutolink` | — | — | always |
-| Preferences ▸ Copy plain text as Markdown (check) | `write.prefs.setCopyAsMarkdown` | — | — | always |
-| Preferences ▸ Show toolbar on selection (check) | `write.prefs.setSelectionToolbar` | — | — | always |
-| Preferences ▸ Write settings… *(shell, v2)* | `shell.settings.openApp` | ⌘, (desktop) | Ctrl+, (desktop) | always |
-| Preferences ▸ Wonky Work settings… *(shell, v2)* | `shell.settings.open {section: account}` | — | — | always |
-| Accessibility ▸ Screen reader support (check) | `write.a11y.toggleScreenReaderMode` | ⌘⌥Z | Ctrl+Alt+Z | always |
-| Accessibility ▸ Announce formatting | `write.a11y.announceFormatting` | ⌘⌥A | Ctrl+Alt+A | screen-reader mode |
-| Accessibility ▸ Settings… *(shell)* | `shell.settings.open {section: appearance}` | — | — | always |
+| Settings… *(shell, Lucide `settings`)* | `shell.settings.openApp` | ⌘, (desktop) | Ctrl+, (desktop) | always |
 | Keyboard shortcuts *(shell)* | `shell.help.shortcuts` | ⌘/ | Ctrl+/ | always |
+
+There is one settings entry: *Settings…* opens the settings page with the Write sections and
+the Wonky Work sections (§13.3, suite 04 §4.2). The former *Preferences ▸* submenu (the
+`write.prefs.*` toggles), *Wonky Work settings…*, *Accessibility settings* and *Explore* are
+gone; the `write.prefs.*` commands stay in the palette and MCP and are set in *Settings ›
+Editor*.
 
 ### 7.7 Help *(shell + Write items)*
 Keyboard shortcuts (⌘/ / Ctrl+/) · **Markdown guide** (`write.help.markdownGuide`, dialog) · ─ ·
-(M12) **Bugs & improvements…** (`shell.board.report`) · **Browse Bugs & improvements**
-(`shell.board.open`; replace *Report a bug*, suite 03 §3.2, suite 16 §4.1) · What's new (`shell.help.whatsNew`) · About
-(`shell.help.about`). (No help center, no menu search; the Markdown guide is only in Help.)
+**Report a bug** (`shell.board.report {kind: bug}`, `bug`) · **Suggest an improvement**
+(`shell.board.report {kind: idea}`, `leaf`) — the report dialog on that kind, like the header
+buttons · **Browse Bugs & improvements** (`shell.board.open`; suite 03 §3.2, suite 16 §4.1) ·
+About (`shell.help.about`). There is no *What's new*. (No help center, no menu search; the
+Markdown guide is only in Help.)
+
+The **Markdown guide** (*Markdown & formatting*, `write.dialog.markdownGuide`) lists the
+Markdown shortcuts. In a document whose flavor is Wonky Markdown ([11 §3](11-wonky-markdown.md))
+it has two tabs, *Markdown* and *Wonky Markdown*; the second lists the extensions with their
+syntax ([11 §4](11-wonky-markdown.md)): callouts (`:::info` … `:::`, the six types, an optional
+`[title]`), details, cards, grids (`{columns=n bullets=b}`), the closing `:::`, buttons
+(`:button[…](…)`, `{variant=secondary}`), arrow links (`:link[…](…)`), chips
+(`:chip[…]{icon=…}`), numbered headings (`## (n) …`) and YouTube videos (`::youtube{id=…}`).
+GitHub Markdown documents show only the first list.
 
 ### 7.8 Native macOS menu mapping (deferred: v2 is web only, suite 01 A13)
 The `MenuSpec` additionally yields: app menu (About, Preferences ⌘,, Hide ⌘H, Quit ⌘Q — OS
@@ -559,9 +579,11 @@ Details in [08](08-comments-suggestions-history.md).
 
 ### 10.4 Assistant panel
 Shared shell `AssistantPanel` (suite 10 §3) with Write context chips ("Selection: 2
-paragraphs", "Heading: Budget"), quick prompts (Summarize, Improve selection, Generate outline,
-Continue writing), apply-mode toggle (*Edit directly* / *Suggest*). Tool chips *Show* jump to
-and flash-highlight the changed range in the editor (1.5 s `findMatchActive` pulse).
+paragraphs", "Heading: Budget") and the quick actions *Summarize*, *Proofread*, *Address
+comments* and *Apply style* ([09](09-mcp-and-ai.md) §5.5) above the composer. There is no
+apply-mode toggle: the assistant's edits are always suggestions. The ⋮ menu adds *Style
+guides…*. Tool chips *Show* jump to and flash-highlight the changed range in the editor (1.5 s
+`findMatchActive` pulse).
 
 ### 10.5 Find and replace panel (`FindPanel`) — 04 §25
 ```
@@ -602,7 +624,9 @@ row, the app theme in *View › App theme*.
 
 All dialogs are `ShadDialog` built through `WonkyDialogSpec` (suite 09 §6.2) unless noted
 custom (`McpDescribableDialog`); Esc = Cancel; Enter = primary when valid; focus first field;
-below `md` they become full-height sheets. **Dialog id** is the MCP id.
+below `md` they become full-height sheets. **Dialog id** is the MCP id. A dialog with buttons
+(Cancel, Close, OK, Done, Got it, …) has no X in its corner; only dialogs without buttons
+(pickers, the share dialog) show one (suite 02 §4.20).
 
 | § | Dialog (id) | Opened by | Fields | Buttons / result |
 |---|-------------|-----------|--------|------------------|
@@ -653,7 +677,8 @@ for zoom/mode) in local prefs. Collaborator cursors are always shown.
 (v2) Write's own settings are the **app settings** of the Write app (`/settings/app/:section`,
 `WriteAppConfig.appSettingsSections`), no longer a section of the shared settings page. They are
 shown only in Write; suite-level settings (account, appearance, language, notifications, AI,
-developer, offline & device data, storage) are under *Wonky Work settings*.
+developer, offline & device data, storage) are under *Wonky Work settings*. Both groups are one
+page, *Settings* (Tools › Settings…, the account menu, the home's left menu; suite 04 §4.2).
 
 | Section (id) | Settings |
 |--------------|----------|
@@ -691,7 +716,7 @@ setup yet and exports don't preselect the default format (TODO.md).
 | **No comments or suggestions** | The comment margin is not shown (§10.2) |
 | **Find: no results** | "No results for 'xyz'" muted; with regex error: destructive "Invalid regular expression" |
 | **Version history: only current** | "No earlier versions yet. Versions are saved automatically as you edit." + *Name current version* |
-| **Assistant empty** | Shell empty state + Write quick prompts |
+| **Assistant empty** | Shell empty state + the Write quick actions |
 | **Image failed / unavailable** | 04 §17.3 placeholders |
 | **Fatal editor error** | Error card in canvas (suite 03 §4): "Something went wrong displaying this document" + **Reload document** + **Copy error details**; pending outbox preserved |
 | **Server rejected role / view-only** | Toolbar view-only + mode switcher "Viewing" + *Request edit access* |
@@ -855,7 +880,7 @@ The canonical catalog is [suite 08 §5](../08-commands-and-undo.md). Ids used by
 `shell.sharing.requestAccess`, `shell.versions.open`, `shell.versions.togglePanel`,
 `shell.versions.nameCurrent`, `shell.comments.create`, `shell.comments.togglePanel`,
 `shell.comments.activate`, `shell.edit.undo`, `shell.edit.redo`, `shell.edit.undoHistory`,
-`shell.edit.undoTo`, `shell.help.shortcuts`, `shell.help.feedback`, `shell.help.whatsNew`,
+`shell.edit.undoTo`, `shell.help.shortcuts`, `shell.help.feedback`,
 `shell.help.about`, `shell.settings.open`, `shell.focus.nextRegion`,
 `shell.focus.previousRegion` (existing: `shell.ai.togglePanel`, `shell.appearance.setTheme`);
 (v2) `shell.help.reportBug` (M12: alias of `shell.board.report`; the Help menu shows `shell.board.report` and `shell.board.open`), `shell.settings.openApp`, `shell.account.switchApp`,

@@ -243,7 +243,7 @@ MenuRoot _slidesMenus(ShellMenus shell, {required SlidesLocalizations l}) {
   ]);
 
   // ---- Tools (§4.8)
-  root = root.remove('tools.explore').insertAfter('tools.assistant', [
+  root = root.insertAfter('tools.assistant', [
     MenuSpec.submenu('tools.spelling', l.menuSpelling, [
       _c('slides.spelling.check'),
       _c('slides.spelling.toggleUnderline'),

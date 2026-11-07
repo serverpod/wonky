@@ -58,6 +58,30 @@ class WriteAppConfig extends WonkyAppConfig {
     WriteLocalizations.delegate,
   ];
 
+  /// Link-shared documents open signed out, view-only (specs/06 §2.4).
+  @override
+  bool get allowsGuestViewing => true;
+
+  /// Write commands that need an account (the assistant, submissions,
+  /// themes, comments and suggestions, download and print, the personal
+  /// dictionary).
+  @override
+  bool guestAllowsCommand(String id) =>
+      super.guestAllowsCommand(id) && !_guestBlocked.any(id.startsWith);
+
+  static const _guestBlocked = [
+    'write.ai.',
+    'write.submission.',
+    'write.theme.',
+    'write.themeEditor.',
+    'write.suggestions.',
+    'write.comments.',
+    'write.file.',
+    'write.spell.addToDictionary',
+    'write.spell.personalDictionary',
+    'write.prefs.removeDictionaryWord',
+  ];
+
   @override
   Widget buildEditor(BuildContext context, GoRouterState state, String uuid) {
     final services = ShellScope.of(context);

@@ -91,7 +91,13 @@ abstract final class WonkyTheme {
     return ShadThemeData(
       brightness: brightness,
       colorScheme: scheme,
-      style: ShadStyleTokens.vega,
+      // Text fields, text areas and selects are filled with the page
+      // background (white in light mode): vega leaves them transparent, and
+      // its control shadow then showed through as a gray wash on the web.
+      // Dark mode keeps vega's input wash.
+      style: ShadStyleTokens.vega.copyWith(
+        fieldFill: ShadSurfaceFill.background,
+      ),
       spacing: ShadSpacing(step: compact ? 3.5 : 4),
       textTheme: ShadTextTheme(family: WonkyFonts.geist),
     );

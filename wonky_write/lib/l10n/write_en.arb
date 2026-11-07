@@ -603,7 +603,6 @@
   "@menuUnderlineErrors": {
     "description": "Spelling submenu: underline misspelled words."
   },
-  "menuPreferences": "Preferences",
   "menuAllPreferences": "All preferences…",
   "menuInsert": "Insert",
   "@menuInsert": {
@@ -1004,6 +1003,25 @@
   "docDialogGuideCommandMenu": "Command menu: insert tables, images and more",
   "docDialogGuideMention": "Mention a person",
   "docDialogGuideFootnote": "Underline and text colors are not part of Markdown — use bold or italic, or change how emphasis looks with a theme.",
+  "docDialogGuideTabMarkdown": "Markdown",
+  "@docDialogGuideTabMarkdown": {
+    "description": "Tab of the Markdown guide with the standard Markdown shortcuts."
+  },
+  "docDialogGuideTabWonky": "Wonky Markdown",
+  "@docDialogGuideTabWonky": {
+    "description": "Tab of the Markdown guide with the Wonky Markdown extensions (shown in documents that use Wonky Markdown)."
+  },
+  "docDialogGuideWonkyDescription": "This document uses Wonky Markdown: these blocks and inline elements come on top of standard Markdown. Insert them from the Insert menu or the / menu, or type them.",
+  "docDialogGuideCallout": "Callout: info, tip, note, warning, caution or danger, with an optional title",
+  "docDialogGuideDetails": "Details: a collapsible section, its first ### line is the summary",
+  "docDialogGuideCard": "Card",
+  "docDialogGuideGrid": "Grid of items in 1–4 columns (bullets: check, circle or none)",
+  "docDialogGuideBlockEnd": "Ends a callout, details, card or grid",
+  "docDialogGuideButton": "Button link (secondary button with variant=secondary)",
+  "docDialogGuideArrowLink": "Link with an arrow",
+  "docDialogGuideChip": "Chip, optionally with an icon",
+  "docDialogGuideNumberedHeading": "Numbered heading (step), level 2 or 3",
+  "docDialogGuideYouTube": "YouTube video",
   "pageSetupTitle": "Page setup",
   "pageSetupReadOnly": "You need edit access to change the page setup.",
   "pageSetupSetAsDefault": "Set as default",
@@ -3460,5 +3478,32 @@
   "youtubeFieldTitle": "Title (optional)",
   "youtubeInvalidUrl": "This isn't a YouTube video link.",
   "flavorCountVideos": "{count, plural, =1{1 YouTube video} other{{count} YouTube videos}}",
-  "@flavorCountVideos": {"placeholders": {"count": {"type": "int"}}}
+  "@flavorCountVideos": {"placeholders": {"count": {"type": "int"}}},
+  "aiQuickSummarize": "Summarize",
+  "@aiQuickSummarize": {"description": "Assistant panel quick action."},
+  "aiQuickProofread": "Proofread",
+  "@aiQuickProofread": {"description": "Assistant panel quick action."},
+  "aiQuickApplyStyle": "Apply style",
+  "@aiQuickApplyStyle": {"description": "Assistant panel quick action."},
+  "aiWorkingSummarize": "Summarizing the document…",
+  "aiWorkingProofread": "Proofreading…",
+  "aiWorkingComments": "Working through the open comments…",
+  "aiWorkingStyle": "Applying the style guide…",
+  "aiChooseStyleGuide": "Choose a style guide",
+  "cmdAiSummarizeDocumentDescription": "Sums up the document in the assistant panel.",
+  "cmdAiProofreadDocumentDescription": "Suggests small spelling, grammar and punctuation corrections.",
+  "cmdAiAddressComments": "Address comments",
+  "cmdAiAddressCommentsDescription": "Suggests the changes the open comments ask for and replies in their threads.",
+  "cmdAiApplyStyle": "Apply style",
+  "cmdAiApplyStyleDescription": "Suggests rewrites so the document follows its style guide.",
+  "cmdAiOpenAssistant": "Open assistant",
+  "cmdAiManageStyleGuides": "Style guides…",
+  "cmdAiManageStyleGuidesDescription": "Browse, write and share style guides for the assistant.",
+  "cmdDocStyleGuide": "Style guide…",
+  "cmdDocStyleGuideDescription": "Chooses the style guide this document follows.",
+  "cmdDocSetStyleGuide": "Set style guide",
+  "menuAssistant": "Assistant",
+  "@menuAssistant": {"description": "Tools menu: the assistant submenu."},
+  "menuAssistantSummarize": "Summarize",
+  "menuAssistantProofread": "Proofread"
 }

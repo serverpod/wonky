@@ -19,9 +19,9 @@ dependencies:
   mcp_dart: ^2.4.2
   mime: ^2.0.0
   pixtronaut: ^0.1.0-rc.1
-  serverpod: 4.1.0-rc.1
-  serverpod_auth_idp_server: 4.1.0-rc.1
-  serverpod_cloud_storage: 4.1.0-rc.1
+  serverpod: 4.1.1
+  serverpod_auth_idp_server: 4.1.1
+  serverpod_cloud_storage: 4.1.1
   whiskers: ^0.1.1
   wonky_core:
     path: ../packages/wonky_core
@@ -45,7 +45,7 @@ dev_dependencies:
     path: ../packages/wonky_lints
   meta: ^1.19.0
   pointycastle: ^4.0.0
-  serverpod_test: 4.1.0-rc.1
+  serverpod_test: 4.1.1
   test: ^1.25.5
   wonky_mcp_stdio:
     path: ../packages/wonky_mcp_stdio

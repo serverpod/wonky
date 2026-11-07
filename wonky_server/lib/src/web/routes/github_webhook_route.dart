@@ -13,7 +13,8 @@ class GithubWebhookRoute extends Route {
   @override
   Future<Result> handleCall(Session session, Request request) async {
     final headers = {
-      for (final e in request.headers.entries) e.key: e.value.join(', '),
+      for (final name in request.headers.names)
+        name.lower: request.headers.values(name).join(', '),
     };
     // Disabled, unsigned or incomplete deliveries are answered from the
     // headers alone, without reading the body.

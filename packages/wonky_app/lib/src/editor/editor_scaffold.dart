@@ -223,8 +223,19 @@ class _EditorScaffoldState extends State<EditorScaffold> {
     if (s.currentItem.value != v) s.currentItem.value = v;
   }
 
+  /// Signed out on a link-shared item (specs/06 §2.4): view-only, no
+  /// comments, presence or drive calls; *Sign in* in the title row.
+  late final bool _guest = s.isGuest && s.config.allowsGuestViewing;
+
   Future<void> _load() async {
     try {
+      if (_guest) {
+        final v = await s.loadGuestItem(_uuid);
+        if (!mounted) return;
+        _setItem(v);
+        widget.onItemLoaded?.call(v);
+        return;
+      }
       final v = await s.drive.markOpened(_uuid);
       // Left before the item loaded: starting presence/comments now would
       // leave zombie streams (and could replace a reopened editor's ones).
@@ -378,7 +389,7 @@ class _EditorScaffoldState extends State<EditorScaffold> {
             final statusLeft = widget.statusLeft?.call(context) ?? const [];
             final statusRight = widget.statusRight?.call(context) ?? const [];
             final panels = [
-              if (widget.commentsInPanel)
+              if (widget.commentsInPanel && !_guest)
                 SidePanelSpec(
                   id: ShellPanels.comments,
                   title: l.panelComments,
@@ -398,7 +409,9 @@ class _EditorScaffoldState extends State<EditorScaffold> {
               // the rail (suite 03 §3.1), so the title row has no buttons
               // for them.
               ...widget.panels,
-              if (widget.historyPanel && (item?.myRole.canViewHistory ?? false))
+              if (widget.historyPanel &&
+                  !_guest &&
+                  (item?.myRole.canViewHistory ?? false))
                 SidePanelSpec(
                   id: ShellPanels.history,
                   title: l.panelHistory,
@@ -540,7 +553,10 @@ class _EditorScaffoldState extends State<EditorScaffold> {
                   ],
                   const SizedBox(width: 4),
                   ...?widget.mobileTitleActions?.call(context),
-                  AccountMenuButton(services: s),
+                  if (_guest)
+                    _signInButton(l)
+                  else
+                    AccountMenuButton(services: s),
                 ],
               ),
             ),
@@ -686,6 +702,7 @@ class _EditorScaffoldState extends State<EditorScaffold> {
                       // (the title row must not overflow at 360 px, Slides
                       // 04 §16).
                       if (item != null &&
+                          !_guest &&
                           MediaQuery.sizeOf(context).width >= 480) ...[
                         icon(
                           'editor.star',
@@ -753,89 +770,126 @@ class _EditorScaffoldState extends State<EditorScaffold> {
             // *Report a bug* and *Suggest an improvement* (specs/16 §4.1):
             // outline buttons, icons only below 1200 px, hidden below `sm`
             // (still in Help).
-            if (MediaQuery.sizeOf(context).width >= 640)
-              for (final (key, icon, label, kind) in [
-                ('editor.reportBug', LucideIcons.bug, l.boardReportBug, 'bug'),
-                (
-                  'editor.suggest',
-                  LucideIcons.leaf,
-                  l.boardSuggestImprovement,
-                  'idea',
+            if (_guest) ...[
+              if (!narrow)
+                Padding(
+                  key: const ValueKey<String>('editor.guestNote'),
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(l.guestViewing, style: theme.textTheme.small),
+                      Text(l.guestSignInHint, style: theme.textTheme.muted),
+                    ],
+                  ),
                 ),
-              ]) ...[
-                if (MediaQuery.sizeOf(context).width >= 1200)
-                  ShadButton.outline(
-                    key: ValueKey<String>(key),
-                    size: ShadButtonSize.sm,
-                    leading: Icon(icon, size: 16),
-                    onPressed: () =>
-                        _invoke('shell.board.report', {'kind': kind}),
-                    child: Text(label),
-                  )
-                else
-                  ShadTooltip(
-                    builder: (_) => Text(label),
-                    child: ShadIconButton.outline(
+              ...?widget.titleActions?.call(context),
+              const SizedBox(width: 6),
+              _signInButton(l),
+            ] else ...[
+              if (MediaQuery.sizeOf(context).width >= 640)
+                for (final (key, icon, label, kind) in [
+                  (
+                    'editor.reportBug',
+                    LucideIcons.bug,
+                    l.boardReportBug,
+                    'bug',
+                  ),
+                  (
+                    'editor.suggest',
+                    LucideIcons.leaf,
+                    l.boardSuggestImprovement,
+                    'idea',
+                  ),
+                ]) ...[
+                  if (MediaQuery.sizeOf(context).width >= 1200)
+                    ShadButton.outline(
                       key: ValueKey<String>(key),
-                      width: 32,
-                      height: 32,
-                      iconSize: 16,
-                      semanticLabel: label,
-                      icon: Icon(icon),
+                      size: ShadButtonSize.sm,
+                      leading: Icon(icon, size: 16),
                       onPressed: () =>
                           _invoke('shell.board.report', {'kind': kind}),
-                    ),
-                  ),
-                const SizedBox(width: 6),
-              ],
-            if (widget.commentsButton)
-              ListenableBuilder(
-                listenable: _comments,
-                // Merged so the tap target carries the label (and the count).
-                builder: (context, _) => MergeSemantics(
-                  child: Semantics(
-                    label: l.cmdCommentsPanel,
-                    child: ShadTooltip(
-                      builder: (_) => Text(l.cmdCommentsPanel),
-                      child: ShadButton.ghost(
-                        key: const ValueKey<String>('editor.comments'),
+                      child: Text(label),
+                    )
+                  else
+                    ShadTooltip(
+                      builder: (_) => Text(label),
+                      child: ShadIconButton.outline(
+                        key: ValueKey<String>(key),
+                        width: 32,
                         height: 32,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        leading: const Icon(
-                          LucideIcons.messageSquare,
-                          size: 18,
+                        iconSize: 16,
+                        semanticLabel: label,
+                        icon: Icon(icon),
+                        onPressed: () =>
+                            _invoke('shell.board.report', {'kind': kind}),
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                ],
+              if (widget.commentsButton)
+                ListenableBuilder(
+                  listenable: _comments,
+                  // Merged so the tap target carries the label (and the count).
+                  builder: (context, _) => MergeSemantics(
+                    child: Semantics(
+                      label: l.cmdCommentsPanel,
+                      child: ShadTooltip(
+                        builder: (_) => Text(l.cmdCommentsPanel),
+                        child: ShadButton.ghost(
+                          key: const ValueKey<String>('editor.comments'),
+                          height: 32,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          leading: const Icon(
+                            LucideIcons.messageSquare,
+                            size: 18,
+                          ),
+                          onPressed: () =>
+                              _invoke('shell.comments.togglePanel'),
+                          child: _comments.openCount == 0
+                              ? null
+                              : Text('${_comments.openCount}'),
                         ),
-                        onPressed: () => _invoke('shell.comments.togglePanel'),
-                        child: _comments.openCount == 0
-                            ? null
-                            : Text('${_comments.openCount}'),
                       ),
                     ),
                   ),
                 ),
-              ),
-            const SizedBox(width: 6),
-            ...?widget.titleActions?.call(context),
-            if (item != null)
-              ShadButton(
-                key: const ValueKey<String>('editor.share'),
-                leading: Icon(
-                  item.linkRole != null
-                      ? LucideIcons.globe
-                      : (item.shared ? LucideIcons.users : LucideIcons.lock),
-                  size: 16,
+              const SizedBox(width: 6),
+              ...?widget.titleActions?.call(context),
+              if (item != null)
+                // `sm`, the size of *Report a bug* / *Suggest an improvement*
+                // beside it (suite 03 §3.1).
+                ShadButton(
+                  key: const ValueKey<String>('editor.share'),
+                  size: ShadButtonSize.sm,
+                  leading: Icon(
+                    item.linkRole != null
+                        ? LucideIcons.globe
+                        : (item.shared ? LucideIcons.users : LucideIcons.lock),
+                    size: 16,
+                  ),
+                  onPressed: () =>
+                      _invoke('shell.sharing.open', {'uuid': item.uuid.uuid}),
+                  child: Text(l.shareButton),
                 ),
-                onPressed: () =>
-                    _invoke('shell.sharing.open', {'uuid': item.uuid.uuid}),
-                child: Text(l.shareButton),
-              ),
-            const SizedBox(width: 10),
-            AccountMenuButton(services: s),
+              const SizedBox(width: 10),
+              AccountMenuButton(services: s),
+            ],
           ],
         ),
       ),
     );
   }
+
+  /// *Sign in* for a guest: sign-in, back to this item.
+  Widget _signInButton(WonkyAppLocalizations l) => ShadButton(
+    key: const ValueKey<String>('editor.signIn'),
+    size: ShadButtonSize.sm,
+    leading: const Icon(LucideIcons.logIn, size: 16),
+    onPressed: () => _invoke('shell.account.signIn'),
+    child: Text(l.cmdSignIn),
+  );
 }
 
 class _VersionsPanel extends StatefulWidget {

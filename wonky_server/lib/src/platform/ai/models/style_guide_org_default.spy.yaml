@@ -1,0 +1,14 @@
+### The default style guide of an organization (suite 10 §7): documents
+### without their own style use it.
+class: StyleGuideOrgDefault
+table: style_guide_org_default
+fields:
+  orgKey: String
+  ### `builtin:<key>` or `custom:<uuid>`.
+  styleRef: String
+  setById: int?, relation(parent=user_profile, onDelete=SetNull)
+  updatedAt: DateTime
+indexes:
+  style_guide_org_default_org_idx:
+    fields: orgKey
+    unique: true

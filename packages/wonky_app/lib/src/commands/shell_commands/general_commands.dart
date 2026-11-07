@@ -8,6 +8,7 @@ import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 
 import '../../board/board_commands.dart';
+import '../../auth/screens/auth_layout.dart' show signInPathBackTo;
 import '../../board/report_commands.dart';
 import '../../bootstrap/app_urls.dart';
 import '../../comments/comment_anchor.dart';
@@ -1123,11 +1124,15 @@ List<Command<CommandArgs>> miscCommands(ShellServices s) => [
       return CommandResult.ok({'mode': s.prefs.appTheme.name});
     },
   ),
+  // One *Settings* entry in menus and the palette (`shell.settings.openApp`,
+  // suite 04 §4.2); `shell.settings.open {section}` opens a Wonky Work
+  // section (links, MCP) and is not listed in the palette.
   shellCommand(
     'shell.settings.open',
     title: (l) => l.cmdWorkSettings,
     icon: LucideIcons.settings,
     category: (l) => l.categoryTools,
+    palette: false,
     // Wonky Work settings (suite 04 §4); the v1 ids of the apps' sections
     // (`write`, `themes`, `sheets`) redirect to their app settings.
     args: const JsonSchema.object(properties: {'section': JsonSchema.string()}),
@@ -1138,8 +1143,8 @@ List<Command<CommandArgs>> miscCommands(ShellServices s) => [
   ),
   shellCommand(
     'shell.settings.openApp',
-    title: (l) => l.cmdAppSettings(s.config.shortAppName),
-    icon: LucideIcons.settings2,
+    title: (l) => l.cmdSettings,
+    icon: LucideIcons.settings,
     // Mod+, (desktop) opens the app's settings (suite 04 §4.2).
     bindings: const [KeyBinding(',', mod: true, web: false)],
     category: (l) => l.categoryTools,
@@ -1229,18 +1234,6 @@ List<Command<CommandArgs>> miscCommands(ShellServices s) => [
   // `shell.help.reportBug` and `shell.help.feedback` are aliases of
   // `shell.board.report` (board/report_commands.dart, specs/16 §4.1).
   shellCommand(
-    'shell.help.whatsNew',
-    title: (l) => l.cmdWhatsNew,
-    icon: LucideIcons.gift,
-    category: (l) => l.categoryHelp,
-    run: (ctx, a) async {
-      final c = ctx.dialogContext;
-      if (c == null || !c.mounted) return const CommandResult.cancelled();
-      await showWhatsNewDialog(c, s);
-      return const CommandResult.ok();
-    },
-  ),
-  shellCommand(
     'shell.help.about',
     title: (l) => l.cmdAbout,
     icon: LucideIcons.info,
@@ -1282,6 +1275,22 @@ List<Command<CommandArgs>> miscCommands(ShellServices s) => [
     run: (ctx, a) async {
       s.mcp.stop();
       return const CommandResult.ok();
+    },
+  ),
+  // Signed out (a guest on a link-shared item, specs/06 §2.4): sign-in,
+  // back to the current page.
+  shellCommand(
+    'shell.account.signIn',
+    title: (l) => l.cmdSignIn,
+    icon: LucideIcons.logIn,
+    category: (l) => l.categoryAccount,
+    enabled: (ctx, a) => !s.auth.isSignedIn,
+    run: (ctx, a) async {
+      final route = signInPathBackTo(
+        s.router.routerDelegate.currentConfiguration.uri.toString(),
+      );
+      s.router.go(route);
+      return CommandResult.ok({'route': route});
     },
   ),
   shellCommand(

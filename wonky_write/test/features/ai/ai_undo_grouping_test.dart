@@ -16,6 +16,7 @@ void _aiOp(
   Delta change, {
   required String onBehalf,
   required String groupId,
+  bool broadcast = true,
 }) {
   final c = DeltaUtils.canonical(change);
   server.document = WonkyOt.apply(server.document, c);
@@ -30,8 +31,11 @@ void _aiOp(
       ),
       'ai-agent',
       1,
+      onBehalfOfSessionId: onBehalf,
+      groupId: groupId,
     ),
   );
+  if (!broadcast) return;
   for (final conn in server.connections) {
     conn.push(
       DocRemoteOp(
@@ -98,6 +102,39 @@ void main() {
       await pumpEventQueue();
       expect(h.text, 'The old plan.\nTen euros.\n');
       expect(DeltaUtils.text(server.document), 'The old plan.\nTen euros.\n');
+    });
+
+    test('when an edit of the run arrives in a gap fill then it still joins '
+        "the run's one undo step", () async {
+      final session = h.session.sync!.sessionId!;
+      // The first edit's broadcast is lost (or overtaken): the client gets
+      // it from the gap fill it requests when the second one arrives.
+      _aiOp(
+        server,
+        Delta()
+          ..retain(4)
+          ..delete(3)
+          ..insert('new'),
+        onBehalf: session,
+        groupId: 'run-gap',
+        broadcast: false,
+      );
+      _aiOp(
+        server,
+        Delta()
+          ..retain(14)
+          ..delete(3)
+          ..insert('Twelve'),
+        onBehalf: session,
+        groupId: 'run-gap',
+      );
+      await pumpEventQueue();
+      expect(h.text, 'The new plan.\nTwelve euros.\n');
+      expect(h.undo.undoStepsOf(h.session.undoStackKey), hasLength(1));
+
+      await h.undo.undo();
+      await pumpEventQueue();
+      expect(h.text, 'The old plan.\nTen euros.\n');
     });
 
     test(

@@ -30,7 +30,10 @@ ShadApp.router(
 )
 ```
 
-- `WonkyTheme` builds `ShadThemeData` from: style tokens (`ShadStyleTokens.vega` default),
+- `WonkyTheme` builds `ShadThemeData` from: style tokens (`ShadStyleTokens.vega` default, with
+  `fieldFill: background`: text fields, text areas and selects are white in light mode instead
+  of transparent, where their control shadow showed through as gray on the web; dark mode keeps
+  vega's input wash),
   color scheme (`ShadZincColorScheme`; `WonkyThemeConfig.accent` exists but the apps don't
   offer an accent choice), radius, density (`ShadSpacing` scale: comfortable / compact), and
   **custom tokens** (below).
@@ -119,6 +122,10 @@ Thin wrapper over `ShadContextMenu` (controller + anchor) adding:
 - `MenuItem.command(commandId)` — title/icon/shortcut/enabled/checked from the command registry.
 - `MenuCheckItem` (✓ leading when checked), `MenuRadioItem` (● leading), `MenuSubmenu`,
   `MenuSeparator`, `MenuLabel` (section header), `MenuCustom` (e.g. color grid, table-size grid).
+  A check item with an `icon` keeps the icon leading and shows its ✓ at the end (after the
+  shortcut): menu specs opt in per item with `MenuSpec.command(…, showIcon: true)` — View ›
+  Panels (each panel's rail icon, 03 §3.2) and Write's Insert › Code block / Quote / Checklist.
+  Other toggles show only the ✓.
 - Trailing shortcut rendered with `ShadKbd` (platform glyphs: ⌘ ⌥ ⇧ ⌃ on macOS; Ctrl+Alt+Shift
   elsewhere).
 - `WonkyMenuItem.leading`: a 16 px widget shown instead of the icon (e.g. an app's product icon,
@@ -258,8 +265,31 @@ The X of every `ShadDialog` with one (`closeIcon: const WonkyDialogCloseButton()
 default close button has no accessible label, so it fails `labeledTapTargetGuideline`. Same look
 (20 px ghost icon button, foreground at 50 %), labelled *Close*; it closes with
 `Navigator.maybePop` (a dialog's `PopScope` is honored), or runs `onPressed` instead — dialogs
-with a draft pass their cancel path so the X asks before discarding, like *Cancel* and Esc
-(e.g. the Write table editor). Dialogs without an X pass `closeIcon: const SizedBox.shrink()`.
+with a draft pass their cancel path so the X asks before discarding, like *Cancel* and Esc. Dialogs without an X pass `closeIcon: const SizedBox.shrink()`.
+**No X when the dialog has another way out**: inside a `ShadDialog` with `actions` (Cancel,
+Close, Done, OK, Got it, Discard, …) the button renders nothing, so a dialog shows the X only
+when it has no buttons (pickers, the style guide library, reference lists, a dialog still
+loading); Esc and the barrier still dismiss. The rule lives in the button
+(`WonkyDialogCloseButton.showsIn`), so it holds for every dialog of every app; `always: true`
+keeps the X for a dialog whose actions don't dismiss it. Two things make it hold:
+
+- **Every `ShadDialog` passes `closeIcon:`** — `WonkyDialogCloseButton` or `SizedBox.shrink()`,
+  never shad's default (the theme's `closeIconData` adds an X to every dialog without one,
+  buttons or not; that is how the form dialogs of `showWonkyFormDialog` had an X next to
+  *Cancel*).
+- **Dismiss buttons go in `actions`**, not in the dialog's body, so the close button sees them
+  (the share dialog's *Copy link* / *Done* footer is its `actions`, `actionsMainAxisAlignment:
+  spaceBetween`). A dialog that is not a `ShadDialog` (the Sheets find & replace box) has no X
+  when it has *Done* or *Close*; one whose buttons must stay in the body (the script conflict
+  dialog wraps five) passes `closeIcon: const SizedBox.shrink()`.
+- **Actions that appear later** (a dialog that loads first): a `const` close button is not
+  rebuilt when the `actions` change, so such a dialog keys it,
+  `WonkyDialogCloseButton(key: ValueKey<bool>(actions.isEmpty))` (the share dialog).
+
+`dart run tool/check_dialogs.dart` (CI, analyze workflow) fails on a `ShadDialog` construction
+without `closeIcon:`, with another close icon, or with a Cancel/Close/Done/OK/Got it button in
+its arguments but no `actions`. Panels, popovers, bars, drawers and lightboxes are not dialogs
+and keep their X.
 
 ## 5. Product icons
 

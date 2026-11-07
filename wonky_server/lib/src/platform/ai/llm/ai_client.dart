@@ -193,7 +193,8 @@ class AiApiException implements Exception {
   /// HTTP status; 0 for connection failures and timeouts.
   final int statusCode;
 
-  /// `api_error`, `connection_error`, `timeout` or `refusal`.
+  /// `api_error`, `connection_error`, `timeout`, `refusal` or `request`
+  /// (the request could not be built from the conversation).
   final String type;
   final String message;
 

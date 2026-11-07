@@ -10,6 +10,7 @@ import '../shell/shell_services.dart';
 import 'assistant_adapter.dart';
 import 'assistant_api.dart';
 import 'assistant_controller.dart';
+import 'style_guides/style_guide_library.dart';
 
 /// The localized explanation of an unavailable [status] (the server's
 /// English `message` only for reasons the app doesn't know).
@@ -87,6 +88,8 @@ class ShellAssistant extends AssistantHook {
               : ServerAssistantApi(client)),
     );
     services.assistant = a;
+    // Style guide changes are undoable (suite 10 §7).
+    services.undo.registerHandler(StyleGuideUndoHandler(services));
     unawaited(a.refreshStatus());
     services.registry.notifyStateChanged();
     return a;
@@ -133,6 +136,18 @@ class ShellAssistant extends AssistantHook {
   /// Settings › AI providers › Remove key.
   Future<void> removeProviderKey() async {
     status.value = await api.removeProviderKey();
+    services.registry.notifyStateChanged();
+  }
+
+  /// Settings › AI providers › organization key › Share key.
+  Future<void> setOrgProviderKey(AiProvider provider, String apiKey) async {
+    status.value = await api.setOrgProviderKey(provider, apiKey);
+    services.registry.notifyStateChanged();
+  }
+
+  /// Settings › AI providers › organization key › Remove key.
+  Future<void> removeOrgProviderKey() async {
+    status.value = await api.removeOrgProviderKey();
     services.registry.notifyStateChanged();
   }
 
@@ -226,6 +241,15 @@ class _UnavailableApi implements AssistantApi {
   Future<AssistantStatus> removeProviderKey() => getStatus();
 
   @override
+  Future<AssistantStatus> setOrgProviderKey(
+    AiProvider provider,
+    String apiKey,
+  ) => _fail();
+
+  @override
+  Future<AssistantStatus> removeOrgProviderKey() => getStatus();
+
+  @override
   Stream<AssistantEvent> chat({
     required int? threadId,
     required UuidValue itemUuid,
@@ -237,6 +261,14 @@ class _UnavailableApi implements AssistantApi {
     code: WonkyErrorCode.unavailable,
     message: "AI isn't configured on this server.",
   );
+
+  @override
+  Stream<AssistantEvent> quickAction({
+    required int? threadId,
+    required UuidValue itemUuid,
+    required AssistantQuickAction action,
+    required AssistantContextHints hints,
+  }) => Stream.error(_failError);
 
   @override
   Future<bool> stop({int? threadId, String? runId}) async => false;
@@ -275,4 +307,22 @@ class _UnavailableApi implements AssistantApi {
     int? start,
     int? length,
   }) => Stream.error(_failError);
+
+  @override
+  Future<StyleGuideLibrary> styleGuides({UuidValue? itemUuid}) async => _fail();
+
+  @override
+  Future<StyleGuideView> saveStyleGuide(StyleGuideInput input) async => _fail();
+
+  @override
+  Future<void> deleteStyleGuide(UuidValue uuid) async => _fail();
+
+  @override
+  Future<StyleGuideLibrary> setOrgStyleGuide(String? ref) async => _fail();
+
+  @override
+  Future<StyleGuideLibrary> setDocumentStyleGuide(
+    UuidValue itemUuid,
+    String? ref,
+  ) async => _fail();
 }
