@@ -26,6 +26,7 @@ import '../data/collab_repositories.dart';
 import '../data/drive_cache.dart';
 import '../data/drive_repository.dart';
 import '../data/file_repository.dart';
+import '../data/public_item_repository.dart';
 import '../data/sharing_repository.dart';
 import '../data/user_repository.dart';
 import '../l10n/wonky_app_localizations.dart';
@@ -145,6 +146,7 @@ class WonkyShell extends StatefulWidget {
         activity: ServerActivityRepository(api),
         board: ServerBoardRepository(api),
         publications: ServerPublicationRepository(api),
+        publicItems: ServerPublicItemRepository(api),
       ),
       urls: wc.urls,
       connectivity: connectivity,

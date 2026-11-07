@@ -1,0 +1,16 @@
+### The style guide a Write document uses (Write 09 §5.9): Apply style
+### follows it and the other assistant actions get it as context. A side
+### table keyed by the document's drive item (the document row is not
+### changed).
+class: DocumentStyleGuide
+table: document_style_guide
+fields:
+  itemId: int, relation(parent=drive_item, onDelete=Cascade)
+  ### `builtin:<key>` or `custom:<uuid>`.
+  styleRef: String
+  setById: int?, relation(parent=user_profile, onDelete=SetNull)
+  updatedAt: DateTime
+indexes:
+  document_style_guide_item_idx:
+    fields: itemId
+    unique: true

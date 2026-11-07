@@ -11,14 +11,35 @@ import '../../l10n/wonky_ui_localizations.dart';
 /// ("Close"), and by default it closes with `Navigator.maybePop`, so a
 /// dialog's `PopScope` (e.g. a discard confirmation) is honored. Pass
 /// [onPressed] to run the dialog's own cancel path instead.
+///
+/// A dialog shows the X only when it has no other way out: inside a
+/// `ShadDialog` with `actions` (Cancel, Close, Done, Got it, …) the button
+/// renders nothing, so the rule holds for every dialog of every app
+/// (suite 02 §4.20). Escape and the barrier still dismiss. Pass [always]
+/// for a dialog whose actions don't dismiss it.
 class WonkyDialogCloseButton extends StatelessWidget {
-  const WonkyDialogCloseButton({super.key, this.onPressed});
+  const WonkyDialogCloseButton({
+    super.key,
+    this.onPressed,
+    this.always = false,
+  });
 
   /// Runs instead of `Navigator.maybePop` when the X is pressed.
   final VoidCallback? onPressed;
 
+  /// Show the X even when the dialog has actions.
+  final bool always;
+
+  /// Whether the X shows in [context] (no dialog actions, or [always]).
+  static bool showsIn(BuildContext context, {bool always = false}) {
+    if (always) return true;
+    final dialog = context.findAncestorWidgetOfExactType<ShadDialog>();
+    return dialog == null || dialog.actions.isEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!showsIn(context, always: always)) return const SizedBox.shrink();
     final theme = ShadTheme.of(context);
     final label =
         Localizations.of<WonkyUiLocalizations>(

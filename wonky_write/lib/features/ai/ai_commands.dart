@@ -8,7 +8,6 @@ import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 import '../../commands/write_command.dart';
 import '../../l10n/write_l10n.dart';
 import 'package:wonky_write_core/wonky_write_core.dart' show DeltaSelection;
-import 'proofread_results.dart';
 import 'write_ai_controller.dart';
 
 const _rewriteModes = [
@@ -50,6 +49,7 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     bool palette = true,
     WriteText? description,
     bool needsEditable = false,
+    bool undoable = false,
   }) => WriteCommand(
     id,
     label: label,
@@ -62,6 +62,7 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     keyScope: scope,
     showInPalette: palette,
     needsEditable: needsEditable,
+    isUndoable: undoable,
     enabled: (doc, a) {
       final c = WriteAiController.forItem(doc.itemUuid);
       if (c == null || !c.shown) return false;
@@ -176,18 +177,14 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
         return ok();
       },
     ),
+    // Quick actions (Write 09 §5.5): no prompt in the chat, one round trip
+    // on the fast model; edits arrive as suggestions.
     cmd(
       'write.ai.summarizeDocument',
       label: (l) => l.cmdAiSummarizeDocument,
-      args: const JsonSchema.object(
-        properties: {
-          'length': JsonSchema.string(
-            enumValues: ['short', 'medium', 'detailed'],
-          ),
-        },
-      ),
+      description: (l) => l.cmdAiSummarizeDocumentDescription,
       run: (ctx, c, a) async {
-        unawaited(c.summarizeDocument(length: a.string('length') ?? 'medium'));
+        unawaited(c.runQuickAction(AssistantQuickAction.summarize));
         return ok();
       },
     ),
@@ -205,9 +202,90 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
     cmd(
       'write.ai.proofreadDocument',
       label: (l) => l.cmdAiProofreadDocument,
+      description: (l) => l.cmdAiProofreadDocumentDescription,
+      role: Role.commenter,
       run: (ctx, c, a) async {
-        unawaited(c.proofread());
+        unawaited(c.runQuickAction(AssistantQuickAction.proofread));
         return ok();
+      },
+    ),
+    cmd(
+      'write.ai.addressComments',
+      label: (l) => l.cmdAiAddressComments,
+      description: (l) => l.cmdAiAddressCommentsDescription,
+      role: Role.commenter,
+      run: (ctx, c, a) async {
+        unawaited(c.runQuickAction(AssistantQuickAction.addressComments));
+        return ok();
+      },
+    ),
+    cmd(
+      'write.ai.applyStyle',
+      label: (l) => l.cmdAiApplyStyle,
+      description: (l) => l.cmdAiApplyStyleDescription,
+      role: Role.commenter,
+      run: (ctx, c, a) async {
+        unawaited(c.runQuickAction(AssistantQuickAction.applyStyle));
+        return ok();
+      },
+    ),
+    cmd(
+      'write.ai.openAssistant',
+      label: (l) => l.cmdAiOpenAssistant,
+      run: (ctx, c, a) {
+        c.openPanel();
+        return ok();
+      },
+    ),
+    // Style guides (suite 10 §7, Write 09 §5.9).
+    cmd(
+      'write.ai.manageStyleGuides',
+      label: (l) => l.cmdAiManageStyleGuides,
+      description: (l) => l.cmdAiManageStyleGuidesDescription,
+      run: (ctx, c, a) async {
+        final context = ctx.dialogContext;
+        if (context == null) return const CommandResult.failed('No window');
+        await c.openStyleGuides(context);
+        return ok();
+      },
+    ),
+    cmd(
+      'write.doc.styleGuide',
+      label: (l) => l.cmdDocStyleGuide,
+      description: (l) => l.cmdDocStyleGuideDescription,
+      run: (ctx, c, a) async {
+        final context = ctx.dialogContext;
+        if (context == null) return const CommandResult.failed('No window');
+        await c.openStyleGuides(context);
+        return ok();
+      },
+    ),
+    cmd(
+      'write.doc.setStyleGuide',
+      label: (l) => l.cmdDocSetStyleGuide,
+      palette: false,
+      role: Role.editor,
+      undoable: true,
+      args: const JsonSchema.object(
+        properties: {
+          'ref': JsonSchema.nullable(
+            JsonSchema.string(
+              description:
+                  '`builtin:<key>` or `custom:<uuid>`; null = no style '
+                  'guide.',
+            ),
+          ),
+        },
+        required: ['ref'],
+      ),
+      run: (ctx, c, a) async {
+        final ref = a.string('ref');
+        try {
+          await c.setStyleGuide(ref == null || ref.isEmpty ? null : ref);
+        } on Object catch (e) {
+          return CommandResult.failed(errorMessage(e));
+        }
+        return ok({'ref': ref});
       },
     ),
     cmd(
@@ -262,90 +340,6 @@ List<Command<CommandArgs>> writeAiCommands(ShellServices services) {
       run: (ctx, c, a) {
         c.discard();
         return ok();
-      },
-    ),
-    cmd(
-      'write.ai.setApplyMode',
-      label: (l) => l.cmdAiSetApplyMode,
-      palette: false,
-      args: const JsonSchema.object(
-        properties: {
-          'mode': JsonSchema.string(enumValues: ['edit', 'suggest']),
-        },
-        required: ['mode'],
-      ),
-      enabled: (c, a) => c.chat != null,
-      run: (ctx, c, a) {
-        c.chat?.setApplyMode(
-          a.string('mode') == 'suggest'
-              ? AiApplyMode.suggest
-              : AiApplyMode.edit,
-        );
-        return ok({'mode': c.chat?.applyMode.name});
-      },
-    ),
-    cmd(
-      'write.ai.acceptIssue',
-      label: (l) => l.cmdAiAcceptIssue,
-      palette: false,
-      role: Role.commenter,
-      args: const JsonSchema.object(
-        properties: {'issueId': JsonSchema.string()},
-        required: ['issueId'],
-      ),
-      enabled: (c, a) => c.proofreadResults != null && c.canWrite,
-      run: (ctx, c, a) {
-        final r = c.proofreadResults!;
-        final id = a.requireString('issueId');
-        final s = r.issues.where((i) => i.issue.id == id).toList();
-        return r.accept(s)
-            ? ok()
-            : CommandResult.failed(l10n().commandToastTextChanged);
-      },
-    ),
-    cmd(
-      'write.ai.dismissIssue',
-      label: (l) => l.cmdAiDismissIssue,
-      palette: false,
-      args: const JsonSchema.object(
-        properties: {'issueId': JsonSchema.string()},
-        required: ['issueId'],
-      ),
-      enabled: (c, a) => c.proofreadResults != null,
-      run: (ctx, c, a) {
-        final r = c.proofreadResults!;
-        final id = a.requireString('issueId');
-        for (final s in r.issues.where((i) => i.issue.id == id)) {
-          r.dismiss(s);
-        }
-        return ok();
-      },
-    ),
-    cmd(
-      'write.ai.acceptAllIssues',
-      label: (l) => l.cmdAiAcceptAllIssues,
-      palette: false,
-      role: Role.commenter,
-      args: const JsonSchema.object(
-        properties: {
-          'category': JsonSchema.string(
-            enumValues: ProofreadResults.categories,
-          ),
-        },
-      ),
-      enabled: (c, a) => c.proofreadResults != null && c.canWrite,
-      run: (ctx, c, a) {
-        final r = c.proofreadResults!;
-        final cat = a.string('category');
-        final list = cat == null
-            ? r.open
-            : [
-                for (final s in r.inCategory(cat))
-                  if (s.status == ProofreadIssueStatus.open) s,
-              ];
-        return r.accept(list)
-            ? ok()
-            : CommandResult.failed(l10n().commandToastNothingToAccept);
       },
     ),
   ];

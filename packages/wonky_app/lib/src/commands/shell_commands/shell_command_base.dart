@@ -18,6 +18,7 @@ CallbackCommand shellCommand(
   required Future<CommandResult> Function(CommandContext ctx, JsonArgs args)
   run,
   IconData? icon,
+  IconData? Function(Map<String, Object?> args)? iconFor,
   List<KeyBinding> bindings = const [],
   KeyScope scope = KeyScope.global,
   Role role = Role.viewer,
@@ -36,6 +37,7 @@ CallbackCommand shellCommand(
   category: category == null ? null : (c) => category(l10nOf(c)),
   run: run,
   icon: icon,
+  iconFor: iconFor,
   defaultBindings: bindings,
   keyScope: scope,
   requiredRole: role,

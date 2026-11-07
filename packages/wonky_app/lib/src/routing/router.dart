@@ -31,6 +31,11 @@ GoRouter buildShellRouter(ShellServices s) {
       : prefix;
   Page<void> page(GoRouterState state, Widget child) =>
       NoTransitionPage<void>(key: state.pageKey, child: child);
+  // Exactly `$base/<uuid>` (not `history`, `print`, …): the editor route
+  // guests may open in apps that allow it (specs/06 §2.4).
+  final guestEditor = RegExp('^${RegExp.escape(base)}/[^/]+\$');
+  bool isGuestLocation(String path) =>
+      s.config.allowsGuestViewing && guestEditor.hasMatch(path);
 
   return GoRouter(
     navigatorKey: s.navigatorKey,
@@ -43,8 +48,11 @@ GoRouter buildShellRouter(ShellServices s) {
         return null; // dialog over the screen
       }
       if (status == AuthStatus.signedOut) {
-        // Bugs & improvements is public (specs/16 §4.3).
-        if (isAuth || isBoardLocation(path)) return null;
+        // Bugs & improvements is public (specs/16 §4.3); link-shared items
+        // open view-only (specs/06 §2.4).
+        if (isAuth || isBoardLocation(path) || isGuestLocation(path)) {
+          return null;
+        }
         final next = state.uri.toString();
         return next == '/'
             ? '/signin'
@@ -182,8 +190,15 @@ GoRouter buildShellRouter(ShellServices s) {
       ),
       GoRoute(
         path: '$base/:uuid',
-        pageBuilder: (c, st) =>
-            page(st, s.config.buildEditor(c, st, st.pathParameters['uuid']!)),
+        pageBuilder: (c, st) => page(
+          st,
+          // A fresh editor when the user signs in or out on the page (a
+          // guest's view-only session becomes the signed-in one).
+          KeyedSubtree(
+            key: ValueKey<bool>(s.isGuest),
+            child: s.config.buildEditor(c, st, st.pathParameters['uuid']!),
+          ),
+        ),
         routes: [
           if (s.config.versionRenderer != null)
             GoRoute(

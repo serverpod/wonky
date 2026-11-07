@@ -91,15 +91,22 @@ import 'platform/ai/models/assistant_event.dart' as _imp4tsxo;
 import 'platform/ai/models/assistant_event_type.dart' as _id6kvqt9;
 import 'platform/ai/models/assistant_message.dart' as _i8cittxq;
 import 'platform/ai/models/assistant_message_view.dart' as _i4rkdm2k;
+import 'platform/ai/models/assistant_quick_action.dart' as _ik2qpdmw;
 import 'platform/ai/models/assistant_status.dart' as _ia2m3j3v;
 import 'platform/ai/models/assistant_thread.dart' as _iaq6rutx;
 import 'platform/ai/models/assistant_thread_detail.dart' as _i4iv0swm;
 import 'platform/ai/models/assistant_thread_view.dart' as _iohdfqf1;
+import 'platform/ai/models/document_style_guide.dart' as _iti3p2ly;
 import 'platform/ai/models/inline_ai_event.dart' as _i8ghcs7p;
 import 'platform/ai/models/inline_ai_event_type.dart' as _i6pcz5z6;
 import 'platform/ai/models/inline_ai_request.dart' as _i4m43iwr;
 import 'platform/ai/models/proofread_event.dart' as _ie0jt2ne;
 import 'platform/ai/models/proofread_issue.dart' as _ivmxemza;
+import 'platform/ai/models/style_guide.dart' as _izn9jjcu;
+import 'platform/ai/models/style_guide_input.dart' as _itz63egs;
+import 'platform/ai/models/style_guide_library.dart' as _ipldx8au;
+import 'platform/ai/models/style_guide_org_default.dart' as _ike2qw5s;
+import 'platform/ai/models/style_guide_view.dart' as _ibxjwk51;
 import 'platform/analytics/models/analytics_cohort.dart' as _ixradasp;
 import 'platform/analytics/models/analytics_count.dart' as _innm1rwe;
 import 'platform/analytics/models/analytics_day.dart' as _is2u4stz;
@@ -242,11 +249,14 @@ import 'platform/sharing/access_request.dart' as _i8scn8dm;
 import 'platform/sharing/access_request_outcome.dart' as _i7trut12;
 import 'platform/sharing/access_request_view.dart' as _iimp60a4;
 import 'platform/sharing/drive_item_permission.dart' as _iuzgacy4;
+import 'platform/sharing/general_access.dart' as _ia6t9w39;
 import 'platform/sharing/invite_resolution.dart' as _ikeljole;
 import 'platform/sharing/item_sharing_settings.dart' as _ih3711er;
+import 'platform/sharing/org_access_view.dart' as _iodj7c7d;
 import 'platform/sharing/ownership_transfer.dart' as _ijwxtu30;
 import 'platform/sharing/ownership_transfer_view.dart' as _iilpsf9g;
 import 'platform/sharing/permission_view.dart' as _iead0ok9;
+import 'platform/sharing/public_item_view.dart' as _iv2hjox5;
 import 'platform/sharing/share_link.dart' as _it712lg1;
 import 'platform/sharing/share_link_view.dart' as _iw2xoohn;
 import 'platform/sharing/sharing_info.dart' as _itd24os1;
@@ -372,15 +382,22 @@ export 'platform/ai/models/assistant_event.dart';
 export 'platform/ai/models/assistant_event_type.dart';
 export 'platform/ai/models/assistant_message.dart';
 export 'platform/ai/models/assistant_message_view.dart';
+export 'platform/ai/models/assistant_quick_action.dart';
 export 'platform/ai/models/assistant_status.dart';
 export 'platform/ai/models/assistant_thread.dart';
 export 'platform/ai/models/assistant_thread_detail.dart';
 export 'platform/ai/models/assistant_thread_view.dart';
+export 'platform/ai/models/document_style_guide.dart';
 export 'platform/ai/models/inline_ai_event.dart';
 export 'platform/ai/models/inline_ai_event_type.dart';
 export 'platform/ai/models/inline_ai_request.dart';
 export 'platform/ai/models/proofread_event.dart';
 export 'platform/ai/models/proofread_issue.dart';
+export 'platform/ai/models/style_guide.dart';
+export 'platform/ai/models/style_guide_input.dart';
+export 'platform/ai/models/style_guide_library.dart';
+export 'platform/ai/models/style_guide_org_default.dart';
+export 'platform/ai/models/style_guide_view.dart';
 export 'platform/analytics/models/analytics_cohort.dart';
 export 'platform/analytics/models/analytics_count.dart';
 export 'platform/analytics/models/analytics_day.dart';
@@ -517,11 +534,14 @@ export 'platform/sharing/access_request.dart';
 export 'platform/sharing/access_request_outcome.dart';
 export 'platform/sharing/access_request_view.dart';
 export 'platform/sharing/drive_item_permission.dart';
+export 'platform/sharing/general_access.dart';
 export 'platform/sharing/invite_resolution.dart';
 export 'platform/sharing/item_sharing_settings.dart';
+export 'platform/sharing/org_access_view.dart';
 export 'platform/sharing/ownership_transfer.dart';
 export 'platform/sharing/ownership_transfer_view.dart';
 export 'platform/sharing/permission_view.dart';
+export 'platform/sharing/public_item_view.dart';
 export 'platform/sharing/share_link.dart';
 export 'platform/sharing/share_link_view.dart';
 export 'platform/sharing/sharing_info.dart';
@@ -662,15 +682,22 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_id6kvqt9.AssistantEventType>,
           _isc.getType<_i8cittxq.AssistantMessage>,
           _isc.getType<_i4rkdm2k.AssistantMessageView>,
+          _isc.getType<_ik2qpdmw.AssistantQuickAction>,
           _isc.getType<_ia2m3j3v.AssistantStatus>,
           _isc.getType<_iaq6rutx.AssistantThread>,
           _isc.getType<_i4iv0swm.AssistantThreadDetail>,
           _isc.getType<_iohdfqf1.AssistantThreadView>,
+          _isc.getType<_iti3p2ly.DocumentStyleGuide>,
           _isc.getType<_i8ghcs7p.InlineAiEvent>,
           _isc.getType<_i6pcz5z6.InlineAiEventType>,
           _isc.getType<_i4m43iwr.InlineAiRequest>,
           _isc.getType<_ie0jt2ne.ProofreadEvent>,
           _isc.getType<_ivmxemza.ProofreadIssue>,
+          _isc.getType<_izn9jjcu.StyleGuide>,
+          _isc.getType<_itz63egs.StyleGuideInput>,
+          _isc.getType<_ipldx8au.StyleGuideLibrary>,
+          _isc.getType<_ike2qw5s.StyleGuideOrgDefault>,
+          _isc.getType<_ibxjwk51.StyleGuideView>,
           _isc.getType<_ixradasp.AnalyticsCohort>,
           _isc.getType<_innm1rwe.AnalyticsCount>,
           _isc.getType<_is2u4stz.AnalyticsDay>,
@@ -827,11 +854,14 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i7trut12.AccessRequestOutcome>,
           _isc.getType<_iimp60a4.AccessRequestView>,
           _isc.getType<_iuzgacy4.DriveItemPermission>,
+          _isc.getType<_ia6t9w39.GeneralAccess>,
           _isc.getType<_ikeljole.InviteResolution>,
           _isc.getType<_ih3711er.ItemSharingSettings>,
+          _isc.getType<_iodj7c7d.OrgAccessView>,
           _isc.getType<_ijwxtu30.OwnershipTransfer>,
           _isc.getType<_iilpsf9g.OwnershipTransferView>,
           _isc.getType<_iead0ok9.PermissionView>,
+          _isc.getType<_iv2hjox5.PublicItemView>,
           _isc.getType<_it712lg1.ShareLink>,
           _isc.getType<_iw2xoohn.ShareLinkView>,
           _isc.getType<_itd24os1.SharingInfo>,
@@ -984,15 +1014,22 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_id6kvqt9.AssistantEventType?>,
           _isc.getType<_i8cittxq.AssistantMessage?>,
           _isc.getType<_i4rkdm2k.AssistantMessageView?>,
+          _isc.getType<_ik2qpdmw.AssistantQuickAction?>,
           _isc.getType<_ia2m3j3v.AssistantStatus?>,
           _isc.getType<_iaq6rutx.AssistantThread?>,
           _isc.getType<_i4iv0swm.AssistantThreadDetail?>,
           _isc.getType<_iohdfqf1.AssistantThreadView?>,
+          _isc.getType<_iti3p2ly.DocumentStyleGuide?>,
           _isc.getType<_i8ghcs7p.InlineAiEvent?>,
           _isc.getType<_i6pcz5z6.InlineAiEventType?>,
           _isc.getType<_i4m43iwr.InlineAiRequest?>,
           _isc.getType<_ie0jt2ne.ProofreadEvent?>,
           _isc.getType<_ivmxemza.ProofreadIssue?>,
+          _isc.getType<_izn9jjcu.StyleGuide?>,
+          _isc.getType<_itz63egs.StyleGuideInput?>,
+          _isc.getType<_ipldx8au.StyleGuideLibrary?>,
+          _isc.getType<_ike2qw5s.StyleGuideOrgDefault?>,
+          _isc.getType<_ibxjwk51.StyleGuideView?>,
           _isc.getType<_ixradasp.AnalyticsCohort?>,
           _isc.getType<_innm1rwe.AnalyticsCount?>,
           _isc.getType<_is2u4stz.AnalyticsDay?>,
@@ -1149,11 +1186,14 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_i7trut12.AccessRequestOutcome?>,
           _isc.getType<_iimp60a4.AccessRequestView?>,
           _isc.getType<_iuzgacy4.DriveItemPermission?>,
+          _isc.getType<_ia6t9w39.GeneralAccess?>,
           _isc.getType<_ikeljole.InviteResolution?>,
           _isc.getType<_ih3711er.ItemSharingSettings?>,
+          _isc.getType<_iodj7c7d.OrgAccessView?>,
           _isc.getType<_ijwxtu30.OwnershipTransfer?>,
           _isc.getType<_iilpsf9g.OwnershipTransferView?>,
           _isc.getType<_iead0ok9.PermissionView?>,
+          _isc.getType<_iv2hjox5.PublicItemView?>,
           _isc.getType<_it712lg1.ShareLink?>,
           _isc.getType<_iw2xoohn.ShareLinkView?>,
           _isc.getType<_itd24os1.SharingInfo?>,
@@ -1296,6 +1336,7 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<List<_i4rkdm2k.AssistantMessageView>>,
           _isc.getType<List<_ivmxemza.ProofreadIssue>>,
           _isc.getType<List<_ivmxemza.ProofreadIssue>?>,
+          _isc.getType<List<_ibxjwk51.StyleGuideView>>,
           _isc.getType<List<int?>>,
           _isc.getType<List<_is2u4stz.AnalyticsDay>>,
           _isc.getType<List<_innm1rwe.AnalyticsCount>>,
@@ -1790,6 +1831,9 @@ class Protocol extends _isc.SerializationManager
     if (t == _i4rkdm2k.AssistantMessageView) {
       return _i4rkdm2k.AssistantMessageView.fromJson(data) as T;
     }
+    if (t == _ik2qpdmw.AssistantQuickAction) {
+      return _ik2qpdmw.AssistantQuickAction.fromJson(data) as T;
+    }
     if (t == _ia2m3j3v.AssistantStatus) {
       return _ia2m3j3v.AssistantStatus.fromJson(data) as T;
     }
@@ -1801,6 +1845,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _iohdfqf1.AssistantThreadView) {
       return _iohdfqf1.AssistantThreadView.fromJson(data) as T;
+    }
+    if (t == _iti3p2ly.DocumentStyleGuide) {
+      return _iti3p2ly.DocumentStyleGuide.fromJson(data) as T;
     }
     if (t == _i8ghcs7p.InlineAiEvent) {
       return _i8ghcs7p.InlineAiEvent.fromJson(data) as T;
@@ -1816,6 +1863,21 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _ivmxemza.ProofreadIssue) {
       return _ivmxemza.ProofreadIssue.fromJson(data) as T;
+    }
+    if (t == _izn9jjcu.StyleGuide) {
+      return _izn9jjcu.StyleGuide.fromJson(data) as T;
+    }
+    if (t == _itz63egs.StyleGuideInput) {
+      return _itz63egs.StyleGuideInput.fromJson(data) as T;
+    }
+    if (t == _ipldx8au.StyleGuideLibrary) {
+      return _ipldx8au.StyleGuideLibrary.fromJson(data) as T;
+    }
+    if (t == _ike2qw5s.StyleGuideOrgDefault) {
+      return _ike2qw5s.StyleGuideOrgDefault.fromJson(data) as T;
+    }
+    if (t == _ibxjwk51.StyleGuideView) {
+      return _ibxjwk51.StyleGuideView.fromJson(data) as T;
     }
     if (t == _ixradasp.AnalyticsCohort) {
       return _ixradasp.AnalyticsCohort.fromJson(data) as T;
@@ -2285,11 +2347,17 @@ class Protocol extends _isc.SerializationManager
     if (t == _iuzgacy4.DriveItemPermission) {
       return _iuzgacy4.DriveItemPermission.fromJson(data) as T;
     }
+    if (t == _ia6t9w39.GeneralAccess) {
+      return _ia6t9w39.GeneralAccess.fromJson(data) as T;
+    }
     if (t == _ikeljole.InviteResolution) {
       return _ikeljole.InviteResolution.fromJson(data) as T;
     }
     if (t == _ih3711er.ItemSharingSettings) {
       return _ih3711er.ItemSharingSettings.fromJson(data) as T;
+    }
+    if (t == _iodj7c7d.OrgAccessView) {
+      return _iodj7c7d.OrgAccessView.fromJson(data) as T;
     }
     if (t == _ijwxtu30.OwnershipTransfer) {
       return _ijwxtu30.OwnershipTransfer.fromJson(data) as T;
@@ -2299,6 +2367,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _iead0ok9.PermissionView) {
       return _iead0ok9.PermissionView.fromJson(data) as T;
+    }
+    if (t == _iv2hjox5.PublicItemView) {
+      return _iv2hjox5.PublicItemView.fromJson(data) as T;
     }
     if (t == _it712lg1.ShareLink) {
       return _it712lg1.ShareLink.fromJson(data) as T;
@@ -2772,6 +2843,12 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_ik2qpdmw.AssistantQuickAction?>()) {
+      return (data != null
+              ? _ik2qpdmw.AssistantQuickAction.fromJson(data)
+              : null)
+          as T;
+    }
     if (t == _isc.getType<_ia2m3j3v.AssistantStatus?>()) {
       return (data != null ? _ia2m3j3v.AssistantStatus.fromJson(data) : null)
           as T;
@@ -2792,6 +2869,10 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_iti3p2ly.DocumentStyleGuide?>()) {
+      return (data != null ? _iti3p2ly.DocumentStyleGuide.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_i8ghcs7p.InlineAiEvent?>()) {
       return (data != null ? _i8ghcs7p.InlineAiEvent.fromJson(data) : null)
           as T;
@@ -2810,6 +2891,27 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _isc.getType<_ivmxemza.ProofreadIssue?>()) {
       return (data != null ? _ivmxemza.ProofreadIssue.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_izn9jjcu.StyleGuide?>()) {
+      return (data != null ? _izn9jjcu.StyleGuide.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_itz63egs.StyleGuideInput?>()) {
+      return (data != null ? _itz63egs.StyleGuideInput.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ipldx8au.StyleGuideLibrary?>()) {
+      return (data != null ? _ipldx8au.StyleGuideLibrary.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ike2qw5s.StyleGuideOrgDefault?>()) {
+      return (data != null
+              ? _ike2qw5s.StyleGuideOrgDefault.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_ibxjwk51.StyleGuideView?>()) {
+      return (data != null ? _ibxjwk51.StyleGuideView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_ixradasp.AnalyticsCohort?>()) {
@@ -3416,6 +3518,10 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_ia6t9w39.GeneralAccess?>()) {
+      return (data != null ? _ia6t9w39.GeneralAccess.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_ikeljole.InviteResolution?>()) {
       return (data != null ? _ikeljole.InviteResolution.fromJson(data) : null)
           as T;
@@ -3424,6 +3530,10 @@ class Protocol extends _isc.SerializationManager
       return (data != null
               ? _ih3711er.ItemSharingSettings.fromJson(data)
               : null)
+          as T;
+    }
+    if (t == _isc.getType<_iodj7c7d.OrgAccessView?>()) {
+      return (data != null ? _iodj7c7d.OrgAccessView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_ijwxtu30.OwnershipTransfer?>()) {
@@ -3438,6 +3548,10 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _isc.getType<_iead0ok9.PermissionView?>()) {
       return (data != null ? _iead0ok9.PermissionView.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iv2hjox5.PublicItemView?>()) {
+      return (data != null ? _iv2hjox5.PublicItemView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_it712lg1.ShareLink?>()) {
@@ -4086,6 +4200,12 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == List<_ibxjwk51.StyleGuideView>) {
+      return (data as List)
+              .map((e) => deserialize<_ibxjwk51.StyleGuideView>(e))
+              .toList()
+          as T;
+    }
     if (t == List<int?>) {
       return (data as List).map((e) => deserialize<int?>(e)).toList() as T;
     }
@@ -4654,15 +4774,22 @@ class Protocol extends _isc.SerializationManager
       _id6kvqt9.AssistantEventType => 'AssistantEventType',
       _i8cittxq.AssistantMessage => 'AssistantMessage',
       _i4rkdm2k.AssistantMessageView => 'AssistantMessageView',
+      _ik2qpdmw.AssistantQuickAction => 'AssistantQuickAction',
       _ia2m3j3v.AssistantStatus => 'AssistantStatus',
       _iaq6rutx.AssistantThread => 'AssistantThread',
       _i4iv0swm.AssistantThreadDetail => 'AssistantThreadDetail',
       _iohdfqf1.AssistantThreadView => 'AssistantThreadView',
+      _iti3p2ly.DocumentStyleGuide => 'DocumentStyleGuide',
       _i8ghcs7p.InlineAiEvent => 'InlineAiEvent',
       _i6pcz5z6.InlineAiEventType => 'InlineAiEventType',
       _i4m43iwr.InlineAiRequest => 'InlineAiRequest',
       _ie0jt2ne.ProofreadEvent => 'ProofreadEvent',
       _ivmxemza.ProofreadIssue => 'ProofreadIssue',
+      _izn9jjcu.StyleGuide => 'StyleGuide',
+      _itz63egs.StyleGuideInput => 'StyleGuideInput',
+      _ipldx8au.StyleGuideLibrary => 'StyleGuideLibrary',
+      _ike2qw5s.StyleGuideOrgDefault => 'StyleGuideOrgDefault',
+      _ibxjwk51.StyleGuideView => 'StyleGuideView',
       _ixradasp.AnalyticsCohort => 'AnalyticsCohort',
       _innm1rwe.AnalyticsCount => 'AnalyticsCount',
       _is2u4stz.AnalyticsDay => 'AnalyticsDay',
@@ -4819,11 +4946,14 @@ class Protocol extends _isc.SerializationManager
       _i7trut12.AccessRequestOutcome => 'AccessRequestOutcome',
       _iimp60a4.AccessRequestView => 'AccessRequestView',
       _iuzgacy4.DriveItemPermission => 'DriveItemPermission',
+      _ia6t9w39.GeneralAccess => 'GeneralAccess',
       _ikeljole.InviteResolution => 'InviteResolution',
       _ih3711er.ItemSharingSettings => 'ItemSharingSettings',
+      _iodj7c7d.OrgAccessView => 'OrgAccessView',
       _ijwxtu30.OwnershipTransfer => 'OwnershipTransfer',
       _iilpsf9g.OwnershipTransferView => 'OwnershipTransferView',
       _iead0ok9.PermissionView => 'PermissionView',
+      _iv2hjox5.PublicItemView => 'PublicItemView',
       _it712lg1.ShareLink => 'ShareLink',
       _iw2xoohn.ShareLinkView => 'ShareLinkView',
       _itd24os1.SharingInfo => 'SharingInfo',
@@ -5007,6 +5137,8 @@ class Protocol extends _isc.SerializationManager
         return 'AssistantMessage';
       case _i4rkdm2k.AssistantMessageView():
         return 'AssistantMessageView';
+      case _ik2qpdmw.AssistantQuickAction():
+        return 'AssistantQuickAction';
       case _ia2m3j3v.AssistantStatus():
         return 'AssistantStatus';
       case _iaq6rutx.AssistantThread():
@@ -5015,6 +5147,8 @@ class Protocol extends _isc.SerializationManager
         return 'AssistantThreadDetail';
       case _iohdfqf1.AssistantThreadView():
         return 'AssistantThreadView';
+      case _iti3p2ly.DocumentStyleGuide():
+        return 'DocumentStyleGuide';
       case _i8ghcs7p.InlineAiEvent():
         return 'InlineAiEvent';
       case _i6pcz5z6.InlineAiEventType():
@@ -5025,6 +5159,16 @@ class Protocol extends _isc.SerializationManager
         return 'ProofreadEvent';
       case _ivmxemza.ProofreadIssue():
         return 'ProofreadIssue';
+      case _izn9jjcu.StyleGuide():
+        return 'StyleGuide';
+      case _itz63egs.StyleGuideInput():
+        return 'StyleGuideInput';
+      case _ipldx8au.StyleGuideLibrary():
+        return 'StyleGuideLibrary';
+      case _ike2qw5s.StyleGuideOrgDefault():
+        return 'StyleGuideOrgDefault';
+      case _ibxjwk51.StyleGuideView():
+        return 'StyleGuideView';
       case _ixradasp.AnalyticsCohort():
         return 'AnalyticsCohort';
       case _innm1rwe.AnalyticsCount():
@@ -5337,16 +5481,22 @@ class Protocol extends _isc.SerializationManager
         return 'AccessRequestView';
       case _iuzgacy4.DriveItemPermission():
         return 'DriveItemPermission';
+      case _ia6t9w39.GeneralAccess():
+        return 'GeneralAccess';
       case _ikeljole.InviteResolution():
         return 'InviteResolution';
       case _ih3711er.ItemSharingSettings():
         return 'ItemSharingSettings';
+      case _iodj7c7d.OrgAccessView():
+        return 'OrgAccessView';
       case _ijwxtu30.OwnershipTransfer():
         return 'OwnershipTransfer';
       case _iilpsf9g.OwnershipTransferView():
         return 'OwnershipTransferView';
       case _iead0ok9.PermissionView():
         return 'PermissionView';
+      case _iv2hjox5.PublicItemView():
+        return 'PublicItemView';
       case _it712lg1.ShareLink():
         return 'ShareLink';
       case _iw2xoohn.ShareLinkView():
@@ -5690,6 +5840,9 @@ class Protocol extends _isc.SerializationManager
     if (dataClassName == 'AssistantMessageView') {
       return deserialize<_i4rkdm2k.AssistantMessageView>(data['data']);
     }
+    if (dataClassName == 'AssistantQuickAction') {
+      return deserialize<_ik2qpdmw.AssistantQuickAction>(data['data']);
+    }
     if (dataClassName == 'AssistantStatus') {
       return deserialize<_ia2m3j3v.AssistantStatus>(data['data']);
     }
@@ -5701,6 +5854,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'AssistantThreadView') {
       return deserialize<_iohdfqf1.AssistantThreadView>(data['data']);
+    }
+    if (dataClassName == 'DocumentStyleGuide') {
+      return deserialize<_iti3p2ly.DocumentStyleGuide>(data['data']);
     }
     if (dataClassName == 'InlineAiEvent') {
       return deserialize<_i8ghcs7p.InlineAiEvent>(data['data']);
@@ -5716,6 +5872,21 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'ProofreadIssue') {
       return deserialize<_ivmxemza.ProofreadIssue>(data['data']);
+    }
+    if (dataClassName == 'StyleGuide') {
+      return deserialize<_izn9jjcu.StyleGuide>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideInput') {
+      return deserialize<_itz63egs.StyleGuideInput>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideLibrary') {
+      return deserialize<_ipldx8au.StyleGuideLibrary>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideOrgDefault') {
+      return deserialize<_ike2qw5s.StyleGuideOrgDefault>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideView') {
+      return deserialize<_ibxjwk51.StyleGuideView>(data['data']);
     }
     if (dataClassName == 'AnalyticsCohort') {
       return deserialize<_ixradasp.AnalyticsCohort>(data['data']);
@@ -6185,11 +6356,17 @@ class Protocol extends _isc.SerializationManager
     if (dataClassName == 'DriveItemPermission') {
       return deserialize<_iuzgacy4.DriveItemPermission>(data['data']);
     }
+    if (dataClassName == 'GeneralAccess') {
+      return deserialize<_ia6t9w39.GeneralAccess>(data['data']);
+    }
     if (dataClassName == 'InviteResolution') {
       return deserialize<_ikeljole.InviteResolution>(data['data']);
     }
     if (dataClassName == 'ItemSharingSettings') {
       return deserialize<_ih3711er.ItemSharingSettings>(data['data']);
+    }
+    if (dataClassName == 'OrgAccessView') {
+      return deserialize<_iodj7c7d.OrgAccessView>(data['data']);
     }
     if (dataClassName == 'OwnershipTransfer') {
       return deserialize<_ijwxtu30.OwnershipTransfer>(data['data']);
@@ -6199,6 +6376,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'PermissionView') {
       return deserialize<_iead0ok9.PermissionView>(data['data']);
+    }
+    if (dataClassName == 'PublicItemView') {
+      return deserialize<_iv2hjox5.PublicItemView>(data['data']);
     }
     if (dataClassName == 'ShareLink') {
       return deserialize<_it712lg1.ShareLink>(data['data']);

@@ -39,7 +39,15 @@ sealed class MenuSpec {
     Map<String, Object?> args = const {},
     String? id,
     bool radio = false,
-  }) => MenuCommand(commandId, label: label, args: args, id: id, radio: radio);
+    bool showIcon = false,
+  }) => MenuCommand(
+    commandId,
+    label: label,
+    args: args,
+    id: id,
+    radio: radio,
+    showIcon: showIcon,
+  );
 
   /// A separator line.
   static MenuSeparator separator({String? id}) => MenuSeparator(id: id);
@@ -269,6 +277,7 @@ class MenuCommand extends MenuSpec {
     this.args = const {},
     super.id,
     this.radio = false,
+    this.showIcon = false,
   });
 
   final String commandId;
@@ -281,6 +290,12 @@ class MenuCommand extends MenuSpec {
 
   /// Render as a radio item (● when checked) instead of a check item.
   final bool radio;
+
+  /// Keep the command's icon when it has a checked state (the ✓ moves to
+  /// the end): View › Panels shows each panel's rail icon (suite 03 §3.2),
+  /// Insert › Code block / Quote / Checklist their block icons. Other
+  /// toggles show only the ✓.
+  final bool showIcon;
 
   @override
   String get effectiveId => id ?? commandId;

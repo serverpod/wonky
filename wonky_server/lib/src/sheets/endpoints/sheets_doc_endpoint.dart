@@ -3,13 +3,15 @@ import 'package:serverpod/serverpod.dart';
 import '../../platform/common/models.dart';
 import '../../platform/revlog/rev_endpoint_support.dart';
 import '../../platform/revlog/rev_log_connection.dart';
-import '../../platform/users/user_service.dart';
+import '../../platform/sharing/anonymous_access.dart';
 import '../revlog/sheets_rev_binding.dart';
 
 /// Spreadsheet sessions over RevLog (RevLog spec 04 §1): `sheetsDoc.*`.
 class SheetsDocEndpoint extends Endpoint {
+  /// Every call also serves signed-out viewers of link-shared files
+  /// (read-only, rate limited, specs/06 §2.4).
   @override
-  bool get requireLogin => true;
+  bool get requireLogin => false;
 
   /// Opens an editing/viewing session (04 §2).
   Stream<RevServerMessage> connect(
@@ -19,15 +21,18 @@ class SheetsDocEndpoint extends Endpoint {
     String tabId,
     Stream<RevClientMessage> input,
   ) async* {
-    final actor = await UserService.actorOf(session);
-    yield* RevLogConnection.open(
-      session,
-      SheetsRevBinding.instance,
+    final actor = await AnonymousAccess.actorOf(session, stream: true);
+    yield* AnonymousAccess.track(
       actor,
-      fileUuid,
-      knownRevision,
-      tabId,
-      input,
+      RevLogConnection.open(
+        session,
+        SheetsRevBinding.instance,
+        actor,
+        fileUuid,
+        knownRevision,
+        tabId,
+        input,
+      ),
     );
   }
 
@@ -39,7 +44,7 @@ class SheetsDocEndpoint extends Endpoint {
   ) async => RevEndpointSupport.page(
     session,
     SheetsRevBinding.instance,
-    await UserService.actorOf(session),
+    await AnonymousAccess.actorOf(session),
     fileUuid,
     request,
   );
@@ -53,7 +58,7 @@ class SheetsDocEndpoint extends Endpoint {
   ) async => RevEndpointSupport.ops(
     session,
     SheetsRevBinding.instance,
-    await UserService.actorOf(session),
+    await AnonymousAccess.actorOf(session),
     fileUuid,
     fromRevision,
     toRevision,
@@ -64,7 +69,7 @@ class SheetsDocEndpoint extends Endpoint {
       RevEndpointSupport.info(
         session,
         SheetsRevBinding.instance,
-        await UserService.actorOf(session),
+        await AnonymousAccess.actorOf(session),
         fileUuid,
       );
 }

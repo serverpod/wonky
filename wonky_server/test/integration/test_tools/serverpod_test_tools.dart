@@ -52,6 +52,8 @@ import 'package:wonky_server/src/generated/platform/ai/models/assistant_context_
     as _ixc2f7d5;
 import 'package:wonky_server/src/generated/platform/ai/models/assistant_event.dart'
     as _ibgujsil;
+import 'package:wonky_server/src/generated/platform/ai/models/assistant_quick_action.dart'
+    as _i4hdrkkx;
 import 'package:wonky_server/src/generated/platform/ai/models/assistant_status.dart'
     as _ibfulm5p;
 import 'package:wonky_server/src/generated/platform/ai/models/assistant_thread_detail.dart'
@@ -64,6 +66,12 @@ import 'package:wonky_server/src/generated/platform/ai/models/inline_ai_request.
     as _i4c3y8bm;
 import 'package:wonky_server/src/generated/platform/ai/models/proofread_event.dart'
     as _ib6yu876;
+import 'package:wonky_server/src/generated/platform/ai/models/style_guide_input.dart'
+    as _ih4ocb39;
+import 'package:wonky_server/src/generated/platform/ai/models/style_guide_library.dart'
+    as _isxm9zk2;
+import 'package:wonky_server/src/generated/platform/ai/models/style_guide_view.dart'
+    as _is13j5fj;
 import 'package:wonky_server/src/generated/platform/analytics/models/analytics_overview.dart'
     as _ijo91y9q;
 import 'package:wonky_server/src/generated/platform/analytics/models/usage_app.dart'
@@ -208,10 +216,14 @@ import 'package:wonky_server/src/generated/platform/revlog/models/rev_page.dart'
     as _i4qoa0fo;
 import 'package:wonky_server/src/generated/platform/revlog/models/rev_page_request.dart'
     as _iynxab9u;
+import 'package:wonky_server/src/generated/platform/sharing/general_access.dart'
+    as _i3ig34yn;
 import 'package:wonky_server/src/generated/platform/sharing/invite_resolution.dart'
     as _ir129i67;
 import 'package:wonky_server/src/generated/platform/sharing/item_sharing_settings.dart'
     as _i55sl7s1;
+import 'package:wonky_server/src/generated/platform/sharing/public_item_view.dart'
+    as _i3dep0k3;
 import 'package:wonky_server/src/generated/platform/sharing/sharing_info.dart'
     as _ibhys9d2;
 import 'package:wonky_server/src/generated/platform/users/access_token_view.dart'
@@ -469,6 +481,8 @@ class TestEndpoints {
 
   late final _AssistantEndpoint assistant;
 
+  late final _StyleGuideEndpoint styleGuide;
+
   late final _AnalyticsEndpoint analytics;
 
   late final _BoardEndpoint board;
@@ -494,6 +508,8 @@ class TestEndpoints {
   late final _PublicationEndpoint publication;
 
   late final _SubmissionEndpoint submission;
+
+  late final _PublicItemEndpoint publicItem;
 
   late final _SharingEndpoint sharing;
 
@@ -565,6 +581,10 @@ class _InternalTestEndpoints extends TestEndpoints
       endpoints,
       serializationManager,
     );
+    styleGuide = _StyleGuideEndpoint(
+      endpoints,
+      serializationManager,
+    );
     analytics = _AnalyticsEndpoint(
       endpoints,
       serializationManager,
@@ -614,6 +634,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
     submission = _SubmissionEndpoint(
+      endpoints,
+      serializationManager,
+    );
+    publicItem = _PublicItemEndpoint(
       endpoints,
       serializationManager,
     );
@@ -1336,6 +1360,51 @@ class _AssistantEndpoint {
     return _localTestStreamManager.outputStreamController.stream;
   }
 
+  _ida.Stream<_ibgujsil.AssistantEvent> quickAction(
+    _ist.TestSessionBuilder sessionBuilder,
+    int? threadId,
+    _is.UuidValue itemUuid,
+    _i4hdrkkx.AssistantQuickAction action,
+    _ixc2f7d5.AssistantContextHints hints,
+  ) {
+    var _localTestStreamManager =
+        _ist.TestStreamManager<_ibgujsil.AssistantEvent>();
+    _ist.callStreamFunctionAndHandleExceptions(
+      () async {
+        var _localUniqueSession =
+            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+              endpoint: 'assistant',
+              method: 'quickAction',
+            );
+        var _localCallContext = await _endpointDispatch
+            .getMethodStreamCallContext(
+              createSessionCallback: (_) => _localUniqueSession,
+              endpointPath: 'assistant',
+              methodName: 'quickAction',
+              arguments: {
+                'threadId': threadId,
+                'itemUuid': itemUuid,
+                'action': _idc.jsonDecode(
+                  _is.SerializationManager.encode(action),
+                ),
+                'hints': _idc.jsonDecode(
+                  _is.SerializationManager.encode(hints),
+                ),
+              },
+              requestedInputStreams: [],
+              serializationManager: _serializationManager,
+            );
+        await _localTestStreamManager.callStreamMethod(
+          _localCallContext,
+          _localUniqueSession,
+          {},
+        );
+      },
+      _localTestStreamManager.outputStreamController,
+    );
+    return _localTestStreamManager.outputStreamController.stream;
+  }
+
   _ida.Future<bool> stop(
     _ist.TestSessionBuilder sessionBuilder,
     int? threadId,
@@ -1669,6 +1738,176 @@ class _AssistantEndpoint {
       _localTestStreamManager.outputStreamController,
     );
     return _localTestStreamManager.outputStreamController.stream;
+  }
+}
+
+class _StyleGuideEndpoint {
+  _StyleGuideEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<_isxm9zk2.StyleGuideLibrary> library(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue? itemUuid,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'styleGuide',
+            method: 'library',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'styleGuide',
+          methodName: 'library',
+          parameters: _ist.testObjectToJson({'itemUuid': itemUuid}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_isxm9zk2.StyleGuideLibrary>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_is13j5fj.StyleGuideView> save(
+    _ist.TestSessionBuilder sessionBuilder,
+    _ih4ocb39.StyleGuideInput input,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'styleGuide',
+            method: 'save',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'styleGuide',
+          methodName: 'save',
+          parameters: _ist.testObjectToJson({'input': input}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_is13j5fj.StyleGuideView>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<void> delete(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue uuid,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'styleGuide',
+            method: 'delete',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'styleGuide',
+          methodName: 'delete',
+          parameters: _ist.testObjectToJson({'uuid': uuid}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<void>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_isxm9zk2.StyleGuideLibrary> setOrgDefault(
+    _ist.TestSessionBuilder sessionBuilder,
+    String? ref,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'styleGuide',
+            method: 'setOrgDefault',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'styleGuide',
+          methodName: 'setOrgDefault',
+          parameters: _ist.testObjectToJson({'ref': ref}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_isxm9zk2.StyleGuideLibrary>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_isxm9zk2.StyleGuideLibrary> setDocumentStyle(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue itemUuid,
+    String? ref,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'styleGuide',
+            method: 'setDocumentStyle',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'styleGuide',
+          methodName: 'setDocumentStyle',
+          parameters: _ist.testObjectToJson({
+            'itemUuid': itemUuid,
+            'ref': ref,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_isxm9zk2.StyleGuideLibrary>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
   }
 }
 
@@ -6625,6 +6864,48 @@ class _SubmissionEndpoint {
   }
 }
 
+class _PublicItemEndpoint {
+  _PublicItemEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<_i3dep0k3.PublicItemView> get(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue uuid,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'publicItem',
+            method: 'get',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'publicItem',
+          methodName: 'get',
+          parameters: _ist.testObjectToJson({'uuid': uuid}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i3dep0k3.PublicItemView>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
 class _SharingEndpoint {
   _SharingEndpoint(
     this._endpointDispatch,
@@ -6873,6 +7154,43 @@ class _SharingEndpoint {
           methodName: 'setLink',
           parameters: _ist.testObjectToJson({
             'itemUuid': itemUuid,
+            'role': role,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ibhys9d2.SharingInfo>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ibhys9d2.SharingInfo> setGeneralAccess(
+    _ist.TestSessionBuilder sessionBuilder,
+    _is.UuidValue itemUuid,
+    _i3ig34yn.GeneralAccess access,
+    _i9nsco4y.AccessRole? role,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'sharing',
+            method: 'setGeneralAccess',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'sharing',
+          methodName: 'setGeneralAccess',
+          parameters: _ist.testObjectToJson({
+            'itemUuid': itemUuid,
+            'access': access,
             'role': role,
           }),
           serializationManager: _serializationManager,

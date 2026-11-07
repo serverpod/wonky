@@ -1,0 +1,9 @@
+### Creates or updates one of the user's style guides. With [uuid] of a
+### guide that no longer exists (undo of a delete) it is created again.
+class: StyleGuideInput
+fields:
+  uuid: UuidValue?
+  name: String
+  description: String
+  markdown: String
+  shareWithOrg: bool

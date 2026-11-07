@@ -1,0 +1,9 @@
+### Who can open an item besides the people it is shared with (specs/06
+### §2.2–2.3): no one else, everyone in an organization, or anyone with
+### the link.
+enum: GeneralAccess
+serialized: byName
+values:
+  - restricted
+  - organization
+  - link

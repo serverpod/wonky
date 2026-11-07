@@ -588,6 +588,9 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get cmdShare => 'Share';
 
   @override
+  String get cmdSignIn => 'Sign in';
+
+  @override
   String get cmdSignOut => 'Sign out';
 
   @override
@@ -624,9 +627,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get cmdVersionsPanel => 'Version history panel';
-
-  @override
-  String get cmdWhatsNew => 'What\'s new';
 
   @override
   String get cmdWorkSettings => 'Wonky Work settings';
@@ -1090,9 +1090,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get mcpTitle => 'MCP connection';
 
   @override
-  String get menuAccessibility => 'Accessibility settings';
-
-  @override
   String get menuAppTheme => 'App theme';
 
   @override
@@ -1100,9 +1097,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get menuEdit => 'Edit';
-
-  @override
-  String get menuExplore => 'Explore';
 
   @override
   String get menuFile => 'File';
@@ -1139,9 +1133,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get menuPanels => 'Panels';
-
-  @override
-  String get menuPreferences => 'Preferences';
 
   @override
   String get menuShare => 'Share';
@@ -1239,6 +1230,22 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get noAccessTitle => 'You need access';
+
+  @override
+  String get guestNoAccessTitle => 'Sign in to open this';
+
+  @override
+  String get guestNoAccessBody =>
+      'This file isn\'t shared with anyone who has the link. Sign in to open it.';
+
+  @override
+  String get guestViewing => 'Viewing as a guest';
+
+  @override
+  String get guestSignInHint => 'Sign in to comment or edit';
+
+  @override
+  String get guestSignInToUse => 'Sign in to use this';
 
   @override
   String get notAllowed => 'Not allowed';
@@ -1765,6 +1772,11 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get shareAddPeople => 'Add people by name or email';
 
   @override
+  String shareAnyoneAtOrg(String domain) {
+    return 'Anyone at $domain';
+  }
+
+  @override
   String get shareAnyoneWithLink => 'Anyone with the link';
 
   @override
@@ -1792,13 +1804,50 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   }
 
   @override
-  String get shareLinkHint => 'Anyone signed in who has the link can open it';
+  String shareLinkHint(String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Anyone with the link can view, and comment when signed in',
+      'editor': 'Anyone with the link can view, and edit when signed in',
+      'other': 'Anyone with the link can view, also without signing in',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String shareLinkHintSignIn(String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Anyone signed in who has the link can comment',
+      'editor': 'Anyone signed in who has the link can edit',
+      'other': 'Anyone signed in who has the link can view',
+    });
+    return '$_temp0';
+  }
 
   @override
   String get shareMessage => 'Message';
 
   @override
   String get shareNotify => 'Notify people';
+
+  @override
+  String shareOrgHint(String domain, String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Anyone at $domain can comment',
+      'editor': 'Anyone at $domain can edit',
+      'other': 'Anyone at $domain can view',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String shareOrgInherited(String domain, String role, String folder) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Anyone at $domain can also comment through “$folder”',
+      'editor': 'Anyone at $domain can also edit through “$folder”',
+      'other': 'Anyone at $domain can also view through “$folder”',
+    });
+    return '$_temp0';
+  }
 
   @override
   String get sharePending => 'Pending invite';
@@ -1831,11 +1880,19 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get shareRestricted => 'Restricted';
 
   @override
-  String get shareRestrictedHint =>
-      'Only people with access can open with the link';
+  String get shareRestrictedHint => 'Only people with access can open';
 
   @override
   String get shareRotateLink => 'Reset link';
+
+  @override
+  String get shareSearchFullEmail =>
+      'Enter the full email address to add someone';
+
+  @override
+  String shareSearchOutsideOrg(String domain) {
+    return 'Enter the full email to add someone outside $domain';
+  }
 
   @override
   String shareSent(int count) {
@@ -2281,25 +2338,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get versionsRestorePoint => 'Before restore';
-
-  @override
-  String get whatsNew1 =>
-      'One account for Wonky Write and Wonky Sheets — sign in once, use both.';
-
-  @override
-  String get whatsNew2 =>
-      'Every action is a command: press Ctrl+Shift+P (⌘⇧P) to run anything.';
-
-  @override
-  String get whatsNew3 =>
-      'Undo covers drive changes too — rename, move, star and trash.';
-
-  @override
-  String get whatsNew4 =>
-      'Comments, mentions and version history in every file.';
-
-  @override
-  String get whatsNewTitle => 'What\'s new';
 
   @override
   String get wonkyWork => 'Wonky Work';
@@ -5033,6 +5071,136 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String pubStartClosed(String name) {
     return '$name isn\'t accepting stories right now.';
   }
+
+  @override
+  String get actionEdit => 'Edit';
+
+  @override
+  String get actionDelete => 'Delete';
+
+  @override
+  String assistantMoreChanges(int count) {
+    return '+$count more';
+  }
+
+  @override
+  String get assistantStyleGuides => 'Style guides…';
+
+  @override
+  String get styleGuidesTitle => 'Style guides';
+
+  @override
+  String get styleGuidesDescription =>
+      'How the assistant writes: built-in guides, your own, and guides shared in your organization.';
+
+  @override
+  String get styleGuidesDescriptionDocument =>
+      'Choose the guide this document follows. Apply style rewrites the document to match it, and the other assistant actions use it as context.';
+
+  @override
+  String get styleGuideNone => 'No style guide';
+
+  @override
+  String get styleGuideNoneHint =>
+      'The assistant follows the document\'s own style.';
+
+  @override
+  String styleGuideNoneOrgHint(String name) {
+    return 'Without its own guide, the document follows your organization\'s default, $name.';
+  }
+
+  @override
+  String get styleGuideUseNone => 'Use no style guide';
+
+  @override
+  String get styleGuideSectionBuiltIn => 'Built-in';
+
+  @override
+  String get styleGuideSectionMine => 'My style guides';
+
+  @override
+  String get styleGuideMineEmpty =>
+      'Duplicate a built-in guide or create a new one.';
+
+  @override
+  String styleGuideSectionOrganization(String org) {
+    return 'Shared in $org';
+  }
+
+  @override
+  String get styleGuideSectionDocument => 'Used by this document';
+
+  @override
+  String get styleGuideNew => 'New style guide';
+
+  @override
+  String get styleGuideOrgDefault => 'Organization default';
+
+  @override
+  String get styleGuideInUse => 'Used by this document';
+
+  @override
+  String get styleGuideUse => 'Use for this document';
+
+  @override
+  String get styleGuideSetOrgDefault => 'Make organization default';
+
+  @override
+  String get styleGuideClearOrgDefault => 'Remove as organization default';
+
+  @override
+  String get styleGuideDuplicate => 'Duplicate';
+
+  @override
+  String styleGuideCopyName(String name) {
+    return '$name (copy)';
+  }
+
+  @override
+  String styleGuideByOwner(String name) {
+    return 'By $name';
+  }
+
+  @override
+  String get styleGuideName => 'Name';
+
+  @override
+  String get styleGuideDescriptionField => 'Short description';
+
+  @override
+  String get styleGuideMarkdownHint =>
+      'Write the rules in Markdown: voice, words to use and avoid, headings, lists, formatting.';
+
+  @override
+  String styleGuideShareWithOrg(String org) {
+    return 'Share with $org';
+  }
+
+  @override
+  String get styleGuidePersonalOnly =>
+      'Only you can use this guide: your email domain is not an organization.';
+
+  @override
+  String get styleGuideNameRequired => 'Give the style guide a name.';
+
+  @override
+  String get styleGuideEmpty => 'Write at least one rule.';
+
+  @override
+  String get styleGuideTemplate =>
+      '# Voice\n\n- \n\n# Words\n\n| Avoid | Use instead |\n| --- | --- |\n|  |  |\n\n# Headings and lists\n\n- \n';
+
+  @override
+  String get undoSaveStyleGuide => 'Save style guide';
+
+  @override
+  String get undoDeleteStyleGuide => 'Delete style guide';
+
+  @override
+  String get undoSetOrgStyleGuide => 'Change organization style guide';
+
+  @override
+  String get undoSetDocumentStyleGuide => 'Change style guide';
 }
 
 /// The translations for English (`en_XA`).
@@ -5627,6 +5795,9 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get cmdShare => '[Šĥåŕé on]';
 
   @override
+  String get cmdSignIn => '[Šîĝñ îñ one]';
+
+  @override
   String get cmdSignOut => '[Šîĝñ öûţ one]';
 
   @override
@@ -5664,9 +5835,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get cmdVersionsPanel => '[Ṽéŕšîöñ ĥîšţöŕý þåñéļ one two]';
-
-  @override
-  String get cmdWhatsNew => '[Ŵĥåţ\'š ñéŵ one]';
 
   @override
   String get cmdWorkSettings => '[Ŵöñķý Ŵöŕķ šéţţîñĝš one tw]';
@@ -6146,9 +6314,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get mcpTitle => '[ṀÇÞ çöññéçţîöñ one t]';
 
   @override
-  String get menuAccessibility => '[Åççéššîƀîļîţý šéţţîñĝš one two]';
-
-  @override
   String get menuAppTheme => '[Åþþ ţĥéɱé one]';
 
   @override
@@ -6156,9 +6321,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get menuEdit => '[Éðîţ on]';
-
-  @override
-  String get menuExplore => '[Éẋþļöŕé one]';
 
   @override
   String get menuFile => '[Ƒîļé on]';
@@ -6195,9 +6357,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get menuPanels => '[Þåñéļš one]';
-
-  @override
-  String get menuPreferences => '[Þŕéƒéŕéñçéš one]';
 
   @override
   String get menuShare => '[Šĥåŕé on]';
@@ -6295,6 +6454,22 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get noAccessTitle => '[Ýöû ñééð åççéšš one t]';
+
+  @override
+  String get guestNoAccessTitle => '[Šîĝñ îñ ţö öþéñ ţĥîš one tw]';
+
+  @override
+  String get guestNoAccessBody =>
+      '[Ţĥîš ƒîļé îšñ\'ţ šĥåŕéð ŵîţĥ åñýöñé ŵĥö ĥåš ţĥé ļîñķ. Šîĝñ îñ ţö öþéñ îţ. one two three four fi]';
+
+  @override
+  String get guestViewing => '[Ṽîéŵîñĝ åš å ĝûéšţ one tw]';
+
+  @override
+  String get guestSignInHint => '[Šîĝñ îñ ţö çöɱɱéñţ öŕ éðîţ one two]';
+
+  @override
+  String get guestSignInToUse => '[Šîĝñ îñ ţö ûšé ţĥîš one tw]';
 
   @override
   String get notAllowed => '[Ñöţ åļļöŵéð one]';
@@ -6831,6 +7006,11 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get shareAddPeople => '[Åðð þéöþļé ƀý ñåɱé öŕ éɱåîļ one two]';
 
   @override
+  String shareAnyoneAtOrg(String domain) {
+    return '[Åñýöñé åţ $domain one]';
+  }
+
+  @override
   String get shareAnyoneWithLink => '[Åñýöñé ŵîţĥ ţĥé ļîñķ one tw]';
 
   @override
@@ -6859,14 +7039,50 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   }
 
   @override
-  String get shareLinkHint =>
-      '[Åñýöñé šîĝñéð îñ ŵĥö ĥåš ţĥé ļîñķ çåñ öþéñ îţ one two three]';
+  String shareLinkHint(String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Åñýöñé ŵîţĥ ţĥé ļîñķ çåñ ṽîéŵ, åñð çöɱɱéñţ ŵĥéñ šîĝñéð îñ',
+      'editor': 'Åñýöñé ŵîţĥ ţĥé ļîñķ çåñ ṽîéŵ, åñð éðîţ ŵĥéñ šîĝñéð îñ',
+      'other': 'Åñýöñé ŵîţĥ ţĥé ļîñķ çåñ ṽîéŵ, åļšö ŵîţĥöûţ šîĝñîñĝ îñ',
+    });
+    return '[$_temp0 one two three four five six seven eight nine ten]';
+  }
+
+  @override
+  String shareLinkHintSignIn(String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Åñýöñé šîĝñéð îñ ŵĥö ĥåš ţĥé ļîñķ çåñ çöɱɱéñţ',
+      'editor': 'Åñýöñé šîĝñéð îñ ŵĥö ĥåš ţĥé ļîñķ çåñ éðîţ',
+      'other': 'Åñýöñé šîĝñéð îñ ŵĥö ĥåš ţĥé ļîñķ çåñ ṽîéŵ',
+    });
+    return '[$_temp0 one two three four five six seven eig]';
+  }
 
   @override
   String get shareMessage => '[Ṁéššåĝé one]';
 
   @override
   String get shareNotify => '[Ñöţîƒý þéöþļé one t]';
+
+  @override
+  String shareOrgHint(String domain, String role) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Åñýöñé åţ $domain çåñ çöɱɱéñţ',
+      'editor': 'Åñýöñé åţ $domain çåñ éðîţ',
+      'other': 'Åñýöñé åţ $domain çåñ ṽîéŵ',
+    });
+    return '[$_temp0 one two three fou]';
+  }
+
+  @override
+  String shareOrgInherited(String domain, String role, String folder) {
+    String _temp0 = intl.Intl.selectLogic(role, {
+      'commenter': 'Åñýöñé åţ $domain çåñ åļšö çöɱɱéñţ ţĥŕöûĝĥ “$folder”',
+      'editor': 'Åñýöñé åţ $domain çåñ åļšö éðîţ ţĥŕöûĝĥ “$folder”',
+      'other': 'Åñýöñé åţ $domain çåñ åļšö ṽîéŵ ţĥŕöûĝĥ “$folder”',
+    });
+    return '[$_temp0 one two three four five six sev]';
+  }
 
   @override
   String get sharePending => '[Þéñðîñĝ îñṽîţé one t]';
@@ -6900,10 +7116,19 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get shareRestrictedHint =>
-      '[Öñļý þéöþļé ŵîţĥ åççéšš çåñ öþéñ ŵîţĥ ţĥé ļîñķ one two three]';
+      '[Öñļý þéöþļé ŵîţĥ åççéšš çåñ öþéñ one two th]';
 
   @override
   String get shareRotateLink => '[Ŕéšéţ ļîñķ one]';
+
+  @override
+  String get shareSearchFullEmail =>
+      '[Éñţéŕ ţĥé ƒûļļ éɱåîļ åððŕéšš ţö åðð šöɱéöñé one two three]';
+
+  @override
+  String shareSearchOutsideOrg(String domain) {
+    return '[Éñţéŕ ţĥé ƒûļļ éɱåîļ ţö åðð šöɱéöñé öûţšîðé $domain one two three]';
+  }
 
   @override
   String shareSent(int count) {
@@ -7354,25 +7579,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
 
   @override
   String get versionsRestorePoint => '[Ɓéƒöŕé ŕéšţöŕé one t]';
-
-  @override
-  String get whatsNew1 =>
-      '[Öñé åççöûñţ ƒöŕ Ŵöñķý Ŵŕîţé åñð Ŵöñķý Šĥééţš — šîĝñ îñ öñçé, ûšé ƀöţĥ. one two three four f]';
-
-  @override
-  String get whatsNew2 =>
-      '[Éṽéŕý åçţîöñ îš å çöɱɱåñð: þŕéšš Çţŕļ+Šĥîƒţ+Þ (⌘⇧Þ) ţö ŕûñ åñýţĥîñĝ. one two three four fi]';
-
-  @override
-  String get whatsNew3 =>
-      '[Ûñðö çöṽéŕš ðŕîṽé çĥåñĝéš ţöö — ŕéñåɱé, ɱöṽé, šţåŕ åñð ţŕåšĥ. one two three four]';
-
-  @override
-  String get whatsNew4 =>
-      '[Çöɱɱéñţš, ɱéñţîöñš åñð ṽéŕšîöñ ĥîšţöŕý îñ éṽéŕý ƒîļé. one two three fou]';
-
-  @override
-  String get whatsNewTitle => '[Ŵĥåţ\'š ñéŵ one]';
 
   @override
   String get wonkyWork => '[Ŵöñķý Ŵöŕķ one]';
@@ -10143,4 +10349,137 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String pubStartClosed(String name) {
     return '[$name îšñ\'ţ åççéþţîñĝ šţöŕîéš ŕîĝĥţ ñöŵ. one two thr]';
   }
+
+  @override
+  String get actionEdit => '[Éðîţ on]';
+
+  @override
+  String get actionDelete => '[Ðéļéţé one]';
+
+  @override
+  String assistantMoreChanges(int count) {
+    return '[+$count ɱöŕé on]';
+  }
+
+  @override
+  String get assistantStyleGuides => '[Šţýļé ĝûîðéš… one t]';
+
+  @override
+  String get styleGuidesTitle => '[Šţýļé ĝûîðéš one]';
+
+  @override
+  String get styleGuidesDescription =>
+      '[Ĥöŵ ţĥé åššîšţåñţ ŵŕîţéš: ƀûîļţ-îñ ĝûîðéš, ýöûŕ öŵñ, åñð ĝûîðéš šĥåŕéð îñ ýöûŕ öŕĝåñîžåţîöñ. one two three four five six]';
+
+  @override
+  String get styleGuidesDescriptionDocument =>
+      '[Çĥööšé ţĥé ĝûîðé ţĥîš ðöçûɱéñţ ƒöļļöŵš. Åþþļý šţýļé ŕéŵŕîţéš ţĥé ðöçûɱéñţ ţö ɱåţçĥ îţ, åñð ţĥé öţĥéŕ åššîšţåñţ åçţîöñš ûšé îţ åš çöñţéẋţ. one two three four five six seven eight n]';
+
+  @override
+  String get styleGuideNone => '[Ñö šţýļé ĝûîðé one t]';
+
+  @override
+  String get styleGuideNoneHint =>
+      '[Ţĥé åššîšţåñţ ƒöļļöŵš ţĥé ðöçûɱéñţ\'š öŵñ šţýļé. one two three f]';
+
+  @override
+  String styleGuideNoneOrgHint(String name) {
+    return '[Ŵîţĥöûţ îţš öŵñ ĝûîðé, ţĥé ðöçûɱéñţ ƒöļļöŵš ýöûŕ öŕĝåñîžåţîöñ\'š ðéƒåûļţ, $name. one two three four five]';
+  }
+
+  @override
+  String get styleGuideUseNone => '[Ûšé ñö šţýļé ĝûîðé one tw]';
+
+  @override
+  String get styleGuideSectionBuiltIn => '[Ɓûîļţ-îñ one]';
+
+  @override
+  String get styleGuideSectionMine => '[Ṁý šţýļé ĝûîðéš one t]';
+
+  @override
+  String get styleGuideMineEmpty =>
+      '[Ðûþļîçåţé å ƀûîļţ-îñ ĝûîðé öŕ çŕéåţé å ñéŵ öñé. one two three]';
+
+  @override
+  String styleGuideSectionOrganization(String org) {
+    return '[Šĥåŕéð îñ $org one]';
+  }
+
+  @override
+  String get styleGuideSectionDocument => '[Ûšéð ƀý ţĥîš ðöçûɱéñţ one two]';
+
+  @override
+  String get styleGuideNew => '[Ñéŵ šţýļé ĝûîðé one t]';
+
+  @override
+  String get styleGuideOrgDefault => '[Öŕĝåñîžåţîöñ ðéƒåûļţ one two]';
+
+  @override
+  String get styleGuideInUse => '[Ûšéð ƀý ţĥîš ðöçûɱéñţ one two]';
+
+  @override
+  String get styleGuideUse => '[Ûšé ƒöŕ ţĥîš ðöçûɱéñţ one two]';
+
+  @override
+  String get styleGuideSetOrgDefault => '[Ṁåķé öŕĝåñîžåţîöñ ðéƒåûļţ one two t]';
+
+  @override
+  String get styleGuideClearOrgDefault =>
+      '[Ŕéɱöṽé åš öŕĝåñîžåţîöñ ðéƒåûļţ one two th]';
+
+  @override
+  String get styleGuideDuplicate => '[Ðûþļîçåţé one]';
+
+  @override
+  String styleGuideCopyName(String name) {
+    return '[$name (çöþý) one]';
+  }
+
+  @override
+  String styleGuideByOwner(String name) {
+    return '[Ɓý $name o]';
+  }
+
+  @override
+  String get styleGuideName => '[Ñåɱé on]';
+
+  @override
+  String get styleGuideDescriptionField => '[Šĥöŕţ ðéšçŕîþţîöñ one tw]';
+
+  @override
+  String get styleGuideMarkdownHint =>
+      '[Ŵŕîţé ţĥé ŕûļéš îñ Ṁåŕķðöŵñ: ṽöîçé, ŵöŕðš ţö ûšé åñð åṽöîð, ĥéåðîñĝš, ļîšţš, ƒöŕɱåţţîñĝ. one two three four five six]';
+
+  @override
+  String styleGuideShareWithOrg(String org) {
+    return '[Šĥåŕé ŵîţĥ $org one]';
+  }
+
+  @override
+  String get styleGuidePersonalOnly =>
+      '[Öñļý ýöû çåñ ûšé ţĥîš ĝûîðé: ýöûŕ éɱåîļ ðöɱåîñ îš ñöţ åñ öŕĝåñîžåţîöñ. one two three four fi]';
+
+  @override
+  String get styleGuideNameRequired =>
+      '[Ĝîṽé ţĥé šţýļé ĝûîðé å ñåɱé. one two t]';
+
+  @override
+  String get styleGuideEmpty => '[Ŵŕîţé åţ ļéåšţ öñé ŕûļé. one two]';
+
+  @override
+  String get styleGuideTemplate =>
+      '[# Ṽöîçé\n\n- \n\n# Ŵöŕðš\n\n| Åṽöîð | Ûšé îñšţéåð |\n| --- | --- |\n|  |  |\n\n# Ĥéåðîñĝš åñð ļîšţš\n\n- \n one two three four fiv]';
+
+  @override
+  String get undoSaveStyleGuide => '[Šåṽé šţýļé ĝûîðé one t]';
+
+  @override
+  String get undoDeleteStyleGuide => '[Ðéļéţé šţýļé ĝûîðé one tw]';
+
+  @override
+  String get undoSetOrgStyleGuide =>
+      '[Çĥåñĝé öŕĝåñîžåţîöñ šţýļé ĝûîðé one two th]';
+
+  @override
+  String get undoSetDocumentStyleGuide => '[Çĥåñĝé šţýļé ĝûîðé one tw]';
 }

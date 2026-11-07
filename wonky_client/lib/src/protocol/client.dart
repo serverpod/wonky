@@ -30,6 +30,8 @@ import 'package:wonky_client/src/protocol/platform/ai/models/assistant_context_h
     as _ig0xo5zw;
 import 'package:wonky_client/src/protocol/platform/ai/models/assistant_event.dart'
     as _ip81vhc1;
+import 'package:wonky_client/src/protocol/platform/ai/models/assistant_quick_action.dart'
+    as _ivstrbru;
 import 'package:wonky_client/src/protocol/platform/ai/models/assistant_status.dart'
     as _idfnr0x0;
 import 'package:wonky_client/src/protocol/platform/ai/models/assistant_thread_detail.dart'
@@ -42,6 +44,12 @@ import 'package:wonky_client/src/protocol/platform/ai/models/inline_ai_request.d
     as _i31mo4jy;
 import 'package:wonky_client/src/protocol/platform/ai/models/proofread_event.dart'
     as _irtrv5vw;
+import 'package:wonky_client/src/protocol/platform/ai/models/style_guide_input.dart'
+    as _iktt8og5;
+import 'package:wonky_client/src/protocol/platform/ai/models/style_guide_library.dart'
+    as _ivbigio2;
+import 'package:wonky_client/src/protocol/platform/ai/models/style_guide_view.dart'
+    as _ica1x8dq;
 import 'package:wonky_client/src/protocol/platform/analytics/models/analytics_overview.dart'
     as _iu8mc7mo;
 import 'package:wonky_client/src/protocol/platform/analytics/models/usage_app.dart'
@@ -186,10 +194,14 @@ import 'package:wonky_client/src/protocol/platform/revlog/models/rev_page.dart'
     as _ivzrugmo;
 import 'package:wonky_client/src/protocol/platform/revlog/models/rev_page_request.dart'
     as _isw8g0pp;
+import 'package:wonky_client/src/protocol/platform/sharing/general_access.dart'
+    as _ih8b5pei;
 import 'package:wonky_client/src/protocol/platform/sharing/invite_resolution.dart'
     as _idoq825d;
 import 'package:wonky_client/src/protocol/platform/sharing/item_sharing_settings.dart'
     as _i0x662rz;
+import 'package:wonky_client/src/protocol/platform/sharing/public_item_view.dart'
+    as _ihvz83rm;
 import 'package:wonky_client/src/protocol/platform/sharing/sharing_info.dart'
     as _idqkfu7d;
 import 'package:wonky_client/src/protocol/platform/users/access_token_view.dart'
@@ -643,6 +655,30 @@ class EndpointAssistant extends _isc.EndpointRef {
         {},
       );
 
+  /// Runs a Write quick action ([threadId] null = new thread): Summarize,
+  /// Proofread, Address comments or Apply style (Write 09 §5.5). Streams
+  /// like [chat]; the action's prompt is not shown in the conversation.
+  _ida.Stream<_ip81vhc1.AssistantEvent> quickAction(
+    int? threadId,
+    _isc.UuidValue itemUuid,
+    _ivstrbru.AssistantQuickAction action,
+    _ig0xo5zw.AssistantContextHints hints,
+  ) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_ip81vhc1.AssistantEvent>,
+        _ip81vhc1.AssistantEvent
+      >(
+        'assistant',
+        'quickAction',
+        {
+          'threadId': threadId,
+          'itemUuid': itemUuid,
+          'action': action,
+          'hints': hints,
+        },
+        {},
+      );
+
   /// Stops a run ([runId]) or every run of [threadId].
   _ida.Future<bool> stop(
     int? threadId,
@@ -758,6 +794,63 @@ class EndpointAssistant extends _isc.EndpointRef {
         },
         {},
       );
+}
+
+/// The assistant's style guide library (suite 10 §7): built-in guides,
+/// the user's own (personal or shared with their organization), the
+/// organization's default and each Write document's guide.
+/// {@category Endpoint}
+class EndpointStyleGuide extends _isc.EndpointRef {
+  EndpointStyleGuide(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'styleGuide';
+
+  /// The guides the user can use; with [itemUuid] also that document's
+  /// choice and whether the user may change it.
+  _ida.Future<_ivbigio2.StyleGuideLibrary> library(_isc.UuidValue? itemUuid) =>
+      caller.callServerEndpoint<_ivbigio2.StyleGuideLibrary>(
+        'styleGuide',
+        'library',
+        {'itemUuid': itemUuid},
+      );
+
+  /// Creates or updates one of the user's guides.
+  _ida.Future<_ica1x8dq.StyleGuideView> save(_iktt8og5.StyleGuideInput input) =>
+      caller.callServerEndpoint<_ica1x8dq.StyleGuideView>(
+        'styleGuide',
+        'save',
+        {'input': input},
+      );
+
+  /// Deletes one of the user's guides.
+  _ida.Future<void> delete(_isc.UuidValue uuid) =>
+      caller.callServerEndpoint<void>(
+        'styleGuide',
+        'delete',
+        {'uuid': uuid},
+      );
+
+  /// Sets (null clears) the default guide of the user's organization.
+  _ida.Future<_ivbigio2.StyleGuideLibrary> setOrgDefault(String? ref) =>
+      caller.callServerEndpoint<_ivbigio2.StyleGuideLibrary>(
+        'styleGuide',
+        'setOrgDefault',
+        {'ref': ref},
+      );
+
+  /// Sets (null clears) the style guide of a Write document (Editor+).
+  _ida.Future<_ivbigio2.StyleGuideLibrary> setDocumentStyle(
+    _isc.UuidValue itemUuid,
+    String? ref,
+  ) => caller.callServerEndpoint<_ivbigio2.StyleGuideLibrary>(
+    'styleGuide',
+    'setDocumentStyle',
+    {
+      'itemUuid': itemUuid,
+      'ref': ref,
+    },
+  );
 }
 
 /// Usage analytics (specs/19): the apps' activity ping, and the admin
@@ -2107,6 +2200,10 @@ class EndpointFeedback extends _isc.EndpointRef {
 /// Uploads and signed downloads (suite 12 §1.1). Idempotent on the
 /// client-generated [fileUuid]; content may reference `wonky-file://<uuid>`
 /// before the bytes arrive.
+///
+/// `getUrl` and `getUrls` also serve signed-out viewers of link-shared
+/// documents, spreadsheets and presentations (their images; never uploaded
+/// Drive files, specs/06 §2.4); every other call needs an account.
 /// {@category Endpoint}
 class EndpointFile extends _isc.EndpointRef {
   EndpointFile(_isc.EndpointCaller caller) : super(caller);
@@ -2500,6 +2597,27 @@ class EndpointSubmission extends _isc.EndpointRef {
       );
 }
 
+/// What a signed-out visitor of a link learns about the item (specs/06
+/// §2.4): `publicItem.get`. Callable signed out (rate limited) and signed
+/// in.
+/// {@category Endpoint}
+class EndpointPublicItem extends _isc.EndpointRef {
+  EndpointPublicItem(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'publicItem';
+
+  /// The document, spreadsheet or presentation [uuid] (its drive item uuid
+  /// or its content ref) if the caller may view it; `notFound` otherwise,
+  /// so ids do not leak.
+  _ida.Future<_ihvz83rm.PublicItemView> get(_isc.UuidValue uuid) =>
+      caller.callServerEndpoint<_ihvz83rm.PublicItemView>(
+        'publicItem',
+        'get',
+        {'uuid': uuid},
+      );
+}
+
 /// Sharing (specs/06 §4).
 /// {@category Endpoint}
 class EndpointSharing extends _isc.EndpointRef {
@@ -2601,6 +2719,23 @@ class EndpointSharing extends _isc.EndpointRef {
     'setLink',
     {
       'itemUuid': itemUuid,
+      'role': role,
+    },
+  );
+
+  /// General access (specs/06 §2.2–2.3): restricted, everyone in the
+  /// caller's organization with [role], or anyone with the link with
+  /// [role].
+  _ida.Future<_idqkfu7d.SharingInfo> setGeneralAccess(
+    _isc.UuidValue itemUuid,
+    _ih8b5pei.GeneralAccess access,
+    _i7gd5xik.AccessRole? role,
+  ) => caller.callServerEndpoint<_idqkfu7d.SharingInfo>(
+    'sharing',
+    'setGeneralAccess',
+    {
+      'itemUuid': itemUuid,
+      'access': access,
       'role': role,
     },
   );
@@ -2833,7 +2968,8 @@ class EndpointUser extends _isc.EndpointRef {
   );
 
   /// Users for the share dialog and @mentions (people sharing items with the
-  /// caller, or exact email matches).
+  /// caller, members of the caller's organization by name or email prefix,
+  /// or exact email matches; specs/04 §5, §6.3).
   _ida.Future<List<_iq7femvs.UserSummary>> searchUsers(
     String query,
     int limit,
@@ -2847,8 +2983,8 @@ class EndpointUser extends _isc.EndpointRef {
   );
 
   /// Summaries of users by id (authors, participants): only the caller and
-  /// users related to them (who share an item with them, as in
-  /// [searchUsers]); other ids are left out.
+  /// users related to them (who share an item with them or are in their
+  /// organization, as in [searchUsers]); other ids are left out.
   _ida.Future<List<_iq7femvs.UserSummary>> getUsers(List<int> ids) =>
       caller.callServerEndpoint<List<_iq7femvs.UserSummary>>(
         'user',
@@ -4064,6 +4200,10 @@ class EndpointSlidesVersion extends _isc.EndpointRef {
 }
 
 /// Write documents: the OT editing stream and helpers (Write 03 §1).
+///
+/// `connect`, `getInfo`, `getOps` and `getSnapshot` also serve signed-out
+/// viewers of link-shared documents (read-only, rate limited, specs/06
+/// §2.4); `updateMeta` needs an account.
 /// {@category Endpoint}
 class EndpointDocument extends _isc.EndpointRef {
   EndpointDocument(_isc.EndpointCaller caller) : super(caller);
@@ -4289,6 +4429,10 @@ class EndpointWriteHistory extends _isc.EndpointRef {
 }
 
 /// Write themes (Write 06 §5.5).
+///
+/// `listBuiltins`, `get` and `getMany` also serve signed-out viewers of
+/// link-shared documents (the document's theme, without the owner's email,
+/// specs/06 §2.4); every other call needs an account.
 /// {@category Endpoint}
 class EndpointWriteTheme extends _isc.EndpointRef {
   EndpointWriteTheme(_isc.EndpointCaller caller) : super(caller);
@@ -4477,6 +4621,7 @@ class Client extends _isc.ServerpodClientShared {
     jwtRefresh = EndpointJwtRefresh(this);
     activity = EndpointActivity(this);
     assistant = EndpointAssistant(this);
+    styleGuide = EndpointStyleGuide(this);
     analytics = EndpointAnalytics(this);
     board = EndpointBoard(this);
     comment = EndpointComment(this);
@@ -4490,6 +4635,7 @@ class Client extends _isc.ServerpodClientShared {
     presence = EndpointPresence(this);
     publication = EndpointPublication(this);
     submission = EndpointSubmission(this);
+    publicItem = EndpointPublicItem(this);
     sharing = EndpointSharing(this);
     accessToken = EndpointAccessToken(this);
     googleIdp = EndpointGoogleIdp(this);
@@ -4524,6 +4670,8 @@ class Client extends _isc.ServerpodClientShared {
 
   late final EndpointAssistant assistant;
 
+  late final EndpointStyleGuide styleGuide;
+
   late final EndpointAnalytics analytics;
 
   late final EndpointBoard board;
@@ -4549,6 +4697,8 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointPublication publication;
 
   late final EndpointSubmission submission;
+
+  late final EndpointPublicItem publicItem;
 
   late final EndpointSharing sharing;
 
@@ -4604,6 +4754,7 @@ class Client extends _isc.ServerpodClientShared {
     'jwtRefresh': jwtRefresh,
     'activity': activity,
     'assistant': assistant,
+    'styleGuide': styleGuide,
     'analytics': analytics,
     'board': board,
     'comment': comment,
@@ -4617,6 +4768,7 @@ class Client extends _isc.ServerpodClientShared {
     'presence': presence,
     'publication': publication,
     'submission': submission,
+    'publicItem': publicItem,
     'sharing': sharing,
     'accessToken': accessToken,
     'googleIdp': googleIdp,

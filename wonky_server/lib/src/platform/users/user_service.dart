@@ -13,6 +13,7 @@ import '../common/errors.dart';
 import '../common/json.dart';
 import '../common/lru_map.dart';
 import '../common/time.dart';
+import '../organizations/organization_service.dart';
 import '../../write/themes/builtin_theme_ids.dart';
 import '../storage/storage_counters.dart';
 
@@ -55,6 +56,14 @@ abstract final class UserService {
   static Future<Actor> actorOf(Session session, {ActorKind? kind}) async {
     final auth = session.authenticated;
     if (auth == null) {
+      // An auth key that no longer validates (expired token) on an endpoint
+      // that also serves signed-out callers: 401, so the client refreshes
+      // (specs/06 §2.4).
+      if (session.authenticationKey != null) {
+        throw NotAuthorizedException(
+          reason: AuthenticationFailureReason.unauthenticated,
+        );
+      }
       throw Errors.forbidden('You need to sign in.');
     }
     final authUserId = auth.authUserId;
@@ -302,6 +311,7 @@ abstract final class UserService {
       locale: profile.locale,
       timeZone: profile.timeZone,
       createdAt: profile.createdAt,
+      organization: OrganizationService.forEmail(profile.email)?.key,
     );
   }
 
@@ -491,9 +501,10 @@ abstract final class UserService {
           WHERE p."itemId" IN (SELECT id FROM my_items) AND p."userId" IS NOT NULL
       )''';
 
-  /// The ids among [userIds] that [actor] may look up: themself and the
-  /// users related to them (the [searchUsers] relation). Others' names and
-  /// emails are not revealed by id.
+  /// The ids among [userIds] that [actor] may look up: themself, the
+  /// users related to them and (Organizations) the members of their
+  /// organization (the [searchUsers] sets). Others' names and emails are
+  /// not revealed by id.
   static Future<Set<int>> relatedIds(
     Session session,
     Actor actor,
@@ -502,16 +513,25 @@ abstract final class UserService {
     final ids = userIds.toSet();
     final result = <int>{if (ids.remove(actor.userId)) actor.userId};
     if (ids.isEmpty) return result;
+    final org = await OrganizationService.orgOf(session, actor.userId);
+    final orgClause = org == null
+        ? ''
+        : ' UNION SELECT u.id FROM user_profile u WHERE u.id IN '
+              '(${ids.join(',')}) AND '
+              '${OrganizationService.sqlMemberCondition('u.email', org)}';
     final rows = await session.db.unsafeQuery(
       '$_relatedCte SELECT uid FROM related '
-      'WHERE uid IN (${ids.join(',')})',
+      'WHERE uid IN (${ids.join(',')})$orgClause',
       parameters: QueryParameters.named({'me': actor.userId}),
     );
     return {...result, for (final row in rows) row[0] as int};
   }
 
-  /// Users for the share dialog and @mentions: users who share at least one
-  /// item with the caller, plus exact email matches (specs/04 §5).
+  /// Users for the share dialog and @mentions (specs/04 §5): users who
+  /// share at least one item with the caller (name or email contains the
+  /// query), (Organizations) members of the caller's organization (a word
+  /// of the name or the email starts with the query, specs/04 §6.3), and
+  /// anyone by their exact email. No one else is ever returned.
   static Future<List<UserSummary>> searchUsers(
     Session session,
     Actor actor,
@@ -522,6 +542,14 @@ abstract final class UserService {
     if (q.isEmpty) return const [];
     final cap = limit.clamp(1, 50);
     final like = '%${_escapeLike(q)}%';
+    final prefix = '${_escapeLike(q)}%';
+    final org = await OrganizationService.orgOf(session, actor.userId);
+    final orgMatch = org == null
+        ? ''
+        : ' OR (${OrganizationService.sqlMemberCondition('u.email', org)} AND '
+              '(lower(u."displayName") LIKE @prefix OR '
+              "lower(u.\"displayName\") LIKE ('% ' || @prefix) OR "
+              'u.email LIKE @prefix))';
     final result = await session.db.unsafeQuery(
       '''
       $_relatedCte
@@ -530,7 +558,7 @@ abstract final class UserService {
         u.email = @exact OR (
           u.id IN (SELECT uid FROM related) AND
           (lower(u."displayName") LIKE @like OR u.email LIKE @like)
-        )
+        )$orgMatch
       )
       ORDER BY (u.email = @exact) DESC, lower(u."displayName")
       LIMIT @limit
@@ -539,6 +567,7 @@ abstract final class UserService {
         'me': actor.userId,
         'exact': q,
         'like': like,
+        'prefix': ?(org == null ? null : prefix),
         'limit': cap,
       }),
     );

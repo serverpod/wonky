@@ -8,6 +8,7 @@ import 'package:wonky_write_core/wonky_write_core.dart'
 
 import '../../sheets/mcp/sheets_changes.dart';
 import '../../slides/mcp/slides_changes.dart';
+import '../../write/ai/write_quick_actions.dart';
 import '../../write/mcp/headless_editor.dart';
 import '../cluster/cluster.dart';
 import '../cluster/cluster_bus.dart';
@@ -96,6 +97,11 @@ abstract final class AssistantService {
 
   static const refusalText = AiFailure.refusalText;
 
+  /// Shown when a run fails for a reason that is not the provider's.
+  static const internalErrorText =
+      'The assistant ran into an internal error and stopped. Try again; if '
+      'it keeps happening, start a new chat.';
+
   // ------------------------------------------------------------------ chat
 
   /// Sends [message] in [threadId] (null = a new thread on [itemUuid]) and
@@ -110,12 +116,16 @@ abstract final class AssistantService {
     required AssistantContextHints hints,
     ToolExecutor? executor,
     Future<Session> Function()? runSession,
+    AssistantQuickAction? quickAction,
   }) async {
     final text = message.trim();
     if (text.isEmpty) throw Errors.invalid('The message is empty.');
     if (text.length > 20000) throw Errors.tooLarge('The message is too long.');
     final ai = await AiCall.open(session, actor);
     final target = await AssistantTarget.resolve(session, actor, itemUuid);
+    if (quickAction != null && target is! WriteAssistantTarget) {
+      throw Errors.invalid('Quick actions are only available in documents.');
+    }
     AssistantThread? existing;
     if (threadId != null) {
       final t = await AssistantThread.db.findById(session, threadId);
@@ -183,10 +193,23 @@ abstract final class AssistantService {
           hints: hints,
           quality: quality,
           executor: executor ?? WonkyMcpServer.executor,
+          quickAction: quickAction,
           emit: (e) {
             if (!out.isClosed) out.add(e);
           },
         ).execute();
+      } on Object catch (e, st) {
+        // Logged at error level (it used to be verbose only, which hid the
+        // Gemini replay failure in the server log).
+        if (e is! AiCancelledException) {
+          s.log(
+            'Assistant run ${run.runId} (thread ${run.threadId}) failed: $e',
+            level: LogLevel.error,
+            exception: e,
+            stackTrace: st,
+          );
+        }
+        rethrow;
       } finally {
         if (runSession == null) await s.close();
       }
@@ -195,15 +218,17 @@ abstract final class AssistantService {
     unawaited(
       body()
           .catchError((Object e, StackTrace st) {
-            session.serverpod.logVerbose('Assistant run failed: $e\n$st');
             if (!out.isClosed) {
+              final f = AiFailure.of(e);
               out.add(
                 AssistantEvent(
                   type: AssistantEventType.error,
                   threadId: run.threadId,
                   runId: run.runId,
-                  error: 'Something went wrong. Please try again.',
-                  errorCode: 'internal',
+                  error: f == null || f == AiFailure.internal
+                      ? AssistantService.internalErrorText
+                      : f.message,
+                  errorCode: f?.code ?? 'internal',
                 ),
               );
             }
@@ -217,6 +242,31 @@ abstract final class AssistantService {
     );
     return out.stream;
   }
+
+  /// Runs a Write quick action (Write 09 §5.5) in [threadId] (null = a new
+  /// thread): like [chat], but the prompt is a hidden turn (not shown in
+  /// the panel) and the run is one model round trip per section on the
+  /// fast model; edits land as suggestions.
+  static Future<Stream<AssistantEvent>> quickAction(
+    Session session,
+    Actor actor, {
+    required int? threadId,
+    required UuidValue itemUuid,
+    required AssistantQuickAction action,
+    required AssistantContextHints hints,
+    ToolExecutor? executor,
+    Future<Session> Function()? runSession,
+  }) => chat(
+    session,
+    actor,
+    threadId: threadId,
+    itemUuid: itemUuid,
+    message: WriteQuickActions.historyMessage(action),
+    hints: hints,
+    executor: executor,
+    runSession: runSession,
+    quickAction: action,
+  );
 
   /// Stops and confirmations arrive as unary calls, which the load
   /// balancer may route to another instance than the one running the chat
@@ -523,7 +573,11 @@ class _Loop {
     required this.quality,
     required this.executor,
     required this.emit,
+    this.quickAction,
   });
+
+  /// A Write quick action instead of a chat message.
+  final AssistantQuickAction? quickAction;
 
   final Session session;
   final Actor actor;
@@ -574,7 +628,10 @@ class _Loop {
         runId: ar.runId,
         applyMode: applyMode,
       );
-      final done = await _rounds(applyMode, runner, toolset, backend);
+      final action = quickAction;
+      final done = action == null
+          ? await _rounds(applyMode, runner, toolset, backend)
+          : await _quick(action, runner);
       ended = true;
       await target.endRun(
         session,
@@ -810,6 +867,136 @@ class _Loop {
     return done;
   }
 
+  /// A Write quick action (Write 09 §5.5): the action makes its model
+  /// requests through [_quickSend] and applies its edits as suggestions
+  /// through the same tool path as the model's calls (chips, undo group,
+  /// permissions). The result is stored as the assistant's answer, so a
+  /// later chat message can refer to it.
+  Future<AssistantEvent> _quick(
+    AssistantQuickAction action,
+    AssistantToolRunner runner,
+  ) async {
+    final write = target as WriteAssistantTarget;
+    final activities = <AssistantToolActivity>[];
+    var n = 0;
+    var text = '';
+    String? stopReason;
+    try {
+      await AiUsageService.requireBudget(session, actor.userId);
+      text = await WriteQuickActions.run(
+        action,
+        QuickActionContext(
+          session: session,
+          actor: actor,
+          target: write.target,
+          executor: executor,
+          model: backend.model,
+          userId: actor.userId,
+          send: _quickSend,
+          apply: (edit) async {
+            final call = ToolPart.call(
+              callId: 'qa-${ar.runId}-${n++}',
+              toolName: edit.toolName,
+              arguments: edit.args,
+            );
+            await _execute(
+              runner,
+              call,
+              AiApplyMode.suggest,
+              activities,
+              label: edit.label,
+            );
+            return !activities.last.error;
+          },
+          progress: (t) => emit(_ev(AssistantEventType.progress, text: t)),
+          text: (t) {
+            _answer.write(t);
+            emit(_ev(AssistantEventType.textDelta, text: t));
+          },
+          isCancelled: () => ar.cancel.isCancelled,
+        ),
+      );
+    } on AiCancelledException {
+      // Stopped: done(stopped) below.
+    } on QuickActionException catch (e) {
+      emit(
+        _ev(AssistantEventType.error)
+          ..error = e.message
+          ..errorCode = e.code,
+      );
+    } on WonkyException catch (e) {
+      final f = AiFailure.of(e)!;
+      emit(
+        _ev(AssistantEventType.error)
+          ..error = f.message
+          ..errorCode = f.code == WonkyErrorCode.limitExceeded.name
+              ? 'budget'
+              : f.code,
+      );
+    } on AiApiException catch (e) {
+      if (e.type == 'refusal') {
+        stopReason = AiStopReason.refusal;
+        emit(
+          _ev(
+            AssistantEventType.refusal,
+            text: AssistantService.refusalText,
+          ),
+        );
+      } else {
+        final f = AiFailure.fromApi(e);
+        emit(
+          _ev(AssistantEventType.error)
+            ..error = f.message
+            ..errorCode = f.code,
+        );
+      }
+    }
+    final shown = text.isEmpty ? _answer.toString() : text;
+    final id = await _persistAssistant(
+      shown.trim().isEmpty
+          ? null
+          : ChatMessage(role: ChatMessageRole.model, parts: [TextPart(shown)]),
+      stopReason == AiStopReason.refusal ? AssistantService.refusalText : shown,
+      stop: stopReason ?? AiStopReason.endTurn,
+      replay: shown.trim().isNotEmpty && stopReason == null,
+    );
+    await _setToolCalls(id, activities);
+    thread = thread.copyWith(updatedAt: nowUtc());
+    await AssistantThread.db.updateRow(session, thread);
+    return _ev(AssistantEventType.done, text: _answer.toString())
+      ..messageId = _lastAssistantId
+      ..errorCode = ar.cancel.isCancelled ? 'stopped' : null;
+  }
+
+  /// One model turn of a quick action: budget and usage like the chat
+  /// rounds; a refusal throws.
+  Future<AiResponse> _quickSend(
+    AiRequest request, {
+    void Function(String delta)? onText,
+  }) async {
+    final msg = await backend.client.send(
+      request,
+      cancel: ar.cancel,
+      onText: onText,
+    );
+    await AiUsageService.record(
+      session,
+      userId: actor.userId,
+      model: msg.model ?? request.model,
+      feature: request.feature,
+      usage: msg.usage,
+    );
+    emit(
+      _ev(AssistantEventType.usage)
+        ..inputTokens = msg.usage.inputTokens
+        ..outputTokens = msg.usage.outputTokens,
+    );
+    if (msg.stopReason == AiStopReason.refusal) {
+      throw AiApiException(0, 'refusal', 'The provider refused the request.');
+    }
+    return msg;
+  }
+
   /// `change_id`s of the run's successful tool calls, in order.
   final List<String> _changeIds = [];
 
@@ -890,10 +1077,12 @@ class _Loop {
       orderBy: (m) => m.id,
     );
     final toolNames = <String, String>{};
+    final decoded = <ChatMessage>[];
     for (final m in rows) {
       final msg = AssistantHistory.decode(m.role, m.contentJson, toolNames);
-      if (msg != null) _messages.add(msg);
+      if (msg != null) decoded.add(msg);
     }
+    _messages.addAll(AssistantHistory.repair(decoded));
   }
 
   /// Appends the user's turn: the frozen document snapshot (first turn,
@@ -920,6 +1109,8 @@ class _Loop {
         role: 'user',
         contentJson: AssistantHistory.encode(userTurn),
         displayText: message,
+        // A quick action's prompt is not shown in the panel.
+        visible: quickAction == null,
         runId: ar.runId,
         createdAt: nowUtc(),
       ),
@@ -1007,8 +1198,9 @@ class _Loop {
     AssistantToolRunner runner,
     ToolPart call,
     AiApplyMode applyMode,
-    List<AssistantToolActivity> activities,
-  ) async {
+    List<AssistantToolActivity> activities, {
+    String? label,
+  }) async {
     final id = call.callId;
     final apiName = call.toolName;
     final tool = runner.toolset.byApiName(apiName);
@@ -1099,6 +1291,7 @@ class _Loop {
     final r = outcome.result!;
     final structured = r.structured;
     if (structured is Map) target.annotate(activity, structured);
+    if (label != null) activity.summary = label;
     final change = activity.changeId;
     if (change != null) _changeIds.add(change);
     var text = target.resultText(mcpName, r);

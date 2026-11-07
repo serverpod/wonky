@@ -381,7 +381,6 @@ shortcuts use `Alt+Shift+<digit>` (no Ctrl).
 | — | | | |
 | Bugs & improvements… (M12; replaces *Report a bug*, suite 03 §3.2) | `shell.board.report` | — | — |
 | Browse Bugs & improvements (M12) | `shell.board.open` | — | — |
-| What's new | `shell.help.whatsNew` | — | — |
 | About | `shell.help.about` | — | — |
 
 ### 3.10 Menu behavior

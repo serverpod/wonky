@@ -19,6 +19,7 @@ assistant:
   - setProviderKey:
   - removeProviderKey:
   - chat:
+  - quickAction:
   - stop:
   - confirm:
   - uiToolResult:
@@ -29,6 +30,12 @@ assistant:
   - revertChange:
   - inline:
   - proofread:
+styleGuide:
+  - library:
+  - save:
+  - delete:
+  - setOrgDefault:
+  - setDocumentStyle:
 analytics:
   - ping:
   - overview:
@@ -185,6 +192,8 @@ submission:
   - withdraw:
   - disconnect:
   - reconnect:
+publicItem:
+  - get:
 sharing:
   - getSharing:
   - share:
@@ -193,6 +202,7 @@ sharing:
   - transferOwnership:
   - respondToOwnershipTransfer:
   - setLink:
+  - setGeneralAccess:
   - rotateLink:
   - updateSettings:
   - requestAccess:

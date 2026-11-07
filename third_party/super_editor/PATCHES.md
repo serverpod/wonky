@@ -311,6 +311,22 @@ Every change is marked with `// WONKY PATCH <id>` in the code. Tests of our patc
 - **Spec**: Write 12 §3.2
 - **Upstream**: generally useful (tables and grids of ordinary components); to be proposed.
 
+## SE-16 — No caret while the editor doesn't have focus
+
+- **Reason**: Wonky Write keeps the selection when the editor loses focus (a menu, the toolbar's
+  style picker, a panel), and the desktop caret kept blinking there, so the document looked
+  typeable while keys went elsewhere.
+- **Changes**: `CaretDocumentOverlay` and `DefaultCaretOverlayBuilder` take an optional
+  `focusNode` (the editor's); while it doesn't have focus the caret isn't painted and stops
+  blinking, and it comes back opaque when the focus returns. Without a `focusNode` nothing
+  changes.
+- **Files**: `lib/src/default_editor/document_caret_overlay.dart`,
+  `lib/src/default_editor/super_editor.dart`; test: `test/wonky_patches/se16_caret_focus_test.dart`
+  (new).
+- **Tests**: the file above; the caret tests of SE-11 and SE-12.
+- **Spec**: Write 04 (caret), Write 05 §4.1
+- **Upstream**: generally useful (desktop editors hide the caret on blur); to be proposed.
+
 ## Infra
 
 - `pubspec.yaml`: `dependency_overrides: attributed_text: {path: ../attributed_text}` so the

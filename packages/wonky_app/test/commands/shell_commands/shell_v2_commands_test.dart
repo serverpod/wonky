@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shad/shad.dart' show LucideIcons;
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
@@ -152,16 +153,34 @@ void main() {
   group('Given the shared Help menu', () {
     setUp(() => h = harness());
 
-    test('then Bugs & improvements replaces Report a bug, and the old ids '
-        'stay registered', () async {
+    test('then Report a bug and Suggest an improvement open the report '
+        'dialog on their kind, What\'s new is gone, and the old ids stay '
+        'registered', () async {
       final l = await WonkyAppLocalizations.delegate.load(const Locale('en'));
       final help = MenuRoot([ShellMenus(l).help]);
       final ids = [for (final c in help.commands) c.commandId];
+      final report = [
+        for (final c in help.commands)
+          if (c.commandId == 'shell.board.report') (c.label, c.args['kind']),
+      ];
 
+      expect(report, [
+        ('Report a bug', 'bug'),
+        ('Suggest an improvement', 'idea'),
+      ]);
       expect(
         ids,
-        containsAllInOrder(['shell.board.report', 'shell.board.open']),
+        containsAllInOrder([
+          'shell.board.report',
+          'shell.board.report',
+          'shell.board.open',
+          'shell.help.about',
+        ]),
       );
+      expect(ids, isNot(contains('shell.help.whatsNew')));
+      final report0 = h.services.registry.byId('shell.board.report')!;
+      expect(report0.iconFor(const {'kind': 'idea'}), LucideIcons.leaf);
+      expect(report0.iconFor(const {'kind': 'bug'}), LucideIcons.bug);
       expect(ids, isNot(contains('shell.help.reportBug')));
       expect(ids, isNot(contains('shell.help.feedback')));
       expect(h.services.registry.byId('shell.help.reportBug'), isNotNull);

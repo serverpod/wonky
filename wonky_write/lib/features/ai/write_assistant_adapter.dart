@@ -1,19 +1,24 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
+import 'package:shad/shad.dart' show ShadButton, ShadButtonSize;
 import 'package:shad/shad.dart' show LucideIcons;
+import 'package:wonky_ui/wonky_ui.dart' show WonkyMenuEntry, WonkyMenuItem;
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' hide ActorKind;
 import 'package:wonky_write_core/wonky_write_core.dart';
 
-import '../editor/controller/editor_types.dart';
 import 'write_ai_controller.dart';
 
 /// Specializes the shared assistant panel for a Write document (Write 09
-/// §5.2, §5.6): selection chip and hints, the document stream session for
-/// undo grouping, Show (select + reveal) and Undo of runs, Write quick
-/// prompts and inserting results.
+/// §5.2, §5.5, §5.6): selection chip and hints, the document stream session
+/// for undo grouping, Show (select + reveal) and Undo of runs, the quick
+/// actions (Summarize, Proofread, Address comments, Apply style), Style
+/// guides in the ⋮ menu, and inserting results. The assistant's edits are
+/// always suggestions, so the panel has no Edit / Suggest toggle.
 class WriteAssistantAdapter extends ChangeNotifier
-    implements AssistantDocumentAdapter {
+    implements AssistantDocumentAdapter, AssistantPanelExtras {
   WriteAssistantAdapter(this.ai) {
     ai.doc.editor.addListener(_onEditor);
   }
@@ -87,9 +92,8 @@ class WriteAssistantAdapter extends ChangeNotifier
     final now = DateTime.now();
     return AssistantContextHints(
       documentSessionId: ai.session.sync?.sessionId,
-      applyMode: ai.doc.editor.mode == EditorMode.suggesting
-          ? AiApplyMode.suggest
-          : applyMode,
+      // Always suggestions (the server enforces it too).
+      applyMode: AiApplyMode.suggest,
       revision: ai.session.revision,
       selectionStart: s?.start,
       selectionLength: useSelection ? s.length : null,
@@ -101,39 +105,77 @@ class WriteAssistantAdapter extends ChangeNotifier
     );
   }
 
+  /// Replaced by the quick actions.
   @override
-  List<AssistantQuickPrompt> get quickPrompts {
+  List<AssistantQuickPrompt> get quickPrompts => const [];
+
+  @override
+  bool get alwaysSuggests => true;
+
+  void _invoke(String command) => unawaited(
+    ai.services.dispatcher.invoke(command, source: InvocationSource.ui),
+  );
+
+  @override
+  List<AssistantQuickActionButton> get quickActions {
     final l = ai.l10n;
-    // The prompts are instructions for the model and stay in English.
+    final canSuggest = role >= Role.commenter;
     return [
-      AssistantQuickPrompt(
-        label: l.aiSummarize,
-        prompt: 'Summarize this document in a few bullet points.',
+      AssistantQuickActionButton(
+        id: 'summarize',
+        label: l.aiQuickSummarize,
         icon: LucideIcons.listCollapse,
+        tooltip: l.cmdAiSummarizeDocumentDescription,
+        onPressed: () => _invoke('write.ai.summarizeDocument'),
       ),
-      if (role >= Role.commenter) ...[
-        AssistantQuickPrompt(
-          label: l.aiQuickImprove,
-          prompt:
-              'Improve the clarity and flow of the selected text (or of the '
-              'document if nothing is selected) with small, targeted edits.',
-          icon: LucideIcons.wandSparkles,
-        ),
-        AssistantQuickPrompt(
-          label: l.aiQuickFixTypos,
-          prompt: 'Fix spelling and grammar mistakes in the document.',
-          icon: LucideIcons.spellCheck,
-        ),
-        AssistantQuickPrompt(
-          label: l.aiQuickAddressComments,
-          prompt:
-              'Go through the open comments and make the changes they ask '
-              'for. Reply to each comment you addressed.',
-          icon: LucideIcons.messagesSquare,
-          includeComments: true,
-        ),
-      ],
+      AssistantQuickActionButton(
+        id: 'proofread',
+        label: l.aiQuickProofread,
+        icon: LucideIcons.spellCheck,
+        enabled: canSuggest,
+        tooltip: l.cmdAiProofreadDocumentDescription,
+        onPressed: () => _invoke('write.ai.proofreadDocument'),
+      ),
+      AssistantQuickActionButton(
+        id: 'addressComments',
+        label: l.aiQuickAddressComments,
+        icon: LucideIcons.messagesSquare,
+        enabled: canSuggest,
+        tooltip: l.cmdAiAddressCommentsDescription,
+        onPressed: () => _invoke('write.ai.addressComments'),
+      ),
+      AssistantQuickActionButton(
+        id: 'applyStyle',
+        label: l.aiQuickApplyStyle,
+        icon: LucideIcons.pencilRuler,
+        enabled: canSuggest,
+        tooltip: l.cmdAiApplyStyleDescription,
+        onPressed: () => _invoke('write.ai.applyStyle'),
+      ),
     ];
+  }
+
+  @override
+  List<WonkyMenuEntry> moreMenuEntries() => [
+    WonkyMenuItem(
+      label: ai.l10n.cmdAiManageStyleGuides,
+      icon: LucideIcons.bookType,
+      onSelected: () => _invoke('write.ai.manageStyleGuides'),
+    ),
+  ];
+
+  @override
+  Widget? errorAction(BuildContext context, AssistantReplyEntry reply) {
+    if (reply.errorCode != 'no_style') return null;
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: ShadButton.outline(
+        key: const ValueKey<String>('write.ai.chooseStyleGuide'),
+        size: ShadButtonSize.sm,
+        onPressed: () => _invoke('write.doc.styleGuide'),
+        child: Text(ai.l10n.aiChooseStyleGuide),
+      ),
+    );
   }
 
   @override

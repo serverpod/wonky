@@ -247,6 +247,7 @@ abstract final class DriveCopies {
             itemId: copy.id!,
             userId: g.userId,
             invitedEmail: g.invitedEmail,
+            orgKey: g.orgKey,
             role: g.role,
             grantedById: actor.userId,
             grantedAt: now,

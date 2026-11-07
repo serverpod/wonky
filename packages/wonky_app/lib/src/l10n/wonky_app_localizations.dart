@@ -1168,6 +1168,12 @@ abstract class WonkyAppLocalizations {
   /// **'Share'**
   String get cmdShare;
 
+  /// No description provided for @cmdSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get cmdSignIn;
+
   /// No description provided for @cmdSignOut.
   ///
   /// In en, this message translates to:
@@ -1239,12 +1245,6 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Version history panel'**
   String get cmdVersionsPanel;
-
-  /// No description provided for @cmdWhatsNew.
-  ///
-  /// In en, this message translates to:
-  /// **'What\'s new'**
-  String get cmdWhatsNew;
 
   /// Opens the suite settings (account, appearance, …).
   ///
@@ -2080,12 +2080,6 @@ abstract class WonkyAppLocalizations {
   /// **'MCP connection'**
   String get mcpTitle;
 
-  /// No description provided for @menuAccessibility.
-  ///
-  /// In en, this message translates to:
-  /// **'Accessibility settings'**
-  String get menuAccessibility;
-
   /// No description provided for @menuAppTheme.
   ///
   /// In en, this message translates to:
@@ -2103,12 +2097,6 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Edit'**
   String get menuEdit;
-
-  /// No description provided for @menuExplore.
-  ///
-  /// In en, this message translates to:
-  /// **'Explore'**
-  String get menuExplore;
 
   /// No description provided for @menuFile.
   ///
@@ -2181,12 +2169,6 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Panels'**
   String get menuPanels;
-
-  /// No description provided for @menuPreferences.
-  ///
-  /// In en, this message translates to:
-  /// **'Preferences'**
-  String get menuPreferences;
 
   /// No description provided for @menuShare.
   ///
@@ -2367,6 +2349,36 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'You need access'**
   String get noAccessTitle;
+
+  /// No description provided for @guestNoAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to open this'**
+  String get guestNoAccessTitle;
+
+  /// No description provided for @guestNoAccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This file isn\'t shared with anyone who has the link. Sign in to open it.'**
+  String get guestNoAccessBody;
+
+  /// No description provided for @guestViewing.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewing as a guest'**
+  String get guestViewing;
+
+  /// No description provided for @guestSignInHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to comment or edit'**
+  String get guestSignInHint;
+
+  /// No description provided for @guestSignInToUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to use this'**
+  String get guestSignInToUse;
 
   /// No description provided for @notAllowed.
   ///
@@ -3232,6 +3244,12 @@ abstract class WonkyAppLocalizations {
   /// **'Add people by name or email'**
   String get shareAddPeople;
 
+  /// General access option in the share dialog: everyone in the user's organization. The organization is named by its email domain.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone at {domain}'**
+  String shareAnyoneAtOrg(String domain);
+
   /// No description provided for @shareAnyoneWithLink.
   ///
   /// In en, this message translates to:
@@ -3280,11 +3298,17 @@ abstract class WonkyAppLocalizations {
   /// **'From folder “{folder}”'**
   String shareInherited(String folder);
 
-  /// No description provided for @shareLinkHint.
+  /// Under 'Anyone with the link' for documents, spreadsheets and presentations: visitors who are signed out can only view; signed-in visitors get the link's role.
   ///
   /// In en, this message translates to:
-  /// **'Anyone signed in who has the link can open it'**
-  String get shareLinkHint;
+  /// **'{role, select, commenter{Anyone with the link can view, and comment when signed in} editor{Anyone with the link can view, and edit when signed in} other{Anyone with the link can view, also without signing in}}'**
+  String shareLinkHint(String role);
+
+  /// Under 'Anyone with the link' for uploaded files and folders, which need signing in.
+  ///
+  /// In en, this message translates to:
+  /// **'{role, select, commenter{Anyone signed in who has the link can comment} editor{Anyone signed in who has the link can edit} other{Anyone signed in who has the link can view}}'**
+  String shareLinkHintSignIn(String role);
 
   /// No description provided for @shareMessage.
   ///
@@ -3297,6 +3321,18 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Notify people'**
   String get shareNotify;
+
+  /// Under 'Anyone at <domain>' in the share dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'{role, select, commenter{Anyone at {domain} can comment} editor{Anyone at {domain} can edit} other{Anyone at {domain} can view}}'**
+  String shareOrgHint(String domain, String role);
+
+  /// Under general access when a parent folder is shared with the whole organization.
+  ///
+  /// In en, this message translates to:
+  /// **'{role, select, commenter{Anyone at {domain} can also comment through “{folder}”} editor{Anyone at {domain} can also edit through “{folder}”} other{Anyone at {domain} can also view through “{folder}”}}'**
+  String shareOrgInherited(String domain, String role, String folder);
 
   /// No description provided for @sharePending.
   ///
@@ -3349,7 +3385,7 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @shareRestrictedHint.
   ///
   /// In en, this message translates to:
-  /// **'Only people with access can open with the link'**
+  /// **'Only people with access can open'**
   String get shareRestrictedHint;
 
   /// No description provided for @shareRotateLink.
@@ -3357,6 +3393,18 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Reset link'**
   String get shareRotateLink;
+
+  /// Under the add-people field when the search finds no one and the user has no organization.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the full email address to add someone'**
+  String get shareSearchFullEmail;
+
+  /// Under the add-people field when the search finds no one: only people in the user's organization are found by name.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the full email to add someone outside {domain}'**
+  String shareSearchOutsideOrg(String domain);
 
   /// No description provided for @shareSent.
   ///
@@ -4071,36 +4119,6 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Before restore'**
   String get versionsRestorePoint;
-
-  /// No description provided for @whatsNew1.
-  ///
-  /// In en, this message translates to:
-  /// **'One account for Wonky Write and Wonky Sheets — sign in once, use both.'**
-  String get whatsNew1;
-
-  /// No description provided for @whatsNew2.
-  ///
-  /// In en, this message translates to:
-  /// **'Every action is a command: press Ctrl+Shift+P (⌘⇧P) to run anything.'**
-  String get whatsNew2;
-
-  /// No description provided for @whatsNew3.
-  ///
-  /// In en, this message translates to:
-  /// **'Undo covers drive changes too — rename, move, star and trash.'**
-  String get whatsNew3;
-
-  /// No description provided for @whatsNew4.
-  ///
-  /// In en, this message translates to:
-  /// **'Comments, mentions and version history in every file.'**
-  String get whatsNew4;
-
-  /// No description provided for @whatsNewTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'What\'s new'**
-  String get whatsNewTitle;
 
   /// No description provided for @wonkyWork.
   ///
@@ -8655,6 +8673,228 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'{name} isn\'t accepting stories right now.'**
   String pubStartClosed(String name);
+
+  /// No description provided for @actionEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get actionEdit;
+
+  /// No description provided for @actionDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get actionDelete;
+
+  /// Collapsed tool chips of a long reply.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String assistantMoreChanges(int count);
+
+  /// Assistant panel ⋮ menu: opens the style guide library.
+  ///
+  /// In en, this message translates to:
+  /// **'Style guides…'**
+  String get assistantStyleGuides;
+
+  /// No description provided for @styleGuidesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Style guides'**
+  String get styleGuidesTitle;
+
+  /// No description provided for @styleGuidesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How the assistant writes: built-in guides, your own, and guides shared in your organization.'**
+  String get styleGuidesDescription;
+
+  /// No description provided for @styleGuidesDescriptionDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the guide this document follows. Apply style rewrites the document to match it, and the other assistant actions use it as context.'**
+  String get styleGuidesDescriptionDocument;
+
+  /// No description provided for @styleGuideNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No style guide'**
+  String get styleGuideNone;
+
+  /// No description provided for @styleGuideNoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant follows the document\'s own style.'**
+  String get styleGuideNoneHint;
+
+  /// No description provided for @styleGuideNoneOrgHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Without its own guide, the document follows your organization\'s default, {name}.'**
+  String styleGuideNoneOrgHint(String name);
+
+  /// No description provided for @styleGuideUseNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Use no style guide'**
+  String get styleGuideUseNone;
+
+  /// No description provided for @styleGuideSectionBuiltIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get styleGuideSectionBuiltIn;
+
+  /// No description provided for @styleGuideSectionMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My style guides'**
+  String get styleGuideSectionMine;
+
+  /// No description provided for @styleGuideMineEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate a built-in guide or create a new one.'**
+  String get styleGuideMineEmpty;
+
+  /// No description provided for @styleGuideSectionOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared in {org}'**
+  String styleGuideSectionOrganization(String org);
+
+  /// No description provided for @styleGuideSectionDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by this document'**
+  String get styleGuideSectionDocument;
+
+  /// No description provided for @styleGuideNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New style guide'**
+  String get styleGuideNew;
+
+  /// No description provided for @styleGuideOrgDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization default'**
+  String get styleGuideOrgDefault;
+
+  /// No description provided for @styleGuideInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by this document'**
+  String get styleGuideInUse;
+
+  /// No description provided for @styleGuideUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use for this document'**
+  String get styleGuideUse;
+
+  /// No description provided for @styleGuideSetOrgDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Make organization default'**
+  String get styleGuideSetOrgDefault;
+
+  /// No description provided for @styleGuideClearOrgDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove as organization default'**
+  String get styleGuideClearOrgDefault;
+
+  /// No description provided for @styleGuideDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get styleGuideDuplicate;
+
+  /// No description provided for @styleGuideCopyName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (copy)'**
+  String styleGuideCopyName(String name);
+
+  /// No description provided for @styleGuideByOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'By {name}'**
+  String styleGuideByOwner(String name);
+
+  /// No description provided for @styleGuideName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get styleGuideName;
+
+  /// No description provided for @styleGuideDescriptionField.
+  ///
+  /// In en, this message translates to:
+  /// **'Short description'**
+  String get styleGuideDescriptionField;
+
+  /// No description provided for @styleGuideMarkdownHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the rules in Markdown: voice, words to use and avoid, headings, lists, formatting.'**
+  String get styleGuideMarkdownHint;
+
+  /// No description provided for @styleGuideShareWithOrg.
+  ///
+  /// In en, this message translates to:
+  /// **'Share with {org}'**
+  String styleGuideShareWithOrg(String org);
+
+  /// No description provided for @styleGuidePersonalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only you can use this guide: your email domain is not an organization.'**
+  String get styleGuidePersonalOnly;
+
+  /// No description provided for @styleGuideNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Give the style guide a name.'**
+  String get styleGuideNameRequired;
+
+  /// No description provided for @styleGuideEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Write at least one rule.'**
+  String get styleGuideEmpty;
+
+  /// The starting text of a new style guide (Markdown).
+  ///
+  /// In en, this message translates to:
+  /// **'# Voice\n\n- \n\n# Words\n\n| Avoid | Use instead |\n| --- | --- |\n|  |  |\n\n# Headings and lists\n\n- \n'**
+  String get styleGuideTemplate;
+
+  /// No description provided for @undoSaveStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Save style guide'**
+  String get undoSaveStyleGuide;
+
+  /// No description provided for @undoDeleteStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete style guide'**
+  String get undoDeleteStyleGuide;
+
+  /// No description provided for @undoSetOrgStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Change organization style guide'**
+  String get undoSetOrgStyleGuide;
+
+  /// No description provided for @undoSetDocumentStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Change style guide'**
+  String get undoSetDocumentStyleGuide;
 }
 
 class _WonkyAppLocalizationsDelegate

@@ -1,0 +1,13 @@
+### What a signed-out viewer learns about a link-shared document,
+### spreadsheet or presentation (`sharing.publicItem`, specs/06 §2.4).
+### No emails and no ids of people.
+class: PublicItemView
+fields:
+  uuid: UuidValue
+  kind: DriveItemKind
+  name: String
+  ### The content id the editors open (document, spreadsheet or deck).
+  contentRef: UuidValue
+  ### The owner's display name.
+  ownerName: String
+  modifiedAt: DateTime

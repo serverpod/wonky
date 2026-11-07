@@ -628,6 +628,19 @@ class WriteDocumentController extends DocumentController {
   @override
   void focusEditor() => editor.focusNode.requestFocus();
 
+  /// Focuses the document surface after this frame: a command chosen in a
+  /// menu, the toolbar's style picker or the palette returns the focus to
+  /// the editor once the menu has closed (and restored its own focus), so
+  /// the caret the user sees is the one they type at (Write 05 §4.1).
+  void focusEditorAfterFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_disposed) focusEditor();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  var _disposed = false;
+
   /// The mobile layout shows the document in Viewing, always Pageless and
   /// without text selection (suite 02 §6.1, T-1). It is layout, not a change
   /// of the document: the page setup is unchanged and widening the window
@@ -710,6 +723,7 @@ class WriteDocumentController extends DocumentController {
 
   @override
   void dispose() {
+    _disposed = true;
     session.removeListener(_onSession);
     session.phase.removeListener(_onSession);
     session.role.removeListener(_onSession);

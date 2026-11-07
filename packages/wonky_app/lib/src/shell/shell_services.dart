@@ -27,6 +27,7 @@ import '../data/collab_repositories.dart';
 import '../data/cached_drive_repository.dart';
 import '../data/drive_repository.dart';
 import '../data/file_repository.dart';
+import '../data/public_item_repository.dart';
 import '../data/sharing_repository.dart';
 import '../data/user_repository.dart';
 import '../document/document_controller.dart';
@@ -72,6 +73,7 @@ class ShellRepositories {
     ActivityRepository? activity,
     BoardRepository? board,
     PublicationRepository? publications,
+    this.publicItems = const NoPublicItemRepository(),
   }) : _activity = activity, // ignore: prefer_initializing_formals
        _board = board, // ignore: prefer_initializing_formals
        _publications = publications; // ignore: prefer_initializing_formals
@@ -85,6 +87,9 @@ class ShellRepositories {
   final VersionRepository versions;
   final FileRepository files;
   final MetaRepository meta;
+
+  /// Link-shared items for signed-out viewers (specs/06 §2.4).
+  final PublicItemRepository publicItems;
   final ActivityRepository? _activity;
   final BoardRepository? _board;
   final PublicationRepository? _publications;
@@ -135,6 +140,7 @@ class ShellServices implements ActiveDocumentHost {
     prefs = PreferencesController(
       device: deviceStore,
       users: repositories.users,
+      canSync: () => auth.isSignedIn,
     );
     supervisor = StreamSupervisor(connectivity);
     this.crossApp =
@@ -365,6 +371,22 @@ class ShellServices implements ActiveDocumentHost {
   }
 
   UserSummary? get me => currentUser.value?.summary;
+
+  /// Whether the user is signed out: in apps that allow it
+  /// ([WonkyAppConfig.allowsGuestViewing]) they view link-shared items as
+  /// a guest — view-only, without comments, presence or drive calls.
+  bool get isGuest => auth.status == AuthStatus.signedOut;
+
+  /// The drive item a guest opens for [uuid] (`publicItem.get`): view-only;
+  /// throws `notFound` when the item isn't shared with anyone with the
+  /// link, is trashed, or isn't of this app's kind.
+  Future<DriveItemView> loadGuestItem(UuidValue uuid) async {
+    final item = guestItemView(await repositories.publicItems.get(uuid));
+    if (item.kind != config.primaryKind) {
+      throw WonkyException(code: WonkyErrorCode.notFound, message: 'Not found');
+    }
+    return item;
+  }
 
   // ---- Active document host ----
 

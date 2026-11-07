@@ -17,6 +17,15 @@ String? safeAuthNext(String? next) =>
     ? next
     : null;
 
+/// The sign-in route that comes back to [location] after sign-in (`/` and
+/// auth routes: plain `/signin`).
+String signInPathBackTo(String location) {
+  final next = safeAuthNext(location);
+  return next == null || next == '/' || next.startsWith('/signin')
+      ? '/signin'
+      : '/signin?next=${Uri.encodeQueryComponent(next)}';
+}
+
 /// [path] (an auth route) with the current route's safe `next` carried
 /// over: sign-in → sign-up → verification keep the target.
 String authPathWithNext(ShellServices services, String path) {

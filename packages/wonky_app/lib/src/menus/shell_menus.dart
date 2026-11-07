@@ -19,12 +19,15 @@ abstract final class ShellMenuIds {
   static const tools = 'tools';
   static const help = 'help';
 
-  /// Tools › *App settings* (`shell.settings.openApp`; the v1 id of
-  /// Tools › Preferences, so apps keep inserting relative to it) and
-  /// *Wonky Work settings* (`shell.settings.open {section: account}`),
-  /// suite 04 §4.2.
-  static const toolsAppSettings = 'tools.preferences';
-  static const toolsWorkSettings = 'tools.workSettings';
+  /// Tools › *Settings…* (`shell.settings.openApp`), the one settings
+  /// entry (suite 04 §4.2); the v1 id of Tools › Preferences, so apps keep
+  /// inserting relative to it.
+  static const toolsSettings = 'tools.preferences';
+
+  /// Help › *Report a bug* and *Suggest an improvement*
+  /// (`shell.board.report {kind}`, specs/16 §4.1).
+  static const helpReportBug = 'help.reportBug';
+  static const helpSuggest = 'help.suggest';
 
   /// Separator ids apps can insert relative to.
   static const fileEndOfOpen = 'file.sep.open';
@@ -120,10 +123,13 @@ class ShellMenus {
           radio: true,
         ),
     ]),
+    // The rail's panels in rail order with their rail icons (suite 03
+    // §3.2): Comments, the app's panels (the Assistant; apps add theirs),
+    // then History.
     MenuSpec.submenu(ShellMenuIds.viewPanels, l10n.menuPanels, [
-      MenuSpec.command('shell.comments.togglePanel'),
-      MenuSpec.command('shell.versions.togglePanel'),
-      MenuSpec.command('shell.ai.togglePanel'),
+      MenuSpec.command('shell.comments.togglePanel', showIcon: true),
+      MenuSpec.command('shell.ai.togglePanel', showIcon: true),
+      MenuSpec.command('shell.versions.togglePanel', showIcon: true),
     ]),
     MenuSpec.submenu(ShellMenuIds.viewTheme, l10n.menuAppTheme, [
       MenuSpec.command(
@@ -153,39 +159,35 @@ class ShellMenus {
   MenuSubmenu get tools =>
       MenuSpec.submenu(ShellMenuIds.tools, l10n.menuTools, [
         MenuSpec.command('shell.ai.togglePanel', id: 'tools.assistant'),
-        MenuSpec.command(
-          'shell.nav.quickSwitcher',
-          label: l10n.menuExplore,
-          id: 'tools.explore',
-        ),
         MenuSpec.separator(),
+        // One *Settings…* entry: the settings page holds the app's and the
+        // Wonky Work sections (suite 04 §4.2).
         MenuSpec.command(
           'shell.settings.openApp',
-          id: ShellMenuIds.toolsAppSettings,
-        ),
-        MenuSpec.command(
-          'shell.settings.open',
-          args: {'section': 'account'},
-          id: ShellMenuIds.toolsWorkSettings,
+          id: ShellMenuIds.toolsSettings,
         ),
         MenuSpec.command('shell.help.shortcuts', id: 'tools.shortcuts'),
-        MenuSpec.command(
-          'shell.settings.open',
-          label: l10n.menuAccessibility,
-          args: {'section': 'appearance'},
-          id: 'tools.accessibility',
-        ),
       ]);
 
   MenuSubmenu get help => MenuSpec.submenu(ShellMenuIds.help, l10n.menuHelp, [
     MenuSpec.command('shell.help.shortcuts'),
     MenuSpec.separator(),
-    // Bugs & improvements (specs/16 §4.1) replaces *Report a bug*;
-    // `shell.help.reportBug` and `shell.help.feedback` stay registered as
-    // aliases (palette hidden, MCP).
-    MenuSpec.command('shell.board.report'),
+    // Bugs & improvements (specs/16 §4.1): the report dialog on each kind,
+    // then the board. `shell.help.reportBug` and `shell.help.feedback` stay
+    // registered as aliases (palette hidden, MCP).
+    MenuSpec.command(
+      'shell.board.report',
+      label: l10n.cmdReportBug,
+      args: {'kind': 'bug'},
+      id: ShellMenuIds.helpReportBug,
+    ),
+    MenuSpec.command(
+      'shell.board.report',
+      label: l10n.boardSuggestImprovement,
+      args: {'kind': 'idea'},
+      id: ShellMenuIds.helpSuggest,
+    ),
     MenuSpec.command('shell.board.open'),
-    MenuSpec.command('shell.help.whatsNew'),
     MenuSpec.command('shell.help.about'),
   ]);
 }

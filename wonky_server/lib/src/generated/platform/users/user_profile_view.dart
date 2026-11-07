@@ -22,6 +22,7 @@ abstract class UserProfileView
     this.locale,
     this.timeZone,
     required this.createdAt,
+    this.organization,
   });
 
   factory UserProfileView({
@@ -29,6 +30,7 @@ abstract class UserProfileView
     String? locale,
     String? timeZone,
     required DateTime createdAt,
+    String? organization,
   }) = _UserProfileViewImpl;
 
   factory UserProfileView.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -41,6 +43,7 @@ abstract class UserProfileView
       createdAt: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
       ),
+      organization: jsonSerialization['organization'] as String?,
     );
   }
 
@@ -52,6 +55,10 @@ abstract class UserProfileView
 
   DateTime createdAt;
 
+  /// The user's organization (its first domain, specs/04 §6), null for
+  /// public mail domains.
+  String? organization;
+
   /// Returns a shallow copy of this [UserProfileView]
   /// with some or all fields replaced by the given arguments.
   @_is.useResult
@@ -60,6 +67,7 @@ abstract class UserProfileView
     String? locale,
     String? timeZone,
     DateTime? createdAt,
+    String? organization,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -69,6 +77,7 @@ abstract class UserProfileView
       if (locale != null) 'locale': locale,
       if (timeZone != null) 'timeZone': timeZone,
       'createdAt': createdAt.toJson(),
+      if (organization != null) 'organization': organization,
     };
   }
 
@@ -80,6 +89,7 @@ abstract class UserProfileView
       if (locale != null) 'locale': locale,
       if (timeZone != null) 'timeZone': timeZone,
       'createdAt': createdAt.toJson(),
+      if (organization != null) 'organization': organization,
     };
   }
 
@@ -97,11 +107,13 @@ class _UserProfileViewImpl extends UserProfileView {
     String? locale,
     String? timeZone,
     required DateTime createdAt,
+    String? organization,
   }) : super._(
          summary: summary,
          locale: locale,
          timeZone: timeZone,
          createdAt: createdAt,
+         organization: organization,
        );
 
   /// Returns a shallow copy of this [UserProfileView]
@@ -113,12 +125,14 @@ class _UserProfileViewImpl extends UserProfileView {
     Object? locale = _Undefined,
     Object? timeZone = _Undefined,
     DateTime? createdAt,
+    Object? organization = _Undefined,
   }) {
     return UserProfileView(
       summary: summary ?? this.summary.copyWith(),
       locale: locale is String? ? locale : this.locale,
       timeZone: timeZone is String? ? timeZone : this.timeZone,
       createdAt: createdAt ?? this.createdAt,
+      organization: organization is String? ? organization : this.organization,
     );
   }
 }

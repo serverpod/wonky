@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show BuildContext;
 import 'package:flutter/services.dart';
 import 'package:shad/shad.dart' show LucideIcons;
 import 'package:wonky_app/wonky_app.dart';
@@ -13,7 +14,6 @@ import '../document/write_document_session.dart';
 import '../editor/controller/editor_types.dart';
 import '../screen/write_document_controller.dart';
 import 'ai_selection_menu.dart' show aiLanguageLabel, aiToneLabel;
-import 'proofread_results.dart';
 import 'write_assistant_adapter.dart';
 
 /// What the inline AI preview shows.
@@ -158,12 +158,13 @@ class WriteAiController extends ChangeNotifier {
   /// The panel controller of this document.
   AssistantController? get chat => assistant?.controllerFor(adapter);
 
-  /// Whether AI suggestions instead of direct edits (panel toggle; forced
-  /// for commenters and in Suggesting mode).
+  /// Whether an applied inline result (Replace, Insert, Continue) becomes
+  /// a suggestion: for commenters and in Suggesting mode. The assistant
+  /// panel's edits are always suggestions (Write 09 §5.2); an inline
+  /// result is applied by the user from its preview and follows the
+  /// editing mode.
   bool get suggestMode =>
-      doc.role < Role.editor ||
-      doc.editor.mode == EditorMode.suggesting ||
-      (chat?.applyMode == AiApplyMode.suggest);
+      doc.role < Role.editor || doc.editor.mode == EditorMode.suggesting;
 
   // ------------------------------------------------------------- preview
 
@@ -689,24 +690,69 @@ class WriteAiController extends ChangeNotifier {
     );
   }
 
-  /// Tools › Summarize document.
-  Future<void> summarizeDocument({String length = 'medium'}) async {
+  /// Opens the assistant panel.
+  void openPanel() => _openPanel();
+
+  /// The working indicator of [action] ("Proofreading…").
+  String quickActionWorkingLabel(AssistantQuickAction action) =>
+      switch (action) {
+        AssistantQuickAction.summarize => l10n.aiWorkingSummarize,
+        AssistantQuickAction.proofread => l10n.aiWorkingProofread,
+        AssistantQuickAction.addressComments => l10n.aiWorkingComments,
+        AssistantQuickAction.applyStyle => l10n.aiWorkingStyle,
+      };
+
+  /// Runs a quick action in the panel (Write 09 §5.5): Summarize,
+  /// Proofread, Address comments or Apply style. No prompt is shown; the
+  /// edits arrive as suggestions.
+  Future<void> runQuickAction(AssistantQuickAction action) async {
     final c = chat;
     if (c == null || !available) return;
     _openPanel();
-    final r = c.addResult(
-      l10n.aiResultDocumentSummary,
-      actions: _insertActions(),
-    );
-    await c.streamInline(
-      InlineAiRequest(
-        itemUuid: session.itemUuid,
-        action: 'summarizeDocument',
-        summaryLength: length,
-      ),
-      r,
+    await c.runQuickAction(
+      action,
+      workingLabel: quickActionWorkingLabel(action),
     );
   }
+
+  StyleGuideLibraryController? _styles;
+
+  /// The style guide library of this document (created on first use).
+  StyleGuideLibraryController? get styleGuides {
+    final a = api;
+    if (a == null) return null;
+    return _styles ??= StyleGuideLibraryController(
+      services: services,
+      api: a,
+      itemUuid: session.itemUuid,
+      documentStack: session.undoStackKey,
+    );
+  }
+
+  /// Sets the document's style guide ([ref] null = none) as one undo step.
+  Future<void> setStyleGuide(String? ref) async {
+    final s = styleGuides;
+    if (s == null) return;
+    if (s.library == null) await s.load();
+    await s.setDocument(ref);
+  }
+
+  /// The style guide library dialog for this document.
+  Future<void> openStyleGuides(BuildContext context) => showStyleGuidesDialog(
+    context,
+    services,
+    itemUuid: session.itemUuid,
+    documentStack: session.undoStackKey,
+    onUseForDocument: (ref) async {
+      final r = await services.dispatcher.invoke(
+        'write.doc.setStyleGuide',
+        args: {'ref': ref},
+        source: InvocationSource.ui,
+        context: context,
+      );
+      if (!r.isOk) throw StateError(r.message ?? 'Failed');
+    },
+  );
 
   /// Tools › Generate outline.
   Future<void> generateOutline({String? prompt}) async {
@@ -741,40 +787,6 @@ class WriteAiController extends ChangeNotifier {
     return out.join('\n');
   }
 
-  ProofreadResults? _proofread;
-
-  /// The latest proofreading results.
-  ProofreadResults? get proofreadResults => _proofread;
-
-  /// Tools › Proofread document (issues in the panel, Accept per issue).
-  Future<void> proofread() async {
-    final c = chat;
-    final a = api;
-    if (c == null || a == null || !available) return;
-    _openPanel();
-    final results = ProofreadResults(this);
-    _proofread = results;
-    final entry = c.addResult(
-      l10n.aiResultProofreading,
-      builder: (context) => ProofreadIssueList(results: results),
-    );
-    results.addListener(c.refresh);
-    try {
-      await for (final e in a.proofread(session.itemUuid)) {
-        results.onEvent(e);
-      }
-    } on Object catch (e) {
-      results.fail(errorMessage(e));
-    }
-    results.finish();
-    entry.status = results.error == null
-        ? AssistantReplyStatus.done
-        : AssistantReplyStatus.failed;
-    entry.error = results.error;
-    c.refresh();
-    unawaited(assistant?.refreshStatus());
-  }
-
   /// The preview title (and undo label) of rewrite [action]; [tone] is a
   /// tone id and [language] an English language name.
   static String rewriteTitle(
@@ -799,7 +811,7 @@ class WriteAiController extends ChangeNotifier {
     _disposed = true;
     unawaited(_stream?.cancel());
     session.contentVersion.removeListener(_onContent);
-    _proofread?.dispose();
+    _styles?.dispose();
     final a = assistant;
     if (a != null) a.release(adapter);
     adapter.dispose();

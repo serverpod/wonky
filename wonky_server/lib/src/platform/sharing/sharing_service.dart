@@ -13,6 +13,7 @@ import '../common/time.dart';
 import '../drive/drive_service.dart';
 import '../drive/drive_user_state.dart';
 import '../notifications/notification_service.dart';
+import '../organizations/organization_service.dart';
 import '../storage/storage_service.dart';
 import '../users/user_service.dart';
 import 'access_service.dart';
@@ -119,8 +120,20 @@ abstract final class SharingService {
       for (final g in grants) g.userId,
     ]);
     // One entry per person: the highest grant (direct grants win ties).
+    // Organization grants are general access, not people (06 §2.3).
     final best = <String, DriveItemPermission>{};
+    DriveItemPermission? directOrg;
+    DriveItemPermission? inheritedOrg;
     for (final g in grants) {
+      if (g.orgKey != null) {
+        if (g.inheritedFromId == null) {
+          directOrg = g;
+        } else if (inheritedOrg == null ||
+            g.role.index > inheritedOrg.role.index) {
+          inheritedOrg = g;
+        }
+        continue;
+      }
       if (g.userId == item.ownerId) continue;
       final key = g.userId != null ? 'u${g.userId}' : 'e${g.invitedEmail}';
       final prev = best[key];
@@ -178,6 +191,19 @@ abstract final class SharingService {
       session,
       where: (t) => t.itemId.equals(item.id!) & t.handledAt.equals(null),
     );
+    OrgAccessView? orgView(DriveItemPermission? g) => g == null
+        ? null
+        : OrgAccessView(
+            domain: OrganizationService.forKey(g.orgKey!)?.key ?? g.orgKey!,
+            role: g.role,
+            inheritedFromUuid: g.inheritedFromId == null
+                ? null
+                : sourceById[g.inheritedFromId]?.uuid,
+            inheritedFromName: g.inheritedFromId == null
+                ? null
+                : sourceById[g.inheritedFromId]?.name,
+          );
+    final myOrg = await OrganizationService.orgOf(session, actor.userId);
     return SharingInfo(
       itemUuid: item.uuid,
       itemName: item.name,
@@ -191,6 +217,14 @@ abstract final class SharingService {
                 ? null
                 : ShareLinkView(token: link.token, role: link.role))
           : null,
+      organization: myOrg?.key,
+      orgAccess: orgView(directOrg),
+      inheritedOrgAccess: orgView(inheritedOrg),
+      generalAccess: link?.role != null
+          ? GeneralAccess.link
+          : (directOrg != null
+                ? GeneralAccess.organization
+                : GeneralAccess.restricted),
       settings: ItemSharingSettings(
         editorsCanShare: item.editorsCanShare,
         nonEditorsCanExport: item.nonEditorsCanExport,
@@ -490,6 +524,7 @@ abstract final class SharingService {
         myRole: AccessRole.viewer,
         canShare: false,
         permissions: const [],
+        generalAccess: GeneralAccess.restricted,
         settings: ItemSharingSettings(
           editorsCanShare: item.editorsCanShare,
           nonEditorsCanExport: item.nonEditorsCanExport,
@@ -656,58 +691,181 @@ abstract final class SharingService {
     return DriveService.get(session, actor, updated.uuid);
   }
 
-  /// Turns link sharing on with [role], or off with null.
+  /// Turns link sharing on with [role] (replacing organization access:
+  /// general access is one choice, specs/06 §2.2), or off with null.
   static Future<SharingInfo> setLink(
     Session session,
     Actor actor,
     UuidValue itemUuid,
     AccessRole? role,
   ) async {
-    final (item, myRole) = await _requireSharer(session, actor, itemUuid);
-    if (role == AccessRole.owner) {
-      throw Errors.invalid('Links cannot own items.');
+    if (role != null) {
+      return setGeneralAccess(
+        session,
+        actor,
+        itemUuid,
+        GeneralAccess.link,
+        role,
+      );
     }
-    if (role != null && role.role > myRole) throw Errors.forbidden();
-    final link = await ShareLink.db.findFirstRow(
-      session,
-      where: (t) => t.itemId.equals(item.id!),
-    );
-    final linkVisitors = await DriveItemUserState.db.find(
+    final (item, _) = await _requireSharer(session, actor, itemUuid);
+    await _applyGeneralAccess(session, actor, item, linkRole: null);
+    return getSharing(session, actor, itemUuid);
+  }
+
+  /// Sets who besides the people with access can open the item (specs/06
+  /// §2.2–2.3): no one ([GeneralAccess.restricted]), everyone in the
+  /// caller's organization with [role], or anyone with the link with
+  /// [role]. The choices exclude each other.
+  static Future<SharingInfo> setGeneralAccess(
+    Session session,
+    Actor actor,
+    UuidValue itemUuid,
+    GeneralAccess access,
+    AccessRole? role,
+  ) async {
+    final (item, myRole) = await _requireSharer(session, actor, itemUuid);
+    if (access != GeneralAccess.restricted) {
+      if (role == null) throw Errors.invalid('Choose a role.');
+      if (role == AccessRole.owner) {
+        throw Errors.invalid('Only people can own items.');
+      }
+      if (role.role > myRole) throw Errors.forbidden();
+    }
+    switch (access) {
+      case GeneralAccess.restricted:
+        await _applyGeneralAccess(
+          session,
+          actor,
+          item,
+          linkRole: null,
+          org: (key: null, role: null),
+        );
+      case GeneralAccess.link:
+        await _applyGeneralAccess(
+          session,
+          actor,
+          item,
+          linkRole: role,
+          org: (key: null, role: null),
+        );
+      case GeneralAccess.organization:
+        // The caller's organization; without one (an outside editor), the
+        // role of the organization grant already on the item.
+        var key = (await OrganizationService.orgOf(session, actor.userId))?.key;
+        if (key == null) {
+          final existing = await DriveItemPermission.db.findFirstRow(
+            session,
+            where: (t) =>
+                t.itemId.equals(item.id!) &
+                t.inheritedFromId.equals(null) &
+                t.orgKey.notEquals(null),
+          );
+          key = existing?.orgKey;
+        }
+        if (key == null || OrganizationService.forKey(key) == null) {
+          throw Errors.invalid(
+            'Your account is not part of an organization. Share with '
+            'people by email instead.',
+          );
+        }
+        await _applyGeneralAccess(
+          session,
+          actor,
+          item,
+          linkRole: null,
+          org: (key: key, role: role),
+        );
+    }
+    return getSharing(session, actor, itemUuid);
+  }
+
+  /// Writes the link role and (when [org] is given) the item's direct
+  /// organization grant (removed when its key is null), rebuilds inherited
+  /// grants of a folder, logs and notifies (users who opened the item
+  /// through the link or their organization may have lost access).
+  static Future<void> _applyGeneralAccess(
+    Session session,
+    Actor actor,
+    DriveItem item, {
+    required AccessRole? linkRole,
+    ({String? key, AccessRole? role})? org,
+  }) async {
+    final visitors = await DriveItemUserState.db.find(
       session,
       where: (t) => t.itemId.equals(item.id!) & t.viaLink.equals(true),
     );
-    if (link == null) {
-      await ShareLink.db.insertRow(
+    await session.db.transaction((tx) async {
+      final link = await ShareLink.db.findFirstRow(
         session,
-        ShareLink(
-          itemId: item.id!,
-          token: newToken(),
-          role: role,
-          createdById: actor.userId,
-          createdAt: nowUtc(),
-        ),
+        where: (t) => t.itemId.equals(item.id!),
+        transaction: tx,
       );
-    } else {
-      await ShareLink.db.updateWhere(
-        session,
-        columnValues: (t) => [t.role(role)],
-        where: (t) => t.id.equals(link.id!),
-      );
-    }
+      if (link == null) {
+        await ShareLink.db.insertRow(
+          session,
+          ShareLink(
+            itemId: item.id!,
+            token: newToken(),
+            role: linkRole,
+            createdById: actor.userId,
+            createdAt: nowUtc(),
+          ),
+          transaction: tx,
+        );
+      } else if (link.role != linkRole) {
+        await ShareLink.db.updateWhere(
+          session,
+          columnValues: (t) => [t.role(linkRole)],
+          where: (t) => t.id.equals(link.id!),
+          transaction: tx,
+        );
+      }
+      if (org != null) {
+        await DriveItemPermission.db.deleteWhere(
+          session,
+          where: (t) =>
+              t.itemId.equals(item.id!) &
+              t.inheritedFromId.equals(null) &
+              t.orgKey.notEquals(null),
+          transaction: tx,
+        );
+        if (org.key != null) {
+          await DriveItemPermission.db.insertRow(
+            session,
+            DriveItemPermission(
+              itemId: item.id!,
+              orgKey: org.key,
+              role: org.role!,
+              grantedById: actor.userId,
+              grantedAt: nowUtc(),
+            ),
+            transaction: tx,
+          );
+        }
+        if (item.kind == DriveItemKind.folder) {
+          await AccessService.rebuildInherited(session, item, transaction: tx);
+        }
+      }
+    });
+    final open = linkRole != null || org?.key != null;
     await ActivityService.log(
       session,
       item.id!,
       actor,
-      role == null ? ActivityType.unshared : ActivityType.shared,
-      summary: {'link': role?.name},
+      open ? ActivityType.shared : ActivityType.unshared,
+      summary: {
+        'link': linkRole?.name,
+        if (org != null) 'org': org.key,
+        if (org?.key != null) 'role': org!.role!.name,
+      },
     );
     await AclEvents.changed(
       session,
       item,
-      affectedUsers: {for (final v in linkVisitors) v.userId},
-      kind: role == null ? DriveChangeKind.unshared : DriveChangeKind.shared,
+      affectedUsers: {for (final v in visitors) v.userId},
+      kind: open ? DriveChangeKind.shared : DriveChangeKind.unshared,
     );
-    return getSharing(session, actor, itemUuid);
   }
 
   /// Replaces the link token (old links stop working).

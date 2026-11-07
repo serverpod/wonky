@@ -2317,12 +2317,6 @@ abstract class WriteLocalizations {
   /// **'Underline errors'**
   String get menuUnderlineErrors;
 
-  /// No description provided for @menuPreferences.
-  ///
-  /// In en, this message translates to:
-  /// **'Preferences'**
-  String get menuPreferences;
-
   /// No description provided for @menuAllPreferences.
   ///
   /// In en, this message translates to:
@@ -3102,6 +3096,84 @@ abstract class WriteLocalizations {
   /// In en, this message translates to:
   /// **'Underline and text colors are not part of Markdown — use bold or italic, or change how emphasis looks with a theme.'**
   String get docDialogGuideFootnote;
+
+  /// Tab of the Markdown guide with the standard Markdown shortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown'**
+  String get docDialogGuideTabMarkdown;
+
+  /// Tab of the Markdown guide with the Wonky Markdown extensions (shown in documents that use Wonky Markdown).
+  ///
+  /// In en, this message translates to:
+  /// **'Wonky Markdown'**
+  String get docDialogGuideTabWonky;
+
+  /// No description provided for @docDialogGuideWonkyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This document uses Wonky Markdown: these blocks and inline elements come on top of standard Markdown. Insert them from the Insert menu or the / menu, or type them.'**
+  String get docDialogGuideWonkyDescription;
+
+  /// No description provided for @docDialogGuideCallout.
+  ///
+  /// In en, this message translates to:
+  /// **'Callout: info, tip, note, warning, caution or danger, with an optional title'**
+  String get docDialogGuideCallout;
+
+  /// No description provided for @docDialogGuideDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details: a collapsible section, its first ### line is the summary'**
+  String get docDialogGuideDetails;
+
+  /// No description provided for @docDialogGuideCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Card'**
+  String get docDialogGuideCard;
+
+  /// No description provided for @docDialogGuideGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid of items in 1–4 columns (bullets: check, circle or none)'**
+  String get docDialogGuideGrid;
+
+  /// No description provided for @docDialogGuideBlockEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends a callout, details, card or grid'**
+  String get docDialogGuideBlockEnd;
+
+  /// No description provided for @docDialogGuideButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Button link (secondary button with variant=secondary)'**
+  String get docDialogGuideButton;
+
+  /// No description provided for @docDialogGuideArrowLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link with an arrow'**
+  String get docDialogGuideArrowLink;
+
+  /// No description provided for @docDialogGuideChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Chip, optionally with an icon'**
+  String get docDialogGuideChip;
+
+  /// No description provided for @docDialogGuideNumberedHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered heading (step), level 2 or 3'**
+  String get docDialogGuideNumberedHeading;
+
+  /// No description provided for @docDialogGuideYouTube.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube video'**
+  String get docDialogGuideYouTube;
 
   /// No description provided for @pageSetupTitle.
   ///
@@ -9140,6 +9212,144 @@ abstract class WriteLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 YouTube video} other{{count} YouTube videos}}'**
   String flavorCountVideos(int count);
+
+  /// Assistant panel quick action.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize'**
+  String get aiQuickSummarize;
+
+  /// Assistant panel quick action.
+  ///
+  /// In en, this message translates to:
+  /// **'Proofread'**
+  String get aiQuickProofread;
+
+  /// Assistant panel quick action.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply style'**
+  String get aiQuickApplyStyle;
+
+  /// No description provided for @aiWorkingSummarize.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarizing the document…'**
+  String get aiWorkingSummarize;
+
+  /// No description provided for @aiWorkingProofread.
+  ///
+  /// In en, this message translates to:
+  /// **'Proofreading…'**
+  String get aiWorkingProofread;
+
+  /// No description provided for @aiWorkingComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Working through the open comments…'**
+  String get aiWorkingComments;
+
+  /// No description provided for @aiWorkingStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying the style guide…'**
+  String get aiWorkingStyle;
+
+  /// No description provided for @aiChooseStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a style guide'**
+  String get aiChooseStyleGuide;
+
+  /// No description provided for @cmdAiSummarizeDocumentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sums up the document in the assistant panel.'**
+  String get cmdAiSummarizeDocumentDescription;
+
+  /// No description provided for @cmdAiProofreadDocumentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggests small spelling, grammar and punctuation corrections.'**
+  String get cmdAiProofreadDocumentDescription;
+
+  /// No description provided for @cmdAiAddressComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Address comments'**
+  String get cmdAiAddressComments;
+
+  /// No description provided for @cmdAiAddressCommentsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggests the changes the open comments ask for and replies in their threads.'**
+  String get cmdAiAddressCommentsDescription;
+
+  /// No description provided for @cmdAiApplyStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply style'**
+  String get cmdAiApplyStyle;
+
+  /// No description provided for @cmdAiApplyStyleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggests rewrites so the document follows its style guide.'**
+  String get cmdAiApplyStyleDescription;
+
+  /// No description provided for @cmdAiOpenAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Open assistant'**
+  String get cmdAiOpenAssistant;
+
+  /// No description provided for @cmdAiManageStyleGuides.
+  ///
+  /// In en, this message translates to:
+  /// **'Style guides…'**
+  String get cmdAiManageStyleGuides;
+
+  /// No description provided for @cmdAiManageStyleGuidesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse, write and share style guides for the assistant.'**
+  String get cmdAiManageStyleGuidesDescription;
+
+  /// No description provided for @cmdDocStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Style guide…'**
+  String get cmdDocStyleGuide;
+
+  /// No description provided for @cmdDocStyleGuideDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Chooses the style guide this document follows.'**
+  String get cmdDocStyleGuideDescription;
+
+  /// No description provided for @cmdDocSetStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Set style guide'**
+  String get cmdDocSetStyleGuide;
+
+  /// Tools menu: the assistant submenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get menuAssistant;
+
+  /// No description provided for @menuAssistantSummarize.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize'**
+  String get menuAssistantSummarize;
+
+  /// No description provided for @menuAssistantProofread.
+  ///
+  /// In en, this message translates to:
+  /// **'Proofread'**
+  String get menuAssistantProofread;
 }
 
 class _WriteLocalizationsDelegate

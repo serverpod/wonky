@@ -1439,6 +1439,7 @@ class DefaultCaretOverlayBuilder implements SuperEditorLayerBuilder {
     this.blinkTimingMode = BlinkTimingMode.timer,
     this.adjustCaretRect,
     this.caretRectListenable,
+    this.focusNode,
   });
 
   /// Styles applied to the caret that's painted by this caret overlay.
@@ -1468,6 +1469,9 @@ class DefaultCaretOverlayBuilder implements SuperEditorLayerBuilder {
   /// See [CaretDocumentOverlay.caretRectListenable].
   final Listenable? caretRectListenable;
 
+  /// WONKY PATCH SE-16: see [CaretDocumentOverlay.focusNode].
+  final FocusNode? focusNode;
+
   @override
   ContentLayerWidget build(BuildContext context, SuperEditorContext editContext) {
     return CaretDocumentOverlay(
@@ -1480,6 +1484,7 @@ class DefaultCaretOverlayBuilder implements SuperEditorLayerBuilder {
       blinkTimingMode: blinkTimingMode,
       adjustCaretRect: adjustCaretRect,
       caretRectListenable: caretRectListenable,
+      focusNode: focusNode,
     );
   }
 }

@@ -119,6 +119,7 @@ class CallbackCommand extends JsonCommand {
     required this._title,
     required this._run,
     this.icon,
+    this._iconFor,
     this.defaultBindings = const [],
     this.keyScope = KeyScope.global,
     this.requiredRole = Role.viewer,
@@ -152,6 +153,7 @@ class CallbackCommand extends JsonCommand {
   final bool showInPalette;
   final String Function(BuildContext) _title;
   final Future<CommandResult> Function(CommandContext, JsonArgs) _run;
+  final IconData? Function(Map<String, Object?> args)? _iconFor;
   final bool Function(CommandContext, JsonArgs)? _enabled;
   final bool? Function(CommandContext, JsonArgs)? _checked;
   final String? Function(BuildContext)? _description;
@@ -159,6 +161,9 @@ class CallbackCommand extends JsonCommand {
 
   @override
   String title(BuildContext context) => _title(context);
+
+  @override
+  IconData? iconFor(Map<String, Object?> args) => _iconFor?.call(args) ?? icon;
 
   @override
   String? description(BuildContext context) => _description?.call(context);

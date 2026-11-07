@@ -141,6 +141,11 @@ final class RevLogClient {
     _runInBackground(maintain);
   }
 
+  /// Starts a guest's client ([RevLogGuestInstallation]): only the
+  /// eviction of old files (§2.5); a guest never writes, so there are no
+  /// outboxes to send.
+  void startGuest() => _runInBackground(maintain);
+
   void _onConnectivity() {
     if (keeper.online) _runInBackground(syncOutboxes);
   }
@@ -404,5 +409,60 @@ final class RevLogInstallation {
     } catch (e, st) {
       debugPrint('Starting the local cache failed: $e\n$st');
     }
+  }
+}
+
+/// The RevLog client of a signed-out viewer of link-shared files (specs/06
+/// §2.4): one shared `guest` cache per app on the device, opened on first
+/// use, never registered as offline storage and closed when the user signs
+/// in. Its files are evicted like any cache's (§2.5).
+final class RevLogGuestInstallation {
+  RevLogGuestInstallation(this.services, this.create);
+
+  final ShellServices services;
+
+  /// Opens the guest client (null: not possible, e.g. no server client).
+  final Future<RevLogClient?> Function() create;
+
+  /// The cache user id of guests.
+  static const guestUser = 'guest';
+
+  Future<RevLogClient?>? _client;
+  bool _listening = false;
+
+  /// The guest client (opened on the first call); null when it can't open.
+  Future<RevLogClient?> client() {
+    if (!_listening) {
+      _listening = true;
+      services.auth.addListener(_onAuth);
+    }
+    return _client ??= _open();
+  }
+
+  Future<RevLogClient?> _open() async {
+    try {
+      final c = await create();
+      c?.startGuest();
+      return c;
+    } catch (e, st) {
+      debugPrint('Opening the guest cache failed: $e\n$st');
+      return null;
+    }
+  }
+
+  void _onAuth() {
+    if (services.auth.isSignedIn) unawaited(close());
+  }
+
+  /// Closes the client and stops listening.
+  Future<void> close() async {
+    if (_listening) {
+      _listening = false;
+      services.auth.removeListener(_onAuth);
+    }
+    final f = _client;
+    _client = null;
+    final c = await f;
+    await c?.close();
   }
 }
