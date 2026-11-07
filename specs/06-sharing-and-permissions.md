@@ -284,15 +284,21 @@ notification; the dialog shows them as "Moderator · <publication>" ([18 §5.1](
 └───────────────────────────────────────────────────────────────┘
 ```
 
-- Adding people expands to a composer: chips for each recipient (autocomplete from
+- **Footer**: *Copy link* on the left, *Done* on the right (a full-width actions row).
+- **Adding people** starts as soon as something is typed or picked: the dialog then shows only
+  the composer — *People with access*, *General access*, ⚙, *Copy link* and *Done* are hidden
+  — and the footer is *Cancel* (left) and *Send* (right; *Share* while *Send an email* is
+  off). *Cancel* (or Esc) drops the recipients, the typed text and the message and goes back.
+  The composer: a chip per recipient (made on space, comma, semicolon, Enter or picking a
+  suggestion; Backspace in the empty input removes the last chip whole; autocomplete from
   `user.searchUsers`: related people, members of the caller's organization by name or email
-  prefix, anyone by exact email — [04 §6.3](04-auth-and-accounts.md)), role select, *Send an
-  email* checkbox (default on; hint "People without an account get an invitation to sign
-  up.", off: "They get access without an email or a notification."), the optional message
-  (only while it is on, at most 1000 characters), *Send* (*Share* while it is off; §4 *Share
-  emails*). When a name search finds no one, a muted line
-  says "Enter the full email to add someone outside <domain>" (without an organization: "Enter
-  the full email address to add someone").
+  prefix, anyone by exact email — [04 §6.3](04-auth-and-accounts.md)), role select, the *Send
+  an email* checkbox (default on, no subtitle) and the optional message (only while it is on,
+  at most 1000 characters; §4 *Share emails*). *Send*/*Share* is enabled with a chip or a valid
+  typed address that is not a chip yet (it becomes one). When a name search finds no one, a
+  muted line under the field says "Enter the full email to add someone outside <domain>"
+  (without an organization: "Enter the full email address to add someone"); its line is always
+  reserved, so nothing below moves when it appears.
 - (Organizations) **The people field** is one field: a `ShadDecorator` with the theme's field
   decoration (one border, fill, shadow, focus ring while the input has focus) around the chips
   and a `ShadInput` with `ShadDecoration.none`; without chips it is exactly as tall as the role
@@ -311,9 +317,13 @@ notification; the dialog shows them as "Moderator · <publication>" ([18 §5.1](
   disabled.
 - Role dropdown per person: Viewer, Commenter, Editor, separator, *Transfer ownership*,
   *Add expiration*, *Remove access*.
-- ⚙ opens settings sub-page (the three owner settings).
+- ⚙ opens the settings sub-page: the three owner settings and *Done* (back to the main page;
+  no back arrow). There is no *Reset link*: the link people copy is the item's URL, which a new
+  token would not change; Restricted is how link access is revoked (`rotateLink` stays in the
+  API for `/invite/<token>` links).
 - Pending **access requests** banner at top with Approve/Deny.
-- Keyboard: Esc closes; Enter in the composer sends.
+- Keyboard: Esc cancels adding people, else closes; Enter in the composer makes a chip, or
+  sends when the input is empty.
 - MCP: `drive.share`, `drive.unshare`, `drive.set_link_sharing`; UI bridge can drive the dialog
   via its `WonkyDialogSpec`.
 - (v2) The dialog is the same for every kind; for files the ⚙ settings say "Viewers and

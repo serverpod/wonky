@@ -1830,14 +1830,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
   String get shareNotify => 'Send an email';
 
   @override
-  String get shareNotifyHint =>
-      'People without an account get an invitation to sign up.';
-
-  @override
-  String get shareNotifyOffHint =>
-      'They get access without an email or a notification.';
-
-  @override
   String shareOrgHint(String domain, String role) {
     String _temp0 = intl.Intl.selectLogic(role, {
       'commenter': 'Anyone at $domain can comment',
@@ -1889,9 +1881,6 @@ class WonkyAppLocalizationsEn extends WonkyAppLocalizations {
 
   @override
   String get shareRestrictedHint => 'Only people with access can open';
-
-  @override
-  String get shareRotateLink => 'Reset link';
 
   @override
   String get shareSearchFullEmail =>
@@ -7073,14 +7062,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   String get shareNotify => '[Šéñð åñ éɱåîļ one]';
 
   @override
-  String get shareNotifyHint =>
-      '[Þéöþļé ŵîţĥöûţ åñ åççöûñţ ĝéţ åñ îñṽîţåţîöñ ţö šîĝñ ûþ. one two three fou]';
-
-  @override
-  String get shareNotifyOffHint =>
-      '[Ţĥéý ĝéţ åççéšš ŵîţĥöûţ åñ éɱåîļ öŕ å ñöţîƒîçåţîöñ. one two three fo]';
-
-  @override
   String shareOrgHint(String domain, String role) {
     String _temp0 = intl.Intl.selectLogic(role, {
       'commenter': 'Åñýöñé åţ $domain çåñ çöɱɱéñţ',
@@ -7133,9 +7114,6 @@ class WonkyAppLocalizationsEnXa extends WonkyAppLocalizationsEn {
   @override
   String get shareRestrictedHint =>
       '[Öñļý þéöþļé ŵîţĥ åççéšš çåñ öþéñ one two th]';
-
-  @override
-  String get shareRotateLink => '[Ŕéšéţ ļîñķ one]';
 
   @override
   String get shareSearchFullEmail =>

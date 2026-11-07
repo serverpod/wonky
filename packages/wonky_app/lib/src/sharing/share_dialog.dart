@@ -67,6 +67,42 @@ class _ShareDialogState extends State<ShareDialog> {
 
   ShellServices get s => widget.services;
 
+  /// Adding people (suite 06 §5): something is typed or picked. The dialog
+  /// then shows only the composer, with *Cancel* and *Send*/*Share*.
+  bool get _adding => _recipients.isNotEmpty || _input.text.trim().isNotEmpty;
+
+  /// Whether *Send*/*Share* can share: a recipient, or a valid typed email
+  /// that isn't a chip yet.
+  bool get _canSend =>
+      _recipients.isNotEmpty || _email.hasMatch(_input.text.trim());
+
+  /// Leaves adding: drops the recipients, the typed text and the message.
+  void _cancelAdding() {
+    _debounce?.cancel();
+    setState(() {
+      _recipients.clear();
+      _input.clear();
+      _message.clear();
+      _suggestions = const [];
+      _noMatches = false;
+    });
+    _inputFocus.requestFocus();
+  }
+
+  /// Backspace in the empty input removes the last recipient chip whole.
+  KeyEventResult _onInputKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey != LogicalKeyboardKey.backspace ||
+        _input.text.isNotEmpty ||
+        _recipients.isEmpty) {
+      return KeyEventResult.ignored;
+    }
+    setState(() => _recipients.removeLast());
+    return KeyEventResult.handled;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -157,6 +193,8 @@ class _ShareDialogState extends State<ShareDialog> {
       });
       return;
     }
+    // Adding mode and *Send* follow the text.
+    setState(() {});
     _debounce = Timer(const Duration(milliseconds: 200), () async {
       try {
         final r = await s.repositories.users.searchUsers(q, limit: 6);
@@ -207,6 +245,7 @@ class _ShareDialogState extends State<ShareDialog> {
     if (!shared || !mounted) return;
     setState(() {
       _recipients.clear();
+      _input.clear();
       _message.clear();
     });
     s.toasts.show(l.shareSent(emails.length));
@@ -239,8 +278,11 @@ class _ShareDialogState extends State<ShareDialog> {
     final actions = _actions(context, info);
     return CallbackShortcuts(
       bindings: {
+        // Esc leaves adding people first, then closes.
         const SingleActivator(LogicalKeyboardKey.escape): () =>
-            Navigator.of(context).pop(),
+            _adding && !_settings
+            ? _cancelAdding()
+            : Navigator.of(context).pop(),
       },
       child: ShadDialog(
         key: const ValueKey<String>('dialog.share'),
@@ -249,15 +291,6 @@ class _ShareDialogState extends State<ShareDialog> {
         closeIcon: WonkyDialogCloseButton(key: ValueKey<bool>(actions.isEmpty)),
         title: Row(
           children: [
-            if (_settings)
-              ShadIconButton.ghost(
-                width: 28,
-                height: 28,
-                iconSize: 16,
-                semanticLabel: l.actionBack,
-                icon: const Icon(LucideIcons.arrowLeft),
-                onPressed: () => setState(() => _settings = false),
-              ),
             Expanded(
               child: Text(
                 _settings
@@ -266,7 +299,7 @@ class _ShareDialogState extends State<ShareDialog> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (!_settings && isOwner)
+            if (!_settings && isOwner && !_adding)
               ShadTooltip(
                 builder: (_) => Text(l.shareSettingsTitle),
                 child: ShadIconButton.ghost(
@@ -283,7 +316,9 @@ class _ShareDialogState extends State<ShareDialog> {
         ),
         constraints: const BoxConstraints(maxWidth: 580),
         actions: actions,
-        actionsMainAxisAlignment: _settings
+        // A full-width row: *Copy link* on the left, *Done* on the right.
+        actionsMainAxisSize: MainAxisSize.max,
+        actionsMainAxisAlignment: _settings || _adding
             ? MainAxisAlignment.end
             : MainAxisAlignment.spaceBetween,
         child: SizedBox(width: 540, child: body),
@@ -295,7 +330,6 @@ class _ShareDialogState extends State<ShareDialog> {
     final l = WonkyAppLocalizations.of(context);
     final theme = ShadTheme.of(context);
     final canShare = info.canShare;
-    final me = s.me?.id;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -352,60 +386,72 @@ class _ShareDialogState extends State<ShareDialog> {
             ),
         if (canShare) ...[
           _composer(context, info),
-          const SizedBox(height: 14),
+          if (!_adding) const SizedBox(height: 10),
         ] else
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(l.shareCannotShare, style: theme.textTheme.muted),
           ),
-        Text(
-          l.sharePeopleWithAccess,
-          style: theme.textTheme.small.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 6),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 220),
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              _personRow(
-                context,
-                info.owner,
-                info.owner.email,
-                AccessRole.owner,
-                isOwnerRow: true,
-                isMe: info.owner.id == me,
-              ),
-              for (final p in info.permissions)
-                if (p.user?.id != info.owner.id)
-                  _personRow(
-                    context,
-                    p.user,
-                    p.user?.email ?? p.invitedEmail ?? '',
-                    p.role,
-                    invitedEmail: p.user == null ? p.invitedEmail : null,
-                    inheritedFrom: p.inheritedFromName,
-                    moderatorOf: p.viaPublication,
-                    isMe: p.user?.id == me,
-                    editable: canShare && p.inheritedFromUuid == null,
-                  ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          l.shareGeneralAccess,
-          style: theme.textTheme.small.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 6),
-        _generalAccess(context, info),
+        // While adding people only the composer shows (suite 06 §5).
+        if (!_adding) ..._accessSections(context, info),
       ],
     );
   }
 
+  List<Widget> _accessSections(BuildContext context, SharingInfo info) {
+    final l = WonkyAppLocalizations.of(context);
+    final theme = ShadTheme.of(context);
+    final canShare = info.canShare;
+    final me = s.me?.id;
+    return [
+      Text(
+        l.sharePeopleWithAccess,
+        style: theme.textTheme.small.copyWith(fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 6),
+      ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 220),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            _personRow(
+              context,
+              info.owner,
+              info.owner.email,
+              AccessRole.owner,
+              isOwnerRow: true,
+              isMe: info.owner.id == me,
+            ),
+            for (final p in info.permissions)
+              if (p.user?.id != info.owner.id)
+                _personRow(
+                  context,
+                  p.user,
+                  p.user?.email ?? p.invitedEmail ?? '',
+                  p.role,
+                  invitedEmail: p.user == null ? p.invitedEmail : null,
+                  inheritedFrom: p.inheritedFromName,
+                  moderatorOf: p.viaPublication,
+                  isMe: p.user?.id == me,
+                  editable: canShare && p.inheritedFromUuid == null,
+                ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      Text(
+        l.shareGeneralAccess,
+        style: theme.textTheme.small.copyWith(fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 6),
+      _generalAccess(context, info),
+    ];
+  }
+
   /// The footer buttons, in `ShadDialog.actions` so the dialog has no X
-  /// (suite 02 §4.20): *Copy link* and *Done* on the main page, *Done*
-  /// (back to it) on the settings page; none while loading.
+  /// (suite 02 §4.20): *Copy link* (left) and *Done* on the main page,
+  /// *Cancel* and *Send*/*Share* while adding people, *Done* (back to the
+  /// main page) on the settings page; none while loading.
   List<Widget> _actions(BuildContext context, SharingInfo? info) {
     final l = WonkyAppLocalizations.of(context);
     if (info == null) return const [];
@@ -415,6 +461,21 @@ class _ShareDialogState extends State<ShareDialog> {
           key: const ValueKey<String>('dialog.share.settingsDone'),
           onPressed: () => setState(() => _settings = false),
           child: Text(l.actionDone),
+        ),
+      ];
+    }
+    if (_adding) {
+      return [
+        ShadButton.outline(
+          key: const ValueKey<String>('dialog.share.cancel'),
+          onPressed: _cancelAdding,
+          child: Text(l.actionCancel),
+        ),
+        ShadButton(
+          key: const ValueKey<String>('dialog.share.send'),
+          enabled: !_busy && _canSend,
+          onPressed: _send,
+          child: Text(_notify ? l.actionSend : l.actionShare),
         ),
       ];
     }
@@ -436,7 +497,7 @@ class _ShareDialogState extends State<ShareDialog> {
   Widget _composer(BuildContext context, SharingInfo info) {
     final l = WonkyAppLocalizations.of(context);
     final theme = ShadTheme.of(context);
-    final expanded = _recipients.isNotEmpty;
+    final adding = _adding;
     final query = _input.text.trim();
     final org = info.organization;
     return Column(
@@ -456,17 +517,26 @@ class _ShareDialogState extends State<ShareDialog> {
             ),
           ],
         ),
-        if (_noMatches && query.isNotEmpty && !_email.hasMatch(query))
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
+        // The hint's line is always there (empty without it), so nothing
+        // below moves when it appears.
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Visibility(
+            visible: _noMatches && query.isNotEmpty && !_email.hasMatch(query),
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
             child: Text(
               org == null
                   ? l.shareSearchFullEmail
                   : l.shareSearchOutsideOrg(org),
               key: const ValueKey<String>('dialog.share.searchHint'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.muted.copyWith(fontSize: 12),
             ),
           ),
+        ),
         if (_suggestions.isNotEmpty)
           Container(
             margin: const EdgeInsets.only(top: 4),
@@ -500,7 +570,7 @@ class _ShareDialogState extends State<ShareDialog> {
               ],
             ),
           ),
-        if (expanded) ...[
+        if (adding) ...[
           const SizedBox(height: 8),
           // Send an email (specs/06 §4): existing users get a share email,
           // addresses without an account an invitation to sign up.
@@ -509,7 +579,6 @@ class _ShareDialogState extends State<ShareDialog> {
             value: _notify,
             onChanged: (v) => setState(() => _notify = v),
             label: Text(l.shareNotify),
-            sublabel: Text(_notify ? l.shareNotifyHint : l.shareNotifyOffHint),
           ),
           if (_notify) ...[
             const SizedBox(height: 8),
@@ -521,16 +590,6 @@ class _ShareDialogState extends State<ShareDialog> {
               maxLength: _maxMessage,
             ),
           ],
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ShadButton(
-              key: const ValueKey<String>('dialog.share.send'),
-              enabled: !_busy,
-              onPressed: _send,
-              child: Text(_notify ? l.actionSend : l.actionShare),
-            ),
-          ),
         ],
       ],
     );
@@ -596,38 +655,43 @@ class _ShareDialogState extends State<ShareDialog> {
                       minWidth: 200,
                       maxWidth: 360,
                     ),
-                    child: CallbackShortcuts(
-                      bindings: {
-                        const SingleActivator(LogicalKeyboardKey.enter): () {
-                          if (_suggestions.isNotEmpty &&
-                              _input.text.isNotEmpty) {
-                            _addRecipient(_suggestions.first.email);
-                          } else if (_input.text.trim().isNotEmpty) {
-                            _addRecipient(_input.text);
-                          } else {
-                            _send();
-                          }
+                    child: Focus(
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      onKeyEvent: _onInputKey,
+                      child: CallbackShortcuts(
+                        bindings: {
+                          const SingleActivator(LogicalKeyboardKey.enter): () {
+                            if (_suggestions.isNotEmpty &&
+                                _input.text.isNotEmpty) {
+                              _addRecipient(_suggestions.first.email);
+                            } else if (_input.text.trim().isNotEmpty) {
+                              _addRecipient(_input.text);
+                            } else {
+                              _send();
+                            }
+                          },
                         },
-                      },
-                      child: ShadInput(
-                        key: const ValueKey<String>('dialog.share.input'),
-                        controller: _input,
-                        focusNode: _inputFocus,
-                        autofocus: true,
-                        // The box around is the field: no second border,
-                        // fill, shadow or focus ring, and no minimum height
-                        // of its own (the box sets it).
-                        decoration: ShadDecoration.none,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: _recipients.isEmpty
-                              ? (padding?.left ?? 10)
-                              : 4,
-                          vertical: padding?.top ?? 4,
+                        child: ShadInput(
+                          key: const ValueKey<String>('dialog.share.input'),
+                          controller: _input,
+                          focusNode: _inputFocus,
+                          autofocus: true,
+                          // The box around is the field: no second border,
+                          // fill, shadow or focus ring, and no minimum height
+                          // of its own (the box sets it).
+                          decoration: ShadDecoration.none,
+                          constraints: const BoxConstraints(),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: _recipients.isEmpty
+                                ? (padding?.left ?? 10)
+                                : 4,
+                            vertical: padding?.top ?? 4,
+                          ),
+                          placeholder: Text(l.shareAddPeople),
+                          keyboardType: TextInputType.emailAddress,
+                          onChanged: _onInput,
                         ),
-                        placeholder: Text(l.shareAddPeople),
-                        keyboardType: TextInputType.emailAddress,
-                        onChanged: _onInput,
                       ),
                     ),
                   ),
@@ -978,13 +1042,6 @@ class _ShareDialogState extends State<ShareDialog> {
           onChanged: (v) => update(st.copyWith(viewersSeeComments: v)),
           label: Text(l.shareSettingComments),
         ),
-        if (info.link != null)
-          ShadButton.outline(
-            onPressed: () =>
-                _run(() => s.repositories.sharing.rotateLink(widget.item.uuid)),
-            leading: const Icon(LucideIcons.refreshCw, size: 16),
-            child: Text(l.shareRotateLink),
-          ),
       ],
     );
   }

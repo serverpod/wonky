@@ -1,7 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shad/shad.dart' show ShadInput, ShadShadowDecoration;
+import 'package:shad/shad.dart'
+    show LucideIcons, ShadButton, ShadInput, ShadShadowDecoration;
 import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
@@ -167,9 +168,104 @@ void main() {
       await tester.pumpAndSettle();
       expect(_key('dialog.share.settingsDone'), findsOneWidget);
       expect(_key('dialog.close'), findsNothing);
+      // Done is the only way back; Reset link is gone.
+      expect(find.byIcon(LucideIcons.arrowLeft), findsNothing);
+      expect(find.text('Reset link'), findsNothing);
       await tester.tap(_key('dialog.share.settingsDone'));
       await tester.pumpAndSettle();
       expect(_key('dialog.share.done'), findsOneWidget);
+    });
+
+    testWidgets('when the dialog is open then Copy link is on the left of '
+        'the footer and Done on the right', (tester) async {
+      await pumpDialog(tester);
+      // The content's edges: the people field starts at the left, the role
+      // select ends at the right.
+      final field = tester.getRect(_key('dialog.share.field'));
+      final role = tester.getRect(_key('dialog.share.role'));
+      final copy = tester.getRect(_key('dialog.share.copyLink'));
+      final done = tester.getRect(_key('dialog.share.done'));
+
+      expect(copy.left, moreOrLessEquals(field.left, epsilon: 1));
+      expect(done.right, moreOrLessEquals(role.right, epsilon: 1));
+    });
+
+    testWidgets('when starting to type an address then only the composer '
+        'shows, with Cancel and Send, and Cancel goes back', (tester) async {
+      await pumpDialog(tester);
+      expect(find.text('People with access'), findsOneWidget);
+
+      await tester.enterText(_key('dialog.share.input'), 'er');
+      await tester.pumpAndSettle();
+
+      expect(find.text('People with access'), findsNothing);
+      expect(find.text('General access'), findsNothing);
+      expect(_key('dialog.share.copyLink'), findsNothing);
+      expect(_key('dialog.share.done'), findsNothing);
+      expect(_key('dialog.share.cancel'), findsOneWidget);
+      expect(_key('dialog.share.send'), findsOneWidget);
+      final cancel = tester.getRect(_key('dialog.share.cancel'));
+      final send = tester.getRect(_key('dialog.share.send'));
+      expect(cancel.right, lessThanOrEqualTo(send.left));
+      expect(_key('dialog.share.sendEmail'), findsOneWidget);
+
+      await tester.tap(_key('dialog.share.cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('People with access'), findsOneWidget);
+      expect(_key('dialog.share.done'), findsOneWidget);
+      expect(repo.calls, isEmpty);
+    });
+
+    testWidgets('when a valid address is typed but not yet a chip then Send '
+        'shares with it', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'erin@exa');
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<ShadButton>(_key('dialog.share.send')).enabled,
+        isFalse,
+      );
+      await tester.enterText(_key('dialog.share.input'), 'erin@example.test');
+      await tester.pumpAndSettle();
+      await tester.tap(_key('dialog.share.send'));
+      await tester.pumpAndSettle();
+
+      expect(repo.calls, ['share:editor:erin@example.test:notify=true']);
+    });
+
+    testWidgets('when Backspace is pressed in the empty field then the last '
+        'address chip is removed whole', (tester) async {
+      await pumpDialog(tester);
+      await tester.enterText(_key('dialog.share.input'), 'erin@example.test ');
+      await tester.enterText(_key('dialog.share.input'), 'finn@example.test ');
+      await tester.pumpAndSettle();
+      expect(find.text('finn@example.test'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pumpAndSettle();
+
+      expect(find.text('finn@example.test'), findsNothing);
+      expect(find.text('erin@example.test'), findsOneWidget);
+    });
+
+    testWidgets('when the search hint appears then nothing below it moves', (
+      tester,
+    ) async {
+      repo.info = sharing(organization: 'example.test');
+      await pumpDialog(tester);
+      await tester.enterText(_key('dialog.share.input'), 'zed@example.test');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      final without = tester.getTopLeft(_key('dialog.share.sendEmail')).dy;
+
+      await tester.enterText(_key('dialog.share.input'), 'zed');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.searchHint').hitTestable(), findsOneWidget);
+
+      expect(tester.getTopLeft(_key('dialog.share.sendEmail')).dy, without);
     });
 
     testWidgets('when adding an email with the commenter role then it is '
@@ -196,9 +292,10 @@ void main() {
       await tester.enterText(_key('dialog.share.input'), 'erin@example.test,');
       await tester.pumpAndSettle();
       expect(find.text('Send an email'), findsOneWidget);
+      // No subtitle under the checkbox.
       expect(
         find.text('People without an account get an invitation to sign up.'),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.text('Send'), findsOneWidget);
       await tester.enterText(_key('dialog.share.message'), 'Take a look');
@@ -222,8 +319,9 @@ void main() {
       expect(_key('dialog.share.message'), findsNothing);
       expect(
         find.text('They get access without an email or a notification.'),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(find.text('Share'), findsOneWidget);
       await tester.tap(_key('dialog.share.send'));
       await tester.pumpAndSettle();
 
@@ -240,7 +338,8 @@ void main() {
       await tester.tap(find.text('Bob Stone · bob@example.test'));
       await tester.pumpAndSettle();
 
-      expect(find.text('bob@example.test'), findsNWidgets(2));
+      // The chip; the people list is hidden while adding.
+      expect(find.text('bob@example.test'), findsOneWidget);
       expect(_key('dialog.share.send'), findsOneWidget);
     });
 
@@ -405,7 +504,8 @@ void main() {
       await tester.enterText(_key('dialog.share.input'), 'zed@example.test');
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pumpAndSettle();
-      expect(_key('dialog.share.searchHint'), findsNothing);
+      // Hidden, its line kept.
+      expect(_key('dialog.share.searchHint').hitTestable(), findsNothing);
     });
 
     testWidgets('when a name search finds no one without an organization '

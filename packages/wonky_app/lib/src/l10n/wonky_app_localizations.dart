@@ -3322,18 +3322,6 @@ abstract class WonkyAppLocalizations {
   /// **'Send an email'**
   String get shareNotify;
 
-  /// Under 'Send an email' in the share dialog while it is on.
-  ///
-  /// In en, this message translates to:
-  /// **'People without an account get an invitation to sign up.'**
-  String get shareNotifyHint;
-
-  /// Under 'Send an email' in the share dialog while it is off.
-  ///
-  /// In en, this message translates to:
-  /// **'They get access without an email or a notification.'**
-  String get shareNotifyOffHint;
-
   /// Under 'Anyone at <domain>' in the share dialog.
   ///
   /// In en, this message translates to:
@@ -3399,12 +3387,6 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Only people with access can open'**
   String get shareRestrictedHint;
-
-  /// No description provided for @shareRotateLink.
-  ///
-  /// In en, this message translates to:
-  /// **'Reset link'**
-  String get shareRotateLink;
 
   /// Under the add-people field when the search finds no one and the user has no organization.
   ///
