@@ -172,6 +172,9 @@ class _ShareDialogState extends State<ShareDialog> {
 
   static final _email = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
+  /// Longest share message (the server's limit, specs/06 §4).
+  static const _maxMessage = 1000;
+
   void _addRecipient(String raw) {
     final v = raw.trim().toLowerCase();
     setState(() {
@@ -194,7 +197,10 @@ class _ShareDialogState extends State<ShareDialog> {
         emails: emails,
         role: _role,
         notify: _notify,
-        message: _message.text.trim().isEmpty ? null : _message.text.trim(),
+        // The message only goes with an email.
+        message: !_notify || _message.text.trim().isEmpty
+            ? null
+            : _message.text.trim(),
       ),
     );
     // On failure the recipients stay for a retry (the error toast showed).
@@ -496,17 +502,23 @@ class _ShareDialogState extends State<ShareDialog> {
           ),
         if (expanded) ...[
           const SizedBox(height: 8),
+          // Send an email (specs/06 §4): existing users get a share email,
+          // addresses without an account an invitation to sign up.
           ShadCheckbox(
+            key: const ValueKey<String>('dialog.share.sendEmail'),
             value: _notify,
             onChanged: (v) => setState(() => _notify = v),
             label: Text(l.shareNotify),
+            sublabel: Text(_notify ? l.shareNotifyHint : l.shareNotifyOffHint),
           ),
           if (_notify) ...[
             const SizedBox(height: 8),
             ShadTextarea(
+              key: const ValueKey<String>('dialog.share.message'),
               controller: _message,
               placeholder: Text(l.shareMessage),
               minHeight: 60,
+              maxLength: _maxMessage,
             ),
           ],
           const SizedBox(height: 8),

@@ -3313,14 +3313,26 @@ abstract class WonkyAppLocalizations {
   /// No description provided for @shareMessage.
   ///
   /// In en, this message translates to:
-  /// **'Message'**
+  /// **'Message (optional)'**
   String get shareMessage;
 
-  /// No description provided for @shareNotify.
+  /// Share dialog checkbox: email the people being added right away.
   ///
   /// In en, this message translates to:
-  /// **'Notify people'**
+  /// **'Send an email'**
   String get shareNotify;
+
+  /// Under 'Send an email' in the share dialog while it is on.
+  ///
+  /// In en, this message translates to:
+  /// **'People without an account get an invitation to sign up.'**
+  String get shareNotifyHint;
+
+  /// Under 'Send an email' in the share dialog while it is off.
+  ///
+  /// In en, this message translates to:
+  /// **'They get access without an email or a notification.'**
+  String get shareNotifyOffHint;
 
   /// Under 'Anyone at <domain>' in the share dialog.
   ///

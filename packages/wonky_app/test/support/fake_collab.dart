@@ -314,7 +314,8 @@ class FakeSharingRepository implements SharingRepository {
     String? message,
     DateTime? expiresAt,
   }) => _update(
-    'share:${role.name}:${emails.join(',')}:notify=$notify',
+    'share:${role.name}:${emails.join(',')}:notify=$notify'
+    '${message == null ? '' : ':message=$message'}',
     info.copyWith(
       permissions: [
         ...info.permissions,

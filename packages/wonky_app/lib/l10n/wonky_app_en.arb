@@ -1082,8 +1082,19 @@
       }
     }
   },
-  "shareMessage": "Message",
-  "shareNotify": "Notify people",
+  "shareMessage": "Message (optional)",
+  "shareNotify": "Send an email",
+  "@shareNotify": {
+    "description": "Share dialog checkbox: email the people being added right away."
+  },
+  "shareNotifyHint": "People without an account get an invitation to sign up.",
+  "@shareNotifyHint": {
+    "description": "Under 'Send an email' in the share dialog while it is on."
+  },
+  "shareNotifyOffHint": "They get access without an email or a notification.",
+  "@shareNotifyOffHint": {
+    "description": "Under 'Send an email' in the share dialog while it is off."
+  },
   "shareOrgHint": "{role, select, commenter{Anyone at {domain} can comment} editor{Anyone at {domain} can edit} other{Anyone at {domain} can view}}",
   "@shareOrgHint": {
     "description": "Under 'Anyone at <domain>' in the share dialog.",

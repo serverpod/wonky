@@ -189,6 +189,47 @@ void main() {
       expect(_key('dialog.share.send'), findsNothing);
     });
 
+    testWidgets('when adding someone then Send an email is on and the '
+        'message goes with the share (specs/06 §4)', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'erin@example.test,');
+      await tester.pumpAndSettle();
+      expect(find.text('Send an email'), findsOneWidget);
+      expect(
+        find.text('People without an account get an invitation to sign up.'),
+        findsOneWidget,
+      );
+      expect(find.text('Send'), findsOneWidget);
+      await tester.enterText(_key('dialog.share.message'), 'Take a look');
+      await tester.tap(_key('dialog.share.send'));
+      await tester.pumpAndSettle();
+
+      expect(repo.calls, [
+        'share:editor:erin@example.test:notify=true:message=Take a look',
+      ]);
+    });
+
+    testWidgets('when Send an email is turned off then the message field '
+        'goes away and the share sends no email', (tester) async {
+      await pumpDialog(tester);
+
+      await tester.enterText(_key('dialog.share.input'), 'erin@example.test,');
+      await tester.pumpAndSettle();
+      await tester.enterText(_key('dialog.share.message'), 'Not sent');
+      await tester.tap(find.text('Send an email'));
+      await tester.pumpAndSettle();
+      expect(_key('dialog.share.message'), findsNothing);
+      expect(
+        find.text('They get access without an email or a notification.'),
+        findsOneWidget,
+      );
+      await tester.tap(_key('dialog.share.send'));
+      await tester.pumpAndSettle();
+
+      expect(repo.calls, ['share:editor:erin@example.test:notify=false']);
+    });
+
     testWidgets('when typing a name then matching people are suggested and '
         'picking one adds them as a recipient', (tester) async {
       await pumpDialog(tester);
