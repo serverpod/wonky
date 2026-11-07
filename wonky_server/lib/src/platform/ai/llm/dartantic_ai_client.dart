@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dartantic_ai/dartantic_ai.dart' as ai;
+import 'package:http/http.dart' as http;
 
 import '../../common/models.dart' show AiProvider;
 import 'ai_client.dart';
@@ -17,6 +18,7 @@ class DartanticAiClient implements AiModelClient {
     required this._apiKey,
     this.requestTimeout = const Duration(minutes: 10),
     this.idleTimeout = const Duration(minutes: 3),
+    this.httpClient,
   });
 
   @override
@@ -28,6 +30,13 @@ class DartanticAiClient implements AiModelClient {
 
   /// Longest silence between two stream chunks.
   final Duration idleTimeout;
+
+  /// The HTTP client of Gemini requests (tests); null = dartantic's own.
+  final http.Client? httpClient;
+
+  /// Metadata key of Gemini thought signatures (dartantic's
+  /// `GoogleThinkingMetadata.signaturesKey`, not exported).
+  static const googleSignaturesKey = '_google_thought_signatures';
 
   static List<ai.Tool> _tools(List<AiToolSpec> specs) => [
     for (final t in specs)
@@ -71,10 +80,21 @@ class DartanticAiClient implements AiModelClient {
           ),
         );
       case AiProvider.gemini:
-        return ai.GoogleProvider(apiKey: _apiKey).createChatModel(
+        return ai.GoogleChatModel(
           name: r.model,
+          apiKey: _apiKey,
+          baseUrl: ai.GoogleProvider.defaultBaseUrl,
+          client: httpClient,
           tools: tools,
-          options: ai.GoogleChatModelOptions(maxOutputTokens: r.maxTokens),
+          defaultOptions: ai.GoogleChatModelOptions(
+            maxOutputTokens: r.maxTokens,
+            // Gemini 3 thinks at `high` by default, which makes the fast
+            // tier slow. Every Gemini 3 model accepts `low`; medium and
+            // high keep the model's default (Pro has no `medium`).
+            thinkingLevel: r.effort == AiEffort.low
+                ? ai.GoogleThinkingLevel.low
+                : null,
+          ),
         );
     }
   }
@@ -96,11 +116,18 @@ class DartanticAiClient implements AiModelClient {
     final acc = AiStreamAccumulator(onText: onText, onThinking: onThinking);
     final messages = [
       if (request.system.isNotEmpty) ai.ChatMessage.system(request.system),
-      ...request.messages,
+      for (final m in request.messages)
+        if (replayable(m) case final r when r.parts.isNotEmpty) r,
     ];
-    final it = StreamIterator(
-      model.sendStream(messages).timeout(idleTimeout),
-    );
+    // dartantic builds the provider request synchronously in `sendStream`
+    // (Gemini: message mapping), so its errors are caught here too.
+    final StreamIterator<ai.ChatResult<ai.ChatMessage>> it;
+    try {
+      it = StreamIterator(model.sendStream(messages).timeout(idleTimeout));
+    } on Object catch (e) {
+      model.dispose();
+      throw AiApiException(0, 'request', 'Building the request failed: $e');
+    }
     var timedOut = false;
     final deadline = Timer(requestTimeout, () {
       timedOut = true;
@@ -127,6 +154,40 @@ class DartanticAiClient implements AiModelClient {
       throw AiApiException(0, 'timeout', 'The model did not finish in time.');
     }
     return acc.build();
+  }
+
+  /// [m] as dartantic's provider mappers expect it after a JSON round trip
+  /// (stored history, [AiStreamAccumulator]'s JSON-safe metadata): Gemini
+  /// thought signatures are cast `as List<int>` when a tool call is
+  /// replayed, which throws for the `List<dynamic>` that JSON decoding
+  /// yields. Without this, every request after a Gemini tool call failed
+  /// (the second round of a run, and every later message of the thread).
+  /// Thinking-only parts are dropped: they are never replayed and an empty
+  /// Gemini turn is rejected.
+  static ai.ChatMessage replayable(ai.ChatMessage m) {
+    final sigs = m.metadata[googleSignaturesKey];
+    final hasThinking = m.parts.any((p) => p is ai.ThinkingPart);
+    if (sigs is! Map && !hasThinking) return m;
+    return m.copyWith(
+      parts: hasThinking
+          ? [
+              for (final p in m.parts)
+                if (p is! ai.ThinkingPart) p,
+            ]
+          : null,
+      metadata: sigs is Map
+          ? {
+              ...m.metadata,
+              googleSignaturesKey: <String, dynamic>{
+                for (final e in sigs.entries)
+                  if (e.value is List)
+                    '${e.key}': <int>[
+                      for (final b in e.value as List) (b as num).toInt(),
+                    ],
+              },
+            }
+          : null,
+    );
   }
 }
 

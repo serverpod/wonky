@@ -1,0 +1,17 @@
+### A style guide as the client sees it (built-in, the user's own, or one
+### shared with the user's organization).
+class: StyleGuideView
+fields:
+  ### `builtin:<key>` or `custom:<uuid>`.
+  ref: String
+  name: String
+  description: String
+  markdown: String
+  ### builtIn | mine | organization
+  source: String
+  ### A custom guide shared with the organization.
+  sharedWithOrg: bool
+  ownerName: String?
+  ### Whether the user may edit or delete it (their own).
+  editable: bool
+  updatedAt: DateTime?

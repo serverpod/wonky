@@ -8,7 +8,8 @@ import 'package:wonky_ui/wonky_ui.dart';
 
 import '../l10n/wonky_app_localizations.dart';
 import '../shell/shell_services.dart';
-import 'assistant_adapter.dart' show AssistantPanelTexts, AssistantRunHooks;
+import 'assistant_adapter.dart'
+    show AssistantPanelExtras, AssistantPanelTexts, AssistantRunHooks;
 import 'assistant_controller.dart';
 import 'assistant_markdown.dart';
 import 'assistant_models.dart';
@@ -20,9 +21,11 @@ import 'shell_assistant.dart'
         openAiProviderSettings;
 
 /// The assistant side panel (suite 10 §3): thread picker, streaming
-/// Markdown replies with tool chips (Show / Undo), the composer with
-/// context chips, Stop, quick prompts, the Edit directly / Suggest toggle
-/// and the privacy notice.
+/// Markdown replies with tool chips (Show / Undo), the composer (Enter
+/// sends, Shift+Enter is a new line; one line that grows) with context
+/// chips and Stop, quick prompts or the app's quick actions, the Edit
+/// directly / Suggest toggle (not in Write, whose edits are always
+/// suggestions) and the privacy notice.
 class AssistantPanel extends StatefulWidget {
   const AssistantPanel({
     super.key,
@@ -50,6 +53,12 @@ class _AssistantPanelState extends State<AssistantPanel> {
   AssistantPanelTexts? get _texts {
     final a = c.adapter;
     return a is AssistantPanelTexts ? a as AssistantPanelTexts : null;
+  }
+
+  /// The app's quick actions, menu items and follow-ups (Write).
+  AssistantPanelExtras? get _extras {
+    final a = c.adapter;
+    return a is AssistantPanelExtras ? a as AssistantPanelExtras : null;
   }
 
   String _privacyNotice(WonkyAppLocalizations l) {
@@ -191,6 +200,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
                 onSelected: () => unawaited(_delete(context)),
               ),
               const WonkyMenuSeparator(),
+              ...?_extras?.moreMenuEntries(),
               WonkyMenuItem(
                 label: l.assistantAiSettings,
                 icon: LucideIcons.settings,
@@ -347,7 +357,11 @@ class _AssistantPanelState extends State<AssistantPanel> {
     final l = WonkyAppLocalizations.of(context);
     final cs = theme.colorScheme;
     final chips = c.chips;
-    final prompts = c.adapter.quickPrompts;
+    final extras = _extras;
+    final actions = extras?.quickActions ?? const [];
+    final prompts = actions.isEmpty
+        ? c.adapter.quickPrompts
+        : const <AssistantQuickPrompt>[];
     return Container(
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: cs.border)),
@@ -357,7 +371,26 @@ class _AssistantPanelState extends State<AssistantPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 6,
         children: [
-          if (prompts.isNotEmpty && !c.busy)
+          if (actions.isNotEmpty)
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final a in actions)
+                  _withTooltip(
+                    a.tooltip,
+                    ShadButton.outline(
+                      key: ValueKey<String>('assistant.action.${a.id}'),
+                      size: ShadButtonSize.sm,
+                      enabled: enabled && a.enabled && !c.busy,
+                      leading: Icon(a.icon, size: 13),
+                      onPressed: a.onPressed,
+                      child: Text(a.label),
+                    ),
+                  ),
+              ],
+            )
+          else if (prompts.isNotEmpty && !c.busy)
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -387,54 +420,66 @@ class _AssistantPanelState extends State<AssistantPanel> {
                   ),
               ],
             ),
-          CallbackShortcuts(
-            bindings: {
-              const SingleActivator(LogicalKeyboardKey.enter): () =>
-                  unawaited(_send()),
-              const SingleActivator(LogicalKeyboardKey.numpadEnter): () =>
-                  unawaited(_send()),
-            },
-            child: ShadInput(
-              key: const ValueKey<String>('assistant.input'),
-              controller: _input,
-              focusNode: _focus,
-              enabled: enabled,
-              minLines: 2,
-              maxLines: 8,
-              keyboardType: TextInputType.multiline,
-              placeholder: Text(l.assistantPlaceholder),
-            ),
-          ),
-          LayoutBuilder(
-            builder: (context, box) => Row(
-              children: [
-                // Icon-only mode buttons when the panel is narrow (300 px).
-                _ModeToggle(
-                  controller: c,
-                  texts: _texts,
-                  compact: box.maxWidth < 330,
-                ),
-                const Spacer(),
-                if (c.busy)
-                  ShadButton.outline(
-                    key: const ValueKey<String>('assistant.stop'),
-                    size: ShadButtonSize.sm,
-                    leading: const Icon(LucideIcons.square, size: 12),
-                    onPressed: () => unawaited(c.stop()),
-                    child: Text(l.actionStop),
-                  )
-                else
-                  ShadButton(
-                    key: const ValueKey<String>('assistant.send'),
-                    size: ShadButtonSize.sm,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            spacing: 6,
+            children: [
+              Expanded(
+                // Enter sends, Shift+Enter is a new line (the activators
+                // match Enter without modifiers only). There is no Send
+                // button.
+                child: CallbackShortcuts(
+                  bindings: {
+                    const SingleActivator(LogicalKeyboardKey.enter): () =>
+                        unawaited(_send()),
+                    const SingleActivator(LogicalKeyboardKey.numpadEnter): () =>
+                        unawaited(_send()),
+                  },
+                  child: ShadInput(
+                    key: const ValueKey<String>('assistant.input'),
+                    controller: _input,
+                    focusNode: _focus,
                     enabled: enabled,
-                    leading: const Icon(LucideIcons.sendHorizontal, size: 13),
-                    onPressed: () => unawaited(_send()),
-                    child: Text(l.actionSend),
+                    // One line that grows with the text, so the placeholder
+                    // and typed text start at the same place.
+                    minLines: 1,
+                    maxLines: 8,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    alignment: AlignmentDirectional.topStart,
+                    placeholderAlignment: AlignmentDirectional.topStart,
+                    placeholder: Text(l.assistantPlaceholder),
                   ),
-              ],
-            ),
+                ),
+              ),
+              if (c.busy)
+                ShadTooltip(
+                  builder: (_) => Text(l.actionStop),
+                  child: ShadIconButton.outline(
+                    key: const ValueKey<String>('assistant.stop'),
+                    width: 36,
+                    height: 36,
+                    iconSize: 14,
+                    semanticLabel: l.actionStop,
+                    icon: const Icon(LucideIcons.square),
+                    onPressed: () => unawaited(c.stop()),
+                  ),
+                ),
+            ],
           ),
+          if (!(extras?.alwaysSuggests ?? false))
+            LayoutBuilder(
+              builder: (context, box) => Row(
+                children: [
+                  // Icon-only mode buttons when the panel is narrow (300 px).
+                  _ModeToggle(
+                    controller: c,
+                    texts: _texts,
+                    compact: box.maxWidth < 330,
+                  ),
+                ],
+              ),
+            ),
           Text(
             _privacyNotice(l),
             key: const ValueKey<String>('assistant.notice'),
@@ -444,6 +489,10 @@ class _AssistantPanelState extends State<AssistantPanel> {
       ),
     );
   }
+
+  static Widget _withTooltip(String? tip, Widget child) => tip == null
+      ? child
+      : ShadTooltip(builder: (_) => Text(tip), child: child);
 }
 
 class _ModeToggle extends StatelessWidget {
@@ -621,24 +670,19 @@ class _ReplyView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 6,
       children: [
-        if (r.activities.isNotEmpty)
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final a in r.activities)
-                _ActivityChip(controller: controller, reply: r, activity: a),
-            ],
-          ),
+        if (r.activities.isNotEmpty) _activities(context),
         if (md.isNotEmpty) AssistantMarkdown(md),
         if (r.streaming && md.isEmpty && r.activities.every((a) => !a.running))
           Row(
             children: [
               const SizedBox(width: 14, height: 14, child: ShadSpinner()),
               const SizedBox(width: 8),
-              Text(
-                r.progress ?? l.assistantThinking,
-                style: theme.textTheme.muted,
+              Flexible(
+                child: Text(
+                  r.progress ?? r.workingLabel ?? l.assistantThinking,
+                  key: const ValueKey<String>('assistant.reply.working'),
+                  style: theme.textTheme.muted,
+                ),
               ),
             ],
           )
@@ -657,8 +701,10 @@ class _ReplyView extends StatelessWidget {
                 ? l.assistantRefused
                 : r.error!,
           ),
-        if (r.status == AssistantReplyStatus.failed)
+        if (r.status == AssistantReplyStatus.failed) ...[
           _note(context, LucideIcons.circleAlert, r.error ?? l.assistantFailed),
+          ?_errorAction(context),
+        ],
         if (r.status == AssistantReplyStatus.stopped)
           _note(context, LucideIcons.square, l.assistantStopped),
         if (r.status == AssistantReplyStatus.cutOff)
@@ -718,6 +764,47 @@ class _ReplyView extends StatelessWidget {
           Container(height: 1, color: cs.border.withValues(alpha: 0.5)),
       ],
     );
+  }
+
+  /// Many chips (a proofreading pass) collapse to the first few and a
+  /// "+N more" toggle.
+  static const _collapsedActivities = 4;
+
+  Widget _activities(BuildContext context) {
+    final r = reply;
+    final l = WonkyAppLocalizations.of(context);
+    final all = r.activities;
+    final collapse =
+        all.length > _collapsedActivities + 2 && !r.showAllActivities;
+    final shown = collapse ? all.take(_collapsedActivities) : all;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final a in shown)
+          _ActivityChip(controller: controller, reply: r, activity: a),
+        if (collapse)
+          ShadButton.link(
+            key: const ValueKey<String>('assistant.activities.more'),
+            size: ShadButtonSize.sm,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            onPressed: () {
+              r.showAllActivities = true;
+              controller.refresh();
+            },
+            child: Text(
+              l.assistantMoreChanges(all.length - _collapsedActivities),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget? _errorAction(BuildContext context) {
+    final a = controller.adapter;
+    return a is AssistantPanelExtras
+        ? (a as AssistantPanelExtras).errorAction(context, reply)
+        : null;
   }
 
   /// The app's widgets under the reply (Sheets: review the AI changes).

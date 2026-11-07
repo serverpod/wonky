@@ -80,4 +80,41 @@ void main() {
       expect(resultOf(fitted[2]), 'small');
     });
   });
+
+  group('Given a replayed thread', () {
+    test('when every call has its result then it is unchanged', () {
+      final thread = [_user('q'), _call('a'), _result('a', 'r'), _answer('x')];
+
+      expect(AssistantHistory.repair(thread), thread);
+    });
+
+    test(
+      'when a call has no result then an "interrupted" result follows it',
+      () {
+        final repaired = AssistantHistory.repair([
+          _user('q'),
+          _call('a'),
+          _user('again'),
+        ]);
+
+        expect(repaired, hasLength(4));
+        expect(repaired[2].toolResults.single.callId, 'a');
+        expect(
+          repaired[2].toolResults.single.result,
+          AssistantHistory.interruptedResult,
+        );
+        expect(repaired[3].text, 'again');
+      },
+    );
+
+    test('when a result has no call then it is dropped', () {
+      final repaired = AssistantHistory.repair([
+        _user('q'),
+        _result('ghost', 'r'),
+        _answer('x'),
+      ]);
+
+      expect(repaired.map((m) => m.text), ['q', 'x']);
+    });
+  });
 }

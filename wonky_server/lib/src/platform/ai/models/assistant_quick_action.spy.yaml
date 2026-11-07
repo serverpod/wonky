@@ -1,0 +1,13 @@
+### The Write assistant's quick actions (Write 09 §5.5): run without a
+### prompt in the chat, one model round trip on the fast model.
+enum: AssistantQuickAction
+serialized: byName
+values:
+  ### A summary in the panel.
+  - summarize
+  ### Small corrections as suggestions.
+  - proofread
+  ### Fixes asked for in open comments, as suggestions.
+  - addressComments
+  ### Rewrites to match the document's style guide, as suggestions.
+  - applyStyle

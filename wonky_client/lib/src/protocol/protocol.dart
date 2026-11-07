@@ -91,15 +91,22 @@ import 'platform/ai/models/assistant_event.dart' as _imp4tsxo;
 import 'platform/ai/models/assistant_event_type.dart' as _id6kvqt9;
 import 'platform/ai/models/assistant_message.dart' as _i8cittxq;
 import 'platform/ai/models/assistant_message_view.dart' as _i4rkdm2k;
+import 'platform/ai/models/assistant_quick_action.dart' as _ik2qpdmw;
 import 'platform/ai/models/assistant_status.dart' as _ia2m3j3v;
 import 'platform/ai/models/assistant_thread.dart' as _iaq6rutx;
 import 'platform/ai/models/assistant_thread_detail.dart' as _i4iv0swm;
 import 'platform/ai/models/assistant_thread_view.dart' as _iohdfqf1;
+import 'platform/ai/models/document_style_guide.dart' as _iti3p2ly;
 import 'platform/ai/models/inline_ai_event.dart' as _i8ghcs7p;
 import 'platform/ai/models/inline_ai_event_type.dart' as _i6pcz5z6;
 import 'platform/ai/models/inline_ai_request.dart' as _i4m43iwr;
 import 'platform/ai/models/proofread_event.dart' as _ie0jt2ne;
 import 'platform/ai/models/proofread_issue.dart' as _ivmxemza;
+import 'platform/ai/models/style_guide.dart' as _izn9jjcu;
+import 'platform/ai/models/style_guide_input.dart' as _itz63egs;
+import 'platform/ai/models/style_guide_library.dart' as _ipldx8au;
+import 'platform/ai/models/style_guide_org_default.dart' as _ike2qw5s;
+import 'platform/ai/models/style_guide_view.dart' as _ibxjwk51;
 import 'platform/analytics/models/analytics_cohort.dart' as _ixradasp;
 import 'platform/analytics/models/analytics_count.dart' as _innm1rwe;
 import 'platform/analytics/models/analytics_day.dart' as _is2u4stz;
@@ -372,15 +379,22 @@ export 'platform/ai/models/assistant_event.dart';
 export 'platform/ai/models/assistant_event_type.dart';
 export 'platform/ai/models/assistant_message.dart';
 export 'platform/ai/models/assistant_message_view.dart';
+export 'platform/ai/models/assistant_quick_action.dart';
 export 'platform/ai/models/assistant_status.dart';
 export 'platform/ai/models/assistant_thread.dart';
 export 'platform/ai/models/assistant_thread_detail.dart';
 export 'platform/ai/models/assistant_thread_view.dart';
+export 'platform/ai/models/document_style_guide.dart';
 export 'platform/ai/models/inline_ai_event.dart';
 export 'platform/ai/models/inline_ai_event_type.dart';
 export 'platform/ai/models/inline_ai_request.dart';
 export 'platform/ai/models/proofread_event.dart';
 export 'platform/ai/models/proofread_issue.dart';
+export 'platform/ai/models/style_guide.dart';
+export 'platform/ai/models/style_guide_input.dart';
+export 'platform/ai/models/style_guide_library.dart';
+export 'platform/ai/models/style_guide_org_default.dart';
+export 'platform/ai/models/style_guide_view.dart';
 export 'platform/analytics/models/analytics_cohort.dart';
 export 'platform/analytics/models/analytics_count.dart';
 export 'platform/analytics/models/analytics_day.dart';
@@ -662,15 +676,22 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_id6kvqt9.AssistantEventType>,
           _isc.getType<_i8cittxq.AssistantMessage>,
           _isc.getType<_i4rkdm2k.AssistantMessageView>,
+          _isc.getType<_ik2qpdmw.AssistantQuickAction>,
           _isc.getType<_ia2m3j3v.AssistantStatus>,
           _isc.getType<_iaq6rutx.AssistantThread>,
           _isc.getType<_i4iv0swm.AssistantThreadDetail>,
           _isc.getType<_iohdfqf1.AssistantThreadView>,
+          _isc.getType<_iti3p2ly.DocumentStyleGuide>,
           _isc.getType<_i8ghcs7p.InlineAiEvent>,
           _isc.getType<_i6pcz5z6.InlineAiEventType>,
           _isc.getType<_i4m43iwr.InlineAiRequest>,
           _isc.getType<_ie0jt2ne.ProofreadEvent>,
           _isc.getType<_ivmxemza.ProofreadIssue>,
+          _isc.getType<_izn9jjcu.StyleGuide>,
+          _isc.getType<_itz63egs.StyleGuideInput>,
+          _isc.getType<_ipldx8au.StyleGuideLibrary>,
+          _isc.getType<_ike2qw5s.StyleGuideOrgDefault>,
+          _isc.getType<_ibxjwk51.StyleGuideView>,
           _isc.getType<_ixradasp.AnalyticsCohort>,
           _isc.getType<_innm1rwe.AnalyticsCount>,
           _isc.getType<_is2u4stz.AnalyticsDay>,
@@ -984,15 +1005,22 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<_id6kvqt9.AssistantEventType?>,
           _isc.getType<_i8cittxq.AssistantMessage?>,
           _isc.getType<_i4rkdm2k.AssistantMessageView?>,
+          _isc.getType<_ik2qpdmw.AssistantQuickAction?>,
           _isc.getType<_ia2m3j3v.AssistantStatus?>,
           _isc.getType<_iaq6rutx.AssistantThread?>,
           _isc.getType<_i4iv0swm.AssistantThreadDetail?>,
           _isc.getType<_iohdfqf1.AssistantThreadView?>,
+          _isc.getType<_iti3p2ly.DocumentStyleGuide?>,
           _isc.getType<_i8ghcs7p.InlineAiEvent?>,
           _isc.getType<_i6pcz5z6.InlineAiEventType?>,
           _isc.getType<_i4m43iwr.InlineAiRequest?>,
           _isc.getType<_ie0jt2ne.ProofreadEvent?>,
           _isc.getType<_ivmxemza.ProofreadIssue?>,
+          _isc.getType<_izn9jjcu.StyleGuide?>,
+          _isc.getType<_itz63egs.StyleGuideInput?>,
+          _isc.getType<_ipldx8au.StyleGuideLibrary?>,
+          _isc.getType<_ike2qw5s.StyleGuideOrgDefault?>,
+          _isc.getType<_ibxjwk51.StyleGuideView?>,
           _isc.getType<_ixradasp.AnalyticsCohort?>,
           _isc.getType<_innm1rwe.AnalyticsCount?>,
           _isc.getType<_is2u4stz.AnalyticsDay?>,
@@ -1296,6 +1324,7 @@ class Protocol extends _isc.SerializationManager
           _isc.getType<List<_i4rkdm2k.AssistantMessageView>>,
           _isc.getType<List<_ivmxemza.ProofreadIssue>>,
           _isc.getType<List<_ivmxemza.ProofreadIssue>?>,
+          _isc.getType<List<_ibxjwk51.StyleGuideView>>,
           _isc.getType<List<int?>>,
           _isc.getType<List<_is2u4stz.AnalyticsDay>>,
           _isc.getType<List<_innm1rwe.AnalyticsCount>>,
@@ -1469,6 +1498,9 @@ class Protocol extends _isc.SerializationManager
     if (t == _i4rkdm2k.AssistantMessageView) {
       return _i4rkdm2k.AssistantMessageView.fromJson(data) as T;
     }
+    if (t == _ik2qpdmw.AssistantQuickAction) {
+      return _ik2qpdmw.AssistantQuickAction.fromJson(data) as T;
+    }
     if (t == _ia2m3j3v.AssistantStatus) {
       return _ia2m3j3v.AssistantStatus.fromJson(data) as T;
     }
@@ -1480,6 +1512,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _iohdfqf1.AssistantThreadView) {
       return _iohdfqf1.AssistantThreadView.fromJson(data) as T;
+    }
+    if (t == _iti3p2ly.DocumentStyleGuide) {
+      return _iti3p2ly.DocumentStyleGuide.fromJson(data) as T;
     }
     if (t == _i8ghcs7p.InlineAiEvent) {
       return _i8ghcs7p.InlineAiEvent.fromJson(data) as T;
@@ -1495,6 +1530,21 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _ivmxemza.ProofreadIssue) {
       return _ivmxemza.ProofreadIssue.fromJson(data) as T;
+    }
+    if (t == _izn9jjcu.StyleGuide) {
+      return _izn9jjcu.StyleGuide.fromJson(data) as T;
+    }
+    if (t == _itz63egs.StyleGuideInput) {
+      return _itz63egs.StyleGuideInput.fromJson(data) as T;
+    }
+    if (t == _ipldx8au.StyleGuideLibrary) {
+      return _ipldx8au.StyleGuideLibrary.fromJson(data) as T;
+    }
+    if (t == _ike2qw5s.StyleGuideOrgDefault) {
+      return _ike2qw5s.StyleGuideOrgDefault.fromJson(data) as T;
+    }
+    if (t == _ibxjwk51.StyleGuideView) {
+      return _ibxjwk51.StyleGuideView.fromJson(data) as T;
     }
     if (t == _ixradasp.AnalyticsCohort) {
       return _ixradasp.AnalyticsCohort.fromJson(data) as T;
@@ -2451,6 +2501,12 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_ik2qpdmw.AssistantQuickAction?>()) {
+      return (data != null
+              ? _ik2qpdmw.AssistantQuickAction.fromJson(data)
+              : null)
+          as T;
+    }
     if (t == _isc.getType<_ia2m3j3v.AssistantStatus?>()) {
       return (data != null ? _ia2m3j3v.AssistantStatus.fromJson(data) : null)
           as T;
@@ -2471,6 +2527,10 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == _isc.getType<_iti3p2ly.DocumentStyleGuide?>()) {
+      return (data != null ? _iti3p2ly.DocumentStyleGuide.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_i8ghcs7p.InlineAiEvent?>()) {
       return (data != null ? _i8ghcs7p.InlineAiEvent.fromJson(data) : null)
           as T;
@@ -2489,6 +2549,27 @@ class Protocol extends _isc.SerializationManager
     }
     if (t == _isc.getType<_ivmxemza.ProofreadIssue?>()) {
       return (data != null ? _ivmxemza.ProofreadIssue.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_izn9jjcu.StyleGuide?>()) {
+      return (data != null ? _izn9jjcu.StyleGuide.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_itz63egs.StyleGuideInput?>()) {
+      return (data != null ? _itz63egs.StyleGuideInput.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ipldx8au.StyleGuideLibrary?>()) {
+      return (data != null ? _ipldx8au.StyleGuideLibrary.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ike2qw5s.StyleGuideOrgDefault?>()) {
+      return (data != null
+              ? _ike2qw5s.StyleGuideOrgDefault.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _isc.getType<_ibxjwk51.StyleGuideView?>()) {
+      return (data != null ? _ibxjwk51.StyleGuideView.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_ixradasp.AnalyticsCohort?>()) {
@@ -3765,6 +3846,12 @@ class Protocol extends _isc.SerializationManager
               : null)
           as T;
     }
+    if (t == List<_ibxjwk51.StyleGuideView>) {
+      return (data as List)
+              .map((e) => deserialize<_ibxjwk51.StyleGuideView>(e))
+              .toList()
+          as T;
+    }
     if (t == List<int?>) {
       return (data as List).map((e) => deserialize<int?>(e)).toList() as T;
     }
@@ -4332,15 +4419,22 @@ class Protocol extends _isc.SerializationManager
       _id6kvqt9.AssistantEventType => 'AssistantEventType',
       _i8cittxq.AssistantMessage => 'AssistantMessage',
       _i4rkdm2k.AssistantMessageView => 'AssistantMessageView',
+      _ik2qpdmw.AssistantQuickAction => 'AssistantQuickAction',
       _ia2m3j3v.AssistantStatus => 'AssistantStatus',
       _iaq6rutx.AssistantThread => 'AssistantThread',
       _i4iv0swm.AssistantThreadDetail => 'AssistantThreadDetail',
       _iohdfqf1.AssistantThreadView => 'AssistantThreadView',
+      _iti3p2ly.DocumentStyleGuide => 'DocumentStyleGuide',
       _i8ghcs7p.InlineAiEvent => 'InlineAiEvent',
       _i6pcz5z6.InlineAiEventType => 'InlineAiEventType',
       _i4m43iwr.InlineAiRequest => 'InlineAiRequest',
       _ie0jt2ne.ProofreadEvent => 'ProofreadEvent',
       _ivmxemza.ProofreadIssue => 'ProofreadIssue',
+      _izn9jjcu.StyleGuide => 'StyleGuide',
+      _itz63egs.StyleGuideInput => 'StyleGuideInput',
+      _ipldx8au.StyleGuideLibrary => 'StyleGuideLibrary',
+      _ike2qw5s.StyleGuideOrgDefault => 'StyleGuideOrgDefault',
+      _ibxjwk51.StyleGuideView => 'StyleGuideView',
       _ixradasp.AnalyticsCohort => 'AnalyticsCohort',
       _innm1rwe.AnalyticsCount => 'AnalyticsCount',
       _is2u4stz.AnalyticsDay => 'AnalyticsDay',
@@ -4685,6 +4779,8 @@ class Protocol extends _isc.SerializationManager
         return 'AssistantMessage';
       case _i4rkdm2k.AssistantMessageView():
         return 'AssistantMessageView';
+      case _ik2qpdmw.AssistantQuickAction():
+        return 'AssistantQuickAction';
       case _ia2m3j3v.AssistantStatus():
         return 'AssistantStatus';
       case _iaq6rutx.AssistantThread():
@@ -4693,6 +4789,8 @@ class Protocol extends _isc.SerializationManager
         return 'AssistantThreadDetail';
       case _iohdfqf1.AssistantThreadView():
         return 'AssistantThreadView';
+      case _iti3p2ly.DocumentStyleGuide():
+        return 'DocumentStyleGuide';
       case _i8ghcs7p.InlineAiEvent():
         return 'InlineAiEvent';
       case _i6pcz5z6.InlineAiEventType():
@@ -4703,6 +4801,16 @@ class Protocol extends _isc.SerializationManager
         return 'ProofreadEvent';
       case _ivmxemza.ProofreadIssue():
         return 'ProofreadIssue';
+      case _izn9jjcu.StyleGuide():
+        return 'StyleGuide';
+      case _itz63egs.StyleGuideInput():
+        return 'StyleGuideInput';
+      case _ipldx8au.StyleGuideLibrary():
+        return 'StyleGuideLibrary';
+      case _ike2qw5s.StyleGuideOrgDefault():
+        return 'StyleGuideOrgDefault';
+      case _ibxjwk51.StyleGuideView():
+        return 'StyleGuideView';
       case _ixradasp.AnalyticsCohort():
         return 'AnalyticsCohort';
       case _innm1rwe.AnalyticsCount():
@@ -5368,6 +5476,9 @@ class Protocol extends _isc.SerializationManager
     if (dataClassName == 'AssistantMessageView') {
       return deserialize<_i4rkdm2k.AssistantMessageView>(data['data']);
     }
+    if (dataClassName == 'AssistantQuickAction') {
+      return deserialize<_ik2qpdmw.AssistantQuickAction>(data['data']);
+    }
     if (dataClassName == 'AssistantStatus') {
       return deserialize<_ia2m3j3v.AssistantStatus>(data['data']);
     }
@@ -5379,6 +5490,9 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'AssistantThreadView') {
       return deserialize<_iohdfqf1.AssistantThreadView>(data['data']);
+    }
+    if (dataClassName == 'DocumentStyleGuide') {
+      return deserialize<_iti3p2ly.DocumentStyleGuide>(data['data']);
     }
     if (dataClassName == 'InlineAiEvent') {
       return deserialize<_i8ghcs7p.InlineAiEvent>(data['data']);
@@ -5394,6 +5508,21 @@ class Protocol extends _isc.SerializationManager
     }
     if (dataClassName == 'ProofreadIssue') {
       return deserialize<_ivmxemza.ProofreadIssue>(data['data']);
+    }
+    if (dataClassName == 'StyleGuide') {
+      return deserialize<_izn9jjcu.StyleGuide>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideInput') {
+      return deserialize<_itz63egs.StyleGuideInput>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideLibrary') {
+      return deserialize<_ipldx8au.StyleGuideLibrary>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideOrgDefault') {
+      return deserialize<_ike2qw5s.StyleGuideOrgDefault>(data['data']);
+    }
+    if (dataClassName == 'StyleGuideView') {
+      return deserialize<_ibxjwk51.StyleGuideView>(data['data']);
     }
     if (dataClassName == 'AnalyticsCohort') {
       return deserialize<_ixradasp.AnalyticsCohort>(data['data']);

@@ -37,6 +37,12 @@ committed and verified).
    - the `ui.write.get_ai_preview` UI-bridge tool, and `write.compare_versions` / `write.get_theme` for the assistant (they don't exist as MCP tools yet);
    - a live check against the real API (no key in development); the run and concurrency registry is per server instance;
    - continue writing shows its ghost text in a card at the caret, not inline in the text layout.
+   - assistant redesign (2026-11, Write 09 §5.5, §5.9, suite 10 §7) follow-ups: switch
+     `platform/ai/style_guide_orgs.dart` (`STOPGAP(org-sharing)`) to `OrganizationService`;
+     restrict the organization default style guide to organization admins once they exist;
+     a deep link from an *Address comments* reply to its suggestion; Sheets and Slides do not
+     use style guides yet; the quick actions and the Gemini timings after the change are not
+     measured against the real API (only the fake model and a mocked Gemini API).
 5. ◐ **Offline persistence** (suite 12 §1): per-user `write_cache_<userId>.db` on `sqlite_async`
    (web: `sqlite3.wasm` + `db_worker.js` in `wonky_write/web/`, OPFS or IndexedDB; desktop: a
    file) with `LocalDocument` (+ server op log), the durable `LocalPendingOp` outbox (written

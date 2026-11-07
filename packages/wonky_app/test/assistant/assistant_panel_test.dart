@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +7,8 @@ import 'package:wonky_app/testing.dart';
 import 'package:wonky_app/wonky_app.dart';
 import 'package:wonky_client/wonky_client.dart';
 import 'package:wonky_core/wonky_core.dart' show Role;
-import 'package:shad/shad.dart' show ShadButton;
+import 'package:shad/shad.dart' show ShadInput, LucideIcons;
+import 'package:wonky_ui/wonky_ui.dart' show WonkyMenuEntry, WonkyMenuItem;
 import 'package:wonky_ui/testing.dart';
 
 /// A document adapter recording what the panel asks for.
@@ -72,6 +74,42 @@ class _Adapter extends ChangeNotifier implements AssistantDocumentAdapter {
   }
 }
 
+/// An adapter with Write's panel extras (quick actions, suggestions only).
+class _WriteLikeAdapter extends _Adapter implements AssistantPanelExtras {
+  final pressed = <String>[];
+  AssistantController? controller;
+
+  @override
+  bool get alwaysSuggests => true;
+
+  @override
+  List<AssistantQuickActionButton> get quickActions => [
+    AssistantQuickActionButton(
+      id: 'proofread',
+      label: 'Proofread',
+      icon: LucideIcons.spellCheck,
+      onPressed: () {
+        pressed.add('proofread');
+        controller?.runQuickAction(
+          AssistantQuickAction.proofread,
+          workingLabel: 'Proofreading…',
+        );
+      },
+    ),
+  ];
+
+  @override
+  List<WonkyMenuEntry> moreMenuEntries() => [
+    WonkyMenuItem(label: 'Style guides…', onSelected: () {}),
+  ];
+
+  @override
+  Widget? errorAction(BuildContext context, AssistantReplyEntry reply) =>
+      reply.errorCode == 'no_style'
+      ? const Text('Choose a style guide', key: ValueKey('chooseStyle'))
+      : null;
+}
+
 void main() {
   late CommandTestHarness h;
   late FakeAssistantApi api;
@@ -127,7 +165,8 @@ void main() {
       ),
       text,
     );
-    await tester.tap(find.byKey(const ValueKey<String>('assistant.send')));
+    // Enter sends (there is no Send button).
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     if (settle) {
       await tester.pumpAndSettle();
     } else {
@@ -256,10 +295,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.stops, 1);
     expect(find.text('Stopped'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey<String>('assistant.send')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey<String>('assistant.stop')), findsNothing);
   });
 
   testWidgets(
@@ -373,10 +409,10 @@ void main() {
       );
       await pump(tester);
       expect(find.text("AI isn't configured on this server."), findsOneWidget);
-      final send = tester.widget<ShadButton>(
-        find.byKey(const ValueKey<String>('assistant.send')),
+      final input = tester.widget<ShadInput>(
+        find.byKey(const ValueKey<String>('assistant.input')),
       );
-      expect(send.enabled, isFalse);
+      expect(input.enabled, isFalse);
     },
   );
 
@@ -489,6 +525,239 @@ void main() {
       expect(controller.entries.whereType<AssistantReplyEntry>(), hasLength(1));
     },
   );
+
+  group('Given the composer', () {
+    Finder editable() => find.descendant(
+      of: find.byKey(const ValueKey<String>('assistant.input')),
+      matching: find.byType(EditableText),
+    );
+
+    testWidgets('when it shows then there is no Send button', (tester) async {
+      await pump(tester);
+      expect(
+        find.byKey(const ValueKey<String>('assistant.send')),
+        findsNothing,
+      );
+      expect(find.text('Send'), findsNothing);
+    });
+
+    testWidgets(
+      'when Shift+Enter is pressed then nothing is sent, and Enter sends',
+      (tester) async {
+        await pump(tester);
+        await tester.enterText(editable(), 'First line');
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.pumpAndSettle();
+        expect(api.sent, isEmpty);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+        expect(api.sent, ['First line']);
+      },
+    );
+
+    testWidgets(
+      'when empty then the field is one line and the placeholder starts '
+      'where typed text starts',
+      (tester) async {
+        await pump(tester);
+        final placeholder = find.text('Ask the assistant…');
+        final emptyHeight = tester
+            .getSize(find.byKey(const ValueKey<String>('assistant.input')))
+            .height;
+        final placeholderTop = tester.getTopLeft(placeholder);
+
+        await tester.enterText(editable(), 'Hi');
+        await tester.pump();
+        final textTop = tester.getTopLeft(editable());
+        final oneLineHeight = tester
+            .getSize(find.byKey(const ValueKey<String>('assistant.input')))
+            .height;
+        await tester.enterText(editable(), 'One\nTwo\nThree');
+        await tester.pump();
+        final threeLineHeight = tester
+            .getSize(find.byKey(const ValueKey<String>('assistant.input')))
+            .height;
+
+        expect((placeholderTop.dy - textTop.dy).abs(), lessThan(2));
+        expect((placeholderTop.dx - textTop.dx).abs(), lessThan(2));
+        expect(emptyHeight, oneLineHeight);
+        expect(threeLineHeight, greaterThan(oneLineHeight + 20));
+      },
+    );
+  });
+
+  group('Given an adapter with quick actions (Write)', () {
+    late _WriteLikeAdapter write;
+    late AssistantController writeController;
+
+    Future<void> pumpWrite(WidgetTester tester) async {
+      await pumpWonky(
+        tester,
+        SizedBox(
+          width: 420,
+          height: 900,
+          child: AssistantPanel(
+            services: h.services,
+            controller: writeController,
+          ),
+        ),
+        size: const Size(420, 900),
+        extraDelegates: const [WonkyAppLocalizations.delegate],
+        wrap: (context, child) =>
+            Provider<ShellServices>.value(value: h.services, child: child!),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    setUp(() {
+      write = _WriteLikeAdapter();
+      writeController = AssistantController(
+        api: api,
+        adapter: write,
+        status: status,
+      );
+      write.controller = writeController;
+    });
+    tearDown(() => writeController.dispose());
+
+    testWidgets(
+      'when the panel shows then the actions replace the quick prompts and '
+      'there is no Edit / Suggest toggle',
+      (tester) async {
+        await pumpWrite(tester);
+        expect(
+          find.byKey(const ValueKey<String>('assistant.action.proofread')),
+          findsOneWidget,
+        );
+        expect(find.text('Summarize'), findsNothing);
+        expect(
+          find.byKey(const ValueKey<String>('assistant.mode.edit')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const ValueKey<String>('assistant.mode.suggest')),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'when a quick action runs then no prompt is shown and the result '
+      'streams in',
+      (tester) async {
+        api
+          ..holdChats = true
+          ..quickScripts.add([
+            AssistantEvent(
+              type: AssistantEventType.textDelta,
+              text: 'Suggested 2 corrections.',
+            ),
+          ]);
+        await pumpWrite(tester);
+        await tester.tap(
+          find.byKey(const ValueKey<String>('assistant.action.proofread')),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(api.quickActions, [AssistantQuickAction.proofread]);
+        expect(
+          writeController.entries.whereType<AssistantUserEntry>(),
+          isEmpty,
+        );
+        expect(find.text('Proofreading…'), findsNothing);
+        await api.releaseChat();
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('Suggested 2 corrections.', findRichText: true),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('when a quick action is working then its label shows', (
+      tester,
+    ) async {
+      api
+        ..holdChats = true
+        ..quickScripts.add([]);
+      await pumpWrite(tester);
+      await tester.tap(
+        find.byKey(const ValueKey<String>('assistant.action.proofread')),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Proofreading…'), findsOneWidget);
+      await api.releaseChat();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets(
+      'when a quick action fails with no_style then the follow-up shows',
+      (tester) async {
+        api.quickScripts.add([
+          AssistantEvent(
+            type: AssistantEventType.error,
+            error: 'This document has no style guide yet.',
+            errorCode: 'no_style',
+          ),
+          AssistantEvent(type: AssistantEventType.done),
+        ]);
+        await pumpWrite(tester);
+        await tester.tap(
+          find.byKey(const ValueKey<String>('assistant.action.proofread')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('This document has no style guide yet.'), findsOne);
+        expect(find.byKey(const ValueKey('chooseStyle')), findsOneWidget);
+      },
+    );
+
+    testWidgets('when a run made many changes then the chips collapse', (
+      tester,
+    ) async {
+      api.quickScripts.add([
+        for (var i = 0; i < 9; i++) ...[
+          AssistantEvent(
+            type: AssistantEventType.toolStarted,
+            toolUseId: 't$i',
+            toolName: 'write.replace_text',
+            toolSummary: 'Change $i',
+          ),
+          AssistantEvent(
+            type: AssistantEventType.toolFinished,
+            toolUseId: 't$i',
+            toolName: 'write.replace_text',
+            toolSummary: 'Change $i',
+            changeId: 'c$i',
+          ),
+        ],
+        AssistantEvent(type: AssistantEventType.done),
+      ]);
+      await pumpWrite(tester);
+      await tester.tap(
+        find.byKey(const ValueKey<String>('assistant.action.proofread')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Change 3'), findsOneWidget);
+      expect(find.text('Change 4'), findsNothing);
+      await tester.tap(find.text('+5 more'));
+      await tester.pumpAndSettle();
+      expect(find.text('Change 8'), findsOneWidget);
+    });
+
+    testWidgets('when the ⋮ menu opens then the app items are there', (
+      tester,
+    ) async {
+      await pumpWrite(tester);
+      await tester.tap(find.byKey(const ValueKey<String>('assistant.more')));
+      await tester.pumpAndSettle();
+      expect(find.text('Style guides…'), findsOneWidget);
+    });
+  });
 
   group('Given Markdown blocks', () {
     test('when parsed then headings, lists, code and tables are found', () {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
+import 'package:wonky_client/wonky_client.dart' show AssistantQuickAction;
 
 /// One tool chip of an assistant reply ("Edited 3 paragraphs").
 class AssistantActivity {
@@ -102,7 +103,20 @@ class AssistantReplyEntry extends AssistantEntry {
   /// The latest progress note while tools run.
   String? progress;
   String? error;
+
+  /// The error's code (`no_style`, `budget`, …) for the app's follow-up.
+  String? errorCode;
   AssistantConfirmation? confirmation;
+
+  /// A quick action's working indicator ("Proofreading…"); quick actions
+  /// show no prompt in the conversation.
+  String? workingLabel;
+
+  /// The quick action this reply answers (null = a chat message).
+  AssistantQuickAction? quickAction;
+
+  /// All tool chips are shown (a long list collapses to "+N more").
+  bool showAllActivities = false;
 
   /// Whether the run's changes were undone from the panel.
   bool undone = false;

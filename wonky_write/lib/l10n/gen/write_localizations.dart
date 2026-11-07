@@ -9212,6 +9212,144 @@ abstract class WriteLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 YouTube video} other{{count} YouTube videos}}'**
   String flavorCountVideos(int count);
+
+  /// Assistant panel quick action.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize'**
+  String get aiQuickSummarize;
+
+  /// Assistant panel quick action.
+  ///
+  /// In en, this message translates to:
+  /// **'Proofread'**
+  String get aiQuickProofread;
+
+  /// Assistant panel quick action.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply style'**
+  String get aiQuickApplyStyle;
+
+  /// No description provided for @aiWorkingSummarize.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarizing the document…'**
+  String get aiWorkingSummarize;
+
+  /// No description provided for @aiWorkingProofread.
+  ///
+  /// In en, this message translates to:
+  /// **'Proofreading…'**
+  String get aiWorkingProofread;
+
+  /// No description provided for @aiWorkingComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Working through the open comments…'**
+  String get aiWorkingComments;
+
+  /// No description provided for @aiWorkingStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying the style guide…'**
+  String get aiWorkingStyle;
+
+  /// No description provided for @aiChooseStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a style guide'**
+  String get aiChooseStyleGuide;
+
+  /// No description provided for @cmdAiSummarizeDocumentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sums up the document in the assistant panel.'**
+  String get cmdAiSummarizeDocumentDescription;
+
+  /// No description provided for @cmdAiProofreadDocumentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggests small spelling, grammar and punctuation corrections.'**
+  String get cmdAiProofreadDocumentDescription;
+
+  /// No description provided for @cmdAiAddressComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Address comments'**
+  String get cmdAiAddressComments;
+
+  /// No description provided for @cmdAiAddressCommentsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggests the changes the open comments ask for and replies in their threads.'**
+  String get cmdAiAddressCommentsDescription;
+
+  /// No description provided for @cmdAiApplyStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply style'**
+  String get cmdAiApplyStyle;
+
+  /// No description provided for @cmdAiApplyStyleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggests rewrites so the document follows its style guide.'**
+  String get cmdAiApplyStyleDescription;
+
+  /// No description provided for @cmdAiOpenAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Open assistant'**
+  String get cmdAiOpenAssistant;
+
+  /// No description provided for @cmdAiManageStyleGuides.
+  ///
+  /// In en, this message translates to:
+  /// **'Style guides…'**
+  String get cmdAiManageStyleGuides;
+
+  /// No description provided for @cmdAiManageStyleGuidesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse, write and share style guides for the assistant.'**
+  String get cmdAiManageStyleGuidesDescription;
+
+  /// No description provided for @cmdDocStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Style guide…'**
+  String get cmdDocStyleGuide;
+
+  /// No description provided for @cmdDocStyleGuideDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Chooses the style guide this document follows.'**
+  String get cmdDocStyleGuideDescription;
+
+  /// No description provided for @cmdDocSetStyleGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Set style guide'**
+  String get cmdDocSetStyleGuide;
+
+  /// Tools menu: the assistant submenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get menuAssistant;
+
+  /// No description provided for @menuAssistantSummarize.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize'**
+  String get menuAssistantSummarize;
+
+  /// No description provided for @menuAssistantProofread.
+  ///
+  /// In en, this message translates to:
+  /// **'Proofread'**
+  String get menuAssistantProofread;
 }
 
 class _WriteLocalizationsDelegate

@@ -1,0 +1,25 @@
+### A user's own style guide for the assistant (suite 10 §7), kept personal
+### or shared with the owner's organization. Built-in guides are code
+### constants (`BuiltinStyleGuides`), not rows.
+class: StyleGuide
+table: style_guide
+fields:
+  uuid: UuidValue, defaultModel=random_v7
+  ownerId: int, relation(parent=user_profile, onDelete=Cascade)
+  name: String
+  description: String
+  ### The guide itself (Markdown).
+  markdown: String
+  ### The organization it is shared with (its key, e.g. `serverpod.dev`);
+  ### null = personal.
+  orgKey: String?
+  createdAt: DateTime
+  updatedAt: DateTime
+indexes:
+  style_guide_uuid_idx:
+    fields: uuid
+    unique: true
+  style_guide_owner_idx:
+    fields: ownerId
+  style_guide_org_idx:
+    fields: orgKey

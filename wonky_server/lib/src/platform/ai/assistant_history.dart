@@ -72,6 +72,73 @@ abstract final class AssistantHistory {
     );
   }
 
+  /// Makes a replayed thread valid for every provider: a model turn whose
+  /// tool calls have no results (the run was interrupted between the call
+  /// and its results, e.g. by a server restart) gets results saying so,
+  /// and results without a preceding call are dropped. Providers reject a
+  /// history with unanswered calls, so one interrupted run would otherwise
+  /// break every later message of the thread.
+  static List<ChatMessage> repair(List<ChatMessage> messages) {
+    final out = <ChatMessage>[];
+    var pending = <ToolPart>[];
+    void answerPending() {
+      if (pending.isEmpty) return;
+      out.add(
+        ChatMessage(
+          role: ChatMessageRole.user,
+          parts: [
+            for (final c in pending)
+              ToolPart.result(
+                callId: c.callId,
+                toolName: c.toolName,
+                result: interruptedResult,
+              ),
+          ],
+        ),
+      );
+      pending = [];
+    }
+
+    for (final m in messages) {
+      final results = m.toolResults;
+      if (m.role == ChatMessageRole.user && results.isNotEmpty) {
+        final open = {for (final c in pending) c.callId: c};
+        final parts = <StandardPart>[
+          for (final p in m.parts)
+            if (p is! ToolPart ||
+                p.kind != ToolPartKind.result ||
+                open.containsKey(p.callId))
+              p,
+        ];
+        for (final r in results) {
+          open.remove(r.callId);
+        }
+        parts.addAll([
+          for (final c in open.values)
+            ToolPart.result(
+              callId: c.callId,
+              toolName: c.toolName,
+              result: interruptedResult,
+            ),
+        ]);
+        pending = [];
+        if (parts.isNotEmpty) out.add(m.copyWith(parts: parts));
+        continue;
+      }
+      answerPending();
+      if (m.parts.isEmpty) continue;
+      out.add(m);
+      if (m.role == ChatMessageRole.model) pending = m.toolCalls;
+    }
+    answerPending();
+    return out;
+  }
+
+  /// The result of a call whose run was interrupted.
+  static const interruptedResult =
+      '{"code":"interrupted","message":"The run was interrupted before '
+      'this call completed; it may not have been executed."}';
+
   /// Tool results above this many characters are elided in exchanges older
   /// than the last [keepRecentExchanges].
   static const elideAbove = 400;

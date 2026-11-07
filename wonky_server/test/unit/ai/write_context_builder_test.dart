@@ -41,14 +41,17 @@ void main() {
     );
 
     test(
-      'when the volatile context is built then mode and role are stated',
+      'when the volatile context is built then suggestions, role and the '
+      'style guide are stated',
       () {
         final v = WriteContextBuilder.volatile(
           c: c,
           applyMode: AiApplyMode.suggest,
           role: 'commenter',
+          styleGuide: '<style_guide name="Plain">x</style_guide>',
         );
-        expect(v, contains('Suggest'));
+        expect(v, contains('Your edits become tracked suggestions.'));
+        expect(v, contains('<style_guide name="Plain">'));
         expect(v, contains('User role: commenter'));
         expect(v, contains('No text is selected.'));
       },
