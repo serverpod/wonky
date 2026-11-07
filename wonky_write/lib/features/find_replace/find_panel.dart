@@ -4,6 +4,7 @@ import 'package:shad/shad.dart';
 import 'package:wonky_ui/wonky_ui.dart';
 import 'package:wonky_write_core/wonky_write_core.dart';
 
+import '../../commands/command_icons.dart';
 import '../../l10n/write_l10n.dart';
 import '../screen/command_invoke.dart';
 import 'find_controller.dart';
@@ -157,7 +158,7 @@ class _FindPanelState extends State<FindPanel> {
                 const SizedBox(width: 4),
                 _IconAction(
                   keyName: 'find.previous',
-                  icon: LucideIcons.chevronUp,
+                  icon: commandIcons['write.find.previous']!,
                   label: l.findPreviousMatch,
                   shortcut: shortcutOf(context, 'write.find.previous'),
                   onPressed: c.matches.isEmpty
@@ -166,7 +167,7 @@ class _FindPanelState extends State<FindPanel> {
                 ),
                 _IconAction(
                   keyName: 'find.next',
-                  icon: LucideIcons.chevronDown,
+                  icon: commandIcons['write.find.next']!,
                   label: l.findNextMatch,
                   shortcut: shortcutOf(context, 'write.find.next'),
                   onPressed: c.matches.isEmpty

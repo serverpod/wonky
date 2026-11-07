@@ -140,6 +140,56 @@ void main() {
     });
   }
 
+  testWidgets('Given check items with icons when the menu opens then each '
+      'keeps its icon and only the checked one shows a trailing check', (
+    tester,
+  ) async {
+    await pumpWonky(
+      tester,
+      WonkyDropdownMenu(
+        entries: () => [
+          WonkyMenuCheckItem(
+            key: const ValueKey('m.outline'),
+            label: 'Outline',
+            icon: LucideIcons.listTree,
+            checked: true,
+            onSelected: () {},
+          ),
+          WonkyMenuCheckItem(
+            label: 'Find',
+            icon: LucideIcons.search,
+            checked: false,
+            shortcut: const ['⌘', 'F'],
+            onSelected: () {},
+          ),
+        ],
+        builder: (context, c) => ShadButton(
+          key: const ValueKey('trigger'),
+          onPressed: c.toggle,
+          child: const Text('Menu'),
+        ),
+      ),
+      center: true,
+    );
+    await tester.tap(find.byKey(const ValueKey('trigger')));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(LucideIcons.listTree), findsOneWidget);
+    expect(find.byIcon(LucideIcons.search), findsOneWidget);
+    expect(find.byIcon(LucideIcons.check), findsOneWidget);
+    // The check is at the end of the checked item's row.
+    final row = tester.getRect(find.byKey(const ValueKey('m.outline')));
+    final check = tester.getRect(find.byIcon(LucideIcons.check));
+    expect(check.center.dx, greaterThan(row.center.dx));
+    // Still a checked item for screen readers.
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.checked != null,
+      ),
+      findsNWidgets(2),
+    );
+  });
+
   testWidgets('Given an open dropdown when tapping an item then it fires and '
       'the menu closes', (tester) async {
     final log = <String>[];
