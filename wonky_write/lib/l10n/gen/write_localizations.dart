@@ -2317,12 +2317,6 @@ abstract class WriteLocalizations {
   /// **'Underline errors'**
   String get menuUnderlineErrors;
 
-  /// No description provided for @menuPreferences.
-  ///
-  /// In en, this message translates to:
-  /// **'Preferences'**
-  String get menuPreferences;
-
   /// No description provided for @menuAllPreferences.
   ///
   /// In en, this message translates to:
@@ -3102,6 +3096,84 @@ abstract class WriteLocalizations {
   /// In en, this message translates to:
   /// **'Underline and text colors are not part of Markdown — use bold or italic, or change how emphasis looks with a theme.'**
   String get docDialogGuideFootnote;
+
+  /// Tab of the Markdown guide with the standard Markdown shortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown'**
+  String get docDialogGuideTabMarkdown;
+
+  /// Tab of the Markdown guide with the Wonky Markdown extensions (shown in documents that use Wonky Markdown).
+  ///
+  /// In en, this message translates to:
+  /// **'Wonky Markdown'**
+  String get docDialogGuideTabWonky;
+
+  /// No description provided for @docDialogGuideWonkyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This document uses Wonky Markdown: these blocks and inline elements come on top of standard Markdown. Insert them from the Insert menu or the / menu, or type them.'**
+  String get docDialogGuideWonkyDescription;
+
+  /// No description provided for @docDialogGuideCallout.
+  ///
+  /// In en, this message translates to:
+  /// **'Callout: info, tip, note, warning, caution or danger, with an optional title'**
+  String get docDialogGuideCallout;
+
+  /// No description provided for @docDialogGuideDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details: a collapsible section, its first ### line is the summary'**
+  String get docDialogGuideDetails;
+
+  /// No description provided for @docDialogGuideCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Card'**
+  String get docDialogGuideCard;
+
+  /// No description provided for @docDialogGuideGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid of items in 1–4 columns (bullets: check, circle or none)'**
+  String get docDialogGuideGrid;
+
+  /// No description provided for @docDialogGuideBlockEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends a callout, details, card or grid'**
+  String get docDialogGuideBlockEnd;
+
+  /// No description provided for @docDialogGuideButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Button link (secondary button with variant=secondary)'**
+  String get docDialogGuideButton;
+
+  /// No description provided for @docDialogGuideArrowLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link with an arrow'**
+  String get docDialogGuideArrowLink;
+
+  /// No description provided for @docDialogGuideChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Chip, optionally with an icon'**
+  String get docDialogGuideChip;
+
+  /// No description provided for @docDialogGuideNumberedHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered heading (step), level 2 or 3'**
+  String get docDialogGuideNumberedHeading;
+
+  /// No description provided for @docDialogGuideYouTube.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube video'**
+  String get docDialogGuideYouTube;
 
   /// No description provided for @pageSetupTitle.
   ///

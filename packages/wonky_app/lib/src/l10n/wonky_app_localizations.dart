@@ -1240,12 +1240,6 @@ abstract class WonkyAppLocalizations {
   /// **'Version history panel'**
   String get cmdVersionsPanel;
 
-  /// No description provided for @cmdWhatsNew.
-  ///
-  /// In en, this message translates to:
-  /// **'What\'s new'**
-  String get cmdWhatsNew;
-
   /// Opens the suite settings (account, appearance, …).
   ///
   /// In en, this message translates to:
@@ -2080,12 +2074,6 @@ abstract class WonkyAppLocalizations {
   /// **'MCP connection'**
   String get mcpTitle;
 
-  /// No description provided for @menuAccessibility.
-  ///
-  /// In en, this message translates to:
-  /// **'Accessibility settings'**
-  String get menuAccessibility;
-
   /// No description provided for @menuAppTheme.
   ///
   /// In en, this message translates to:
@@ -2103,12 +2091,6 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Edit'**
   String get menuEdit;
-
-  /// No description provided for @menuExplore.
-  ///
-  /// In en, this message translates to:
-  /// **'Explore'**
-  String get menuExplore;
 
   /// No description provided for @menuFile.
   ///
@@ -2181,12 +2163,6 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Panels'**
   String get menuPanels;
-
-  /// No description provided for @menuPreferences.
-  ///
-  /// In en, this message translates to:
-  /// **'Preferences'**
-  String get menuPreferences;
 
   /// No description provided for @menuShare.
   ///
@@ -4071,36 +4047,6 @@ abstract class WonkyAppLocalizations {
   /// In en, this message translates to:
   /// **'Before restore'**
   String get versionsRestorePoint;
-
-  /// No description provided for @whatsNew1.
-  ///
-  /// In en, this message translates to:
-  /// **'One account for Wonky Write and Wonky Sheets — sign in once, use both.'**
-  String get whatsNew1;
-
-  /// No description provided for @whatsNew2.
-  ///
-  /// In en, this message translates to:
-  /// **'Every action is a command: press Ctrl+Shift+P (⌘⇧P) to run anything.'**
-  String get whatsNew2;
-
-  /// No description provided for @whatsNew3.
-  ///
-  /// In en, this message translates to:
-  /// **'Undo covers drive changes too — rename, move, star and trash.'**
-  String get whatsNew3;
-
-  /// No description provided for @whatsNew4.
-  ///
-  /// In en, this message translates to:
-  /// **'Comments, mentions and version history in every file.'**
-  String get whatsNew4;
-
-  /// No description provided for @whatsNewTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'What\'s new'**
-  String get whatsNewTitle;
 
   /// No description provided for @wonkyWork.
   ///

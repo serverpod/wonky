@@ -60,8 +60,8 @@ void main() {
   }
 
   testWidgets('J-D6: Given the Sheets home when Sheets settings open from '
-      'the left menu and Wonky Work settings from the account menu then each '
-      'shows its sections, and the v1 links redirect', (tester) async {
+      'the left menu and the account menu then the page shows the app\'s and '
+      'the Wonky Work sections, and the v1 links redirect', (tester) async {
     await pump(tester);
 
     await tester.tap(key('home.footer.appSettings'));
@@ -73,9 +73,11 @@ void main() {
 
     await tester.tap(find.byType(AccountMenuButton));
     await tester.pumpAndSettle();
+    // The account menu's one *Settings* entry opens the same page: the
+    // app's sections and the Wonky Work sections (suite 04 §4.2).
     await tester.tap(key('account.settings'));
     await tester.pumpAndSettle();
-    expect(location(), '/settings/account');
+    expect(location(), '/settings/app/defaults');
     for (final id in workSettingsSectionIds) {
       expect(key('settings.nav.$id'), findsOneWidget, reason: id);
     }

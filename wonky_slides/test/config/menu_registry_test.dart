@@ -141,7 +141,7 @@ void main() {
     'slides.element.hide', 'slides.element.show',
     // Tools
     'slides.spelling.check', 'slides.spelling.toggleUnderline',
-    'shell.settings.open', 'slides.tools.accessibilityCheck',
+    'slides.tools.accessibilityCheck',
     'slides.notifications.openSettings', 'shell.help.shortcuts',
     'shell.settings.openApp',
     // Extensions
@@ -149,8 +149,7 @@ void main() {
     'slides.ai.speakerNotes', 'slides.ai.altText', 'slides.ai.codeWalkthrough',
     'shell.mcp.copyConnectionInfo',
     // Help
-    'shell.board.report', 'shell.board.open', 'shell.help.whatsNew',
-    'shell.help.about',
+    'shell.board.report', 'shell.board.open', 'shell.help.about',
   };
 
   testWidgets('Given the Slides menubar when it is built then every item '

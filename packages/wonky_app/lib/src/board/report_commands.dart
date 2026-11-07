@@ -39,6 +39,9 @@ List<Command<CommandArgs>> boardReportCommands(ShellServices s) => [
     'shell.board.report',
     title: (l) => l.cmdBoardReport,
     icon: LucideIcons.bug,
+    // Help › *Suggest an improvement* (`{kind: idea}`) shows the leaf of
+    // the header button (suite 03 §3.1).
+    iconFor: (a) => a['kind'] == 'idea' ? LucideIcons.leaf : null,
     category: (l) => l.categoryHelp,
     args: const JsonSchema.object(
       properties: {

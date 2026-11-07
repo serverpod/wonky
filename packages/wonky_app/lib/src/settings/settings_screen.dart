@@ -41,8 +41,8 @@ class _Section {
 /// The short name of [app] ("Sheets" of "Wonky Sheets").
 String _shortName(WonkyAppKind app) => app.shortName;
 
-/// The settings screen (suite 04 §4.2): a left nav with two groups — the
-/// current app's settings (`/settings/app/:section`,
+/// The settings screen (suite 04 §4.2), titled *Settings*: a left nav with
+/// two groups — the current app's settings (`/settings/app/:section`,
 /// `WonkyAppConfig.appSettingsSections`) first, then the Wonky Work settings
 /// (`/settings/:section`) — and the open section. Below 760 px the nav is a
 /// select above the content. Every change is a command or a preference
@@ -165,10 +165,10 @@ class SettingsScreen extends StatelessWidget {
       (x) => x.id == section,
       orElse: () => inArea.first,
     );
+    // One *Settings* page (suite 04 §4.2): the app's and the Wonky Work
+    // sections are groups of its nav.
+    final title = l.cmdSettings;
     final appTitle = l.cmdAppSettings(s.config.shortAppName);
-    final title = current.area == SettingsArea.app
-        ? appTitle
-        : l.cmdWorkSettings;
     final narrow = MediaQuery.sizeOf(context).width < shellPageNarrowWidth;
     final content = ShellPageBody(
       key: ValueKey<String>(current.contentKey),

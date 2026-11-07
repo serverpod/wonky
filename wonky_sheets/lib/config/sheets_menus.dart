@@ -211,7 +211,8 @@ MenuRoot sheetsMenus(ShellMenus shell, {required SheetsLocalizations l}) {
 
   // ---- Tools (§3.7) ----
   root = root
-      .replace('tools.explore', [_c('sheets.explore.toggle')])
+      // Sheets' Explore panel (the shell's Tools › Explore is gone).
+      .insertAfter('tools.assistant', [_c('sheets.explore.toggle')])
       .insertBefore('tools.preferences', [
         MenuSpec.submenu('tools.spelling', l.menuSpelling, [
           _c('sheets.tools.spellCheck'),

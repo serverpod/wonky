@@ -119,6 +119,10 @@ Thin wrapper over `ShadContextMenu` (controller + anchor) adding:
 - `MenuItem.command(commandId)` — title/icon/shortcut/enabled/checked from the command registry.
 - `MenuCheckItem` (✓ leading when checked), `MenuRadioItem` (● leading), `MenuSubmenu`,
   `MenuSeparator`, `MenuLabel` (section header), `MenuCustom` (e.g. color grid, table-size grid).
+  A check item with an `icon` keeps the icon leading and shows its ✓ at the end (after the
+  shortcut): menu specs opt in per item with `MenuSpec.command(…, showIcon: true)` — View ›
+  Panels (each panel's rail icon, 03 §3.2) and Write's Insert › Code block / Quote / Checklist.
+  Other toggles show only the ✓.
 - Trailing shortcut rendered with `ShadKbd` (platform glyphs: ⌘ ⌥ ⇧ ⌃ on macOS; Ctrl+Alt+Shift
   elsewhere).
 - `WonkyMenuItem.leading`: a 16 px widget shown instead of the icon (e.g. an app's product icon,
@@ -258,8 +262,12 @@ The X of every `ShadDialog` with one (`closeIcon: const WonkyDialogCloseButton()
 default close button has no accessible label, so it fails `labeledTapTargetGuideline`. Same look
 (20 px ghost icon button, foreground at 50 %), labelled *Close*; it closes with
 `Navigator.maybePop` (a dialog's `PopScope` is honored), or runs `onPressed` instead — dialogs
-with a draft pass their cancel path so the X asks before discarding, like *Cancel* and Esc
-(e.g. the Write table editor). Dialogs without an X pass `closeIcon: const SizedBox.shrink()`.
+with a draft pass their cancel path so the X asks before discarding, like *Cancel* and Esc. Dialogs without an X pass `closeIcon: const SizedBox.shrink()`.
+**No X when the dialog has another way out**: inside a `ShadDialog` with `actions` (Cancel,
+Close, Done, OK, Got it, Discard, …) the button renders nothing, so a dialog shows the X only
+when it has no buttons (pickers, the share dialog, reference lists); Esc and the barrier still
+dismiss. The rule lives in the button (`WonkyDialogCloseButton.showsIn`), so it holds for every
+dialog of every app; `always: true` keeps the X for a dialog whose actions don't dismiss it.
 
 ## 5. Product icons
 

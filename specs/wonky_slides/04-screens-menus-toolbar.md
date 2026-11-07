@@ -365,7 +365,6 @@ No PPTX/Keynote items (non-goal).
 | — | | | |
 | Bugs & improvements… (M12) | `shell.board.report` (replaces *Report a bug*; `shell.help.reportBug` and `shell.help.feedback` stay as hidden aliases, suite 03 §3.2) | — | — |
 | Browse Bugs & improvements (M12) | `shell.board.open` | — | — |
-| What's new | `shell.help.whatsNew` | — | — |
 | About | `shell.help.about` | — | — |
 
 ### 4.11 Menu behavior
@@ -1234,8 +1233,8 @@ work package only registers the real command.
 - **Deviations from the tables above.**
   - View › Mode uses `slides.mode.editing` / `slides.mode.viewing` (the shell has no
     `shell.view.setMode`; same as Sheets). File › Open… is the shell's `shell.file.open`;
-    Tools › Accessibility settings is the shell's `shell.settings.open {section: appearance}`;
-    the shell's Tools › Explore item is removed.
+    The shell's Tools menu has no *Accessibility settings* or *Explore* item; its one
+    *Settings…* entry opens the settings page (suite 03 §3.2, 04 §4.2).
   - View › Panels: Layers, Themes, Accessibility (and *Linked charts*) are the commands
     `slides.panel.layers|themes|accessibility|linkedObjects` (the owning WP opens its
     `SidePanelSpec` with `shell.panels.open`); Comments and Assistant are the shell toggles.

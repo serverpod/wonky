@@ -650,7 +650,7 @@ placeholder (05 §4).
 - **UI bridge (11 §5):** `describe_panel`/`set_panel_field` read and set only text inputs,
   checkboxes, switches and buttons (selects, colors, sliders and segmented controls need the
   `slides.*` commands); shell dialogs still not MCP-describable (all apps): share dialog,
-  command palette / quick switcher, undo history, *Report a bug*, *What's new*, session expired;
+  command palette / quick switcher, undo history, *Report a bug*, session expired;
   the server's agent participant and the client flash may both outline the same elements after a
   headless write; agent steps through `ui.invoke_command` are labelled "AI: …" on the undo stack.
 - **AI (11 §6.12):** `comments.list/create/reply`, `versions.list` and the `ui.slides.*` window

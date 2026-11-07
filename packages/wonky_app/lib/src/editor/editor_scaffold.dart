@@ -817,8 +817,11 @@ class _EditorScaffoldState extends State<EditorScaffold> {
             const SizedBox(width: 6),
             ...?widget.titleActions?.call(context),
             if (item != null)
+              // `sm`, the size of *Report a bug* / *Suggest an improvement*
+              // beside it (suite 03 §3.1).
               ShadButton(
                 key: const ValueKey<String>('editor.share'),
+                size: ShadButtonSize.sm,
                 leading: Icon(
                   item.linkRole != null
                       ? LucideIcons.globe

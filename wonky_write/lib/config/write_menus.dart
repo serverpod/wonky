@@ -17,7 +17,15 @@ MenuCommand _c(
   Map<String, Object?> args = const {},
   String? menuId,
   bool radio = false,
-}) => MenuSpec.command(id, label: label, args: args, id: menuId, radio: radio);
+  bool showIcon = false,
+}) => MenuSpec.command(
+  id,
+  label: label,
+  args: args,
+  id: menuId,
+  radio: radio,
+  showIcon: showIcon,
+);
 
 /// The Write menubar (Write 05 §7): the shell's shared menus extended with
 /// Write items, plus the Insert and Format menus. Labels come from [l10n]
@@ -80,7 +88,7 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
       .insertAfter('shell.edit.selectAll', [_c('write.edit.delete')])
       .appendTo(ShellMenuIds.edit, [
         MenuSpec.separator(),
-        _c('write.find.open', label: l.cmdFindOpen),
+        _c('write.find.open', label: l.cmdFindOpen, showIcon: true),
         _c('write.find.openReplace', label: l.cmdFindOpenReplace),
         _c('write.find.next'),
         _c('write.find.previous'),
@@ -161,15 +169,25 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
           _c('write.view.zoomReset', label: l.menuZoomReset),
         ]),
       ])
-      // The side panel shows Outline, Find, History or the Assistant;
-      // comments and suggestions live in the margin (Write 05 §10).
-      .replace('shell.comments.togglePanel', [
-        _c('write.view.toggleOutline', label: l.cmdViewToggleOutline),
-        _c(
-          'write.find.open',
-          label: l.cmdFindOpenReplace,
-          menuId: 'view.panels.find',
-        ),
+      // The side panels in rail order with their rail icons: Assistant,
+      // Outline, Find, History; comments and suggestions live in the
+      // margin (Write 05 §7.3, §10).
+      .replace(ShellMenuIds.viewPanels, [
+        MenuSpec.submenu(ShellMenuIds.viewPanels, shell.l10n.menuPanels, [
+          _c('shell.ai.togglePanel', showIcon: true),
+          _c(
+            'write.view.toggleOutline',
+            label: l.cmdViewToggleOutline,
+            showIcon: true,
+          ),
+          _c(
+            'write.find.open',
+            label: l.cmdFindOpenReplace,
+            menuId: 'view.panels.find',
+            showIcon: true,
+          ),
+          _c('shell.versions.togglePanel', showIcon: true),
+        ]),
       ])
       .insertAfter(ShellMenuIds.viewPanels, [
         _c(
@@ -186,6 +204,9 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
   ]);
 
   // ---- Tools (§7.6) ----
+  // The shell's single *Settings…* entry (`tools.preferences`) opens the
+  // settings page with the Write and the Wonky Work sections (suite 04
+  // §4.2); the `write.prefs.*` toggles live there and in the palette.
   root = root
       .insertAfter('tools.assistant', [
         _c('write.ai.summarizeDocument', menuId: 'tools.ai.summarize'),
@@ -220,27 +241,7 @@ MenuRoot writeMenus(ShellMenus shell, {WriteLocalizations? l10n}) {
           ),
         ]),
         MenuSpec.separator(),
-      ])
-      .insertBefore('tools.preferences', [
-        MenuSpec.submenu('tools.writePrefs', l.menuPreferences, [
-          _c('write.prefs.setMarkdownShortcuts'),
-          _c('write.prefs.setSmartTypography'),
-          _c('write.prefs.setAutoPair'),
-          _c('write.prefs.setAutolink'),
-          _c('write.prefs.setCopyAsMarkdown'),
-          _c('write.prefs.setSelectionToolbar'),
-          MenuSpec.separator(),
-          // (v2, suite 04 §4) Write settings and Wonky Work settings.
-          _c('shell.settings.openApp', menuId: 'tools.writePrefs.all'),
-          _c(
-            'shell.settings.open',
-            args: {'section': 'account'},
-            menuId: 'tools.writePrefs.work',
-          ),
-        ]),
-      ])
-      .remove(ShellMenuIds.toolsAppSettings)
-      .remove(ShellMenuIds.toolsWorkSettings);
+      ]);
 
   // ---- Help (§7.7) ----
   root = root.insertAfter('shell.help.shortcuts', [
@@ -267,16 +268,19 @@ MenuSubmenu insertMenu(
     'write.format.blockType.codeBlock',
     label: l.cmdFormatBlockTypeCodeBlock,
     menuId: 'insert.codeBlock',
+    showIcon: true,
   ),
   _c(
     'write.format.blockType.quote',
     label: l.cmdFormatBlockTypeQuote,
     menuId: 'insert.quote',
+    showIcon: true,
   ),
   _c(
     'write.list.toggleChecklist',
     label: l.cmdListToggleChecklist,
     menuId: 'insert.checklist',
+    showIcon: true,
   ),
   // Wonky Markdown (Write 11 §7.5): hidden in GitHub Markdown documents.
   MenuSpec.separator(),
