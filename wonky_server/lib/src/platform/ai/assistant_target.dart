@@ -17,7 +17,6 @@ import '../common/models.dart';
 import '../mcp/tool_executor.dart';
 import '../mcp/tool_support.dart';
 import '../sharing/access_service.dart';
-import 'assistant_service.dart';
 import 'assistant_tools.dart';
 import 'llm/ai_client.dart';
 import 'style_guide_service.dart';
@@ -305,12 +304,8 @@ class WriteAssistantTarget extends AssistantTarget {
       clientName: 'Assistant',
       groupId: runId,
       onBehalfOfSessionId: hints.documentSessionId,
-      changeGuard: guarded
-          ? (head, change, _) {
-              final v = AssistantService.guardViolation(head, change);
-              if (v != null) throw v;
-            }
-          : null,
+      // No destructive guard (Write 09 §5.8): every edit is a suggestion
+      // the user reviews, and the run is one undo step.
     );
   }
 

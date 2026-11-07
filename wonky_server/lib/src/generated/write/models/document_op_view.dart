@@ -25,6 +25,8 @@ abstract class DocumentOpView
     required this.actorKind,
     required this.kind,
     this.sessionId,
+    this.onBehalfOfSessionId,
+    this.groupId,
     required this.createdAt,
   });
 
@@ -37,6 +39,8 @@ abstract class DocumentOpView
     required _ipbpecg8.ActorKind actorKind,
     required _iymqng84.DocumentOpKind kind,
     String? sessionId,
+    String? onBehalfOfSessionId,
+    String? groupId,
     required DateTime createdAt,
   }) = _DocumentOpViewImpl;
 
@@ -60,6 +64,8 @@ abstract class DocumentOpView
         (jsonSerialization['kind'] as String),
       ),
       sessionId: jsonSerialization['sessionId'] as String?,
+      onBehalfOfSessionId: jsonSerialization['onBehalfOfSessionId'] as String?,
+      groupId: jsonSerialization['groupId'] as String?,
       createdAt: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
       ),
@@ -82,6 +88,13 @@ abstract class DocumentOpView
 
   String? sessionId;
 
+  /// The app session an assistant run acted for and the run (its ops are
+  /// one undo step there, Write 09 §5.2); also on ops sent to fill a gap
+  /// or after a reconnect.
+  String? onBehalfOfSessionId;
+
+  String? groupId;
+
   DateTime createdAt;
 
   /// Returns a shallow copy of this [DocumentOpView]
@@ -96,6 +109,8 @@ abstract class DocumentOpView
     _ipbpecg8.ActorKind? actorKind,
     _iymqng84.DocumentOpKind? kind,
     String? sessionId,
+    String? onBehalfOfSessionId,
+    String? groupId,
     DateTime? createdAt,
   });
   @override
@@ -110,6 +125,9 @@ abstract class DocumentOpView
       'actorKind': actorKind.toJson(),
       'kind': kind.toJson(),
       if (sessionId != null) 'sessionId': sessionId,
+      if (onBehalfOfSessionId != null)
+        'onBehalfOfSessionId': onBehalfOfSessionId,
+      if (groupId != null) 'groupId': groupId,
       'createdAt': createdAt.toJson(),
     };
   }
@@ -126,6 +144,9 @@ abstract class DocumentOpView
       'actorKind': actorKind.toJson(),
       'kind': kind.toJson(),
       if (sessionId != null) 'sessionId': sessionId,
+      if (onBehalfOfSessionId != null)
+        'onBehalfOfSessionId': onBehalfOfSessionId,
+      if (groupId != null) 'groupId': groupId,
       'createdAt': createdAt.toJson(),
     };
   }
@@ -148,6 +169,8 @@ class _DocumentOpViewImpl extends DocumentOpView {
     required _ipbpecg8.ActorKind actorKind,
     required _iymqng84.DocumentOpKind kind,
     String? sessionId,
+    String? onBehalfOfSessionId,
+    String? groupId,
     required DateTime createdAt,
   }) : super._(
          revision: revision,
@@ -158,6 +181,8 @@ class _DocumentOpViewImpl extends DocumentOpView {
          actorKind: actorKind,
          kind: kind,
          sessionId: sessionId,
+         onBehalfOfSessionId: onBehalfOfSessionId,
+         groupId: groupId,
          createdAt: createdAt,
        );
 
@@ -174,6 +199,8 @@ class _DocumentOpViewImpl extends DocumentOpView {
     _ipbpecg8.ActorKind? actorKind,
     _iymqng84.DocumentOpKind? kind,
     Object? sessionId = _Undefined,
+    Object? onBehalfOfSessionId = _Undefined,
+    Object? groupId = _Undefined,
     DateTime? createdAt,
   }) {
     return DocumentOpView(
@@ -187,6 +214,10 @@ class _DocumentOpViewImpl extends DocumentOpView {
       actorKind: actorKind ?? this.actorKind,
       kind: kind ?? this.kind,
       sessionId: sessionId is String? ? sessionId : this.sessionId,
+      onBehalfOfSessionId: onBehalfOfSessionId is String?
+          ? onBehalfOfSessionId
+          : this.onBehalfOfSessionId,
+      groupId: groupId is String? ? groupId : this.groupId,
       createdAt: createdAt ?? this.createdAt,
     );
   }

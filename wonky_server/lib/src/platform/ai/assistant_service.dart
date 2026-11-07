@@ -261,7 +261,10 @@ abstract final class AssistantService {
     actor,
     threadId: threadId,
     itemUuid: itemUuid,
-    message: WriteQuickActions.historyMessage(action),
+    message: WriteQuickActions.historyMessage(
+      action,
+      selection: (hints.selectionLength ?? 0) > 0,
+    ),
     hints: hints,
     executor: executor,
     runSession: runSession,
@@ -914,6 +917,9 @@ class _Loop {
             emit(_ev(AssistantEventType.textDelta, text: t));
           },
           isCancelled: () => ar.cancel.isCancelled,
+          selectionStart: hints.selectionStart,
+          selectionLength: hints.selectionLength,
+          selectionText: hints.selectionText,
         ),
       );
     } on AiCancelledException {

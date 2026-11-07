@@ -140,6 +140,15 @@ void main() {
         expect(op.kind, DocumentOpKind.aiEdit);
         expect(op.onBehalfOfSessionId, client.init.sessionId);
         expect(op.groupId, events.first.runId);
+        // A gap fill (or a reconnect) carries the run too, so the edit
+        // still joins the run's undo step (Write 09 §5.2).
+        client.send(
+          DocRequestOps(fromRevision: op.revision, toRevision: op.revision),
+        );
+        final refilled = await client.next<DocRemoteOp>();
+        expect(refilled.revision, op.revision);
+        expect(refilled.onBehalfOfSessionId, client.init.sessionId);
+        expect(refilled.groupId, events.first.runId);
         await client.close();
 
         // Request shape: tools → frozen system prompt → snapshot first,
@@ -299,8 +308,8 @@ void main() {
     );
 
     test(
-      'when a call would delete most of the document then the user must '
-      'confirm it',
+      'when a call would delete most of the document then it is suggested '
+      'without asking for confirmation',
       () async {
         doc = await TestDrive.document(
           endpoints,
@@ -321,72 +330,20 @@ void main() {
                 .response,
           )
           ..enqueue((AiScript()..text('Deleted.')).response);
-        final events = <AssistantEvent>[];
-        final done = Completer<void>();
-        chat('Delete everything').listen(
-          (e) {
-            events.add(e);
-            if (e.type == AssistantEventType.confirmationRequired) {
-              unawaited(
-                endpoints.assistant.confirm(
-                  anna.endpointSession,
-                  e.runId!,
-                  e.confirmationId!,
-                  true,
-                ),
-              );
-            }
-          },
-          onDone: done.complete,
+        final events = await chat('Delete everything').toList();
+
+        expect(
+          events.map((e) => e.type),
+          isNot(contains(AssistantEventType.confirmationRequired)),
         );
-        await done.future;
-        final ask = events.firstWhere(
-          (e) => e.type == AssistantEventType.confirmationRequired,
+        final finished = events.firstWhere(
+          (e) => e.type == AssistantEventType.toolFinished,
         );
-        expect(ask.toolSummary, contains('delete'));
+        expect(finished.toolError, isFalse);
         expect(
           await _markdown(endpoints, anna, doc),
           isNot(contains('old plan')),
         );
-      },
-    );
-
-    test(
-      'when the user denies a destructive call then nothing is deleted',
-      () async {
-        doc = await TestDrive.document(
-          endpoints,
-          anna,
-          markdown: '# Plan\n\n${'More words. ' * 60}\n',
-        );
-        fake
-          ..enqueue(
-            (AiScript()
-                  ..toolUse('d', 'write_delete_range', {
-                    'range': {'type': 'all'},
-                  })
-                  ..stop(AiStopReason.toolUse))
-                .response,
-          )
-          ..enqueue((AiScript()..text('Okay, I kept it.')).response);
-        final before = await _markdown(endpoints, anna, doc);
-        final done = Completer<void>();
-        chat('Delete everything').listen((e) {
-          if (e.type == AssistantEventType.confirmationRequired) {
-            unawaited(
-              endpoints.assistant.confirm(
-                anna.endpointSession,
-                e.runId!,
-                e.confirmationId!,
-                false,
-              ),
-            );
-          }
-        }, onDone: done.complete);
-        await done.future;
-        expect(await _markdown(endpoints, anna, doc), before);
-        final result = fake.requests[1].messages.last.toolResults.single;
-        expect(result.result, contains('denied_by_user'));
       },
     );
 
@@ -546,53 +503,6 @@ void main() {
 
           expect(events.last.type, AssistantEventType.done);
           expect(events.last.errorCode, 'stopped');
-        },
-      );
-
-      test(
-        'when a confirmation is relayed from another instance then the run '
-        'continues with it',
-        () async {
-          doc = await TestDrive.document(
-            endpoints,
-            anna,
-            markdown: '# Plan\n\n${'More words. ' * 60}\n',
-          );
-          fake
-            ..enqueue(
-              (AiScript()
-                    ..toolUse('d', 'write_delete_range', {
-                      'range': {'type': 'all'},
-                    })
-                    ..stop(AiStopReason.toolUse))
-                  .response,
-            )
-            ..enqueue((AiScript()..text('Deleted.')).response);
-          final done = Completer<void>();
-          chat('Delete everything').listen((e) {
-            if (e.type == AssistantEventType.confirmationRequired) {
-              unawaited(
-                anna.session.messages.postMessage(
-                  Cluster.signalChannel,
-                  fromElsewhere(
-                    Cluster.build(
-                      'assistant.confirm',
-                      userId: anna.id,
-                      runId: e.runId,
-                      confirmationId: e.confirmationId,
-                      allow: true,
-                    ),
-                  ),
-                ),
-              );
-            }
-          }, onDone: done.complete);
-          await done.future;
-
-          expect(
-            await _markdown(endpoints, anna, doc),
-            isNot(contains('More words')),
-          );
         },
       );
 

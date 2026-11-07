@@ -48,6 +48,9 @@ class QuickActionContext {
     required this.text,
     required this.isCancelled,
     this.userId,
+    this.selectionStart,
+    this.selectionLength,
+    this.selectionText,
   });
 
   final Session session;
@@ -77,6 +80,26 @@ class QuickActionContext {
 
   final bool Function() isCancelled;
   final int? userId;
+
+  /// The user's selection (the request's hints; offsets of the client's
+  /// revision, resolved against the head by [WriteQuickActions.rangeOf]).
+  /// No selection: the action works on the whole document.
+  final int? selectionStart;
+  final int? selectionLength;
+  final String? selectionText;
+}
+
+/// The part of the document a quick action works on: the user's selection
+/// (Delta offsets of the head).
+class QuickActionRange {
+  const QuickActionRange(this.start, this.length);
+
+  final int start;
+  final int length;
+
+  /// Whether `[s, s + l)` touches the range.
+  bool overlaps(int s, int l) =>
+      s < start + length && s + (l == 0 ? 1 : l) > start;
 }
 
 /// The Write assistant's quick actions (Write 09 §5.5): Summarize,
@@ -103,15 +126,41 @@ abstract final class WriteQuickActions {
 
   /// The instruction stored in the thread for [action] (the hidden user
   /// turn that keeps the conversation valid for later chat messages).
-  static String historyMessage(AssistantQuickAction action) => switch (action) {
-    AssistantQuickAction.summarize => 'Summarize the document.',
-    AssistantQuickAction.proofread =>
-      'Proofread the document and suggest small corrections.',
-    AssistantQuickAction.addressComments =>
-      'Address the open comments with suggestions.',
-    AssistantQuickAction.applyStyle =>
-      "Rewrite the document to follow its style guide, as suggestions.",
-  };
+  static String historyMessage(
+    AssistantQuickAction action, {
+    bool selection = false,
+  }) {
+    final what = selection ? 'the selected text' : 'the document';
+    return switch (action) {
+      AssistantQuickAction.summarize => 'Summarize $what.',
+      AssistantQuickAction.proofread =>
+        'Proofread $what and suggest small corrections.',
+      AssistantQuickAction.addressComments =>
+        selection
+            ? 'Address the open comments on the selected text with '
+                  'suggestions.'
+            : 'Address the open comments with suggestions.',
+      AssistantQuickAction.applyStyle =>
+        'Rewrite $what to follow its style guide, as suggestions.',
+    };
+  }
+
+  /// The user's selection resolved against the head (its quote is located
+  /// near the client's offsets), or null: no selection, or its text is gone.
+  static QuickActionRange? rangeOf(QuickActionContext c, WriteDocContext ctx) {
+    final length = c.selectionLength;
+    if (length == null || length <= 0) return null;
+    final q = WriteContextBuilder.selection(
+      ctx,
+      start: c.selectionStart,
+      length: length,
+      text: c.selectionText,
+    );
+    if (q == null) return null;
+    final start = q.start.clamp(0, ctx.doc.length);
+    final end = (start + length).clamp(start, ctx.doc.length);
+    return end > start ? QuickActionRange(start, end - start) : null;
+  }
 
   /// Runs [action]; returns the result text (also streamed with
   /// [QuickActionContext.text]).
@@ -125,11 +174,18 @@ abstract final class WriteQuickActions {
       c.actor.userId,
       c.target.item.id!,
     );
+    // The selection when there is one, else the whole document.
+    final range = rangeOf(c, ctx);
     return switch (action) {
-      AssistantQuickAction.summarize => _summarize(c, ctx, style),
-      AssistantQuickAction.proofread => _proofread(c, ctx, style),
-      AssistantQuickAction.addressComments => _addressComments(c, ctx, style),
-      AssistantQuickAction.applyStyle => _applyStyle(c, ctx, style),
+      AssistantQuickAction.summarize => _summarize(c, ctx, style, range),
+      AssistantQuickAction.proofread => _proofread(c, ctx, style, range),
+      AssistantQuickAction.addressComments => _addressComments(
+        c,
+        ctx,
+        style,
+        range,
+      ),
+      AssistantQuickAction.applyStyle => _applyStyle(c, ctx, style, range),
     };
   }
 
@@ -176,10 +232,26 @@ abstract final class WriteQuickActions {
     QuickActionContext c,
     WriteDocContext ctx,
     ResolvedStyleGuide? style,
+    QuickActionRange? range,
   ) async {
     if (ctx.markdown.trim().isEmpty) {
       return _say(c, 'The document is empty, so there is nothing to sum up.');
     }
+    const max = WriteContextBuilder.largeTokenLimit * 4;
+    final selected = range == null
+        ? null
+        : ctx.doc.text
+              .substring(range.start, range.start + range.length)
+              .replaceAll('\uFFFC', '');
+    final source = selected == null
+        ? '<document title="${UntrustedText.attribute(ctx.title)}">\n'
+              '${UntrustedText.escape(_documentMarkdown(ctx), 'document')}\n'
+              '</document>\n'
+              'Summarize the document.'
+        : '<selection document_title="${UntrustedText.attribute(ctx.title)}">'
+              '\n${UntrustedText.escape(selected.length <= max ? selected : '${selected.substring(0, max)}\n…', 'selection')}\n'
+              '</selection>\n'
+              'Summarize the selected text (a part of the document).';
     final out = StringBuffer();
     final r = await c.send(
       _request(
@@ -187,12 +259,7 @@ abstract final class WriteQuickActions {
         system: WritePrompts.quickSummarize,
         maxTokens: 4000,
         feature: 'summarize',
-        user:
-            '${styleContext(style)}'
-            '<document title="${UntrustedText.attribute(ctx.title)}">\n'
-            '${UntrustedText.escape(_documentMarkdown(ctx), 'document')}\n'
-            '</document>\n'
-            'Summarize the document.',
+        user: '${styleContext(style)}$source',
       ),
       onText: (t) {
         out.write(t);
@@ -208,10 +275,22 @@ abstract final class WriteQuickActions {
     QuickActionContext c,
     WriteDocContext ctx,
     ResolvedStyleGuide? style,
+    QuickActionRange? range,
   ) async {
-    final sections = ProofreadService.split(ctx);
+    // A selection: the paragraphs it touches are sent, and only corrections
+    // inside it are kept.
+    final sections = ProofreadService.split(
+      ctx,
+      start: range?.start,
+      length: range?.length,
+    );
     if (sections.isEmpty) {
-      return _say(c, 'The document is empty, so there is nothing to check.');
+      return _say(
+        c,
+        range == null
+            ? 'The document is empty, so there is nothing to check.'
+            : 'The selection has no text to check.',
+      );
     }
     final issues = <ProofreadIssue>[];
     var done = 0;
@@ -239,10 +318,16 @@ abstract final class WriteQuickActions {
     // Small corrections only: drop rewrites the model reported anyway.
     final small = [
       for (final i in issues)
-        if (_isSmall(i.quote, i.replacement)) i,
+        if (_isSmall(i.quote, i.replacement) &&
+            (range == null || range.overlaps(i.start, i.length)))
+          i,
     ]..sort((a, b) => a.start.compareTo(b.start));
     if (small.isEmpty) {
-      return _say(c, 'No spelling, grammar or punctuation problems found.');
+      return _say(
+        c,
+        'No spelling, grammar or punctuation problems found'
+        '${range == null ? '' : ' in the selection'}.',
+      );
     }
     final applied = <ProofreadIssue>[];
     // Back to front: an earlier suggestion never moves a later quote's
@@ -343,6 +428,7 @@ abstract final class WriteQuickActions {
     QuickActionContext c,
     WriteDocContext ctx,
     ResolvedStyleGuide? style,
+    QuickActionRange? range,
   ) async {
     if (style == null) {
       throw const QuickActionException(
@@ -351,9 +437,19 @@ abstract final class WriteQuickActions {
             'style again.',
       );
     }
-    final sections = ProofreadService.split(ctx, limit: styleSectionWords);
+    final sections = ProofreadService.split(
+      ctx,
+      start: range?.start,
+      length: range?.length,
+      limit: styleSectionWords,
+    );
     if (sections.isEmpty) {
-      return _say(c, 'The document is empty, so there is nothing to restyle.');
+      return _say(
+        c,
+        range == null
+            ? 'The document is empty, so there is nothing to restyle.'
+            : 'The selection has no text to restyle.',
+      );
     }
     final edits = <_LocatedEdit>[];
     var done = 0;
@@ -374,7 +470,10 @@ abstract final class WriteQuickActions {
               'style guide and call $editsTool once.',
         ),
       );
-      edits.addAll(_locate(ctx, s, r, editsTool));
+      edits.addAll([
+        for (final e in _locate(ctx, s, r, editsTool))
+          if (range == null || range.overlaps(e.start, e.quote.length)) e,
+      ]);
       done++;
       if (sections.length > 1) {
         c.progress(
@@ -383,7 +482,11 @@ abstract final class WriteQuickActions {
       }
     }, isCancelled: c.isCancelled);
     if (edits.isEmpty) {
-      return _say(c, 'The document already follows “${style.name}”.');
+      return _say(
+        c,
+        '${range == null ? 'The document' : 'The selection'} already follows '
+        '“${style.name}”.',
+      );
     }
     final applied = await _applyEdits(c, edits);
     if (applied.isEmpty) {
@@ -481,6 +584,7 @@ abstract final class WriteQuickActions {
     QuickActionContext c,
     WriteDocContext ctx,
     ResolvedStyleGuide? style,
+    QuickActionRange? range,
   ) async {
     final out = await c.executor.call(
       ToolContext(
@@ -497,10 +601,18 @@ abstract final class WriteQuickActions {
       if (raw is List)
         for (final t in raw)
           // Suggestion discussions are not comments to address.
-          if (t is Map && t['suggestion_id'] == null) t.cast<String, Object?>(),
+          if (t is Map &&
+              t['suggestion_id'] == null &&
+              (range == null || _anchoredIn(t['anchor'], range)))
+            t.cast<String, Object?>(),
     ];
     if (threads.isEmpty) {
-      return _say(c, 'There are no open comments to address.');
+      return _say(
+        c,
+        range == null
+            ? 'There are no open comments to address.'
+            : 'There are no open comments on the selected text.',
+      );
     }
     final byUuid = {for (final t in threads) '${t['thread_uuid']}': t};
     final compact = [
@@ -619,6 +731,14 @@ abstract final class WriteQuickActions {
       }
     }
     return _say(c, b.toString().trimRight());
+  }
+
+  /// Whether a thread's anchor (`{start, length}`) touches [range].
+  static bool _anchoredIn(Object? anchor, QuickActionRange range) {
+    if (anchor is! Map) return false;
+    final s = anchor['start'];
+    final l = anchor['length'];
+    return s is int && l is int && range.overlaps(s, l);
   }
 
   // ---------------------------------------------------------------- helpers

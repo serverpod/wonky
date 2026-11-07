@@ -10,6 +10,7 @@ import 'package:wonky_server/src/platform/ai/ai_config.dart';
 import 'package:wonky_server/src/platform/ai/assistant_service.dart';
 import 'package:wonky_server/src/platform/ai/llm/ai_client.dart';
 import 'package:wonky_server/src/platform/ai/llm/fake_ai_client.dart';
+import 'package:wonky_server/src/platform/cluster/cluster.dart';
 import 'package:wonky_server/src/platform/common/models.dart';
 import 'package:wonky_server/src/platform/revlog/headless_file_cache.dart';
 import 'package:wonky_server/src/sheets/headless/headless_workbook_provider.dart';
@@ -283,6 +284,57 @@ void main() {
           endpoints.sheetsAi.getPreview(anna.endpointSession, ready.previewId!),
           throwsA(isA<WonkyException>()),
         );
+      },
+    );
+
+    test(
+      'when the confirmation is relayed from another instance (specs/13 §4) '
+      'then the run continues with it',
+      () async {
+        Cluster.debugDistributed = true;
+        addTearDown(() => Cluster.debugDistributed = null);
+        await mcp.call('sheets.add_sheet', {
+          'spreadsheet': ss,
+          'name': 'Scratch',
+        });
+        fake
+          ..enqueue(
+            (AiScript()
+                  ..toolUse('d', 'sheets_delete_sheet', {'sheet': 'Scratch'}))
+                .response,
+          )
+          ..enqueue((AiScript()..text('Deleted.')).response);
+        final done = Completer<void>();
+        endpoints.assistant
+            .chat(
+              anna.endpointSession,
+              null,
+              UuidValue.fromString(ss),
+              'Delete Scratch',
+              _hints(),
+            )
+            .listen((e) {
+              if (e.type == AssistantEventType.confirmationRequired) {
+                unawaited(
+                  anna.session.messages.postMessage(
+                    Cluster.signalChannel,
+                    Cluster.build(
+                      'assistant.confirm',
+                      userId: anna.id,
+                      runId: e.runId,
+                      confirmationId: e.confirmationId,
+                      allow: true,
+                    ).copyWith(originInstance: 'another-instance'),
+                  ),
+                );
+              }
+            }, onDone: done.complete);
+        await done.future;
+
+        final info = await mcp.call('sheets.get_spreadsheet', {
+          'spreadsheet': ss,
+        });
+        expect((info['sheets'] as List), hasLength(1));
       },
     );
 

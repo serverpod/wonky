@@ -17,10 +17,14 @@ import '../../../support/test_drive.dart';
 import '../../../support/test_users.dart';
 import '../../../support/wonky_serverpod.dart';
 
-AssistantContextHints _hints() => AssistantContextHints(
-  applyMode: AiApplyMode.edit,
-  includeComments: false,
-);
+AssistantContextHints _hints({int? start, int? length, String? text}) =>
+    AssistantContextHints(
+      applyMode: AiApplyMode.edit,
+      includeComments: false,
+      selectionStart: start,
+      selectionLength: length,
+      selectionText: text,
+    );
 
 void main() {
   late FakeAiModelClient fake;
@@ -57,9 +61,33 @@ void main() {
     Future<List<AssistantEvent>> quick(
       AssistantQuickAction action, {
       int? threadId,
+      AssistantContextHints? hints,
     }) => endpoints.assistant
-        .quickAction(anna.endpointSession, threadId, doc.uuid, action, _hints())
+        .quickAction(
+          anna.endpointSession,
+          threadId,
+          doc.uuid,
+          action,
+          hints ?? _hints(),
+        )
         .toList();
+
+    /// Hints selecting the first [text] of the document.
+    Future<AssistantContextHints> selecting(String text) async {
+      final s = await endpoints.document.getSnapshot(
+        anna.endpointSession,
+        doc.contentRef!,
+        null,
+      );
+      final plain = DeltaUtils.text(
+        Delta.fromJson(jsonDecode(s.deltaJson) as List),
+      );
+      return _hints(
+        start: plain.indexOf(text),
+        length: text.length,
+        text: text,
+      );
+    }
 
     Future<List<SuggestionInfo>> suggestions() async {
       final s = await endpoints.document.getSnapshot(
@@ -100,6 +128,72 @@ void main() {
           events.first.threadId!,
         );
         expect(thread.messages.map((m) => m.role), ['assistant']);
+      },
+    );
+
+    test(
+      'when text is selected then Summarize sends only the selection',
+      () async {
+        fake.enqueue((AiScript()..text('No risks are known.')).response);
+
+        await quick(
+          AssistantQuickAction.summarize,
+          hints: await selecting('None known.'),
+        );
+
+        final sent = fake.requests.single.messages.single.text;
+        expect(sent, contains('None known.'));
+        expect(sent, contains('<selection'));
+        expect(sent, isNot(contains('budjet')));
+      },
+    );
+
+    test(
+      'when text is selected then Proofread checks only the paragraphs it '
+      'touches and suggests only corrections inside it',
+      () async {
+        fake.enqueue(
+          (AiScript()..toolUse('p', 'report_issues', {
+                'issues': [
+                  {
+                    'quote': 'None known',
+                    'occurrence': 1,
+                    'replacement': 'None are known',
+                    'category': 'grammar',
+                    'explanation': 'Complete sentence',
+                  },
+                ],
+              }))
+              .response,
+        );
+
+        await quick(
+          AssistantQuickAction.proofread,
+          hints: await selecting('None known.'),
+        );
+
+        expect(fake.requests, hasLength(1));
+        final sent = fake.requests.single.messages.single.text;
+        expect(sent, contains('None known.'));
+        expect(sent, isNot(contains('budjet')));
+        final s = await suggestions();
+        expect(s, isNotEmpty);
+      },
+    );
+
+    test(
+      'when the selected text is gone then the whole document is proofread',
+      () async {
+        fake.enqueue(
+          (AiScript()..toolUse('p', 'report_issues', {'issues': []})).response,
+        );
+
+        await quick(
+          AssistantQuickAction.proofread,
+          hints: _hints(start: 3, length: 9, text: 'not there'),
+        );
+
+        expect(fake.requests.single.messages.single.text, contains('budjet'));
       },
     );
 

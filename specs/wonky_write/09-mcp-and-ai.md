@@ -87,7 +87,7 @@ Error codes (`isError: true`, payload `{code, message, details}`):
 | `validation_failed` | The resulting document would violate the schema (details from `WonkyDeltaValidator`) |
 | `too_large` | Result exceeds `write.maxDocumentChars`, or input Markdown > 1 MB |
 | `unsupported_in_suggest_mode` | e.g. `apply_delta` with `mode: "suggest"` (only allowed if the delta is already suggestion-shaped) |
-| `needs_confirmation` | AI only, destructive guard (§6.6) |
+| `needs_confirmation` | AI only; not used in Write since 2026-11 (§5.8) |
 | `rate_limited` | Suite rate limits |
 
 ### 1.4 Execution model and concurrency
@@ -375,8 +375,7 @@ step for the rest of the run); the step is relabelled "AI: <summary>" when the r
 preview card tracks its range by the anchored text (moved text is found again; changed text
 sets "The original text changed"). Continue writing shows the continuation in a ghost card at
 the caret (Tab/Enter accept, Esc discards, typing discards and types) rather than inline in the
-text layout. The destructive guard exempts documents shorter than 400 characters from the 30 %
-rule. Commands live in `wonky_write/lib/features/ai/ai_commands.dart`.
+text layout. Commands live in `wonky_write/lib/features/ai/ai_commands.dart`.
 
 ### 5.1 Model usage
 
@@ -474,6 +473,13 @@ action's instruction is stored as a hidden user turn (with the document snapshot
 a thread) and its result as the assistant's answer, so the user can follow up in chat
 (`assistant.quickAction`, suite 10 §6).
 
+**Scope: the selection, else the whole document.** With text selected (the panel's selection
+chip, also for the menu commands; removing the chip means the whole document), the server
+resolves the selection against the head (its quote near the client's offsets) and: Summarize
+sends only the selected text; Proofread and Apply style send the paragraphs the selection
+touches and keep only edits that touch the selection; Address comments handles only threads
+anchored in the selection. A selection whose text is gone falls back to the whole document.
+
 - **Summarize** (`write.ai.summarizeDocument`, Viewer): a one-sentence description plus 3–7
   bullets, streamed into the panel (*Insert at cursor*, *Copy*).
 - **Proofread** (`write.ai.proofreadDocument`, Commenter): sections of ≤ 8,000 words; the model
@@ -556,9 +562,10 @@ Points the prompt must cover:
 
 ### 5.8 Safety and guards
 
-- **Destructive guard**: a single assistant tool call that would delete > 2,000 characters or >
-  30 % of the document returns `needs_confirmation`; the panel shows "The assistant wants to
-  delete 4 paragraphs (Budget, Risks…) — *Allow* / *Deny*"; *Allow* re-executes the call (once).
+- **No destructive guard in Write** (2026-11): the assistant's edits are always suggestions the
+  user reviews, and a run is one undo step, so a large edit is made without asking. (It used to
+  return `needs_confirmation` above 2,000 deleted characters or 30 % of the document; Sheets and
+  Slides keep their confirmations, suite 10 §1.)
 - AI cannot change sharing, delete files, or act on documents other than the open one (schema
   binding + server check).
 - Usage budgets, concurrency and opt-out per suite; the panel shows the "content is sent to
@@ -644,8 +651,9 @@ The same `document_edits.dart` builders back the client commands (e.g. *Insert t
    undo step; Suggest apply mode produces suggestions with the ✨ badge; preview overlay survives
    concurrent remote edits.
 8. Assistant runs: all ops of one run undo as one step on the requesting client; the assistant
-   cannot call disallowed tools (server rejects even if the model tries); destructive guard
-   prompts the user.
+   cannot call disallowed tools (server rejects even if the model tries); a large edit is
+   suggested without a confirmation prompt (§5.8); an op of the run that reaches the client
+   through a gap fill or a reconnect still joins the run's step.
 9. Proofread on a 30-page document suggests only small corrections, each exactly at the quoted
    text; the quick actions make one model round trip per section on the fast model and show no
    prompt in the chat.
@@ -663,7 +671,7 @@ The same `document_edits.dart` builders back the client commands (e.g. *Insert t
   deltas, reasoning, tool calls, refusal, max_tokens); the dartantic stream accumulator and
   legacy-history conversion unit tested; key resolution (server > user > none) and the
   personal-key endpoints; context builder snapshot tests (small/large docs); proofread chunking
-  and quote validation; allowlist enforcement; destructive guard. Gemini replay through the real
+  and quote validation; allowlist enforcement. Gemini replay through the real
   dartantic mapper with a mocked API (`test/support/ai/gemini_sse.dart`: thought signatures in
   the same run and from stored history, `assistant_reliability_test.dart`), history repair of
   interrupted runs, the quick actions (`write/ai/quick_actions_test.dart`: one fast low-effort

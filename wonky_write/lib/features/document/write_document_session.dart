@@ -914,14 +914,17 @@ class WriteDocumentSession extends ChangeNotifier {
   }
 
   /// A remote (or fix-up / resync) change was applied to the editor:
-  /// rebase the undo and redo stacks over it (Write 03 §4).
-  void _afterRemoteChange(Delta change) {
+  /// rebase the undo and redo stacks over it (Write 03 §4). A [fixup] loses
+  /// conflicts to the stacks: undoing the own op still clears the
+  /// suggestion marks the server restamped.
+  void _afterRemoteChange(Delta change, {bool fixup = false}) {
     final stack = undoStackKey;
     final undo = services.undo;
     final rebased = rebaseWriteStacks(
       undo.undoStepsOf(stack),
       undo.redoStepsOf(stack),
       change,
+      fixup: fixup,
     );
     if (rebased != null) undo.applyRemote(stack, rebased);
     _contentVersion.value++;
@@ -1258,7 +1261,10 @@ class _SessionHost implements SyncDocumentHost {
       session.aiUndo.record(change, before, info.groupId!);
       session._contentVersion.value++;
     } else {
-      session._afterRemoteChange(change);
+      session._afterRemoteChange(
+        change,
+        fixup: info.origin == RemoteChangeOrigin.fixup,
+      );
     }
   }
 

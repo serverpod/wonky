@@ -330,6 +330,8 @@ class DocumentConnection {
           actorKind: o.actorKind,
           kind: o.kind,
           sessionId: o.sessionId,
+          onBehalfOfSessionId: o.onBehalfOfSessionId,
+          groupId: o.groupId,
           createdAt: o.createdAt,
         ),
     ];
@@ -549,6 +551,8 @@ class DocumentConnection {
                 authorSessionId: v.sessionId,
                 actorKind: v.actorKind,
                 kind: v.kind,
+                onBehalfOfSessionId: v.onBehalfOfSessionId,
+                groupId: v.groupId,
               ),
             );
           }

@@ -48,7 +48,7 @@ prefix to keep the client namespace clean: `DocSubmitOp`, `DocCursorUpdate`, `Do
 |---------|--------|---------|
 | `Init` | `revision`, `snapshotJson?`, `ops[]?`, `meta`, `role`, `participants[]` | Snapshot (if client is too far behind) or ops since `knownRevision` |
 | `Ack` | `clientOpId`, `revision` | Your op was applied as `revision` |
-| `RemoteOp` | `revision`, `deltaJson`, `authorId`, `authorSessionId`, `actorKind`, `onBehalfOfSessionId?`, `groupId?` | Someone else's op (already transformed to apply on `revision-1`). For AI/MCP ops executed server-side on behalf of a user's live session, `onBehalfOfSessionId` lets that session put the op on its own undo stack (grouped by `groupId`) — see [09 §5.2](09-mcp-and-ai.md) |
+| `RemoteOp` | `revision`, `deltaJson`, `authorId`, `authorSessionId`, `actorKind`, `onBehalfOfSessionId?`, `groupId?` | Someone else's op (already transformed to apply on `revision-1`). For AI/MCP ops executed server-side on behalf of a user's live session, `onBehalfOfSessionId` lets that session put the op on its own undo stack (grouped by `groupId`) — see [09 §5.2](09-mcp-and-ai.md). Both are stored on `DocumentOp`, so gap fills (`RequestOps`) and the ops of `Init` (`DocumentOpView`) carry them too: an op of a run that arrives that way still joins the run's step |
 | `RemoteCursor` | `sessionId`, `userId`, `revision`, `anchor`, `head`, `focused` | Collaborator selection |
 | `ParticipantJoined` / `ParticipantLeft` | participant / sessionId | Write-local presence (mirrors shared presence roster) |
 | `MetaChanged` | `field`, `valueJson`, `authorId` | Theme/page setup/language/title changed |
@@ -222,7 +222,11 @@ an error with the op range for diagnosis.
 - On each applied remote op `R`: walk the undo stack from newest to oldest; for each entry `U`:
   `U' = R.transform(U, true)` and `R = U.transform(R, false)` (so `R` is expressed past `U` for
   the next older entry). Same for the redo stack. This is standard selective-undo rebasing;
-  entries that become empty are dropped.
+  entries that become empty are dropped. A **fix-up** (§3, the server's normalization of this
+  client's own op, e.g. restamped `sug_*` times) is rebased the other way round, `U' =
+  R.transform(U, false)`: the entries win attribute conflicts, so undoing the op still clears
+  the suggestion marks it set (an undo after a redo used to leave every deletion mark of an
+  AI suggestion behind).
 - Undo = submit `U` as a normal local op; push `invert(U)` on the redo stack.
 - Grouping: consecutive typing within 1 s in the same node without caret jumps, consecutive
   deletions likewise; formatting and structural commands are always separate steps; paste,
