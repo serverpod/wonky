@@ -1448,7 +1448,7 @@ is opened for a change nobody has seen working. The frame is added when the task
      defaults only; AI keys are optional).
   6. Pick a task: claim it, start the agent with the repository root as its working directory,
      give it the prompt and review the result. There is no step to start the server: since
-     Serverpod 4.1.0-rc.1 the agent starts it (and the development database and the apps)
+     Serverpod 4.1 the agent starts it (and the development database and the apps)
      through the `serverpod` MCP server (`.mcp.json` and the other agents' configs are in the
      repo); `serverpod start` in `wonky_server` attaches to it.
   7. Open a pull request (the agent helps): PR rules (§13.1), one task per PR, the

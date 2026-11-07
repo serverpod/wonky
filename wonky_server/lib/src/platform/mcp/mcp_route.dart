@@ -39,7 +39,8 @@ class McpRoute extends Route {
   @override
   Future<Result> handleCall(Session session, Request request) async {
     final headers = <String, String>{
-      for (final e in request.headers.entries) e.key: e.value.join(', '),
+      for (final name in request.headers.names)
+        name.lower: request.headers.values(name).join(', '),
     };
     final method = request.method.name.toUpperCase();
     // Header checks and the token first: a refused request never buffers
