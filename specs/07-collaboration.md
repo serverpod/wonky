@@ -211,6 +211,13 @@ fields:
   point at the item's URL by kind (`<web origin>/write/d/<uuid>`, `/sheets/s/…`, (v2)
   `/slides/p/…`, `/drive/file/…`, `WonkyConfig.itemUrl`, 01 §2.4) and the footer at
   Wonky Work settings › Notifications. (v2) `storage` notifications are in-app only.
+- **Share emails** ([06 §4](06-sharing-and-permissions.md)): a share with *Send an email*
+  emails each newly added person right away (`ShareEmailFutureCall`): existing users the
+  "<name> shared “<title>” with you" email (category `share`; the `shared` notification is
+  created as emailed, so the digest skips it unless the send failed and *shares* is `email`;
+  *shares* `off` sends nothing), addresses without an account an invitation to sign up
+  (category `invite`, rate-limited per sender). Templates in `email/share_emails.dart` (text +
+  inline-styled HTML, the same light design as the notification emails).
 - Sending is pluggable (`EmailSender` in `platform/notifications/email/`): the
   [Resend](https://resend.com) HTTP API when the passwords `resendApiKey` and `emailFrom` are
   set, otherwise `LoggingEmailSender` logs the email (development; the Serverpod Cloud email

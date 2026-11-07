@@ -21,15 +21,7 @@ class NotificationEmails {
     final board = boardPathOf(n.payload);
     if (board != null) return webOrigin.replace(path: '/drive$board');
     final uuid = n.itemUuid?.uuid;
-    final path = switch ((uuid, n.itemKind)) {
-      (null, _) => '/drive/',
-      (_, DriveItemKind.spreadsheet) => '/sheets/s/$uuid',
-      (_, DriveItemKind.presentation) => '/slides/p/$uuid',
-      // (v2) Folders open in Wonky Drive (suite 03 §2), files in its preview.
-      (_, DriveItemKind.folder) => '/drive/f/$uuid',
-      (_, DriveItemKind.file) => '/drive/file/$uuid',
-      _ => '/write/d/$uuid',
-    };
+    final path = uuid == null ? '/drive/' : itemPath(n.itemKind, uuid);
     // Spreadsheet comments link to their cell (Sheets 10 §3.6), deck
     // comments to their slide and element (Slides 09 §3.4).
     if (n.itemKind == DriveItemKind.spreadsheet ||
@@ -44,6 +36,25 @@ class NotificationEmails {
     }
     return webOrigin.replace(path: path);
   }
+
+  /// The web path of an item: `/<app>/<route>/<uuid>`.
+  static String itemPath(DriveItemKind? kind, String uuid) {
+    final (app, route) = appRoute(kind, uuid);
+    return '/$app$route';
+  }
+
+  /// The app (`write`, `sheets`, `slides`, `drive`) and the route within it
+  /// of an item.
+  static (String, String) appRoute(DriveItemKind? kind, String uuid) =>
+      switch (kind) {
+        DriveItemKind.spreadsheet => ('sheets', '/s/$uuid'),
+        DriveItemKind.presentation => ('slides', '/p/$uuid'),
+        // (v2) Folders open in Wonky Drive (suite 03 §2), files in its
+        // preview.
+        DriveItemKind.folder => ('drive', '/f/$uuid'),
+        DriveItemKind.file => ('drive', '/file/$uuid'),
+        _ => ('write', '/d/$uuid'),
+      };
 
   /// The board path of a board notification (`/improvements/p/412` or
   /// `/improvements/t/12`), from the payload's `postNumber`/`taskNumber`.

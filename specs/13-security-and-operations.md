@@ -21,6 +21,7 @@
 | (v2) Uploaded active content (HTML/SVG/JS) executing in the app origin | Never rendered; downloads forced to `attachment` with `nosniff` and `CSP: sandbox` (§6) |
 | (v2) Storage/bandwidth abuse through uploads | 50 MB quota per user, reservations, pending-upload cap, upload rate limits (§6) |
 | (v2) Second presenting window (Slides, if adopted) | Opens only the audience route of the same deck, same origin, no other content; closed with the presentation (03 §1) |
+| Invitation spam through sharing (emails to arbitrary addresses) | Invitation emails per sender capped per hour and day (`sharing.inviteEmailsPerHour/PerDay`, 30/100; the share is refused before anything changes); only newly added people are emailed; emails name the sender by display name and never another person's address; the sender's message (≤ 1000 characters) and names are escaped; existing users can turn share emails off (06 §4) |
 | Brute-force login | Serverpod IDP rate limiting; generic error messages |
 | Test-support endpoint left open (E2E verification codes, 15 §9) | `e2eSupport` refuses every call outside the `development`/`test` run modes and only serves `@example.test` addresses; a server test asserts the refusal in `staging`/`production` |
 | (M12) Security vulnerabilities posted on the public board | The dialog points to `security@serverpod.dev` and `SECURITY.md`; Jev's `security` check holds at ≥ 0.5 and lists at ≥ 0.2 for admins ([16 §11](16-bugs-and-improvements.md)) |

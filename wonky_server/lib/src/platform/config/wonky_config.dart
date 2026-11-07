@@ -39,6 +39,8 @@ class WonkyConfig {
     this.publicWebUrl,
     this.publicApiUrl,
     this.busFlushMs = 1000,
+    this.inviteEmailsPerHour = 30,
+    this.inviteEmailsPerDay = 100,
   });
 
   /// The public origin of the web apps in production (`wonky.work`).
@@ -116,6 +118,13 @@ class WonkyConfig {
   /// (v2) Download traffic per user and day (`files.downloadBytesPerDay`,
   /// suite 13 §6: 2 GB), counted per instance.
   final int downloadBytesPerDay;
+
+  /// Invitation emails a person may send to addresses without an account
+  /// when sharing (`sharing.inviteEmailsPerHour`, `sharing.inviteEmailsPerDay`;
+  /// specs/06 §4, specs/13 §4): invites to arbitrary addresses are a spam
+  /// vector. 0 turns invitation emails off.
+  final int inviteEmailsPerHour;
+  final int inviteEmailsPerDay;
   final String minClientVersion;
   final String serverVersion;
 
@@ -259,6 +268,8 @@ class WonkyConfig {
       minClientVersion: s('minClientVersion', '3.0.0'),
       serverVersion: s('serverVersion', '3.0.0'),
       busFlushMs: i('cluster', 'busFlushMs', 1000),
+      inviteEmailsPerHour: i('sharing', 'inviteEmailsPerHour', 30),
+      inviteEmailsPerDay: i('sharing', 'inviteEmailsPerDay', 100),
       publicWebUrl:
           environment['WONKY_PUBLIC_WEB_URL'] ??
           (map['publicWebUrl'] as String?) ??

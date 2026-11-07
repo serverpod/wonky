@@ -3,9 +3,9 @@ import 'package:serverpod/serverpod.dart';
 
 /// A counter shared by all instances (specs/13 §4).
 abstract interface class RateCounter {
-  /// Increments [key] and returns the new count; the key expires after
-  /// [ttl] (set when it is created). Throws when unreachable.
-  Future<int> increment(String key, Duration ttl);
+  /// Increments [key] by [by] and returns the new count; the key expires
+  /// after [ttl] (set when it is created). Throws when unreachable.
+  Future<int> increment(String key, Duration ttl, {int by = 1});
 }
 
 /// [RateCounter] in Redis (`INCR` + `PEXPIRE`).
@@ -15,13 +15,13 @@ class RedisRateCounter implements RateCounter {
   final RedisController redis;
 
   @override
-  Future<int> increment(String key, Duration ttl) async {
+  Future<int> increment(String key, Duration ttl, {int by = 1}) async {
     final command = await redis.getConnection();
     if (command == null) throw StateError('Redis is unreachable.');
     try {
-      final count = await command.send_object(['INCR', key]);
-      if (count is! int) throw StateError('Unexpected INCR reply: $count');
-      if (count == 1) {
+      final count = await command.send_object(['INCRBY', key, '$by']);
+      if (count is! int) throw StateError('Unexpected INCRBY reply: $count');
+      if (count == by) {
         await command.send_object(['PEXPIRE', key, '${ttl.inMilliseconds}']);
       }
       return count;
@@ -75,10 +75,13 @@ class RateLimiter {
 
   /// Records a call for [key]; returns the retry delay when over the limit
   /// ([limit] overrides the configured one, e.g. from a reloaded config).
-  Future<Duration?> check(Object key, {int? limit}) async {
+  /// [cost] counts the call as that many (a batch of invite emails); a
+  /// refused call is not counted in memory, while the shared counter keeps
+  /// it (errs on the side of the limit).
+  Future<Duration?> check(Object key, {int? limit, int cost = 1}) async {
     final max = limit ?? this.limit;
     final shared = counter;
-    if (shared == null) return hit(key, limit: max);
+    if (shared == null) return hit(key, limit: max, cost: cost);
     final now = clock.now();
     final ms = window.inMilliseconds;
     final slot = now.millisecondsSinceEpoch ~/ ms;
@@ -86,28 +89,33 @@ class RateLimiter {
       final count = await shared.increment(
         'wonky:$name:rate:$key:$slot',
         window * 2,
+        by: cost,
       );
       if (count <= max) return null;
       return Duration(
         milliseconds: (slot + 1) * ms - now.millisecondsSinceEpoch,
       );
     } on Object {
-      return hit(key, limit: max);
+      return hit(key, limit: max, cost: cost);
     }
   }
 
   /// Records a call for [key] in this instance's sliding window; returns
-  /// the retry delay when over the limit.
-  Duration? hit(Object key, {int? limit}) {
+  /// the retry delay when over the limit ([cost]: see [check]).
+  Duration? hit(Object key, {int? limit, int cost = 1}) {
     final max = limit ?? this.limit;
     final now = clock.now();
     _sweepIfDue(now);
     final list = _calls.putIfAbsent(key, () => []);
     list.removeWhere((t) => now.difference(t) >= window);
-    if (list.length >= max) {
-      return window - now.difference(list.first);
+    if (list.length + cost > max) {
+      // The call fits once enough of the oldest calls left the window.
+      if (cost > max) return window;
+      return window - now.difference(list[list.length + cost - max - 1]);
     }
-    list.add(now);
+    for (var i = 0; i < cost; i++) {
+      list.add(now);
+    }
     return null;
   }
 

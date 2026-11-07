@@ -22,6 +22,7 @@ import '../platform/notifications/notification_email_future_call.dart'
     as _i1dis1nt;
 import '../platform/publications/publication_future_call.dart' as _igy9pnc4;
 import '../platform/sharing/acl_future_call.dart' as _ivytsclb;
+import '../platform/sharing/share_email_future_call.dart' as _izw0dafh;
 import '../platform/storage/storage_future_call.dart' as _iel4dsm1;
 import '../sheets/scripts/script_scheduler_future_call.dart' as _iq0nfb3f;
 import 'future_calls_generated_models/acl_future_call_fan_out_model.dart'
@@ -42,6 +43,10 @@ import 'future_calls_generated_models/notification_email_future_call_send_model.
     as _inb6x2l0;
 import 'future_calls_generated_models/publications_future_call_deliver_model.dart'
     as _il37cz87;
+import 'future_calls_generated_models/share_email_future_call_invite_model.dart'
+    as _ipjncc3j;
+import 'future_calls_generated_models/share_email_future_call_shared_model.dart'
+    as _iw592n88;
 import 'future_calls_generated_models/storage_future_call_refresh_item_size_model.dart'
     as _io4auc29;
 
@@ -105,6 +110,8 @@ class FutureCalls extends _is.FutureCallDispatch<_FutureCallRef> {
       'PublicationsDeliverFutureCall': PublicationsDeliverFutureCall(),
       'PublicationsSweepFutureCall': PublicationsSweepFutureCall(),
       'AclFanOutFutureCall': AclFanOutFutureCall(),
+      'ShareEmailSharedFutureCall': ShareEmailSharedFutureCall(),
+      'ShareEmailInviteFutureCall': ShareEmailInviteFutureCall(),
       'StorageBackfillFutureCall': StorageBackfillFutureCall(),
       'StorageReconcileFutureCall': StorageReconcileFutureCall(),
       'StorageRefreshItemSizeFutureCall': StorageRefreshItemSizeFutureCall(),
@@ -247,6 +254,8 @@ class _FutureCallRef {
   );
 
   late final acl = _AclFutureCallDispatcher(_invokeFutureCall);
+
+  late final shareEmail = _ShareEmailFutureCallDispatcher(_invokeFutureCall);
 
   late final storage = _StorageFutureCallDispatcher(_invokeFutureCall);
 
@@ -440,6 +449,36 @@ class _AclFutureCallDispatcher {
     );
     return _invokeFutureCall(
       'AclFanOutFutureCall',
+      object,
+    );
+  }
+}
+
+class _ShareEmailFutureCallDispatcher {
+  _ShareEmailFutureCallDispatcher(this._invokeFutureCall);
+
+  final _InvokeFutureCall _invokeFutureCall;
+
+  Future<void> shared(int notificationId) {
+    var object = _iw592n88.ShareEmailFutureCallSharedModel(
+      notificationId: notificationId,
+    );
+    return _invokeFutureCall(
+      'ShareEmailSharedFutureCall',
+      object,
+    );
+  }
+
+  Future<void> invite(
+    int permissionId,
+    String? message,
+  ) {
+    var object = _ipjncc3j.ShareEmailFutureCallInviteModel(
+      permissionId: permissionId,
+      message: message,
+    );
+    return _invokeFutureCall(
+      'ShareEmailInviteFutureCall',
       object,
     );
   }
@@ -754,6 +793,43 @@ class AclFanOutFutureCall
         object.itemId,
         object.kind,
         object.affectedUsers,
+      );
+    }
+  }
+}
+
+class ShareEmailSharedFutureCall
+    extends _is.FutureCall<_iw592n88.ShareEmailFutureCallSharedModel>
+    implements
+        _is.InvokableFutureCall<_iw592n88.ShareEmailFutureCallSharedModel> {
+  @override
+  _ida.Future<void> invoke(
+    _is.Session session,
+    _iw592n88.ShareEmailFutureCallSharedModel? object,
+  ) async {
+    if (object != null) {
+      await _izw0dafh.ShareEmailFutureCall().shared(
+        session,
+        object.notificationId,
+      );
+    }
+  }
+}
+
+class ShareEmailInviteFutureCall
+    extends _is.FutureCall<_ipjncc3j.ShareEmailFutureCallInviteModel>
+    implements
+        _is.InvokableFutureCall<_ipjncc3j.ShareEmailFutureCallInviteModel> {
+  @override
+  _ida.Future<void> invoke(
+    _is.Session session,
+    _ipjncc3j.ShareEmailFutureCallInviteModel? object,
+  ) async {
+    if (object != null) {
+      await _izw0dafh.ShareEmailFutureCall().invite(
+        session,
+        object.permissionId,
+        object.message,
       );
     }
   }

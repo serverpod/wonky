@@ -18,6 +18,7 @@ import '../storage/storage_service.dart';
 import '../users/user_service.dart';
 import 'access_service.dart';
 import 'acl_events.dart';
+import 'share_email_service.dart';
 
 /// Sharing (specs/06 §2, §4). Sharing changes are not undoable.
 abstract final class SharingService {
@@ -272,6 +273,15 @@ abstract final class SharingService {
 
   /// Grants [role] to people by email. Unknown addresses become pending
   /// invites converted at sign-up.
+  ///
+  /// [notify] is the share dialog's *Send an email* (specs/06 §4): every
+  /// newly added person gets an email right away, an existing user a
+  /// "shared with you" email (with an in-app notification; nothing when
+  /// they turned shares off) and an address without an account an
+  /// invitation to sign up. Invitations count against the sender's hourly
+  /// and daily allowance (`sharing.inviteEmailsPerHour/PerDay`); over it the
+  /// share is refused before anything changes. Off: no notification, no
+  /// email.
   static Future<SharingInfo> share(
     Session session,
     Actor actor,
@@ -302,13 +312,39 @@ abstract final class SharingService {
         throw Errors.invalid('"$e" is not a valid email address.');
       }
     }
+    final note = message?.trim();
+    if (note != null && note.length > maxRequestMessage) {
+      throw Errors.invalid('The message is too long.');
+    }
     final profiles = await UserProfile.db.find(
       session,
       where: (t) => t.email.inSet(normalized),
     );
     final byEmail = {for (final p in profiles) p.email: p};
+    // Addresses without an account that are not invited yet get an
+    // invitation; the allowance is spent before anything changes.
+    final unknown = normalized.where((e) => !byEmail.containsKey(e)).toSet();
+    final emailInvites =
+        notify && unknown.isNotEmpty && ShareEmailService.invitesEnabled;
+    if (emailInvites) {
+      final invited = await DriveItemPermission.db.find(
+        session,
+        where: (t) =>
+            t.itemId.equals(item.id!) &
+            t.inheritedFromId.equals(null) &
+            t.invitedEmail.inSet(unknown),
+      );
+      final fresh = unknown.length - invited.length;
+      if (!await ShareEmailService.takeInvites(session, actor.userId, fresh)) {
+        throw Errors.limit(
+          "You've sent a lot of invitations recently. Try again later, or "
+          'turn off "Send an email" to share without one.',
+        );
+      }
+    }
     final now = nowUtc();
     final notified = <int>[];
+    final invites = <int>[];
     await session.db.transaction((tx) async {
       for (final email in normalized) {
         final profile = byEmail[email];
@@ -338,7 +374,7 @@ abstract final class SharingService {
             transaction: tx,
           );
         } else {
-          await DriveItemPermission.db.insertRow(
+          final grant = await DriveItemPermission.db.insertRow(
             session,
             DriveItemPermission(
               itemId: item.id!,
@@ -351,7 +387,11 @@ abstract final class SharingService {
             ),
             transaction: tx,
           );
-          if (profile != null) notified.add(profile.id!);
+          if (profile != null) {
+            notified.add(profile.id!);
+          } else {
+            invites.add(grant.id!);
+          }
         }
       }
       if (item.kind == DriveItemKind.folder) {
@@ -367,22 +407,54 @@ abstract final class SharingService {
     );
     await AclEvents.changed(session, item);
     if (notify) {
+      final text = note == null || note.isEmpty ? null : note;
       for (final userId in notified) {
-        await NotificationService.notify(
+        final row = await NotificationService.notify(
           session,
           userId: userId,
           kind: NotificationKind.shared,
           item: item,
           actor: actor,
-          payload: {
-            'role': role.name,
-            if (message != null && message.trim().isNotEmpty)
-              'message': message.trim(),
-          },
+          payload: {'role': role.name, 'message': ?text},
+          emailedNow: true,
         );
+        if (row != null) {
+          await _schedule(
+            session,
+            'share email of notification ${row.id}',
+            () => ShareEmailService.scheduleShared(session, row.id!),
+            onFailure: () => NotificationService.unclaimEmail(session, row.id!),
+          );
+        }
+      }
+      if (emailInvites) {
+        for (final id in invites) {
+          await _schedule(
+            session,
+            'invitation email of grant $id',
+            () => ShareEmailService.scheduleInvite(session, id, text),
+          );
+        }
       }
     }
     return getSharing(session, actor, itemUuid);
+  }
+
+  /// Runs [schedule] (a share email's future call); a failure is logged
+  /// and handed to [onFailure], never failing the share that already
+  /// happened.
+  static Future<void> _schedule(
+    Session session,
+    String what,
+    Future<void> Function() schedule, {
+    Future<void> Function()? onFailure,
+  }) async {
+    try {
+      await schedule();
+    } on Object catch (e) {
+      session.log('Could not schedule the $what: $e', level: LogLevel.warning);
+      await onFailure?.call();
+    }
   }
 
   static Future<SharingInfo> updateRole(

@@ -93,6 +93,10 @@ import 'future_calls_generated_models/notification_email_future_call_send_model.
     as _inb6x2l0;
 import 'future_calls_generated_models/publications_future_call_deliver_model.dart'
     as _il37cz87;
+import 'future_calls_generated_models/share_email_future_call_invite_model.dart'
+    as _ipjncc3j;
+import 'future_calls_generated_models/share_email_future_call_shared_model.dart'
+    as _iw592n88;
 import 'future_calls_generated_models/storage_future_call_refresh_item_size_model.dart'
     as _io4auc29;
 import 'platform/activity/activity_dashboard.dart' as _izr1y672;
@@ -862,6 +866,8 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ilpvgw0t.FilePreviewFutureCallGenerateModel>,
           _is.getType<_inb6x2l0.NotificationEmailFutureCallSendModel>,
           _is.getType<_il37cz87.PublicationsFutureCallDeliverModel>,
+          _is.getType<_ipjncc3j.ShareEmailFutureCallInviteModel>,
+          _is.getType<_iw592n88.ShareEmailFutureCallSharedModel>,
           _is.getType<_io4auc29.StorageFutureCallRefreshItemSizeModel>,
           _is.getType<_izr1y672.ActivityDashboard>,
           _is.getType<_iatdjl5p.ActivityEvent>,
@@ -1288,6 +1294,8 @@ class Protocol extends _is.DatabaseSerializationManager
           _is.getType<_ilpvgw0t.FilePreviewFutureCallGenerateModel?>,
           _is.getType<_inb6x2l0.NotificationEmailFutureCallSendModel?>,
           _is.getType<_il37cz87.PublicationsFutureCallDeliverModel?>,
+          _is.getType<_ipjncc3j.ShareEmailFutureCallInviteModel?>,
+          _is.getType<_iw592n88.ShareEmailFutureCallSharedModel?>,
           _is.getType<_io4auc29.StorageFutureCallRefreshItemSizeModel?>,
           _is.getType<_izr1y672.ActivityDashboard?>,
           _is.getType<_iatdjl5p.ActivityEvent?>,
@@ -1817,6 +1825,8 @@ class Protocol extends _is.DatabaseSerializationManager
           'FilePreviewFutureCallGenerateModel',
           'NotificationEmailFutureCallSendModel',
           'PublicationsFutureCallDeliverModel',
+          'ShareEmailFutureCallInviteModel',
+          'ShareEmailFutureCallSharedModel',
           'StorageFutureCallRefreshItemSizeModel',
           'ActivityDashboard',
           'ActivityEvent',
@@ -16086,6 +16096,12 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _il37cz87.PublicationsFutureCallDeliverModel) {
       return _il37cz87.PublicationsFutureCallDeliverModel.fromJson(data) as T;
     }
+    if (t == _ipjncc3j.ShareEmailFutureCallInviteModel) {
+      return _ipjncc3j.ShareEmailFutureCallInviteModel.fromJson(data) as T;
+    }
+    if (t == _iw592n88.ShareEmailFutureCallSharedModel) {
+      return _iw592n88.ShareEmailFutureCallSharedModel.fromJson(data) as T;
+    }
     if (t == _io4auc29.StorageFutureCallRefreshItemSizeModel) {
       return _io4auc29.StorageFutureCallRefreshItemSizeModel.fromJson(data)
           as T;
@@ -17389,6 +17405,18 @@ class Protocol extends _is.DatabaseSerializationManager
     if (t == _is.getType<_il37cz87.PublicationsFutureCallDeliverModel?>()) {
       return (data != null
               ? _il37cz87.PublicationsFutureCallDeliverModel.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_ipjncc3j.ShareEmailFutureCallInviteModel?>()) {
+      return (data != null
+              ? _ipjncc3j.ShareEmailFutureCallInviteModel.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == _is.getType<_iw592n88.ShareEmailFutureCallSharedModel?>()) {
+      return (data != null
+              ? _iw592n88.ShareEmailFutureCallSharedModel.fromJson(data)
               : null)
           as T;
     }
@@ -19718,6 +19746,10 @@ class Protocol extends _is.DatabaseSerializationManager
         'NotificationEmailFutureCallSendModel',
       _il37cz87.PublicationsFutureCallDeliverModel =>
         'PublicationsFutureCallDeliverModel',
+      _ipjncc3j.ShareEmailFutureCallInviteModel =>
+        'ShareEmailFutureCallInviteModel',
+      _iw592n88.ShareEmailFutureCallSharedModel =>
+        'ShareEmailFutureCallSharedModel',
       _io4auc29.StorageFutureCallRefreshItemSizeModel =>
         'StorageFutureCallRefreshItemSizeModel',
       _izr1y672.ActivityDashboard => 'ActivityDashboard',
@@ -20168,6 +20200,10 @@ class Protocol extends _is.DatabaseSerializationManager
         return 'NotificationEmailFutureCallSendModel';
       case _il37cz87.PublicationsFutureCallDeliverModel():
         return 'PublicationsFutureCallDeliverModel';
+      case _ipjncc3j.ShareEmailFutureCallInviteModel():
+        return 'ShareEmailFutureCallInviteModel';
+      case _iw592n88.ShareEmailFutureCallSharedModel():
+        return 'ShareEmailFutureCallSharedModel';
       case _io4auc29.StorageFutureCallRefreshItemSizeModel():
         return 'StorageFutureCallRefreshItemSizeModel';
       case _izr1y672.ActivityDashboard():
@@ -21064,6 +21100,16 @@ class Protocol extends _is.DatabaseSerializationManager
     }
     if (dataClassName == 'PublicationsFutureCallDeliverModel') {
       return deserialize<_il37cz87.PublicationsFutureCallDeliverModel>(
+        data['data'],
+      );
+    }
+    if (dataClassName == 'ShareEmailFutureCallInviteModel') {
+      return deserialize<_ipjncc3j.ShareEmailFutureCallInviteModel>(
+        data['data'],
+      );
+    }
+    if (dataClassName == 'ShareEmailFutureCallSharedModel') {
+      return deserialize<_iw592n88.ShareEmailFutureCallSharedModel>(
         data['data'],
       );
     }

@@ -38,6 +38,10 @@ import 'package:wonky_server/src/generated/future_calls_generated_models/notific
     as _iuw2rc8h;
 import 'package:wonky_server/src/generated/future_calls_generated_models/publications_future_call_deliver_model.dart'
     as _in0nsjwu;
+import 'package:wonky_server/src/generated/future_calls_generated_models/share_email_future_call_invite_model.dart'
+    as _ill4phn7;
+import 'package:wonky_server/src/generated/future_calls_generated_models/share_email_future_call_shared_model.dart'
+    as _i9jeyits;
 import 'package:wonky_server/src/generated/future_calls_generated_models/storage_future_call_refresh_item_size_model.dart'
     as _i5g4dkd6;
 import 'package:wonky_server/src/generated/platform/activity/activity_dashboard.dart'
@@ -750,6 +754,8 @@ class _FutureCalls {
   late final publications = _PublicationsFutureCall();
 
   late final acl = _AclFutureCall();
+
+  late final shareEmail = _ShareEmailFutureCall();
 
   late final storage = _StorageFutureCall();
 
@@ -11971,6 +11977,48 @@ class _AclFutureCall {
         (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
     try {
       await _iwslocjr.AclFanOutFutureCall().invoke(
+        _localUniqueSession,
+        object,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
+  }
+}
+
+class _ShareEmailFutureCall {
+  Future<void> shared(
+    _ist.TestSessionBuilder sessionBuilder,
+    int notificationId,
+  ) async {
+    var object = _i9jeyits.ShareEmailFutureCallSharedModel(
+      notificationId: notificationId,
+    );
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _iwslocjr.ShareEmailSharedFutureCall().invoke(
+        _localUniqueSession,
+        object,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
+  }
+
+  Future<void> invite(
+    _ist.TestSessionBuilder sessionBuilder,
+    int permissionId,
+    String? message,
+  ) async {
+    var object = _ill4phn7.ShareEmailFutureCallInviteModel(
+      permissionId: permissionId,
+      message: message,
+    );
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _iwslocjr.ShareEmailInviteFutureCall().invoke(
         _localUniqueSession,
         object,
       );

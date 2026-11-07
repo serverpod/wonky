@@ -238,7 +238,10 @@ abstract final class DriveTools {
     title: 'Share with a person',
     description:
         'Grants a person access to an item by email. People without an '
-        'account receive a pending invite. Sharing is not undoable.',
+        'account receive a pending invite. With notify (default true) the '
+        'person gets an email right away with the optional message: a '
+        'share email, or an invitation to sign up for people without an '
+        'account (limited per hour and day). Sharing is not undoable.',
     inputSchema: ObjectSchema(
       properties: {
         'uuid': McpSchemas.uuid,

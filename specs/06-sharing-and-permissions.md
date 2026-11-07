@@ -233,6 +233,35 @@ null without one), `orgAccess` (the item's own organization grant) and `inherite
 (§2.4, signed out allowed).
 `handleAccessRequest(requestId, approve, role?)`; `resolveInvite(token)` → item uuid + role.
 
+**Share emails.** `share`'s `notify` is the dialog's *Send an email* (default on). With it,
+every **newly added** person gets an email right away, off the request path
+(`ShareEmailFutureCall`, through the `EmailSender` of [07 §4](07-collaboration.md)); a role
+change of someone who already had a direct grant or invite sends none:
+- An **existing user** gets a `shared` notification and the email "<name> shared “<title>” with
+  you" (role, the optional message, a button to the item's URL, a footer link to turn share
+  emails off). Their *shares* setting `off` means no notification and no email; otherwise
+  (`inApp` or `email`) the sender's explicit choice wins. The notification is created as
+  emailed (`emailedAt` set), so the digest never sends it again; when the send fails the claim
+  is given back and the digest sends it if their *shares* setting is `email`.
+- An **address without an account** becomes a pending invite and gets an invitation: "<name>
+  invited you to “<title>” on Wonky Work", the role, the message, "create a free account with
+  this address" and *Sign up and open*, which opens sign-up in the item's app and comes back
+  to the item (`/write/signup?next=/d/<uuid>`; spreadsheets `/sheets/signup?next=/s/<uuid>`,
+  presentations `/slides/…/p/…`, folders and files in Drive with `/f/…` and `/file/…`); the
+  invite is converted at sign-up. Nothing is sent when the invite
+  was removed or converted before the email went out.
+- **Abuse limits.** Invitations count per sender against `sharing.inviteEmailsPerHour` (30)
+  and `sharing.inviteEmailsPerDay` (100) (a `RateLimiter`, in Redis with several instances,
+  [13 §4](13-security-and-operations.md)); a share whose new invitations do not fit is refused
+  with `limitExceeded` before anything changes ("…try again later, or turn off *Send an
+  email*"). 0 turns invitation emails off (invites are still created). Emails never name
+  another person's address: only the recipient's own address appears, the sender is named by
+  display name. The message is at most 1000 characters (`invalid` beyond), and names and the
+  message are escaped in the HTML and kept to one line where a line is expected (subjects).
+- Off: no notification and no email.
+- Shares by approving an access request (`handleAccessRequest`) email the requester the same
+  way; MCP `drive.share` takes `notify` (default true, [09](09-mcp.md)).
+
 Sharing changes are **not undoable**; destructive ones (remove, transfer) confirm.
 
 (M14) Submitting a document to a publication grants its moderators Commenter without a
@@ -257,8 +286,11 @@ notification; the dialog shows them as "Moderator · <publication>" ([18 §5.1](
 
 - Adding people expands to a composer: chips for each recipient (autocomplete from
   `user.searchUsers`: related people, members of the caller's organization by name or email
-  prefix, anyone by exact email — [04 §6.3](04-auth-and-accounts.md)), role select, *Notify
-  people* checkbox, message textarea, *Send*. When a name search finds no one, a muted line
+  prefix, anyone by exact email — [04 §6.3](04-auth-and-accounts.md)), role select, *Send an
+  email* checkbox (default on; hint "People without an account get an invitation to sign
+  up.", off: "They get access without an email or a notification."), the optional message
+  (only while it is on, at most 1000 characters), *Send* (*Share* while it is off; §4 *Share
+  emails*). When a name search finds no one, a muted line
   says "Enter the full email to add someone outside <domain>" (without an organization: "Enter
   the full email address to add someone").
 - (Organizations) **The people field** is one field: a `ShadDecorator` with the theme's field
