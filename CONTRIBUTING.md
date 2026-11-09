@@ -85,9 +85,12 @@ You don't need to start the server yourself: the agent starts it, together with 
 database, through the `serverpod` MCP server, and starts the apps the same way. The repository
 configures it, together with the `dart` MCP server and the Flutter and Serverpod skills, for
 Claude Code (`.mcp.json`, `.claude/`), Codex (`.codex/`, `.agents/`), Cursor (`.cursor/`) and
-Antigravity (`.agents/`). To watch it or start an app by hand, run `serverpod start` in
-`wonky_server`; it attaches to the running server. Sign up with any email: in development the
-verification code is printed in the server log.
+Antigravity (`.agents/`). The apps run in debug mode and hot reload as the agent edits: open
+Drive at http://localhost:8100/, Write at http://localhost:8101/, Sheets at
+http://localhost:8102/ or Slides at http://localhost:8104/ once the agent has started it. To
+watch the server or start an app by hand, run `serverpod start` in `wonky_server`; it attaches to
+the running server. Sign up with any email: in development the verification code is printed in
+the server log.
 
 You can **release** a claim at any time if you can't finish. Two active claims per person at a
 time.

@@ -7,7 +7,9 @@ A13).
 
 - Specs: `specs/wonky_drive/` (start with `01-overview.md`; build plan
   `05-implementation-plan.md`, status `STATUS.md`).
-- Served at `/drive/` by `wonky_server`; in development `serverpod start`
-  launches it from `lib/driver.dart` on port 8100 (`flutter_apps: drive`).
+- Served at `/drive/` by `wonky_server`. In development, start it on demand
+  from the `serverpod start` UI or the `spawn_flutter_app` MCP tool: it runs
+  in debug mode from `lib/driver.dart` at http://localhost:8100/
+  (`flutter_apps: drive`; `AGENTS.md`, *Running locally*).
 - Release build for the server:
   `flutter build web --wasm --base-href /drive/ --output ../wonky_server/web/drive`.

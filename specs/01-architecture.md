@@ -520,7 +520,11 @@ development) from one origin; there is no separate host app.
 
   In development each app runs from `flutter run` on its own port at the root path; the bundled
   `assets/config.json` lists those dev URLs (all four), and `allowedOrigins` in
-  `config/development.yaml` lists all four origins. Production builds always come from the
+  `config/development.yaml` lists all four origins. The runner passes
+  `--dart-define=SERVER_URL=<API address>`, which overrides `apiUrl` from `config.json`
+  (`AppUrls.load`): when another Serverpod runner holds 8080–8082 and this one binds ephemeral
+  ports, the apps still reach the API (only `webUrl` keeps port 8082). These debug apps are the
+  default way to run the suite locally (`AGENTS.md`, *Running locally*). Production builds always come from the
   server's `web/` folders.
 - **Routing**: `go_router` paths are relative to the base href (`/d/:uuid` is
   `/write/d/:uuid` in production). Cross-app navigation (open a spreadsheet from Write, the

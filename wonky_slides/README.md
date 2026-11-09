@@ -7,10 +7,10 @@ A13).
 
 - Specs: `specs/wonky_slides/` (start with `01-overview.md`; build plan
   `12-implementation-plan.md`, status `STATUS.md`).
-- Served at `/slides/` by `wonky_server`; in development `serverpod start`
-  can launch it from `lib/driver.dart` on port 8104 (`flutter_apps: slides`,
-  `auto_launch: false` while it is being built — start it with the
-  `spawn_flutter_app` MCP tool).
+- Served at `/slides/` by `wonky_server`. In development, start it on demand
+  from the `serverpod start` UI or the `spawn_flutter_app` MCP tool: it runs
+  in debug mode from `lib/driver.dart` at http://localhost:8104/
+  (`flutter_apps: slides`; `AGENTS.md`, *Running locally*).
 - Release build for the server:
   `flutter build web --wasm --base-href /slides/ --output ../wonky_server/web/slides`.
 - State (SL-1): the app skeleton — the Slides home (presentations only) and a
