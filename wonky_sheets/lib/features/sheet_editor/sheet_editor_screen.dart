@@ -255,7 +255,14 @@ class _SheetEditorScreenState extends State<SheetEditorScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+    // The assistant can be installed after the spreadsheet opened (sign-in
+    // from a shared link): its panel joins the rail then.
+    valueListenable: s.assistantOffered,
+    builder: (context, _, _) => _scaffold(context),
+  );
+
+  Widget _scaffold(BuildContext context) {
     final editor = _editor;
     return EditorScaffold(
       key: ValueKey<String>('sheets.screen.${widget.itemUuid}'),

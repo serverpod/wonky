@@ -413,6 +413,36 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
+  testWidgets('Given a document that opened before sign-in finished (a '
+      'shared link) when the assistant is installed then its panel joins the '
+      'rail, and leaves it when AI is switched off on the server', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+    const rail = ValueKey('panel.rail.assistant');
+    expect(find.byKey(rail), findsNothing);
+
+    final api = FakeAssistantApi();
+    final assistant = ShellAssistant.install(h.services, api: api);
+    addTearDown(() => ShellAssistant.uninstall(h.services));
+    await tester.runAsync(pumpEventQueue);
+    await tester.pump();
+    expect(find.byKey(rail), findsOneWidget);
+
+    api.status = AssistantStatus(
+      available: false,
+      reason: 'disabled',
+      quality: AiQuality.best,
+      tokensUsedToday: 0,
+      dailyTokenBudget: 1000000,
+    );
+    await tester.runAsync(assistant.refreshStatus);
+    await tester.pump();
+    expect(find.byKey(rail), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 2));
+  });
+
   testWidgets('Given a caret in the editor when the focus moves to the '
       'toolbar then the caret hides, and choosing a heading in the style '
       'picker returns the focus and the caret (Write 05 §4.1)', (tester) async {

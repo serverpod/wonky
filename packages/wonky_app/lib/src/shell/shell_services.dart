@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/widgets.dart';
 import 'dart:async';
 
@@ -336,7 +337,25 @@ class ShellServices implements ActiveDocumentHost {
   final List<McpDescribableDialog> openDialogs = [];
 
   /// The AI assistant (suite 10), contributed by the assistant workstream.
-  AssistantHook? assistant;
+  AssistantHook? get assistant => _assistant;
+  AssistantHook? _assistant;
+  set assistant(AssistantHook? a) {
+    _assistant = a;
+    assistantChanged();
+  }
+
+  /// Whether the assistant panel is offered: [assistant] is installed and
+  /// [AssistantHook.available]. Editor screens rebuild their side panels
+  /// from it: the assistant is installed once sign-in completes, which can
+  /// be after a document opened (a shared link followed through the sign-in
+  /// screen), and its availability follows its status.
+  ValueListenable<bool> get assistantOffered => _assistantOffered;
+  final ValueNotifier<bool> _assistantOffered = ValueNotifier(false);
+
+  /// Re-reads [AssistantHook.available] into [assistantOffered] (the
+  /// installed hook calls it when its status changes).
+  void assistantChanged() =>
+      _assistantOffered.value = _assistant?.available ?? false;
 
   /// Server protocol info (version check, feature flags).
   final ValueNotifier<ProtocolInfo?> serverInfo = ValueNotifier(null);

@@ -50,6 +50,14 @@ never reach clients). The assistant acts on documents through the **same tool la
   four). Usage still counts against each user's own daily budget. Endpoints:
   `assistant.setOrganizationProviderKey(provider, apiKey)`,
   `assistant.removeOrganizationProviderKey()`.
+- **Keys follow the requesting user, not the file.** Every request (assistant, inline AI,
+  proofreading) and the status resolve the key of the signed-in user who makes it, whatever
+  file it is about. On a shared file, a colleague in the owner's organization therefore uses
+  that organization's shared key (it is their organization too), a collaborator from another
+  organization uses their own resolution (their key, their organization's), and one without
+  any key sees "AI isn't configured", even though the owner has a key: an owner's or an
+  organization's key never pays for people outside the organization. Server tests:
+  `ai_org_key_test.dart` (*a document shared by a member of an organization*).
 - **Models.** "AI quality" maps to a model size and effort:
   | Setting | Model | Effort |
   |---------|-------|--------|
@@ -182,7 +190,10 @@ fields:
   *Tools › Assistant*, *View › Panels › Assistant*, `Mod+J` (contextual binding: in Write, inside
   an empty paragraph `Mod+J` opens the inline AI prompt instead — see suite 08 §1.2). Right side
   panel in the shared panel host (suite 02 §4.5: shared width 300–640 px, collapses to the icon
-  rail); the rail shows it only when the assistant is available.
+  rail); the rail shows it only when the assistant is available. Editor screens rebuild their
+  panels from `ShellServices.assistantOffered` (the assistant is installed and not switched off
+  on the server): the assistant is installed when sign-in completes, which can be after the
+  file already opened, as when a shared link is followed through the sign-in screen.
 - Header: thread picker (dropdown of threads for this file + "New chat"), ⋮ (Clear, Delete thread,
   Settings).
 - Message list: user bubbles, assistant Markdown rendering (code blocks with copy), **tool
