@@ -172,7 +172,9 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: doc.viewPrefs,
+      // The assistant can be installed after the document opened (sign-in
+      // from a shared link): its panel joins the rail then.
+      listenable: Listenable.merge([doc.viewPrefs, s.assistantOffered]),
       builder: (context, _) => _scaffold(context),
     );
   }
@@ -200,7 +202,7 @@ class _WriteDocumentScreenState extends State<WriteDocumentScreen> {
       ],
       // Rail order: Assistant, Outline, Find (then the shell's History).
       panels: [
-        if (s.assistant?.available ?? false) writeAssistantPanelSpec(ai),
+        if (s.assistantOffered.value) writeAssistantPanelSpec(ai),
         SidePanelSpec(
           id: WritePanels.outline,
           title: writeL10n(context).screenPanelOutline,

@@ -57,7 +57,9 @@ void openAiProviderSettings(ShellServices services, BuildContext context) =>
 /// `shell.ai.*` commands and the ✨ buttons use. Apps create one
 /// [AssistantController] per open file with [controllerFor].
 class ShellAssistant extends AssistantHook {
-  ShellAssistant(this.services, this.api);
+  ShellAssistant(this.services, this.api) {
+    status.addListener(_onStatus);
+  }
 
   final ShellServices services;
   final AssistantApi api;
@@ -103,7 +105,13 @@ class ShellAssistant extends AssistantHook {
       c.dispose();
     }
     a._controllers.clear();
+    a.status.removeListener(a._onStatus);
     services.assistant = null;
+  }
+
+  /// Keeps [ShellServices.assistantOffered] in step with [available].
+  void _onStatus() {
+    if (identical(services.assistant, this)) services.assistantChanged();
   }
 
   /// The panel is offered unless AI is switched off on the server; when
